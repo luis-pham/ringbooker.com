@@ -28,7 +28,9 @@ import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertica
 import {
   getResolvedHandoffTransport,
   getResolvedVoiceTransport,
+  getTelnyxDemoInboundRoutingMode,
   getTelnyxInboundRoutingMode,
+  getTelnyxShopInboundRoutingMode,
 } from '@/src/backend/config/voice-transport';
 import { isShopCallable } from '@/src/backend/services/calls/callable-check';
 import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
@@ -372,10 +374,13 @@ function runOpenAiSipBridgeEnvGates(params: {
   callerPhone: string | null;
   destinationPhone: string | undefined;
   resolver: TelnyxCallControlResolverSnapshot;
+  routeKind: 'shop' | 'demo';
   shopId?: string;
 }): TelnyxCallControlPhase1HandledResult | null {
   const env = getEnv();
-  if (getTelnyxInboundRoutingMode() !== 'call_control_to_openai_sip') {
+  const inboundRoutingMode =
+    params.routeKind === 'demo' ? getTelnyxDemoInboundRoutingMode() : getTelnyxShopInboundRoutingMode();
+  if (inboundRoutingMode !== 'call_control_to_openai_sip') {
     return {
       handled: true,
       decision: 'reject',
@@ -387,6 +392,7 @@ function runOpenAiSipBridgeEnvGates(params: {
       destinationPhone: params.destinationPhone,
       callerPhone: params.callerPhone,
       resolver: params.resolver,
+      routeKind: params.routeKind,
     };
   }
 
@@ -402,6 +408,7 @@ function runOpenAiSipBridgeEnvGates(params: {
       destinationPhone: params.destinationPhone,
       callerPhone: params.callerPhone,
       resolver: params.resolver,
+      routeKind: params.routeKind,
     };
   }
 
@@ -417,6 +424,7 @@ function runOpenAiSipBridgeEnvGates(params: {
       destinationPhone: params.destinationPhone,
       callerPhone: params.callerPhone,
       resolver: params.resolver,
+      routeKind: params.routeKind,
     };
   }
 
@@ -432,6 +440,7 @@ function runOpenAiSipBridgeEnvGates(params: {
       destinationPhone: params.destinationPhone,
       callerPhone: params.callerPhone,
       resolver: params.resolver,
+      routeKind: params.routeKind,
     };
   }
 
@@ -448,6 +457,7 @@ function runOpenAiSipBridgeEnvGates(params: {
       destinationPhone: params.destinationPhone,
       callerPhone: params.callerPhone,
       resolver: params.resolver,
+      routeKind: params.routeKind,
     };
   }
 
@@ -519,6 +529,7 @@ export async function evaluateTelnyxCallControlInboundInitiated(
       callerPhone,
       destinationPhone,
       resolver: demoResolver,
+      routeKind: 'demo',
       shopId: env.PUBLIC_DEMO_SHOP_ID,
     });
     if (gate) return gate;
@@ -697,6 +708,7 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     callerPhone,
     destinationPhone: destinationPhoneShop,
     resolver: shopResolver,
+    routeKind: 'shop',
     shopId: shop.id,
   });
   if (gateShop) return { ...gateShop, routeKind: 'shop' };

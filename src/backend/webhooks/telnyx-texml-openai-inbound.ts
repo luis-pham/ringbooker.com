@@ -9,16 +9,20 @@
  * `call.answered` when `TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP=true` (see `telnyx-call-control-webhook.ts`) —
  * confirm on your Telnyx account that `dial` accepts that SIP target.
  *
- * **Routing:** use `TELNYX_INBOUND_ROUTING_MODE=texml_to_openai_sip` if this URL is the number’s Voice URL.
- * If the number is attached to a Call Control Application, use `call_control_to_openai_sip` and do not
- * point Voice URL here.
+ * **Routing:** demo vertical DIDs may use this Voice URL while real shop DIDs use Call Control. Use
+ * `TELNYX_DEMO_INBOUND_ROUTING_MODE=texml_to_openai_sip` and
+ * `TELNYX_SHOP_INBOUND_ROUTING_MODE=call_control_to_openai_sip` to keep those paths separated.
  */
 import { randomUUID } from 'node:crypto';
 
 import type { Context } from 'hono';
 
 import { getEnv } from '@/src/backend/config/env';
-import { getTelnyxInboundRoutingMode } from '@/src/backend/config/voice-transport';
+import {
+  getTelnyxDemoInboundRoutingMode,
+  getTelnyxInboundRoutingMode,
+  getTelnyxShopInboundRoutingMode,
+} from '@/src/backend/config/voice-transport';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { securityAudit } from '@/src/backend/security/audit-log';
@@ -118,6 +122,8 @@ export async function handleTelnyxTexmlOpenAiInbound(
   const env = getEnv();
   const sipUriConfigured = env.OPENAI_SIP_URI?.trim() ?? '';
   const inboundRoutingMode = getTelnyxInboundRoutingMode();
+  const shopInboundRoutingMode = getTelnyxShopInboundRoutingMode();
+  const demoInboundRoutingMode = getTelnyxDemoInboundRoutingMode();
   const rbCallId = randomUUID();
 
   const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
@@ -127,19 +133,12 @@ export async function handleTelnyxTexmlOpenAiInbound(
       path: c.req.path,
       ip,
       telnyx_inbound_routing_mode: inboundRoutingMode,
+      telnyx_shop_inbound_routing_mode: shopInboundRoutingMode,
+      telnyx_demo_inbound_routing_mode: demoInboundRoutingMode,
       rb_call_id: rbCallId,
     },
     'telnyx_texml_openai_sip_ingress_hit',
   );
-
-  if (inboundRoutingMode === 'call_control_to_openai_sip') {
-    logger.warn(
-      { rb_call_id: rbCallId },
-      'telnyx_texml_reject_wrong_routing_mode_use_call_control_app',
-    );
-    incrementMetric('texml_openai_inbound_total', { outcome: 'reject_routing_mode_mismatch' });
-    return texmlXmlResponse(buildTelnyxTexmlRejectXml());
-  }
 
   const limited = await consumeRateLimit(RATE_LIMIT_POLICIES.texml_telnyx_openai_inbound, `texml_openai:${ip}`);
   if (!limited.ok) {
@@ -190,12 +189,37 @@ export async function handleTelnyxTexmlOpenAiInbound(
     /* leave form empty */
   }
 
+  const demoCtx = form.To ? resolveVerticalDemoInboundRoute(normalizeInboundE164(form.To), env) : null;
+  const isDemoNumber = Boolean(demoCtx);
+
+  if (isDemoNumber && demoInboundRoutingMode !== 'texml_to_openai_sip') {
+    logger.warn(
+      {
+        rb_call_id: rbCallId,
+        dialedDid: form.To ? maskPhone(form.To) : undefined,
+        telnyx_demo_inbound_routing_mode: demoInboundRoutingMode,
+      },
+      'telnyx_texml_reject_demo_wrong_routing_mode',
+    );
+    incrementMetric('texml_openai_inbound_total', { outcome: 'reject_demo_routing_mode_mismatch' });
+    return texmlXmlResponse(buildTelnyxTexmlRejectXml());
+  }
+
+  if (!isDemoNumber && shopInboundRoutingMode === 'call_control_to_openai_sip') {
+    logger.warn(
+      {
+        rb_call_id: rbCallId,
+        dialedDid: form.To ? maskPhone(form.To) : undefined,
+        telnyx_shop_inbound_routing_mode: shopInboundRoutingMode,
+      },
+      'telnyx_texml_reject_shop_wrong_routing_mode_use_call_control_app',
+    );
+    incrementMetric('texml_openai_inbound_total', { outcome: 'reject_shop_routing_mode_mismatch' });
+    return texmlXmlResponse(buildTelnyxTexmlRejectXml());
+  }
+
   const sipHost =
     sipUriConfigured.includes('@') ? (sipUriConfigured.split('@')[1]?.split(';')[0] ?? 'unknown') : 'unknown';
-
-  const isDemoNumber = Boolean(
-    form.To && resolveVerticalDemoInboundRoute(normalizeInboundE164(form.To), env),
-  );
 
   let shopId: string | undefined;
   let billingBlockedReason: string | undefined;

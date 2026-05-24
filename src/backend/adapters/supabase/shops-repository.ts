@@ -241,7 +241,8 @@ function normalizePlan(value: string | null): ShopPlan {
   if (value === 'starter' || value === 'professional' || value === 'enterprise') {
     return value;
   }
-  return 'professional';
+  logger.error({ plan: value }, 'invalid_shop_plan_falling_back_to_starter');
+  return 'starter';
 }
 
 function normalizeServices(value: unknown): ServiceItem[] {

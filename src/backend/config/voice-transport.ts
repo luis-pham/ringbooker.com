@@ -34,10 +34,26 @@ export function getResolvedHandoffTransport(): HandoffTransport {
 }
 
 export function getTelnyxInboundRoutingMode(): TelnyxInboundRoutingMode | 'unspecified' {
-  const raw = normalizeEnv('TELNYX_INBOUND_ROUTING_MODE')?.toLowerCase();
+  return normalizeTelnyxInboundRoutingMode(normalizeEnv('TELNYX_INBOUND_ROUTING_MODE'));
+}
+
+function normalizeTelnyxInboundRoutingMode(rawValue: string | undefined): TelnyxInboundRoutingMode | 'unspecified' {
+  const raw = rawValue?.toLowerCase();
   if (raw === 'call_control_to_openai_sip') return 'call_control_to_openai_sip';
   if (raw === 'texml_to_openai_sip') return 'texml_to_openai_sip';
   return 'unspecified';
+}
+
+export function getTelnyxShopInboundRoutingMode(): TelnyxInboundRoutingMode | 'unspecified' {
+  const routeSpecific = normalizeTelnyxInboundRoutingMode(normalizeEnv('TELNYX_SHOP_INBOUND_ROUTING_MODE'));
+  if (routeSpecific !== 'unspecified') return routeSpecific;
+  return getTelnyxInboundRoutingMode();
+}
+
+export function getTelnyxDemoInboundRoutingMode(): TelnyxInboundRoutingMode | 'unspecified' {
+  const routeSpecific = normalizeTelnyxInboundRoutingMode(normalizeEnv('TELNYX_DEMO_INBOUND_ROUTING_MODE'));
+  if (routeSpecific !== 'unspecified') return routeSpecific;
+  return getTelnyxInboundRoutingMode();
 }
 
 /**
@@ -50,6 +66,15 @@ export function validateVoiceArchitectureAtStartup(): void {
   const vt = getResolvedVoiceTransport();
   const ht = getResolvedHandoffTransport();
   const rm = getTelnyxInboundRoutingMode();
+  const shopRm = getTelnyxShopInboundRoutingMode();
+  const demoRm = getTelnyxDemoInboundRoutingMode();
+
+  if (shopRm !== rm || demoRm !== rm) {
+    console.info(
+      '[voice] telnyx_route_specific_inbound_modes',
+      JSON.stringify({ legacyMode: rm, shopMode: shopRm, demoMode: demoRm }),
+    );
+  }
 
   if (vt === 'livekit_media' && ht === 'telnyx_call_control') {
     console.warn(
@@ -67,13 +92,13 @@ export function validateVoiceArchitectureAtStartup(): void {
       '[voice] TELNYX_INBOUND_ROUTING_MODE is unset. Use texml_to_openai_sip or call_control_to_openai_sip explicitly in production.',
     );
   }
-  if (vt === 'openai_sip_direct' && ht === 'telnyx_call_control' && rm === 'texml_to_openai_sip') {
+  if (vt === 'openai_sip_direct' && ht === 'telnyx_call_control' && shopRm === 'texml_to_openai_sip') {
     console.warn(
       '[voice] TeXML ingress does not provide parent Telnyx call_control_id. Live handoff may not be available; ' +
         'request_human_handoff will fall back to summary unless call_control_id exists (e.g. from SIP headers).',
     );
   }
-  if (rm === 'call_control_to_openai_sip') {
+  if (shopRm === 'call_control_to_openai_sip') {
     const cc = process.env.TELNYX_CALL_CONTROL_WEBHOOK_ENABLED?.trim().toLowerCase();
     const bridge = process.env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP?.trim().toLowerCase();
     if (cc !== 'true' && cc !== '1') {

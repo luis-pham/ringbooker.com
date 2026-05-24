@@ -235,6 +235,10 @@ function createValidatedEnv() {
       HANDOFF_TRANSPORT: z.string().optional(),
       /** texml_to_openai_sip | call_control_to_openai_sip */
       TELNYX_INBOUND_ROUTING_MODE: z.string().optional(),
+      /** Optional route-specific override for real shop numbers. */
+      TELNYX_SHOP_INBOUND_ROUTING_MODE: z.string().optional(),
+      /** Optional route-specific override for configured demo vertical numbers. */
+      TELNYX_DEMO_INBOUND_ROUTING_MODE: z.string().optional(),
 
       SUPABASE_URL: z.string().url(),
       SUPABASE_SERVICE_KEY: z.string().min(1),

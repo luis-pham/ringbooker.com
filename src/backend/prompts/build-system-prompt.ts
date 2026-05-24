@@ -1,6 +1,7 @@
 import type { Customer, Shop, ShopRoutingRule } from '@/src/backend/domain/types';
 import { canUseReturningCallerContext } from '@/src/backend/domain/shop-plan-capabilities';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
+import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
 import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
@@ -149,6 +150,7 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
 function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, routingRules?: ShopRoutingRule[]): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
+  const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
   const businessType = shop.vertical
     ? `${shop.vertical.replace(/_/g, ' ')}${shop.vertical_detail ? ` (${shop.vertical_detail.replace(/_/g, ' ')})` : ''}`
     : 'service business';
@@ -160,7 +162,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     hours: renderHours(shop),
     services: buildRuntimeServices(shop),
     notOfferedServices: (shop.not_offered_services ?? []).filter((service) => service.trim().length > 0),
-    providers: (shop.staff ?? [])
+    providers: (effectiveRuntimeConfig.staff ?? [])
       .filter((member) => member.active !== false)
       .map((member) => {
         const parts = [
@@ -174,11 +176,11 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
     bookingUrl: shop.booking_url ?? null,
-    welcomeMessage: shop.ai_welcome_message ? compactLine(shop.ai_welcome_message, 240) : null,
+    welcomeMessage: compactLine(effectiveRuntimeConfig.aiWelcomeMessage, 240),
     customInstructions: renderProductionCustomInstructions({
-      voiceStyle: shop.ai_voice,
+      voiceStyle: effectiveRuntimeConfig.aiVoice,
       shopCustomInstructions: [
-        shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null,
+        effectiveRuntimeConfig.aiCustomInstructions ? compactLine(effectiveRuntimeConfig.aiCustomInstructions, 700) : null,
         renderFaqs(shop),
         renderRoutingRules(routingRules),
       ].filter(Boolean).join('\n\n') || null,

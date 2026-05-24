@@ -234,6 +234,39 @@ for (const row of demoVerticalCases) {
   });
 }
 
+test('evaluateTelnyxCallControlInboundInitiated rejects demo DID when demos are TeXML-only', async () => {
+  const previous = process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE;
+  resetEnvCacheForTests();
+  clearVerticalDemoPhoneEnv();
+  applyCallControlInboundStackEnv();
+  applyRequiredTestEnv({
+    PUBLIC_DEMO_SHOP_ID: 'demo-shop',
+    DEMO_PHONE_NAIL_SALON: '+15550001001',
+    TELNYX_DEMO_INBOUND_ROUTING_MODE: 'texml_to_openai_sip',
+  });
+  try {
+    const repo = new InMemoryShopsRepository();
+    const result = await evaluateTelnyxCallControlInboundInitiated(
+      {
+        call_control_id: 'cc_demo_texml_only',
+        direction: 'inbound',
+        to: '+15550001001',
+        from: '+15550009999',
+      },
+      { shopsRepository: repo },
+    );
+    assert.equal(result.handled, true);
+    if (!result.handled) assert.fail();
+    assert.equal(result.decision, 'reject');
+    assert.equal(result.reason, 'invalid_inbound_routing_mode');
+    assert.equal(result.routeKind, 'demo');
+  } finally {
+    if (previous === undefined) delete process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE;
+    else process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE = previous;
+    resetEnvCacheForTests();
+  }
+});
+
 test('evaluateTelnyxCallControlInboundInitiated demo DID wins over shop with same phone_number', async () => {
   resetEnvCacheForTests();
   clearVerticalDemoPhoneEnv();

@@ -27,6 +27,7 @@ import {
   CAPABILITY_MIN_PLAN,
   CAPABILITY_LABELS,
   getShopPlanCapabilities,
+  isCapabilityAllowed,
   type ShopSettingCapability,
 } from '@/src/backend/domain/shop-plan-capabilities';
 import { createShopWithPlaceholderPhoneRetry } from '@/src/backend/domain/signup-placeholder-phone';
@@ -1341,6 +1342,24 @@ function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSe
   };
 }
 
+function toBasicUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSent?: boolean } = {}) {
+  const status = deriveUserCallStatus(call);
+  return {
+    id: call.requestId ?? call.providerCallId,
+    shopId: call.shopId,
+    callerPhone: call.callerPhone ?? '',
+    startedAt: call.startedAt,
+    endedAt: call.endedAt,
+    durationSeconds: call.durationSecs ?? undefined,
+    status,
+    providerCallId: call.providerCallId,
+    requestId: call.requestId,
+    createdAt: call.startedAt,
+    updatedAt: call.endedAt ?? call.startedAt,
+    missedFollowupSmsSent: extras.missedFollowupSmsSent ?? false,
+  };
+}
+
 type SessionRole = 'user' | 'admin';
 
 const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
@@ -1363,7 +1382,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   services: 'edit_services',
   not_offered_services: 'edit_services',
   service_catalog: 'edit_services',
-  staff: 'edit_services',
+  staff: 'edit_staff',
   faqs: 'edit_business_profile',
   hours: 'edit_hours',
   allow_transfers: 'edit_transfer_settings',
@@ -1383,6 +1402,21 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   send_review_request_sms: 'edit_review_request_sms',
   ai_custom_instructions: 'edit_ai_custom_instructions',
 };
+
+function planFeatureLockedJson(c: Context, capability: ShopSettingCapability) {
+  return c.json(
+    {
+      ok: false,
+      error: 'plan_feature_locked',
+      requirements: {
+        capability,
+        label: CAPABILITY_LABELS[capability],
+        minPlan: CAPABILITY_MIN_PLAN[capability],
+      },
+    },
+    403,
+  );
+}
 
 function splitUserSettingsPatchByPlan(
   shop: Shop,
@@ -6384,6 +6418,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'advanced_call_analytics')) {
+      return planFeatureLockedJson(c, 'advanced_call_analytics');
+    }
 
     await deps.callLogsRepository.resolveStaleInProgressByShop(shop.id, new Date(Date.now() - 30 * 60 * 1000)).catch(() => 0);
     const id = c.req.param('id');
@@ -6427,17 +6464,23 @@ export function createBackendApp(deps: {
     const offset = (page - 1) * limit;
     const filters = buildUserCallFilters(parsed.data);
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const canUseAdvancedCallAnalytics = isCapabilityAllowed(shop.plan, 'advanced_call_analytics');
 
-    const [calls, total, last7DaysCount, bookings, followUp, missed, highUrgency, transcriptsReady] = await Promise.all([
+    const [calls, total, last7DaysCount, missed] = await Promise.all([
       repo.listByShop(shop.id, { ...filters, limit, offset }),
       repo.countByShop(shop.id, filters),
       repo.countByShop(shop.id, { startedAfter: last7Days }),
-      repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
-      repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
       repo.countByShop(shop.id, { outcome: 'missed' }),
-      repo.countByShop(shop.id, { summaryUrgency: 'high' }),
-      repo.countByShop(shop.id, { ...filters, transcriptStatus: 'completed' }),
     ]);
+    const advancedStats = canUseAdvancedCallAnalytics
+      ? await Promise.all([
+          repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
+          repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
+          repo.countByShop(shop.id, { summaryUrgency: 'high' }),
+          repo.countByShop(shop.id, { ...filters, transcriptStatus: 'completed' }),
+        ])
+      : null;
+    const [bookings, followUp, highUrgency, transcriptsReady] = advancedStats ?? [0, 0, 0, 0];
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     const missedPhones = calls
@@ -6449,12 +6492,17 @@ export function createBackendApp(deps: {
 
     return c.json({
       ok: true,
-      calls: calls.map((call) => toUserCallResponse(call, { missedFollowupSmsSent: missedSmsSentPhones.has(call.callerPhone ?? '') })),
+      calls: calls.map((call) => {
+        const extras = { missedFollowupSmsSent: missedSmsSentPhones.has(call.callerPhone ?? '') };
+        return canUseAdvancedCallAnalytics ? toUserCallResponse(call, extras) : toBasicUserCallResponse(call, extras);
+      }),
       shop: { timezone: shop.timezone },
       total,
-      stats: { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency },
+      stats: canUseAdvancedCallAnalytics
+        ? { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency }
+        : { last7Days: last7DaysCount, missed },
       pagination: { page, limit, pageSize: limit, total, totalPages },
-      summary: { total, booked: bookings, missed, transcriptsReady },
+      ...(canUseAdvancedCallAnalytics ? { summary: { total, booked: bookings, missed, transcriptsReady } } : {}),
     });
   });
 
@@ -6482,6 +6530,7 @@ export function createBackendApp(deps: {
       shop: serviceCatalogEnabled ? toUserFacingShop(shop) : { ...toUserFacingShop(shop), service_catalog: null },
       capabilities: getShopPlanCapabilities(shop.plan),
       capabilityLabels: CAPABILITY_LABELS,
+      capabilityMinPlans: CAPABILITY_MIN_PLAN,
       showGoLiveSettingsTab,
       serviceCatalogEnabled,
     });
@@ -6520,6 +6569,14 @@ export function createBackendApp(deps: {
     const body = await c.req.json().catch(() => null);
     const parsed = integrationsPreferencesSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const enablesIntegration =
+      parsed.data.bookingMethod === 'app' ||
+      (parsed.data.selectedIntegration !== undefined && parsed.data.selectedIntegration !== null);
+    if (enablesIntegration && !isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const updated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', {
       ...(parsed.data.bookingMethod !== undefined ? { booking_method: parsed.data.bookingMethod } : {}),
@@ -6545,6 +6602,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const squareCredentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
     const vagaroCredentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
@@ -6748,6 +6808,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
     const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
     if (parsed.data.bookingUrl && !bookingUrl) {
       return c.json({ ok: false, error: 'bookingUrl must start with https://' }, 400);
@@ -6816,6 +6879,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
       booking_url: bookingUrl,
@@ -6858,6 +6924,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
     if (parsed.data.bookingUrl && !bookingUrl) {
@@ -7013,6 +7082,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
       booking_url: bookingUrl,
@@ -7053,6 +7125,38 @@ export function createBackendApp(deps: {
           result: 'error',
           provider,
           message: 'provider_not_implemented_yet',
+        }),
+      );
+    }
+
+    if (!deps.shopsRepository) {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'user_dependencies_unavailable',
+        }),
+      );
+    }
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'shop_not_found',
+        }),
+      );
+    }
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'plan_feature_locked',
         }),
       );
     }
@@ -7220,6 +7324,16 @@ export function createBackendApp(deps: {
           }),
         );
       }
+      if (!isCapabilityAllowed(existingShop.plan, 'third_party_integrations')) {
+        return c.redirect(
+          buildCalendarSettingsRedirect({
+            appBaseUrl,
+            result: 'error',
+            provider,
+            message: 'plan_feature_locked',
+          }),
+        );
+      }
       const current = parseSquareConnectionCredentials(existingShop.google_cal_credentials_encrypted);
       const payload = buildSquareConnectionPayload(current, exchanged);
 
@@ -7286,6 +7400,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     if (provider === 'vagaro') {
       const credentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
@@ -7449,6 +7566,9 @@ export function createBackendApp(deps: {
 
       const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
       if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+        return planFeatureLockedJson(c, 'third_party_integrations');
+      }
 
       const current = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
       if (!current?.accessToken && !current?.clientId) {
@@ -7496,6 +7616,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const credentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
     if (!credentials?.access_token || !credentials.refresh_token) {
@@ -9115,6 +9238,8 @@ export function createBackendApp(deps: {
       ok: true,
       shop: serviceCatalogEnabled ? toUserFacingShop(updated) : { ...toUserFacingShop(updated), service_catalog: null },
       capabilities: getShopPlanCapabilities(updated.plan),
+      capabilityLabels: CAPABILITY_LABELS,
+      capabilityMinPlans: CAPABILITY_MIN_PLAN,
       showGoLiveSettingsTab,
       serviceCatalogEnabled,
       ...(handoffPhoneWarnings.length > 0 ? { warnings: handoffPhoneWarnings } : {}),

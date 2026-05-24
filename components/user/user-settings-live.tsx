@@ -167,6 +167,7 @@ type ShopCapabilities = Record<
   | 'edit_cancel_policy'
   | 'edit_promotions'
   | 'edit_services'
+  | 'edit_staff'
   | 'edit_hours'
   | 'edit_transfer_settings'
   | 'edit_callback_settings'
@@ -175,14 +176,19 @@ type ShopCapabilities = Record<
   | 'edit_ai_greeting'
   | 'edit_reminder_sms'
   | 'edit_review_request_sms'
-  | 'edit_ai_custom_instructions',
+  | 'edit_ai_custom_instructions'
+  | 'provider_context'
+  | 'third_party_integrations'
+  | 'advanced_call_analytics',
   boolean
 >;
+type CapabilityMinPlans = Partial<Record<keyof ShopCapabilities, ShopPlan>>;
 
 export type UserSettingsResponse = {
   ok: boolean;
   shop?: ShopSettings;
   capabilities?: ShopCapabilities;
+  capabilityMinPlans?: CapabilityMinPlans;
   serviceCatalogEnabled?: boolean;
   /** When true, Settings shows a Go live tab first until live answering is enabled. */
   showGoLiveSettingsTab?: boolean;
@@ -520,15 +526,6 @@ function visibleTabsForPortal(portal: UserSettingsPortal): Array<{ id: SettingsT
   return SETTINGS_PORTAL_TAB_ORDER[portal].map((id) => ({ id, ...tabCopyForPortal(portal, id) }));
 }
 
-const REQUIRED_PLAN_BY_CAPABILITY: Partial<Record<keyof ShopCapabilities, ShopPlan>> = {
-  edit_transfer_settings: 'professional',
-  edit_ai_voice: 'professional',
-  edit_ai_greeting: 'professional',
-  edit_reminder_sms: 'professional',
-  edit_review_request_sms: 'professional',
-  edit_ai_custom_instructions: 'enterprise',
-};
-
 function cloneHours(hours: Record<string, BusinessHoursEntry>) {
   return JSON.parse(JSON.stringify(hours)) as Record<string, BusinessHoursEntry>;
 }
@@ -702,6 +699,7 @@ const DEFAULT_SETTINGS_CAPABILITIES: ShopCapabilities = {
   edit_cancel_policy: true,
   edit_promotions: true,
   edit_services: true,
+  edit_staff: false,
   edit_hours: true,
   edit_transfer_settings: false,
   edit_callback_settings: true,
@@ -711,6 +709,9 @@ const DEFAULT_SETTINGS_CAPABILITIES: ShopCapabilities = {
   edit_reminder_sms: false,
   edit_review_request_sms: false,
   edit_ai_custom_instructions: false,
+  provider_context: false,
+  third_party_integrations: false,
+  advanced_call_analytics: false,
 };
 
 const DEFAULT_SETTINGS_STATE = buildInitialState(DEFAULT_SETTINGS_SHOP);
@@ -767,6 +768,9 @@ export function UserSettingsLive({
   const [shop, setShop] = useState<ShopSettings | null>(initialShop);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(
     initialData?.ok ? initialData.capabilities ?? null : null,
+  );
+  const [capabilityMinPlans, setCapabilityMinPlans] = useState<CapabilityMinPlans>(
+    initialData?.ok ? initialData.capabilityMinPlans ?? {} : {},
   );
   const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
   const [form, setForm] = useState<SettingsState | null>(initialState);
@@ -889,6 +893,7 @@ export function UserSettingsLive({
         setShop(nextShop);
         setVagaroBookingUrl(nextShop.booking_url ?? '');
         setCapabilities(body.capabilities);
+        setCapabilityMinPlans(body.capabilityMinPlans ?? {});
         setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
         const nextState = buildInitialState(nextShop);
         setForm(nextState);
@@ -1708,6 +1713,7 @@ export function UserSettingsLive({
       const nextShop = body.shop;
       setShop(nextShop);
       setCapabilities(body.capabilities);
+      setCapabilityMinPlans(body.capabilityMinPlans ?? {});
       setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
       const nextState = buildInitialState(nextShop);
       setForm(nextState);
@@ -1930,7 +1936,7 @@ export function UserSettingsLive({
 
   function renderLockCopy(capability: keyof ShopCapabilities) {
     if (!isLocked(capability)) return null;
-    const requiredPlan = REQUIRED_PLAN_BY_CAPABILITY[capability];
+    const requiredPlan = capabilityMinPlans[capability];
     if (!requiredPlan) return null;
     const label =
       requiredPlan === 'enterprise'

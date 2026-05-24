@@ -6,6 +6,7 @@ export type ShopSettingCapability =
   | 'edit_cancel_policy'
   | 'edit_promotions'
   | 'edit_services'
+  | 'edit_staff'
   | 'edit_hours'
   | 'edit_transfer_settings'
   | 'edit_callback_settings'
@@ -14,7 +15,10 @@ export type ShopSettingCapability =
   | 'edit_ai_greeting'
   | 'edit_reminder_sms'
   | 'edit_review_request_sms'
-  | 'edit_ai_custom_instructions';
+  | 'edit_ai_custom_instructions'
+  | 'provider_context'
+  | 'third_party_integrations'
+  | 'advanced_call_analytics';
 
 export type ShopPlanCapabilities = Record<ShopSettingCapability, boolean>;
 
@@ -30,6 +34,7 @@ export const CAPABILITY_MIN_PLAN: Record<ShopSettingCapability, ShopPlan> = {
   edit_cancel_policy: 'starter',
   edit_promotions: 'starter',
   edit_services: 'starter',
+  edit_staff: 'professional',
   edit_hours: 'starter',
   edit_transfer_settings: 'professional',
   edit_callback_settings: 'starter',
@@ -39,6 +44,9 @@ export const CAPABILITY_MIN_PLAN: Record<ShopSettingCapability, ShopPlan> = {
   edit_reminder_sms: 'professional',
   edit_review_request_sms: 'professional',
   edit_ai_custom_instructions: 'enterprise',
+  provider_context: 'professional',
+  third_party_integrations: 'professional',
+  advanced_call_analytics: 'professional',
 };
 
 export const CAPABILITY_LABELS: Record<ShopSettingCapability, string> = {
@@ -47,6 +55,7 @@ export const CAPABILITY_LABELS: Record<ShopSettingCapability, string> = {
   edit_cancel_policy: 'Cancellation policy',
   edit_promotions: 'Promotions',
   edit_services: 'Services',
+  edit_staff: 'Staff',
   edit_hours: 'Business hours',
   edit_transfer_settings: 'Transfer rules',
   edit_callback_settings: 'Callback rules',
@@ -56,6 +65,9 @@ export const CAPABILITY_LABELS: Record<ShopSettingCapability, string> = {
   edit_reminder_sms: 'Reminder SMS',
   edit_review_request_sms: 'Review request SMS',
   edit_ai_custom_instructions: 'Advanced AI instructions',
+  provider_context: 'Provider context',
+  third_party_integrations: 'Third-party integrations',
+  advanced_call_analytics: 'Advanced call analytics',
 };
 
 export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
@@ -65,6 +77,7 @@ export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
     edit_cancel_policy: true,
     edit_promotions: true,
     edit_services: true,
+    edit_staff: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     edit_hours: true,
     edit_transfer_settings: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     edit_callback_settings: true,
@@ -74,6 +87,9 @@ export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
     edit_reminder_sms: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     edit_review_request_sms: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     edit_ai_custom_instructions: PLAN_ORDER[plan] >= PLAN_ORDER.enterprise,
+    provider_context: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
+    third_party_integrations: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
+    advanced_call_analytics: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
   };
 }
 

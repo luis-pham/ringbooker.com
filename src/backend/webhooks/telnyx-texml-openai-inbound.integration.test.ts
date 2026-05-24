@@ -66,6 +66,106 @@ test('TeXML inbound returns Dial XML for a signed request when OPENAI_SIP_URI se
   assert.ok(text.includes('</Dial>'));
 });
 
+test('TeXML inbound allows configured demo DID when real shops are routed through Call Control', async () => {
+  const previous = {
+    shopMode: process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE,
+    demoMode: process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE,
+    demoPhone: process.env.DEMO_PHONE_NAIL_SALON,
+  };
+  try {
+    applyRequiredTestEnv({
+      OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+      TELNYX_SHOP_INBOUND_ROUTING_MODE: 'call_control_to_openai_sip',
+      TELNYX_DEMO_INBOUND_ROUTING_MODE: 'texml_to_openai_sip',
+      DEMO_PHONE_NAIL_SALON: '+15550001001',
+    });
+    resetEnvCacheForTests();
+
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+    });
+
+    const body = new URLSearchParams({
+      From: '+15551234001',
+      To: '+15550001001',
+      CallSid: 'CA_texml_demo_split',
+    }).toString();
+    const ts = String(Math.floor(Date.now() / 1000));
+    const res = await app.request('/telnyx/texml/inbound', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'telnyx-timestamp': ts,
+        'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+      },
+      body,
+    });
+
+    const text = await res.text();
+    assert.equal(res.status, 200);
+    assert.ok(text.includes('<Dial'));
+    assert.ok(text.includes('sip:proj_texml_test@sip.api.openai.com;transport=tls'));
+  } finally {
+    if (previous.shopMode === undefined) delete process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE;
+    else process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE = previous.shopMode;
+    if (previous.demoMode === undefined) delete process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE;
+    else process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE = previous.demoMode;
+    if (previous.demoPhone === undefined) delete process.env.DEMO_PHONE_NAIL_SALON;
+    else process.env.DEMO_PHONE_NAIL_SALON = previous.demoPhone;
+    resetEnvCacheForTests();
+  }
+});
+
+test('TeXML inbound rejects non-demo DID when real shops are routed through Call Control', async () => {
+  const previous = {
+    shopMode: process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE,
+    demoMode: process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE,
+    demoPhone: process.env.DEMO_PHONE_NAIL_SALON,
+  };
+  try {
+    applyRequiredTestEnv({
+      OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+      TELNYX_SHOP_INBOUND_ROUTING_MODE: 'call_control_to_openai_sip',
+      TELNYX_DEMO_INBOUND_ROUTING_MODE: 'texml_to_openai_sip',
+      DEMO_PHONE_NAIL_SALON: '+15550001001',
+    });
+    resetEnvCacheForTests();
+
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+    });
+
+    const body = new URLSearchParams({
+      From: '+15551234001',
+      To: '+15552223333',
+      CallSid: 'CA_texml_shop_split',
+    }).toString();
+    const ts = String(Math.floor(Date.now() / 1000));
+    const res = await app.request('/telnyx/texml/inbound', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'telnyx-timestamp': ts,
+        'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+      },
+      body,
+    });
+
+    const text = await res.text();
+    assert.equal(res.status, 200);
+    assert.ok(text.includes('<Reject'));
+    assert.ok(!text.includes('<Dial'));
+  } finally {
+    if (previous.shopMode === undefined) delete process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE;
+    else process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE = previous.shopMode;
+    if (previous.demoMode === undefined) delete process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE;
+    else process.env.TELNYX_DEMO_INBOUND_ROUTING_MODE = previous.demoMode;
+    if (previous.demoPhone === undefined) delete process.env.DEMO_PHONE_NAIL_SALON;
+    else process.env.DEMO_PHONE_NAIL_SALON = previous.demoPhone;
+    resetEnvCacheForTests();
+  }
+});
+
 test('TeXML inbound rejects a POST with an invalid signature', async () => {
   applyRequiredTestEnv({
     OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',

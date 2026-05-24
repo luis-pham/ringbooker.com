@@ -23,6 +23,7 @@ import {
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
+import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
 import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
@@ -857,6 +858,7 @@ export async function handleOpenAiRealtimeSipWebhook(
         let fallbackTriggered = false;
         /** One-shot guard: prevents double-hangup when caller hangs up during the end_call delay. */
         let hangupInitiated = false;
+        const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
 
         function buildShopSidebandCore() {
           return {
@@ -864,8 +866,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             callId,
             apiKey: apiKey!,
             acceptedAtMs,
-            initialResponseInstructions:
-              shop.ai_welcome_message?.trim() || 'Thanks for calling. How can I help you today?',
+            initialResponseInstructions: effectiveRuntimeConfig.aiWelcomeMessage,
             executeBusinessTool: (name: string, argsJson: string) => {
               let parsed: unknown = {};
               try {

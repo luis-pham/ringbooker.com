@@ -1935,7 +1935,7 @@ export function MarketingHomeTemplate() {
                   <li>Up to 100 captured callers/month</li>
                   <li>Works with your current business number</li>
                   <li>After-hours and overflow call answering</li>
-                  <li>Booking request capture and confirmation</li>
+                  <li>Booking request capture — via your booking link</li>
                   <li>Missed-call text back</li>
                   <li>Callback request capture for calls that need a human</li>
                   <li>Call summaries with next steps</li>
@@ -1955,6 +1955,7 @@ export function MarketingHomeTemplate() {
                   <li>Up to 300 captured callers/month</li>
                   <li>Everything in Starter</li>
                   <li>Reminder SMS and stronger follow-up</li>
+                  <li>Booking platform sync — Square, Mindbody, and more coming soon</li>
                   <li>Returning caller notes and preferences</li>
                   <li>Preferred stylist or provider context</li>
                   <li>Owner call transfer with caller context</li>
