@@ -862,6 +862,10 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
   }
   .industries-grid::-webkit-scrollbar{display:none}
   .industry-card-lite{flex:0 0 calc((100% - 14px) / 2);min-width:calc((100% - 14px) / 2);scroll-snap-align:start}
+  .home-carousel-track .industry-card-lite{
+    flex:0 0 calc((100% - 16px) / 2);
+    min-width:calc((100% - 16px) / 2);
+  }
   .home-carousel-track{
     display:flex;
     gap:16px;
@@ -1254,6 +1258,16 @@ setPriceSafe('monthly')
         setActive(0, false)
       })
     }
+
+    initCarousel({
+      rootId: 'industriesCarousel',
+      trackSelector: '.home-carousel-track',
+      cardSelector: '.industry-card-lite',
+      prevId: 'industriesPrev',
+      nextId: 'industriesNext',
+      dotsId: 'industriesDots',
+      dotClassName: 'home-carousel-dot',
+    })
 
     initCarousel({
       rootId: 'pricingCarousel',
@@ -1784,9 +1798,10 @@ export function MarketingHomeTemplate() {
                 Each vertical has different call patterns, from walk-ins to consultation-driven bookings.
               </p>
                   </div>
-            <div className="industries-grid reveal">
+            <div className="home-carousel" id="industriesCarousel">
+            <div className="industries-grid home-carousel-track reveal">
               {HOME_INDUSTRY_CARDS.map(({ href, icon, title, sub }, index) => (
-                <Link key={href} href={href} className={`industry-card-lite ${HOME_INDUSTRY_RV_CLASSES[index]}`}>
+                <Link key={href} href={href} className={`industry-card-lite home-carousel-slide ${HOME_INDUSTRY_RV_CLASSES[index]}`}>
                   <span className="industry-card-icon" aria-hidden="true">
                     {icon}
                   </span>
@@ -1794,7 +1809,13 @@ export function MarketingHomeTemplate() {
                   <span className="industry-sub">{sub}</span>
                 </Link>
               ))}
+            </div>
+              <div className="home-carousel-controls" aria-label="Industries carousel controls">
+                <button type="button" id="industriesPrev" className="home-carousel-nav-btn" aria-label="Previous industry">‹</button>
+                <div className="home-carousel-dots" id="industriesDots" aria-label="Industries carousel indicators" />
+                <button type="button" id="industriesNext" className="home-carousel-nav-btn" aria-label="Next industry">›</button>
               </div>
+            </div>
             <div className="metrics-grid reveal rv d1" id="by-the-numbers">
               <article className="metrics-cell">
                 <div className="metrics-value" data-count="500" data-suffix="+">500+</div>
