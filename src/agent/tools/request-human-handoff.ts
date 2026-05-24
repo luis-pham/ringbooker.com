@@ -53,7 +53,7 @@ export type RequestHumanHandoffResult =
       message_for_ai: string;
     };
 
-function isHandoffAvailable(shop: Shop): { available: boolean; reason?: 'outside_business_hours' | 'outside_custom_hours' } {
+export function isHandoffAvailable(shop: Shop): { available: boolean; reason?: 'outside_business_hours' | 'outside_custom_hours' } {
   switch (shop.handoff_availability) {
     case 'always':
       return { available: true };
@@ -121,14 +121,15 @@ export async function requestHumanHandoffTool(
     };
   }
 
-  const ownerPhone = ctx.shop.handoff_phone?.trim() || ctx.shop.user_phone?.trim();
+  const ownerPhone = ctx.shop.handoff_phone?.trim();
   if (!ownerPhone) {
+    logger.warn({ shopId: ctx.shop.id }, 'handoff_phone_not_configured');
     return {
       success: false,
       handoff_possible: false,
       fallback: 'send_summary',
       message_for_ai:
-        'I cannot reach the team on the phone right now, but I can send them your message after this call.',
+        "Transfer is not available right now. Capture the caller's name, phone number, and request, and let them know the team will follow up shortly.",
     };
   }
 

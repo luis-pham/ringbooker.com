@@ -22,9 +22,13 @@ export const RUNTIME_CONFIG_TEMPLATE = [
   '',
   'Fields:',
   '- BUSINESS NAME: official business name used in greeting and caller-facing references.',
-  '- BUSINESS TYPE: operational category or vertical label.',
+  '- PRIMARY BUSINESS TYPE: operational category or vertical label.',
+  '- ADDITIONAL SERVICES: secondary services or specialties that do not change the primary business type.',
   '- LOCATION: address/city if available.',
   '- TIMEZONE: business timezone for date/time interpretation.',
+  '- CURRENT LOCAL TIME: current shop-local weekday and time.',
+  '- SHOP STATUS: whether the shop is open or closed right now.',
+  "- TODAY'S HOURS: today's configured hours.",
   '- HOURS: compact hours summary.',
   '- PROVIDERS / STAFF: approved staff, stylist, technician, provider, or clinician names.',
   '- SERVICES / PRICING: approved service names, prices/ranges, duration, and category.',
@@ -127,9 +131,13 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
   return [
     'RUNTIME BUSINESS CONFIG',
     `BUSINESS NAME: ${compactPromptLine(config.businessName, 120)}`,
-    config.businessType ? `BUSINESS TYPE: ${compactPromptLine(config.businessType, 80)}` : null,
+    config.businessType ? `PRIMARY BUSINESS TYPE: ${compactPromptLine(config.businessType, 80)}` : null,
+    config.additionalServices ? `ADDITIONAL SERVICES: ${compactPromptLine(config.additionalServices, 160)}` : null,
     config.location ? `LOCATION: ${compactPromptLine(config.location, 200)}` : null,
     config.timezone ? `TIMEZONE: ${compactPromptLine(config.timezone, 80)}` : null,
+    config.currentLocalTime ? `CURRENT LOCAL TIME: ${compactPromptLine(config.currentLocalTime, 80)}` : null,
+    typeof config.currentlyOpen === 'boolean' ? `SHOP STATUS: ${config.currentlyOpen ? 'OPEN' : 'CLOSED'}` : null,
+    `TODAY'S HOURS: ${config.todayHours ? compactPromptLine(config.todayHours, 80) : 'Not specified'}`,
     config.hours ? `HOURS: ${compactPromptLine(config.hours, 700)}` : null,
     config.providers?.length ? `PROVIDERS / STAFF: ${config.providers.slice(0, 12).join(', ')}` : null,
     services.length ? ['SERVICES / PRICING:', ...services].join('\n') : 'SERVICES / PRICING: Not configured. Use consultation or callback framing.',
@@ -138,6 +146,7 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     config.promotions ? `PROMOTIONS: ${compactPromptLine(config.promotions, 400)}` : null,
     config.cancellationPolicy ? `CANCELLATION POLICY: ${compactPromptLine(config.cancellationPolicy, 400)}` : null,
     config.bookingUrl ? `BOOKING URL: ${config.bookingUrl}` : null,
+    config.bookingRequestInstruction ? `BOOKING REQUEST INSTRUCTION: ${compactPromptLine(config.bookingRequestInstruction, 300)}` : null,
     config.welcomeMessage ? `WELCOME MESSAGE: ${compactPromptLine(config.welcomeMessage, 260)}` : null,
     config.languageOptions?.length ? `LANGUAGE OPTIONS: ${config.languageOptions.join(', ')}` : null,
     config.productionLanguageDirective
@@ -167,5 +176,6 @@ export function inferVerticalFromBusinessConfig(config: RuntimeBusinessConfig): 
   if (/\b(clinic|patient|acne|scar|laser session|pre-treatment|recovery)\b/.test(haystack)) return 'beauty-clinic';
   if (/\b(hair|balayage|keratin|haircut|blowout|stylist|color)\b/.test(haystack)) return 'hair-salon';
   if (/\b(day\s*spa|massage|couples|facial|gift card|spa package)\b/.test(haystack)) return 'day-spa';
-  return 'nail-salon';
+  console.warn('[inferVerticalFromBusinessConfig] vertical_inference_fallback_hair_salon');
+  return 'hair-salon';
 }

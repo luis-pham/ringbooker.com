@@ -11,9 +11,8 @@ import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memor
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import type { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
-import { resetEnvCacheForTests } from '@/src/backend/config/env';
-import { createJobHandlers } from '@/src/backend/jobs/runner';
-import { JobExecutionError } from '@/src/backend/jobs/worker';
+import type { Shop } from '@/src/backend/domain/types';
+import { createJobHandlers, nextSendableWindowUtc } from '@/src/backend/jobs/runner';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 applyRequiredTestEnv();
@@ -44,6 +43,30 @@ function createRuntime() {
 
   return { runtime, sentSms };
 }
+
+function quietWindowShop(): Shop {
+  return {
+    timezone: 'America/Los_Angeles',
+    sms_quiet_hours_start: '21:00',
+    sms_quiet_hours_end: '08:00',
+  } as Shop;
+}
+
+test('nextSendableWindowUtc schedules 22:00 local retry for 08:00 next day', () => {
+  const result = nextSendableWindowUtc(quietWindowShop(), new Date('2026-05-24T05:00:00.000Z'));
+  assert.equal(result.toISOString(), '2026-05-24T15:00:00.000Z');
+});
+
+test('nextSendableWindowUtc schedules 03:00 local retry for 08:00 same day', () => {
+  const result = nextSendableWindowUtc(quietWindowShop(), new Date('2026-05-24T10:00:00.000Z'));
+  assert.equal(result.toISOString(), '2026-05-24T15:00:00.000Z');
+});
+
+test('nextSendableWindowUtc returns now for 10:00 local outside quiet hours', () => {
+  const now = new Date('2026-05-24T17:00:00.000Z');
+  const result = nextSendableWindowUtc(quietWindowShop(), now);
+  assert.equal(result.toISOString(), now.toISOString());
+});
 
 test('runner skips appointment reminder SMS for Starter even if job exists', async () => {
   const { runtime, sentSms } = createRuntime();
@@ -131,6 +154,10 @@ test('runner skips owner alert SMS until owner opts in', async () => {
     plan: 'professional',
     active: true,
   });
+  await runtime.shopsRepository.updateDynamicConfig(shop.id, {
+    sms_quiet_hours_start: '00:00',
+    sms_quiet_hours_end: '23:59',
+  });
 
   const handlers = createJobHandlers(runtime);
   await handlers.handoff_failed_owner_sms!({
@@ -177,6 +204,10 @@ test('booking confirmation SMS for request-only booking does not claim confirmat
     plan: 'professional',
     active: true,
   });
+  await runtime.shopsRepository.updateDynamicConfig(shop.id, {
+    sms_quiet_hours_start: '00:00',
+    sms_quiet_hours_end: '23:59',
+  });
 
   const handlers = createJobHandlers(runtime);
   await handlers.booking_confirmation_sms!({
@@ -211,6 +242,10 @@ test('new booking request owner alert sends when owner opted in', async () => {
     plan: 'professional',
     active: true,
   });
+  await runtime.shopsRepository.updateDynamicConfig(shop.id, {
+    sms_quiet_hours_start: '00:00',
+    sms_quiet_hours_end: '23:59',
+  });
   await runtime.shopsRepository.updateUserSettings(shop.id, { sms_owner_opted_in: true });
 
   const handlers = createJobHandlers(runtime);
@@ -236,7 +271,7 @@ test('new booking request owner alert sends when owner opted in', async () => {
   assert.match(sms.body ?? '', /Please confirm with the client/);
 });
 
-test('callback_outbound_call uses shared outbound caller id (not shop.phone_number)', async () => {
+test('callback_outbound_call legacy job queues owner alert instead of dialing caller', async () => {
   const outboundCalls: Array<{ from?: string; to?: string }> = [];
   const { runtime } = createRuntime();
   Object.assign(runtime, {
@@ -272,70 +307,64 @@ test('callback_outbound_call uses shared outbound caller id (not shop.phone_numb
     attemptCount: 1,
   });
 
-  assert.equal(outboundCalls.length, 1);
-  assert.equal(outboundCalls[0]?.to, '+15551234567');
-  assert.equal(outboundCalls[0]?.from, process.env.RINGBOOKER_OUTBOUND_CALLER_ID);
-  assert.notEqual(outboundCalls[0]?.from, shop.phone_number);
+  assert.equal(outboundCalls.length, 0);
 
-  const updated = await runtime.callbacksRepository.findById(callback.id);
-  assert.equal(updated?.status, 'completed');
+  const ownerAlert = await runtime.jobsRepository.leaseNext({
+    now: new Date(),
+    leaseSeconds: 30,
+    workerId: 'test-worker',
+  });
+  assert.ok(ownerAlert);
+  assert.equal(ownerAlert.type, 'callback_request_owner_alert');
+  assert.equal(ownerAlert.payload.callbackId, callback.id);
+  assert.equal(ownerAlert.payload.callerPhone, '+15551234567');
+  assert.equal(ownerAlert.payload.callerName, 'Alex');
+  assert.equal(ownerAlert.payload.reason, 'Test callback');
 });
 
-test('callback_outbound_call skips telephony when outbound caller id is not configured', async () => {
+test('callback_outbound_call direct legacy payload queues owner alert instead of dialing caller', async () => {
   const outboundCalls: unknown[] = [];
-  const prevRing = process.env.RINGBOOKER_OUTBOUND_CALLER_ID;
-  const prevTelnyx = process.env.TELNYX_OUTBOUND_CALLER_ID;
-  delete process.env.RINGBOOKER_OUTBOUND_CALLER_ID;
-  delete process.env.TELNYX_OUTBOUND_CALLER_ID;
-  resetEnvCacheForTests();
-
-  try {
-    const { runtime } = createRuntime();
-    Object.assign(runtime, {
-      telephonyService: {
-        createOutboundCall: async (params: unknown) => {
-          outboundCalls.push(params);
-          return { providerCallId: undefined as undefined };
-        },
+  const { runtime } = createRuntime();
+  Object.assign(runtime, {
+    telephonyService: {
+      createOutboundCall: async (params: unknown) => {
+        outboundCalls.push(params);
+        return { providerCallId: undefined as undefined };
       },
-    });
+    },
+  });
 
-    const shop = await runtime.shopsRepository.create({
-      name: 'No CID Shop',
-      phone_number: '+17145558888',
-      user_phone: '+17145558887',
-      timezone: 'America/Los_Angeles',
-      plan: 'professional',
-      active: true,
-    });
+  const shop = await runtime.shopsRepository.create({
+    name: 'Direct Callback Shop',
+    phone_number: '+17145558888',
+    user_phone: '+17145558887',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
 
-    const callback = await runtime.callbacksRepository.create({
-      shopId: shop.id,
+  const handlers = createJobHandlers(runtime);
+  await handlers.callback_outbound_call!({
+    jobId: 'job-direct-callback-outbound',
+    shopId: shop.id,
+    payload: {
       customerPhone: '+15559876543',
-      reason: 'Test',
-    });
+      customerName: 'Sam',
+      reason: 'Needs pricing help',
+    },
+    attemptCount: 1,
+  });
 
-    const handlers = createJobHandlers(runtime);
-    await assert.rejects(
-      () =>
-        handlers.callback_outbound_call!({
-          jobId: 'job-no-cid',
-          shopId: shop.id,
-          payload: { callbackId: callback.id },
-          attemptCount: 1,
-        }),
-      (err: unknown) => err instanceof JobExecutionError && err.message === 'outbound_caller_id_not_configured',
-    );
+  assert.equal(outboundCalls.length, 0);
 
-    assert.equal(outboundCalls.length, 0);
-    const updated = await runtime.callbacksRepository.findById(callback.id);
-    assert.equal(updated?.status, 'failed');
-  } finally {
-    if (prevRing !== undefined) process.env.RINGBOOKER_OUTBOUND_CALLER_ID = prevRing;
-    else delete process.env.RINGBOOKER_OUTBOUND_CALLER_ID;
-    if (prevTelnyx !== undefined) process.env.TELNYX_OUTBOUND_CALLER_ID = prevTelnyx;
-    else delete process.env.TELNYX_OUTBOUND_CALLER_ID;
-    resetEnvCacheForTests();
-    applyRequiredTestEnv();
-  }
+  const ownerAlert = await runtime.jobsRepository.leaseNext({
+    now: new Date(),
+    leaseSeconds: 30,
+    workerId: 'test-worker',
+  });
+  assert.ok(ownerAlert);
+  assert.equal(ownerAlert.type, 'callback_request_owner_alert');
+  assert.equal(ownerAlert.payload.callerPhone, '+15559876543');
+  assert.equal(ownerAlert.payload.callerName, 'Sam');
+  assert.equal(ownerAlert.payload.reason, 'Needs pricing help');
 });

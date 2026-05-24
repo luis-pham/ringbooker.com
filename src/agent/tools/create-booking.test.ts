@@ -220,6 +220,45 @@ test('non-square provider ignores techName lookup', async () => {
   assert.equal(harness.createdInputs.length, 1);
 });
 
+test('manual provider with booking URL rejects direct create_booking', async () => {
+  const harness = createContext({
+    provider: 'manual',
+    shop: { booking_url: 'https://glossgenius.com/test' },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.deepEqual(result, {
+    error: 'This shop uses a booking link. Use the send_booking_link tool instead of creating a booking directly.',
+    code: 'BOOKING_LINK_PROVIDER',
+    retryable: false,
+  });
+  assert.equal(harness.createdInputs.length, 0);
+  assert.equal(harness.bookings.size, 0);
+});
+
+test('manual provider without booking URL still creates pending request', async () => {
+  const harness = createContext({
+    provider: 'manual',
+    createBooking: async (input) => ({ bookingId: `manual-${input.idempotencyKey}`, confirmed: false }),
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal('confirmed' in result ? result.confirmed : true, false);
+  const saved = harness.bookings.get('local-booking-123');
+  assert.equal(saved?.status, 'pending');
+});
+
 test('square getTeamMembers returns empty on error', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL) => {

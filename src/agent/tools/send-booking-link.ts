@@ -12,7 +12,17 @@ const schema = z.object({
 export async function sendBookingLinkTool(
   ctx: AgentToolContext,
   input: unknown,
-): Promise<{ success: true; message: string } | { success: false; message: string } | ToolError> {
+): Promise<
+  | { success: true; message: string }
+  | {
+      success: false;
+      reason?: 'no_phone' | 'no_consent';
+      fallback: 'url';
+      bookingUrl: string | null;
+      message: string;
+    }
+  | ToolError
+> {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return toToolError('Invalid booking link SMS request.', { code: 'VALIDATION_ERROR', retryable: false });
 
@@ -20,7 +30,9 @@ export async function sendBookingLinkTool(
   if (!bookingUrl) {
     return {
       success: false,
-      message: 'No booking link configured for this business. Ask the caller to contact the business directly.',
+      fallback: 'url',
+      bookingUrl: null,
+      message: 'Unable to send booking link. Ask the caller if they would like to leave their contact information and the shop will follow up to confirm their appointment.',
     };
   }
 
@@ -29,7 +41,13 @@ export async function sendBookingLinkTool(
   const toPhone = ctx.callerPhone;
   if (!toPhone) {
     logger.warn({ shopId: ctx.shop.id, requestId: ctx.requestId }, 'booking_link_sms_skipped_no_caller_phone');
-    return { success: false, message: 'Unable to send booking link — no caller phone available.' };
+    return {
+      success: false,
+      reason: 'no_phone',
+      fallback: 'url',
+      bookingUrl,
+      message: `Unable to send booking link via SMS. Tell the caller they can book directly at: ${bookingUrl}`,
+    };
   }
 
   const smsConsented = ctx.customersRepository
@@ -38,7 +56,10 @@ export async function sendBookingLinkTool(
   if (!smsConsented) {
     return {
       success: false,
-      message: 'The caller has not given SMS consent. Ask if they agree to receive a text before using this tool.',
+      reason: 'no_consent',
+      fallback: 'url',
+      bookingUrl,
+      message: `Unable to send booking link via SMS. Tell the caller they can book directly at: ${bookingUrl}`,
     };
   }
 

@@ -207,7 +207,6 @@ const jobTypeSchema = z.enum([
   'appointment_reminder_24h',
   'appointment_reminder_2h',
   'missed_call_followup_sms',
-  'callback_outbound_call',
   'review_request_sms',
   'post_call_summary',
   'callback_request_owner_alert',
@@ -2845,6 +2844,7 @@ export function createBackendApp(deps: {
       callLogsRepository: deps.callLogsRepository,
       commercialAccountsRepository: deps.commercialAccountsRepository,
       shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+      demoSessionsRepository: deps.demoSessionsRepository,
     }),
   );
   app.get(path('/telnyx/texml/inbound'), (c) =>

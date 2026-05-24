@@ -30,16 +30,7 @@ export async function scheduleCallbackTool(
       reason: parsed.data.reason,
       requestId: ctx.requestId,
     });
-    const idempotencyKey = `callback:${ctx.requestId}:${callback.id}`;
-    await ctx.jobsRepository.enqueue({
-      shopId: ctx.shop.id,
-      type: 'callback_outbound_call',
-      payload: {
-        callbackId: callback.id,
-      },
-      runAt: new Date(),
-      idempotencyKey,
-    });
+    const idempotencyKey = `callback-owner-alert:${ctx.requestId}:${callback.id}`;
     await ctx.jobsRepository.enqueue({
       shopId: ctx.shop.id,
       type: 'callback_request_owner_alert',
@@ -50,7 +41,7 @@ export async function scheduleCallbackTool(
         reason: parsed.data.reason,
       },
       runAt: new Date(),
-      idempotencyKey: `callback-owner-alert:${ctx.requestId}:${callback.id}`,
+      idempotencyKey,
     });
     return {
       success: true,

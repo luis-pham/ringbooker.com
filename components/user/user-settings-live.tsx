@@ -121,6 +121,7 @@ type ShopSettings = {
   id: string;
   name: string;
   vertical?: string | null;
+  vertical_detail?: string | null;
   phone_number: string;
   user_name?: string | null;
   user_phone: string;
@@ -237,6 +238,8 @@ type SquareOptionsResponse = {
 
 type SettingsState = {
   name: string;
+  vertical: string;
+  vertical_detail: string;
   phone_number: string;
   user_name: string;
   user_phone: string;
@@ -310,6 +313,14 @@ const BOOKING_LINK_PLACEHOLDERS: Record<BookingLinkProviderId, string> = {
   custom: 'https://yourbookingpage.com/your-business',
   booksy: 'https://booksy.com/en-us/your-profile',
 };
+
+const BUSINESS_TYPE_OPTIONS = [
+  { value: 'nail_salon', label: 'Nail salon' },
+  { value: 'hair_salon', label: 'Hair salon' },
+  { value: 'day_spa', label: 'Day spa' },
+  { value: 'med_spa', label: 'Med spa' },
+  { value: 'beauty_clinic', label: 'Beauty clinic' },
+] as const;
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<(typeof DAY_ORDER)[number], string> = {
@@ -612,6 +623,8 @@ function normalizeGreeting(template: string, shopName: string) {
 function buildInitialState(shop: ShopSettings): SettingsState {
   return {
     name: shop.name ?? '',
+    vertical: shop.vertical ?? '',
+    vertical_detail: shop.vertical_detail ?? '',
     phone_number: shop.phone_number ?? '',
     user_name: shop.user_name ?? '',
     user_phone: shop.user_phone,
@@ -654,6 +667,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   id: 'loading',
   name: 'Your business',
   vertical: null,
+  vertical_detail: null,
   phone_number: '',
   user_name: '',
   user_phone: '',
@@ -2088,6 +2102,8 @@ export function UserSettingsLive({
                   event.preventDefault();
                   void commitSettingsPatch('business-knowledge-info', {
                     name: currentForm.name,
+                    ...(currentForm.vertical ? { vertical: currentForm.vertical } : {}),
+                    vertical_detail: currentForm.vertical_detail.trim() ? currentForm.vertical_detail.trim() : null,
                     phone_number: currentForm.phone_number,
                     user_name: currentForm.user_name,
                     ...(currentForm.user_phone.trim() ? { user_phone: currentForm.user_phone } : {}),
@@ -2108,6 +2124,20 @@ export function UserSettingsLive({
 	                  <div className="form-grid settings-tab-content-frame" style={{ marginTop: 14 }}>
 	                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
 	                    <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+	                    <div className="field">
+                      <label>Primary business type</label>
+                      <select value={currentForm.vertical} onChange={(event) => patchState('vertical', event.target.value)}>
+                        <option value="">Select business type</option>
+                        {BUSINESS_TYPE_OPTIONS.map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Additional services</label>
+                      <input value={currentForm.vertical_detail} onChange={(event) => patchState('vertical_detail', event.target.value)} placeholder="also offers spa services" />
+                      <p className="sub">Describe your secondary services here (e.g. also offers spa services, specializes in balayage). This does not change your primary business type.</p>
+                    </div>
 	                    <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
 	                    <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
 	                    <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
@@ -2145,6 +2175,8 @@ export function UserSettingsLive({
                   event.preventDefault();
                   void commitSettingsPatch('business-profile', {
                     name: currentForm.name,
+                    ...(currentForm.vertical ? { vertical: currentForm.vertical } : {}),
+                    vertical_detail: currentForm.vertical_detail.trim() ? currentForm.vertical_detail.trim() : null,
                     phone_number: currentForm.phone_number,
                     user_name: currentForm.user_name,
                     ...(currentForm.user_phone.trim() ? { user_phone: currentForm.user_phone } : {}),
@@ -2159,6 +2191,20 @@ export function UserSettingsLive({
                   <div className="form-grid settings-business-profile-form">
                     <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
                     <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+                    <div className="field">
+                      <label>Primary business type</label>
+                      <select value={currentForm.vertical} onChange={(event) => patchState('vertical', event.target.value)}>
+                        <option value="">Select business type</option>
+                        {BUSINESS_TYPE_OPTIONS.map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Additional services</label>
+                      <input value={currentForm.vertical_detail} onChange={(event) => patchState('vertical_detail', event.target.value)} placeholder="also offers spa services" />
+                      <p className="sub">Describe your secondary services here (e.g. also offers spa services, specializes in balayage). This does not change your primary business type.</p>
+                    </div>
                     <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
                     <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
                     <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>

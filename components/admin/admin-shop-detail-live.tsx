@@ -1465,7 +1465,7 @@ export function AdminShopDetailLive() {
                                           key={`${call.shopId}:${call.providerCallId}`}
                                           style={{
                                             cursor: 'pointer',
-                                            background: isOpen ? 'rgba(124,58,237,.1)' : undefined,
+                                            background: isOpen ? 'rgba(37,99,235,.1)' : undefined,
                                           }}
                                           onClick={() => {
                                             setActiveCall(call);

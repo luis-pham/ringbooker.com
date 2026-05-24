@@ -49,6 +49,13 @@ export async function createBookingTool(
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
     const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
 
+    if (ctx.shop.booking_url?.trim() && providerMeta?.id === 'manual') {
+      return toToolError(
+        'This shop uses a booking link. Use the send_booking_link tool instead of creating a booking directly.',
+        { code: 'BOOKING_LINK_PROVIDER', retryable: false },
+      );
+    }
+
     if (providerMeta?.type === 'booking_link') {
       return toToolError(
         'This salon uses an external booking system. Use send_booking_link to text the caller a booking link instead of creating a booking directly.',

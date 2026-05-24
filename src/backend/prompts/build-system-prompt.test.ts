@@ -231,3 +231,45 @@ test('Production prompt falls back to legacy flat services when no service catal
 
   assert.match(prompt, /General Services:\n- Haircut \| \$45 \| 45 min/);
 });
+
+test('Manual provider prompt tells AI to capture request without claiming availability', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional'),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /BOOKING REQUEST INSTRUCTION: When confirming appointment requests, do not tell the caller the time slot is available/);
+});
+
+test('Square and Mindbody prompts do not include manual booking request instruction', () => {
+  const squareShop = createShop('professional');
+  squareShop.google_cal_credentials_encrypted = JSON.stringify({
+    provider: 'square_appointments',
+    accessToken: 'square-access-token',
+    refreshToken: 'square-refresh-token',
+    locationId: 'location-id',
+    serviceVariationId: 'service-variation-id',
+  });
+
+  const mindbodyShop = createShop('professional');
+  mindbodyShop.integration_credentials_encrypted = JSON.stringify({
+    provider: 'mindbody',
+    siteId: '12345',
+    apiKey: 'mb-api-key',
+  });
+
+  const squarePrompt = buildSystemPrompt({
+    shop: squareShop,
+    customer: null,
+    mode: 'inbound',
+  });
+  const mindbodyPrompt = buildSystemPrompt({
+    shop: mindbodyShop,
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.doesNotMatch(squarePrompt, /BOOKING REQUEST INSTRUCTION/);
+  assert.doesNotMatch(mindbodyPrompt, /BOOKING REQUEST INSTRUCTION/);
+});

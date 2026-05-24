@@ -124,6 +124,76 @@ test('openai SIP webhook dedupes webhook-id and mocks accept', async () => {
   assert.equal(acceptJson.audio?.output?.voice, 'coral', 'nail-salon DID map -> vertical voice');
 });
 
+test('openai SIP webhook routes TeXML demo by latest caller demo session when DID header is missing', async () => {
+  const { secret, raw } = whsecSecret();
+  applyRequiredTestEnv({
+    OPENAI_SIP_WEBHOOK_ENABLED: 'true',
+    OPENAI_WEBHOOK_SECRET: secret,
+    OPENAI_SIP_ACCEPT_ENABLED: 'true',
+    OPENAI_API_KEY: 'sk-test-openai',
+    OPENAI_SIP_SIDEBAND_ENABLED: 'false',
+    OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+  });
+  delete process.env.OPENAI_SIP_DEMO_DID_MAP_JSON;
+  resetEnvCacheForTests();
+
+  const demoSessionsRepository = new InMemoryDemoSessionsRepository();
+  await demoSessionsRepository.createSession({
+    publicSessionId: 'texml:CA_route_by_caller',
+    verticalSlug: 'hair-salon',
+    mode: 'free-form',
+    source: 'telnyx_texml:inbound',
+    callbackPhone: '+15559876543',
+    businessName: 'Willow Hair Lounge',
+    services: [],
+  });
+
+  const calls: Array<{ url: string; body: string }> = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    calls.push({ url, body: typeof init?.body === 'string' ? init.body : '' });
+    return new Response('{}', { status: 200 });
+  };
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    demoSessionsRepository,
+    testingOpenAiFetch: fetchImpl,
+  });
+
+  const webhookId = 'wh_evt_texml_demo_caller_route';
+  const ts = `${Math.floor(Date.now() / 1000)}`;
+  const rawBody = JSON.stringify({
+    type: 'realtime.call.incoming',
+    data: {
+      call_id: 'call_texml_demo_caller_route',
+      sip_headers: [
+        { name: 'To', value: 'sip:proj_texml_test@sip.api.openai.com;transport=tls' },
+        { name: 'From', value: 'sip:+15559876543@sip.example.com' },
+      ],
+    },
+  });
+  const sig = signV1({ raw, webhookId, webhookTimestamp: ts, rawBody });
+
+  const res = await app.request('/webhooks/openai', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'webhook-id': webhookId,
+      'webhook-timestamp': ts,
+      'webhook-signature': sig,
+    },
+    body: rawBody,
+  });
+  assert.equal(res.status, 200);
+
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_texml_demo_caller_route/accept'));
+  assert.equal(acceptCalls.length, 1);
+  assert.ok(acceptCalls[0].body.includes('Willow Hair Lounge'));
+  const acceptJson = JSON.parse(acceptCalls[0].body) as { audio?: { output?: { voice?: string } } };
+  assert.equal(acceptJson.audio?.output?.voice, 'marin', 'hair-salon caller demo session -> vertical voice');
+});
+
 test('openai SIP webhook uses shop DB when DID map empty and To is routable E.164', async () => {
   const { secret, raw } = whsecSecret();
   applyRequiredTestEnv({

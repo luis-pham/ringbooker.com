@@ -189,7 +189,7 @@ test('telnyx missed inbound does not enqueue follow-up when billing blocks live 
   assert.equal(leased, null);
 });
 
-test('telnyx incoming YES message enqueues callback outbound call', async () => {
+test('telnyx incoming YES message enqueues callback owner alert', async () => {
   const jobsRepository = new InMemoryJobsRepository();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
@@ -229,6 +229,7 @@ test('telnyx incoming YES message enqueues callback outbound call', async () => 
     workerId: 'test-worker',
   });
   assert.ok(leased);
-  assert.equal(leased.type, 'callback_outbound_call');
-  assert.equal(leased.payload.customerPhone, '+14155550011');
+  assert.equal(leased.type, 'callback_request_owner_alert');
+  assert.equal(leased.payload.callerPhone, '+14155550011');
+  assert.equal(leased.payload.reason, 'Customer replied YES for callback SMS');
 });

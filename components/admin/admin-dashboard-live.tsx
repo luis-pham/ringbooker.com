@@ -482,11 +482,11 @@ export function AdminDashboardLive() {
 
               <div className="admin-overview-split">
                 <section className="admin-chart-grid">
-                  <DashboardMetricChart metric="web-demos" title="Web demo sessions" stroke="#818cf8" chartId="web-demos" />
-                  <DashboardMetricChart metric="demo-calls" title="Demo calls (phone)" stroke="#a78bfa" chartId="demo" />
-                  <DashboardMetricChart metric="leads" title="Leads" stroke="#60a5fa" chartId="leads" />
-                  <DashboardMetricChart metric="shops" title="Businesses created" stroke="#4ade80" chartId="shops" />
-                  <DashboardMetricChart metric="calls" title="Calls" stroke="#c4b5fd" chartId="calls" />
+                  <DashboardMetricChart metric="web-demos" title="Web demo sessions" stroke="#2563eb" chartId="web-demos" />
+                  <DashboardMetricChart metric="demo-calls" title="Demo calls (phone)" stroke="#3b82f6" chartId="demo" />
+                  <DashboardMetricChart metric="leads" title="Leads" stroke="#0284c7" chartId="leads" />
+                  <DashboardMetricChart metric="shops" title="Businesses created" stroke="#16a34a" chartId="shops" />
+                  <DashboardMetricChart metric="calls" title="Calls" stroke="#60a5fa" chartId="calls" />
                 </section>
                 <aside className="admin-trial-watchlist" aria-label="Trials ending soon">
                   <h3>Trial ending soon</h3>

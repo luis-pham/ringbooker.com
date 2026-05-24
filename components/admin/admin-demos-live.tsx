@@ -651,8 +651,8 @@ export function AdminDemosLive() {
                               maxWidth: 28,
                               height: h,
                               borderRadius: 10,
-                              background: 'linear-gradient(180deg, rgba(139,92,246,.85), rgba(124,58,237,.35))',
-                              border: '1px solid rgba(139,92,246,.35)',
+                              background: 'linear-gradient(180deg, rgba(37,99,235,.85), rgba(37,99,235,.35))',
+                              border: '1px solid rgba(37,99,235,.35)',
                             }}
                           />
                           <span style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center' }}>{d.day.slice(5)}</span>

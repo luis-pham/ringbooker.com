@@ -5,6 +5,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
+import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryForwardingTestSessionsRepository } from '@/src/backend/adapters/memory/forwarding-test-sessions-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
@@ -81,8 +82,10 @@ test('TeXML inbound allows configured demo DID when real shops are routed throug
     });
     resetEnvCacheForTests();
 
+    const demoSessionsRepository = new InMemoryDemoSessionsRepository();
     const app = createBackendApp({
       providerEventsRepository: new InMemoryProviderEventsRepository(),
+      demoSessionsRepository,
     });
 
     const body = new URLSearchParams({
@@ -105,6 +108,9 @@ test('TeXML inbound allows configured demo DID when real shops are routed throug
     assert.equal(res.status, 200);
     assert.ok(text.includes('<Dial'));
     assert.ok(text.includes('sip:proj_texml_test@sip.api.openai.com;transport=tls'));
+    const context = await demoSessionsRepository.findLatestSipDemoContext({ callerPhone: '+15551234001' });
+    assert.equal(context?.verticalSlug, 'nail-salon');
+    assert.equal(context?.shopName, 'ABC Nails Studio');
   } finally {
     if (previous.shopMode === undefined) delete process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE;
     else process.env.TELNYX_SHOP_INBOUND_ROUTING_MODE = previous.shopMode;

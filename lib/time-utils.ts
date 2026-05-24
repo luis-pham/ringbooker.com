@@ -1,4 +1,5 @@
 import type { BusinessHours } from '@/src/backend/domain/types';
+import { normalizeDayKey } from '@/src/backend/services/calls/day-key-utils';
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
@@ -17,8 +18,12 @@ export function isWithinHours(hours: BusinessHours, timezone: string): boolean {
     now = new Date();
   }
 
-  const dayKey = DAY_KEYS[now.getDay()];
-  const dayHours = hours[dayKey];
+  const dayKey = normalizeDayKey(DAY_KEYS[now.getDay()]);
+  const normalizedHours: BusinessHours = {};
+  for (const [key, value] of Object.entries(hours ?? {})) {
+    normalizedHours[normalizeDayKey(key)] = value;
+  }
+  const dayHours = normalizedHours[dayKey];
 
   if (!dayHours || 'closed' in dayHours) return false;
 

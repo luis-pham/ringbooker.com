@@ -625,7 +625,7 @@ function friendlySaveError(error?: string | null, fields: string[] = []): string
     if (fields.includes('website_url')) return 'Please enter a valid website link before continuing.';
     if (fields.includes('timezone')) return 'Please choose your timezone before continuing.';
     if (fields.includes('name')) return 'Please add your business name before continuing.';
-    if (fields.includes('vertical')) return 'Please choose the business type before continuing.';
+    if (fields.includes('vertical')) return 'Please select your primary business type to continue.';
     return 'Some details need a quick check before saving.';
   }
   if (error === 'phone_number_already_exists') {
@@ -1889,7 +1889,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   async function continueManualVerticalSelection() {
     if (!manualPrimaryPick) {
-      setStatus('Choose a business type.');
+      setStatus('Please select your primary business type to continue.');
       return;
     }
     if (manualPrimaryPick === 'beauty_umbrella') {
@@ -1918,7 +1918,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   async function continueProfileReview() {
     const invalidFields: ProfileReviewRequiredField[] = [];
     if (!businessName.trim()) invalidFields.push('name');
-    if (!vertical || verticalConfidence !== 'high') invalidFields.push('type');
+    if (!vertical) invalidFields.push('type');
     if (vertical === 'beauty_clinic' && !beautySubtype) invalidFields.push('type');
     if (!timezone.trim()) invalidFields.push('timezone');
     if (websiteUrl.trim() && !isHttpWebsiteUrl(websiteUrl)) invalidFields.push('website');
@@ -1931,7 +1931,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         invalidFields.includes('name')
           ? 'Please add your business name before continuing.'
           : invalidFields.includes('type')
-            ? 'Please choose the business type before continuing.'
+            ? 'Please select your primary business type to continue.'
             : invalidFields.includes('timezone')
               ? 'Please choose your timezone before continuing.'
               : invalidFields.includes('phone')
@@ -1967,6 +1967,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   async function continueServices() {
+    if (!vertical) {
+      setStatus('Please select your primary business type to continue.');
+      setCurrentStep(1);
+      return;
+    }
     const nextServices = cleanServices(services);
     trackOnboarding('onboarding_services_reviewed');
     const patch: Record<string, unknown> = { current_onboarding_step: 4 };

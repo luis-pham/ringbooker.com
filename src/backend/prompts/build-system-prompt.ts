@@ -2,6 +2,8 @@ import type { Customer, Shop, ShopRoutingRule } from '@/src/backend/domain/types
 import { canUseReturningCallerContext } from '@/src/backend/domain/shop-plan-capabilities';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
+import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
+import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
@@ -13,6 +15,8 @@ import {
 
 type PromptMode = 'inbound' | 'outbound_reminder' | 'callback';
 const MAX_LINE_CHARS = 260;
+const MANUAL_BOOKING_REQUEST_INSTRUCTION =
+  'When confirming appointment requests, do not tell the caller the time slot is available. Instead say you will record their request and the shop will confirm with them shortly.';
 
 function compactLine(input: string, maxChars = MAX_LINE_CHARS): string {
   const normalized = input
@@ -151,14 +155,20 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
   const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
+  const providerMeta = getShopCalendarProviderMetadata(shop);
+  const timeContext = resolveShopTimeContext(shop, new Date());
   const businessType = shop.vertical
-    ? `${shop.vertical.replace(/_/g, ' ')}${shop.vertical_detail ? ` (${shop.vertical_detail.replace(/_/g, ' ')})` : ''}`
+    ? shop.vertical.replace(/_/g, ' ')
     : 'service business';
   return {
     businessName: compactLine(shop.name, 120),
     businessType,
+    additionalServices: shop.vertical_detail ? shop.vertical_detail.replace(/_/g, ' ') : null,
     location: shop.address ? compactLine(shop.address, 200) : null,
     timezone: shop.timezone,
+    currentLocalTime: timeContext.currentLocalTime,
+    currentlyOpen: timeContext.currentlyOpen,
+    todayHours: timeContext.todayHours,
     hours: renderHours(shop),
     services: buildRuntimeServices(shop),
     notOfferedServices: (shop.not_offered_services ?? []).filter((service) => service.trim().length > 0),
@@ -176,6 +186,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
     bookingUrl: shop.booking_url ?? null,
+    bookingRequestInstruction: providerMeta.id === 'manual' ? MANUAL_BOOKING_REQUEST_INSTRUCTION : null,
     welcomeMessage: compactLine(effectiveRuntimeConfig.aiWelcomeMessage, 240),
     customInstructions: renderProductionCustomInstructions({
       voiceStyle: effectiveRuntimeConfig.aiVoice,

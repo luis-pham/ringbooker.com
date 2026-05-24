@@ -34,6 +34,7 @@ import type {
   ForwardingTestSessionsRepository,
   CallLogsRepository,
   CommercialAccountsRepository,
+  DemoSessionsRepository,
   ShopActiveCallSessionsRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
@@ -117,6 +118,7 @@ export async function handleTelnyxTexmlOpenAiInbound(
     callLogsRepository?: CallLogsRepository;
     commercialAccountsRepository?: CommercialAccountsRepository;
     shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
+    demoSessionsRepository?: DemoSessionsRepository;
   },
 ): Promise<Response> {
   const env = getEnv();
@@ -203,6 +205,25 @@ export async function handleTelnyxTexmlOpenAiInbound(
     );
     incrementMetric('texml_openai_inbound_total', { outcome: 'reject_demo_routing_mode_mismatch' });
     return texmlXmlResponse(buildTelnyxTexmlRejectXml());
+  }
+
+  if (isDemoNumber && deps?.demoSessionsRepository && form.From && demoCtx) {
+    const callerPhone = normalizeInboundE164(form.From);
+    if (callerPhone) {
+      await deps.demoSessionsRepository
+        .createSession({
+          publicSessionId: `texml:${form.CallSid ?? rbCallId}`,
+          verticalSlug: demoCtx.vertical,
+          mode: 'free-form',
+          source: 'telnyx_texml:inbound',
+          callbackPhone: callerPhone,
+          businessName: demoCtx.defaultShopName,
+          services: [],
+        })
+        .catch((err: unknown) => {
+          logger.warn({ err, rb_call_id: rbCallId, callerCli: maskPhone(callerPhone) }, 'telnyx_texml_demo_context_save_failed');
+        });
+    }
   }
 
   if (!isDemoNumber && shopInboundRoutingMode === 'call_control_to_openai_sip') {

@@ -27,7 +27,12 @@ function createShop(overrides?: Partial<Shop>): Shop {
   };
 }
 
-function createContext(params?: { shop?: Shop; enqueueImpl?: (job: unknown) => Promise<void> }) {
+function createContext(params?: {
+  shop?: Shop;
+  callerPhone?: string;
+  smsConsented?: boolean;
+  enqueueImpl?: (job: unknown) => Promise<void>;
+}) {
   const enqueuedJobs: unknown[] = [];
   const enqueue = async (job: unknown) => {
     enqueuedJobs.push(job);
@@ -38,7 +43,7 @@ function createContext(params?: { shop?: Shop; enqueueImpl?: (job: unknown) => P
 
   const ctx: AgentToolContext = {
     shop: params?.shop ?? createShop(),
-    callerPhone: '+15550000000',
+    callerPhone: params?.callerPhone ?? '+15550000000',
     requestId: 'req-send-booking-link-test',
     roomName: 'room-send-booking-link-test',
     calendarProvider: {} as AgentToolContext['calendarProvider'],
@@ -46,6 +51,9 @@ function createContext(params?: { shop?: Shop; enqueueImpl?: (job: unknown) => P
     bookingsRepository: {} as AgentToolContext['bookingsRepository'],
     callbacksRepository: {} as AgentToolContext['callbacksRepository'],
     shopsRepository: {} as AgentToolContext['shopsRepository'],
+    customersRepository: {
+      isSmsConsented: async () => params?.smsConsented ?? true,
+    } as unknown as AgentToolContext['customersRepository'],
     telephonyService: {} as AgentToolContext['telephonyService'],
   };
 
@@ -63,7 +71,51 @@ test('returns error when no booking URL configured', async () => {
 
   assert.deepEqual(result, {
     success: false,
-    message: 'No booking link configured for this business. Ask the caller to contact the business directly.',
+    fallback: 'url',
+    bookingUrl: null,
+    message: 'Unable to send booking link. Ask the caller if they would like to leave their contact information and the shop will follow up to confirm their appointment.',
+  });
+  assert.equal(enqueuedJobs.length, 0);
+});
+
+test('returns booking URL fallback when caller phone is unavailable', async () => {
+  const { ctx, enqueuedJobs } = createContext({
+    callerPhone: '',
+    shop: createShop({ booking_url: 'https://glossgenius.com/test' }),
+  });
+
+  const result = await sendBookingLinkTool(ctx, {
+    callerName: 'Jane',
+    serviceInterest: 'haircut',
+  });
+
+  assert.deepEqual(result, {
+    success: false,
+    reason: 'no_phone',
+    fallback: 'url',
+    bookingUrl: 'https://glossgenius.com/test',
+    message: 'Unable to send booking link via SMS. Tell the caller they can book directly at: https://glossgenius.com/test',
+  });
+  assert.equal(enqueuedJobs.length, 0);
+});
+
+test('returns booking URL fallback when SMS consent is missing', async () => {
+  const { ctx, enqueuedJobs } = createContext({
+    smsConsented: false,
+    shop: createShop({ booking_url: 'https://glossgenius.com/test' }),
+  });
+
+  const result = await sendBookingLinkTool(ctx, {
+    callerName: 'Jane',
+    serviceInterest: 'haircut',
+  });
+
+  assert.deepEqual(result, {
+    success: false,
+    reason: 'no_consent',
+    fallback: 'url',
+    bookingUrl: 'https://glossgenius.com/test',
+    message: 'Unable to send booking link via SMS. Tell the caller they can book directly at: https://glossgenius.com/test',
   });
   assert.equal(enqueuedJobs.length, 0);
 });

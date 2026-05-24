@@ -1,4 +1,5 @@
 import { dispatchRealtimeSession, RealtimeDispatchError } from '@/src/agent/realtime/dispatch-session';
+import { DateTime } from 'luxon';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 import { getEnv } from '@/src/backend/config/env';
 import type { BillingNotificationType, JobType, Shop } from '@/src/backend/domain/types';
@@ -110,6 +111,47 @@ function resolveRingbookerSystemOutboundCallerId(): string | null {
   if (primary) return primary;
   const fallback = env.TELNYX_OUTBOUND_CALLER_ID?.trim();
   return fallback || null;
+}
+
+function parseTimeMinutes(value: string | null | undefined, fallback: string): number {
+  const match = /^(\d{2}):(\d{2})$/.exec(value ?? fallback);
+  if (!match) return parseTimeMinutes(fallback, '08:00');
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) {
+    return parseTimeMinutes(fallback, '08:00');
+  }
+  return hours * 60 + minutes;
+}
+
+function dateTimeForLocalMinutes(base: DateTime, minutes: number): DateTime {
+  return base.set({
+    hour: Math.floor(minutes / 60),
+    minute: minutes % 60,
+    second: 0,
+    millisecond: 0,
+  });
+}
+
+export function nextSendableWindowUtc(shop: Shop, now = new Date()): Date {
+  const localNow = DateTime.fromJSDate(now, { zone: 'utc' }).setZone(shop.timezone);
+  if (!localNow.isValid) return now;
+
+  const quietStartMinutes = parseTimeMinutes(shop.sms_quiet_hours_start, '08:00');
+  const quietEndMinutes = parseTimeMinutes(shop.sms_quiet_hours_end, '21:00');
+  const currentMinutes = localNow.hour * 60 + localNow.minute;
+  const quietEndToday = dateTimeForLocalMinutes(localNow, quietEndMinutes);
+
+  if (quietStartMinutes > quietEndMinutes) {
+    if (currentMinutes >= quietStartMinutes) return quietEndToday.plus({ days: 1 }).toUTC().toJSDate();
+    if (currentMinutes < quietEndMinutes) return quietEndToday.toUTC().toJSDate();
+    return now;
+  }
+
+  if (currentMinutes >= quietStartMinutes && currentMinutes < quietEndMinutes) {
+    return quietEndToday.toUTC().toJSDate();
+  }
+  return now;
 }
 
 export function startJobsWorker(): WorkerControls {
@@ -427,25 +469,6 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
     bookingId: z.string().uuid().or(z.string().min(1)),
     attempt: z.number().int().nonnegative().optional(),
   });
-
-  function parseTimeMinutes(value: string | null | undefined, fallback: string): number {
-    const match = /^(\d{2}):(\d{2})$/.exec(value ?? fallback);
-    if (!match) return parseTimeMinutes(fallback, '08:00');
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) {
-      return parseTimeMinutes(fallback, '08:00');
-    }
-    return hours * 60 + minutes;
-  }
-
-  function nextSendableWindowUtc(shop: Shop): Date {
-    const quietEndMinutes = parseTimeMinutes(shop.sms_quiet_hours_start, '08:00');
-    const tzNow = new Date(new Date().toLocaleString('en-US', { timeZone: shop.timezone }));
-    const currentMinutes = tzNow.getHours() * 60 + tzNow.getMinutes();
-    const minutesUntilEnd = quietEndMinutes - currentMinutes;
-    return new Date(Date.now() + Math.max(minutesUntilEnd, 1) * 60 * 1000);
-  }
 
   function isWithinBusinessHours(shop: Shop): boolean {
     return checkWithinBusinessHours(shop);
@@ -1190,58 +1213,19 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           throw new JobExecutionError('shop_not_found', { retryable: false });
         }
 
-        const nextAttemptNumber = callback.attemptCount + 1;
-        if (nextAttemptNumber > 3) {
-          await runtime.callbacksRepository.markFailed(callback.id);
-          throw new JobExecutionError('callback_max_attempts_exceeded', { retryable: false });
-        }
-
-        const systemFrom = resolveRingbookerSystemOutboundCallerId();
-        if (!systemFrom) {
-          logger.warn(
-            { shopId: shop.id, jobId: params.jobId, callbackId: callback.id },
-            'outbound_caller_id_not_configured',
-          );
-          await runtime.callbacksRepository.markFailed(callback.id);
-          throw new JobExecutionError('outbound_caller_id_not_configured', { retryable: false });
-        }
-
-        await runtime.callbacksRepository.markAttempt(callback.id, {});
-        try {
-          const realtime = await prepareRealtimeCallbackCall({
-            shop,
-            customerPhone: callback.customerPhone,
-            customerName: callback.customerName ?? null,
+        logger.warn({ shopId: shop.id, jobId: params.jobId, callbackId: callback.id }, 'callback_outbound_call_deprecated_owner_alert_only');
+        await runtime.jobsRepository.enqueue({
+          shopId: shop.id,
+          type: 'callback_request_owner_alert',
+          payload: {
+            callbackId: callback.id,
+            callerPhone: callback.customerPhone,
+            callerName: callback.customerName ?? undefined,
             reason: callback.reason,
-            idempotencySeed: `${params.jobId}-${nextAttemptNumber}`,
-          });
-          await runtime.telephonyService.createOutboundCall({
-            shopId: shop.id,
-            to: callback.customerPhone,
-            from: systemFrom,
-            purpose: 'callback',
-            requestId: realtime.requestId,
-            idempotencyKey: `job:${params.jobId}:callback-call:${nextAttemptNumber}`,
-            roomName: realtime.roomName,
-          });
-          await runtime.callbacksRepository.markCompleted(callback.id);
-        } catch (error) {
-          if (nextAttemptNumber >= 3) {
-            await runtime.callbacksRepository.markFailed(callback.id);
-            throw new JobExecutionError(
-              `callback_outbound_call_failed:${error instanceof Error ? error.message : 'unknown'}`,
-              { retryable: false },
-            );
-          }
-
-          const backoffMinutes = getCallbackBackoffMinutes(nextAttemptNumber);
-          const nextRunAt = new Date(Date.now() + backoffMinutes * 60_000);
-          await runtime.callbacksRepository.markQueued(callback.id, { nextAttemptAt: nextRunAt });
-          throw new JobExecutionError(
-            `callback_outbound_call_retry_scheduled:${error instanceof Error ? error.message : 'unknown'}`,
-            { retryable: true, nextRunAt },
-          );
-        }
+          },
+          runAt: new Date(),
+          idempotencyKey: `deprecated-callback-outbound-to-owner-alert:${params.jobId}`,
+        });
         return;
       }
 
@@ -1250,28 +1234,17 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         throw new JobExecutionError('shop_not_found', { retryable: false });
       }
 
-      const systemFrom = resolveRingbookerSystemOutboundCallerId();
-      if (!systemFrom) {
-        logger.warn({ shopId: shop.id, jobId: params.jobId }, 'outbound_caller_id_not_configured');
-        throw new JobExecutionError('outbound_caller_id_not_configured', { retryable: false });
-      }
-
-      const realtime = await prepareRealtimeCallbackCall({
-        shop,
-        customerPhone: payload.data.customerPhone,
-        customerName: payload.data.customerName ?? null,
-        reason: payload.data.reason ?? 'Customer requested callback',
-        idempotencySeed: `${params.jobId}-direct`,
-      });
-
-      await runtime.telephonyService.createOutboundCall({
+      logger.warn({ shopId: shop.id, jobId: params.jobId }, 'callback_outbound_call_deprecated_owner_alert_only');
+      await runtime.jobsRepository.enqueue({
         shopId: shop.id,
-        to: payload.data.customerPhone,
-        from: systemFrom,
-        purpose: 'callback',
-        requestId: realtime.requestId,
-        idempotencyKey: `job:${params.jobId}:callback-call:direct`,
-        roomName: realtime.roomName,
+        type: 'callback_request_owner_alert',
+        payload: {
+          callerPhone: payload.data.customerPhone,
+          callerName: payload.data.customerName,
+          reason: payload.data.reason ?? 'Customer requested callback',
+        },
+        runAt: new Date(),
+        idempotencyKey: `deprecated-callback-outbound-to-owner-alert:${params.jobId}`,
       });
     },
     review_request_sms: async (params) => {

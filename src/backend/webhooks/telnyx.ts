@@ -339,7 +339,7 @@ export async function handleTelnyxWebhook(
                 'telnyx_callback_request_blocked_by_billing',
               );
               incrementMetric('billing_blocked_workflows_total', {
-                workflow: 'callback_outbound_call',
+                workflow: 'callback_request_owner_alert',
                 reason: access.blockReason,
               });
               canUsePaidFollowup = false;
@@ -348,23 +348,25 @@ export async function handleTelnyxWebhook(
           if (!canUsePaidFollowup) {
             log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_not_queued');
           } else {
-          const callback = deps.callbacksRepository
-            ? await deps.callbacksRepository.create({
-                shopId: shop.id,
-                customerPhone: callerPhone,
+            const callback = deps.callbacksRepository
+              ? await deps.callbacksRepository.create({
+                  shopId: shop.id,
+                  customerPhone: callerPhone,
+                  reason: 'Customer replied YES for callback SMS',
+                })
+              : null;
+            await deps.jobsRepository.enqueue({
+              shopId: shop.id,
+              type: 'callback_request_owner_alert',
+              payload: {
+                callbackId: callback?.id,
+                callerPhone,
                 reason: 'Customer replied YES for callback SMS',
-              })
-            : null;
-          await deps.jobsRepository.enqueue({
-            shopId: shop.id,
-            type: 'callback_outbound_call',
-            payload: callback
-              ? { callbackId: callback.id }
-              : { customerPhone: callerPhone, reason: 'Customer replied YES for callback SMS' },
-            runAt: new Date(),
-            idempotencyKey: `telnyx_callback_request:${event.id}`,
-          });
-          log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_queued');
+              },
+              runAt: new Date(),
+              idempotencyKey: `telnyx_callback_request_owner_alert:${event.id}`,
+            });
+            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_owner_alert_queued');
           }
         }
       }

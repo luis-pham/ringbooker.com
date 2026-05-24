@@ -36,8 +36,12 @@ export type RuntimeService = {
 export type RuntimeBusinessConfig = {
   businessName: string;
   businessType?: string | null;
+  additionalServices?: string | null;
   location?: string | null;
   timezone?: string | null;
+  currentLocalTime?: string | null;
+  currentlyOpen?: boolean | null;
+  todayHours?: string | null;
   hours?: string | null;
   services?: RuntimeService[];
   notOfferedServices?: string[];
@@ -45,6 +49,7 @@ export type RuntimeBusinessConfig = {
   promotions?: string | null;
   cancellationPolicy?: string | null;
   bookingUrl?: string | null;
+  bookingRequestInstruction?: string | null;
   welcomeMessage?: string | null;
   customInstructions?: string | null;
   languageOptions?: string[];

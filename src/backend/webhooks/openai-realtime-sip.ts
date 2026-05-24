@@ -64,8 +64,8 @@ import {
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
 import { decodeCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 import { callControlSpeak } from '@/src/backend/services/calls/call-control-client';
-import { isWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
 import { evaluateOwnerHandoffDestination } from '@/src/backend/services/calls/destination-policy';
+import { isHandoffAvailable } from '@/src/agent/tools/request-human-handoff';
 
 /** 5-minute hard cap on Path-B (OpenAI SIP direct) demo calls. */
 const DEMO_SIP_MAX_DURATION_MS = 300_000;
@@ -353,6 +353,7 @@ export async function handleOpenAiRealtimeSipWebhook(
 
   const sipTo = extractSipHeader(data.sip_headers, 'To');
   const sipFrom = extractSipHeader(data.sip_headers, 'From');
+  const normalizedFrom = parseE164FromSipValue(sipFrom);
   const didMap = buildMergedOpenAiSipDemoDidMap({
     OPENAI_SIP_DEMO_DID_MAP_JSON: env.OPENAI_SIP_DEMO_DID_MAP_JSON,
     DEMO_PHONE_NAIL_SALON: env.DEMO_PHONE_NAIL_SALON,
@@ -427,6 +428,35 @@ export async function handleOpenAiRealtimeSipWebhook(
   });
 
   if (!route && didCtx) route = { kind: 'demo', ctx: didCtx };
+  if (!route && deps.demoSessionsRepository && normalizedFrom) {
+    const enrichment = await deps.demoSessionsRepository.findLatestSipDemoContext({ callerPhone: normalizedFrom }).catch((err) => {
+      logger.warn({ err, callId, callerPhone: normalizedFrom }, 'openai_sip_demo_context_route_lookup_failed');
+      return null;
+    });
+    const v = asVoiceVertical(enrichment?.verticalSlug);
+    if (v) {
+      route = {
+        kind: 'demo',
+        ctx: {
+          did: normalizedFrom,
+          mode: 'demo',
+          vertical: v,
+          defaultShopName: enrichment?.shopName ?? SIP_DEMO_DEFAULT_SHOP_BY_VERTICAL[v].defaultShopName,
+          businessType: SIP_DEMO_DEFAULT_SHOP_BY_VERTICAL[v].businessType,
+        },
+      };
+      logger.info(
+        {
+          callId,
+          route_kind: 'demo',
+          demo_vertical: v,
+          demo_prompt_selected: true,
+          routed_by: 'caller_demo_session',
+        },
+        'demo_prompt_selected',
+      );
+    }
+  }
   if (!route && deps.shopsRepository) {
     for (const raw of collectOpenAiSipDidCandidates(data.sip_headers)) {
       const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, raw);
@@ -559,8 +589,6 @@ export async function handleOpenAiRealtimeSipWebhook(
       }
     }
   }
-
-  const normalizedFrom = parseE164FromSipValue(extractSipHeader(data.sip_headers, 'From'));
 
   if (normalizedFrom) {
     const fromLim = await consumeRateLimit(
@@ -908,8 +936,14 @@ export async function handleOpenAiRealtimeSipWebhook(
         }
 
         async function doFinalFallback() {
-          const withinHours = isWithinBusinessHours(shop);
-          const canTransfer = withinHours && shop.allow_transfers && !!parentCcId && !!telnyxKey;
+          const handoffAvailability = isHandoffAvailable(shop);
+          const fallbackHandoffPhone = shop.handoff_phone?.trim();
+          const canTransfer =
+            shop.allow_transfers &&
+            handoffAvailability.available &&
+            !!fallbackHandoffPhone &&
+            !!parentCcId &&
+            !!telnyxKey;
 
           if (canTransfer) {
             await callControlSpeak(parentCcId!, {
@@ -921,7 +955,7 @@ export async function handleOpenAiRealtimeSipWebhook(
 
             await new Promise((resolve) => setTimeout(resolve, FALLBACK_TRANSFER_ANNOUNCE_DELAY_MS));
 
-            const destination = evaluateOwnerHandoffDestination({ shop, ownerPhone: shop.user_phone });
+            const destination = evaluateOwnerHandoffDestination({ shop, ownerPhone: fallbackHandoffPhone! });
             if (destination.ok && deps.telephonyService) {
               await deps.telephonyService.requestHumanHandoffViaCallControl({
                 shopId: shop.id,
@@ -942,6 +976,9 @@ export async function handleOpenAiRealtimeSipWebhook(
               void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl });
             }
           } else {
+            if (shop.allow_transfers && handoffAvailability.available && !fallbackHandoffPhone) {
+              logger.warn({ callId, shopId: shop.id }, 'openai_sip_fallback_handoff_phone_not_configured');
+            }
             if (parentCcId && telnyxKey) {
               await callControlSpeak(parentCcId, {
                 payload: FALLBACK_ISSUE_MESSAGE,
