@@ -175,7 +175,7 @@ export function AdminShopsLive() {
             <div className="panel-head">
               <div>
                 <h3>All businesses</h3>
-                <p className="sub">Each row is clickable. Use the right-side buttons when you want to jump directly into calls for that business.</p>
+                <p className="sub">Click a business name for detail. Use the call icon to filter calls for that shop.</p>
               </div>
               <button
                 type="button"
@@ -203,7 +203,7 @@ export function AdminShopsLive() {
                     <th>Status</th>
                     <th>Calls</th>
                     <th>Latest call</th>
-                    <th>Actions</th>
+                    <th className="admin-table-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,10 +249,18 @@ export function AdminShopsLive() {
                       <td><span className={statusTagClass(shop)}>{statusLabel(shop)}</span></td>
                       <td>{shop.totalCalls ?? 0}</td>
                       <td>{formatDateTime(shop.latestCallAt)}</td>
-                      <td>
-                        <div className="top-actions" style={{ justifyContent: 'flex-start' }}>
-                          <a className="btn" href={`/admin/shops/${shop.id}`}>Open detail</a>
-                          <a className="btn ghost" href={`/admin/calls?shopId=${encodeURIComponent(shop.id)}`}>View calls</a>
+                      <td className="admin-table-actions">
+                        <div className="admin-table-actions-inner">
+                          <a
+                            className="btn-icon admin-table-icon-btn"
+                            href={`/admin/calls?shopId=${encodeURIComponent(shop.id)}`}
+                            title="View calls"
+                            aria-label={`View calls for ${shop.name}`}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden>
+                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.08 3h3a2 2 0 0 1 2 1.72l.42 3a2 2 0 0 1-.57 1.73l-1.27 1.27a16 16 0 0 0 6.44 6.44l1.27-1.27a2 2 0 0 1 1.73-.57l3 .42A2 2 0 0 1 22 16.92Z" />
+                            </svg>
+                          </a>
                         </div>
                       </td>
                     </tr>

@@ -10,7 +10,8 @@ export const adminShellStyles: string[] = [
 .sidebar-shell-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .sidebar-control-label{flex:1;min-width:0;line-height:1.35}
 
-html.sidebar-collapsed .app-shell{grid-template-columns:72px minmax(0,1fr)}
+html.sidebar-collapsed .sidebar{width:72px}
+html.sidebar-collapsed .main{margin-left:72px;width:calc(100% - 72px)}
 html.sidebar-collapsed .nav-label,
 html.sidebar-collapsed .brand span,
 html.sidebar-collapsed .nav-group-title,

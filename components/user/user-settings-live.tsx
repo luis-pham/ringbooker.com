@@ -3343,9 +3343,7 @@ export function UserSettingsLive({
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  const patch: Record<string, unknown> = {
-                    allow_callbacks: currentForm.allow_callbacks,
-                  };
+                  const patch: Record<string, unknown> = {};
                   if (!ownerTransferUx.locked) patch.allow_transfers = currentForm.allow_transfers;
                   void commitSettingsPatch('call-handling', patch);
                 }}
@@ -3477,10 +3475,6 @@ export function UserSettingsLive({
                         </div>
                       </div>
                     ) : null}
-                    <div className="switch-row">
-                      <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
-                      <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !currentForm.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
-                    </div>
                   </div>
                   <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`}>
                     <div className="hint-row">
@@ -3682,8 +3676,8 @@ export function UserSettingsLive({
                           </select>
                         </div>
                         <div className="switch-row">
-                          <div className="switch-copy"><h4>Callback requests</h4><p>When caller leaves callback info.</p></div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_callback_request_sms ? 'on' : ''}`} onClick={() => patchState('send_callback_request_sms', !currentForm.send_callback_request_sms)}><span className="sr-only">Toggle callback requests</span></button></div>
+                          <div className="switch-copy"><h4>Follow-up request alerts</h4><p>Text the owner when a caller asks the team to follow up.</p></div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_callback_request_sms ? 'on' : ''}`} onClick={() => patchState('send_callback_request_sms', !currentForm.send_callback_request_sms)}><span className="sr-only">Toggle follow-up request alerts</span></button></div>
                         </div>
                         <div className="field">
                           <label>Send</label>

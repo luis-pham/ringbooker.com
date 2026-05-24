@@ -13,14 +13,14 @@ export async function scheduleCallbackTool(
   input: unknown,
 ): Promise<{ success: true; callbackJobId: string } | ToolError> {
   if (!ctx.shop.allow_callbacks) {
-    return toToolError('This shop has callbacks disabled right now, but the user can help you directly during business hours.', {
+    return toToolError('Follow-up request capture is disabled right now, but the team can help directly during business hours.', {
       code: 'RATE_LIMITED',
       retryable: false,
     });
   }
 
   const parsed = schema.safeParse(input);
-  if (!parsed.success) return toToolError('Invalid callback request.', { code: 'VALIDATION_ERROR', retryable: false });
+  if (!parsed.success) return toToolError('Invalid follow-up request.', { code: 'VALIDATION_ERROR', retryable: false });
 
   try {
     const callback = await ctx.callbacksRepository.create({
@@ -48,7 +48,7 @@ export async function scheduleCallbackTool(
       callbackJobId: idempotencyKey,
     };
   } catch {
-    return toToolError('I could not schedule that callback right now, but someone will follow up with you.', {
+    return toToolError('I could not record that follow-up request right now, but someone will follow up with you.', {
       code: 'INTERNAL',
       retryable: true,
     });

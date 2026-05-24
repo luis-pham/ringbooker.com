@@ -701,7 +701,7 @@ export function AdminDemosLive() {
                             <th>Country</th>
                             <th>Duration</th>
                             <th>Status</th>
-                            <th>Transcript</th>
+                            <th className="admin-table-actions">Transcript</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -726,15 +726,21 @@ export function AdminDemosLive() {
                                 <td>
                                   <span className={runStatusClass(row)}>{row.runStatus}</span>
                                 </td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="btn ghost"
-                                    style={{ padding: '8px 12px', fontSize: 12 }}
-                                    onClick={() => setTranscriptOpen({ channel: 'phone', row })}
-                                  >
-                                    View transcript
-                                  </button>
+                                <td className="admin-table-actions">
+                                  <div className="admin-table-actions-inner">
+                                    <button
+                                      type="button"
+                                      className="btn-icon"
+                                      title="View transcript"
+                                      aria-label="View transcript"
+                                      onClick={() => setTranscriptOpen({ channel: 'phone', row })}
+                                    >
+                                      <svg viewBox="0 0 24 24" aria-hidden>
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))
@@ -837,7 +843,7 @@ export function AdminDemosLive() {
                             <th>Session ID</th>
                             <th>Device</th>
                             <th>Site</th>
-                            <th>Transcript</th>
+                            <th className="admin-table-actions">Transcript</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -868,15 +874,21 @@ export function AdminDemosLive() {
                                   </a>
                                 ) : '—'}
                               </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  className="btn ghost"
-                                  style={{ padding: '8px 12px', fontSize: 12 }}
-                                  onClick={() => setTranscriptOpen({ channel: 'web', row })}
-                                >
-                                  View transcript
-                                </button>
+                              <td className="admin-table-actions">
+                                <div className="admin-table-actions-inner">
+                                  <button
+                                    type="button"
+                                    className="btn-icon"
+                                    title="View transcript"
+                                    aria-label="View transcript"
+                                    onClick={() => setTranscriptOpen({ channel: 'web', row })}
+                                  >
+                                    <svg viewBox="0 0 24 24" aria-hidden>
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}

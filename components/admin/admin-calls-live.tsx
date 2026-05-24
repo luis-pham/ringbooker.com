@@ -358,7 +358,7 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
             <div className="panel-head">
               <div>
                 <h3>Call list</h3>
-                <p className="sub">Use View transcript to open the full transcript for that call.</p>
+                <p className="sub">Open the transcript icon to read the full call transcript.</p>
               </div>
             </div>
             {error ? null : !pagination ? (
@@ -377,7 +377,7 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
                         <th>Started</th>
                         <th>Status</th>
                         <th>Booker</th>
-                        <th>Transcript</th>
+                        <th className="admin-table-actions">Transcript</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -408,10 +408,21 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
                               {call.agentJoined ? 'AI joined' : 'Waiting'}
                               {call.humanAnswered ? ' · human answered' : ''}
                             </td>
-                            <td>
-                              <button type="button" className="btn ghost" onClick={() => setTranscriptDialogCall(call)}>
-                                View transcript
-                              </button>
+                            <td className="admin-table-actions">
+                              <div className="admin-table-actions-inner">
+                                <button
+                                  type="button"
+                                  className="btn-icon"
+                                  title="View transcript"
+                                  aria-label="View transcript"
+                                  onClick={() => setTranscriptDialogCall(call)}
+                                >
+                                  <svg viewBox="0 0 24 24" aria-hidden>
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))

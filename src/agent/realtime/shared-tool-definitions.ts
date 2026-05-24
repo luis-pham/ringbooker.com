@@ -110,13 +110,13 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
   },
   {
     name: 'schedule_callback',
-    description: 'Queue a callback request for the customer.',
+    description: 'Record a caller follow-up request and alert the shop owner. This does not place an outbound callback call.',
     parameters: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        customerName: { type: 'string', description: 'Optional customer name for callback note.' },
-        reason: { type: 'string', description: 'Reason for callback request.' },
+        customerName: { type: 'string', description: 'Optional customer name for the follow-up note.' },
+        reason: { type: 'string', description: 'Reason the caller needs owner follow-up.' },
       },
       required: ['reason'],
     },
