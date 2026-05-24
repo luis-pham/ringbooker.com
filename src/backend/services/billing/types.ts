@@ -82,6 +82,11 @@ export interface BillingProviderAdapter {
     hasMore?: boolean;
     nextCursor?: string | null;
   }>;
+  chargeOverage?(params: {
+    providerSubscriptionId: string;
+    amountCents: number;
+    description: string;
+  }): Promise<{ providerTransactionId: string }>;
   syncWebhookEvent(params: {
     eventType: string;
     payload: Record<string, unknown>;

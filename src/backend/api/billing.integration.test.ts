@@ -5,6 +5,7 @@ import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryShopOverageChargesRepository } from '@/src/backend/adapters/memory/shop-overage-charges-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
@@ -34,6 +35,7 @@ beforeEach(() => {
 function buildBillingTestApp(deps: {
   billingCustomersRepository: InMemoryBillingCustomersRepository;
   billingSubscriptionsRepository: InMemoryBillingSubscriptionsRepository;
+  shopOverageChargesRepository?: InMemoryShopOverageChargesRepository;
   shopAccessStatesRepository: InMemoryShopAccessStatesRepository;
   shopsRepository: InMemoryShopsRepository;
   billingProvider?: PaddleBillingProvider;
@@ -44,6 +46,7 @@ function buildBillingTestApp(deps: {
     bookingsRepository: new InMemoryBookingsRepository(),
     billingCustomersRepository: deps.billingCustomersRepository,
     billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+    shopOverageChargesRepository: deps.shopOverageChargesRepository,
     shopAccessStatesRepository: deps.shopAccessStatesRepository,
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository: deps.shopsRepository,
@@ -56,6 +59,7 @@ function buildBillingTestApp(deps: {
       new PaddleBillingProvider({
         billingCustomersRepository: deps.billingCustomersRepository,
         billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopOverageChargesRepository: deps.shopOverageChargesRepository,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         shopsRepository: deps.shopsRepository,
       }),
@@ -171,6 +175,62 @@ test('user billing and admin billing endpoints return normalized billing state',
   assert.equal(adminBillingBody.metrics.activeSubscriptions >= 1, true);
   assert.equal(adminBillingBody.metrics.mrr >= 149, true);
   assert.equal(adminBillingBody.subscriptions.some((item) => item.shopId === 'demo-shop'), true);
+});
+
+test('user billing overage charges endpoint returns current shop charges ordered by period', async () => {
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shopOverageChargesRepository = new InMemoryShopOverageChargesRepository();
+  await shopOverageChargesRepository.create({
+    shopId: 'demo-shop',
+    billingSubscriptionId: 'bs_demo',
+    periodStart: new Date('2026-03-01T00:00:00.000Z'),
+    periodEnd: new Date('2026-04-01T00:00:00.000Z'),
+    includedCallers: 300,
+    capturedCallers: 302,
+    overageCallers: 2,
+    rateCents: 25,
+    amountCents: 50,
+    paddleSubscriptionId: 'sub_demo_paddle',
+    status: 'charged',
+    idempotencyKey: 'overage:demo-shop:2026-03-01T00:00:00.000Z',
+  });
+  await shopOverageChargesRepository.create({
+    shopId: 'other-shop',
+    periodStart: new Date('2026-04-01T00:00:00.000Z'),
+    periodEnd: new Date('2026-05-01T00:00:00.000Z'),
+    includedCallers: 100,
+    capturedCallers: 200,
+    overageCallers: 100,
+    rateCents: 25,
+    amountCents: 2500,
+    status: 'charged',
+    idempotencyKey: 'overage:other-shop:2026-04-01T00:00:00.000Z',
+  });
+
+  const app = buildBillingTestApp({
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    shopsRepository,
+    shopOverageChargesRepository,
+  });
+  const cookie = await loginBillingUser(app);
+
+  const response = await app.request('/user/billing/overage-charges', { headers: { cookie } });
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as {
+    ok: boolean;
+    charges: Array<{ shopId?: string; overageCallers: number; amountCents: number; periodStart: string }>;
+  };
+  assert.equal(body.ok, true);
+  assert.equal(body.charges.length, 1);
+  assert.equal(body.charges[0]?.periodStart, '2026-03-01T00:00:00.000Z');
+  assert.equal(body.charges[0]?.overageCallers, 2);
+  assert.equal(body.charges[0]?.amountCents, 50);
+  assert.equal(body.charges[0]?.shopId, undefined);
 });
 
 test('manage billing feature flag disables GET and POST without calling Paddle or mutating DB', async () => {

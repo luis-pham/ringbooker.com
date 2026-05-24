@@ -3,6 +3,7 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { usePathname } from 'next/navigation';
 
+import { AdminSidebarShellControls } from '@/components/admin/admin-shell-preferences';
 import {
   IconBilling,
   IconBlog,
@@ -192,6 +193,7 @@ export function AdminSidebar() {
           );
         })}
       </div>
+      <AdminSidebarShellControls />
     </aside>
   );
 }

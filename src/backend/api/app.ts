@@ -80,6 +80,8 @@ import type {
   HandoffSessionsRepository,
   ShopAccessStatesRepository,
   ShopLocationsRepository,
+  ShopOverageChargesRepository,
+  ShopUsageAlertsRepository,
   ShopRoutingRulesRepository,
   ShopActiveCallSessionsRepository,
   TestCallAttemptsRepository,
@@ -2477,6 +2479,8 @@ export function createBackendApp(deps: {
   bookingsRepository?: BookingsRepository;
   billingCustomersRepository?: BillingCustomersRepository;
   billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+  shopOverageChargesRepository?: ShopOverageChargesRepository;
+  shopUsageAlertsRepository?: ShopUsageAlertsRepository;
   billingNotificationsRepository?: BillingNotificationsRepository;
   businessKnowledgeSuggestionsRepository?: BusinessKnowledgeSuggestionsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
@@ -5163,6 +5167,7 @@ export function createBackendApp(deps: {
         {
           callLogsRepository: deps.callLogsRepository,
           shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         },
         { shop, commercialAccount },
       ).catch((err) => {
@@ -5329,6 +5334,7 @@ export function createBackendApp(deps: {
         {
           callLogsRepository: deps.callLogsRepository,
           shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         },
         { shop, commercialAccount },
       ).catch(() => null);
@@ -6348,7 +6354,14 @@ export function createBackendApp(deps: {
       repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
       repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
       repo.countByShop(shop.id, { startedAfter: last7Days, outcome: 'missed' }),
-      getShopUsageForPeriod({ callLogsRepository: repo, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository }, { shop, commercialAccount }),
+      getShopUsageForPeriod(
+        {
+          callLogsRepository: repo,
+          shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        },
+        { shop, commercialAccount },
+      ),
     ]);
     return c.json({
       ok: true,
@@ -7621,7 +7634,11 @@ export function createBackendApp(deps: {
       });
       usage = await Promise.race([
         getShopUsageForPeriod(
-          { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+          {
+            callLogsRepository: deps.callLogsRepository,
+            shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+            billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          },
           { shop, commercialAccount },
         ).catch((err) => {
           logger.warn({ err, shopId: shop.id }, 'user_billing_usage_unavailable');
@@ -7773,6 +7790,37 @@ export function createBackendApp(deps: {
         forwardingNumber: shop.telnyx_number?.trim() ? shop.telnyx_number.trim() : null,
         usage,
       },
+    });
+  });
+
+  app.get(path('/user/billing/overage-charges'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_overage_charges');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopOverageChargesRepository) {
+      return c.json({ ok: true, charges: [] });
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const charges = await deps.shopOverageChargesRepository.listByShopId(shop.id, { limit: 50 });
+
+    return c.json({
+      ok: true,
+      charges: charges.map((charge) => ({
+        id: charge.id,
+        periodStart: charge.periodStart,
+        periodEnd: charge.periodEnd,
+        includedCallers: charge.includedCallers,
+        capturedCallers: charge.capturedCallers,
+        overageCallers: charge.overageCallers,
+        rateCents: charge.rateCents,
+        amountCents: charge.amountCents,
+        status: charge.status,
+        paddleTransactionId: charge.paddleTransactionId ?? null,
+        createdAt: charge.createdAt,
+      })),
     });
   });
 
@@ -9697,7 +9745,11 @@ export function createBackendApp(deps: {
     ]);
     const usage = deps.callLogsRepository
       ? await getShopUsageForPeriod(
-          { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+          {
+            callLogsRepository: deps.callLogsRepository,
+            shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+            billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          },
           { shop, commercialAccount },
         )
       : null;

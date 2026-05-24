@@ -99,6 +99,19 @@ export class SupabaseAuthUsersRepository implements AuthUsersRepository {
     return data ? toAuthUser(data) : null;
   }
 
+  async findByShopId(shopId: string): Promise<AuthUserRecord | null> {
+    const { data, error } = await this.supabase
+      .from('auth_users')
+      .select('id,email,role,shop_id,password_hash,active,mfa_enabled,email_verified_at')
+      .eq('shop_id', shopId)
+      .eq('role', 'user')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle<AuthUsersRow>();
+    if (error) throw new Error(`auth_users_find_by_shop_id_failed:${error.message}`);
+    return data ? toAuthUser(data) : null;
+  }
+
   async create(params: {
     email: string;
     role: 'user' | 'admin';

@@ -26,6 +26,10 @@ import type {
   JobType,
   Shop,
   ShopLocation,
+  ShopOverageCharge,
+  ShopOverageChargeStatus,
+  ShopUsageAlert,
+  ShopUsageAlertType,
   ShopRoutingRule,
   ForwardingTestSession,
   ShopAccessState,
@@ -601,6 +605,41 @@ export interface BillingSubscriptionsRepository {
   }): Promise<BillingSubscription>;
 }
 
+export interface ShopOverageChargesRepository {
+  findByIdempotencyKey(idempotencyKey: string): Promise<ShopOverageCharge | null>;
+  create(params: {
+    shopId: string;
+    billingSubscriptionId?: string | null;
+    periodStart: Date;
+    periodEnd: Date;
+    includedCallers: number;
+    capturedCallers: number;
+    overageCallers: number;
+    rateCents: number;
+    amountCents: number;
+    paddleSubscriptionId?: string | null;
+    paddleTransactionId?: string | null;
+    status: ShopOverageChargeStatus;
+    idempotencyKey: string;
+  }): Promise<ShopOverageCharge>;
+  updateStatus(
+    idempotencyKey: string,
+    status: ShopOverageChargeStatus,
+    paddleTransactionId?: string | null,
+  ): Promise<void>;
+  listByShopId(shopId: string, params?: { limit?: number }): Promise<ShopOverageCharge[]>;
+}
+
+export interface ShopUsageAlertsRepository {
+  findByIdempotencyKey(idempotencyKey: string): Promise<ShopUsageAlert | null>;
+  create(params: {
+    shopId: string;
+    alertType: ShopUsageAlertType;
+    periodStart: Date;
+    idempotencyKey: string;
+  }): Promise<ShopUsageAlert>;
+}
+
 export interface ShopAccessStatesRepository {
   findByShopId(shopId: string): Promise<ShopAccessState | null>;
   findByShopIds(shopIds: string[]): Promise<Map<string, ShopAccessState | null>>;
@@ -931,6 +970,7 @@ export type AuthUserAdminListItem = {
 export interface AuthUsersRepository {
   findByEmail(email: string): Promise<AuthUserRecord | null>;
   findById(id: string): Promise<AuthUserRecord | null>;
+  findByShopId(shopId: string): Promise<AuthUserRecord | null>;
   create(params: {
     email: string;
     role: AuthRole;

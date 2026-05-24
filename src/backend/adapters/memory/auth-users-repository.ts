@@ -83,6 +83,13 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
     return row ? toPublicRecord(row) : null;
   }
 
+  async findByShopId(shopId: string): Promise<AuthUserRecord | null> {
+    for (const user of this.usersById.values()) {
+      if (user.shopId === shopId && user.role === 'user') return toPublicRecord(user);
+    }
+    return null;
+  }
+
   async create(params: {
     email: string;
     role: 'user' | 'admin';

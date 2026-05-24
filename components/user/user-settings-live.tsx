@@ -231,6 +231,7 @@ type SquareOptionsResponse = {
 
 type SettingsState = {
   name: string;
+  phone_number: string;
   user_name: string;
   user_phone: string;
   handoff_phone: string;
@@ -614,6 +615,7 @@ function normalizeGreeting(template: string, shopName: string) {
 function buildInitialState(shop: ShopSettings): SettingsState {
   return {
     name: shop.name ?? '',
+    phone_number: shop.phone_number ?? '',
     user_name: shop.user_name ?? '',
     user_phone: shop.user_phone,
     handoff_phone: shop.handoff_phone ?? '',
@@ -2080,10 +2082,11 @@ export function UserSettingsLive({
                   event.preventDefault();
                   void commitSettingsPatch('business-knowledge-info', {
                     name: currentForm.name,
+                    phone_number: currentForm.phone_number,
                     user_name: currentForm.user_name,
-                    user_phone: currentForm.user_phone,
-	                    handoff_phone: currentForm.handoff_phone || null,
-	                    address: currentForm.address || null,
+                    ...(currentForm.user_phone.trim() ? { user_phone: currentForm.user_phone } : {}),
+                    handoff_phone: currentForm.handoff_phone || null,
+                    address: currentForm.address || null,
 	                    timezone: currentForm.timezone,
 	                    website_url: currentForm.website_url.trim() ? currentForm.website_url.trim() : '',
 	                  });
@@ -2099,7 +2102,8 @@ export function UserSettingsLive({
 	                  <div className="form-grid settings-tab-content-frame" style={{ marginTop: 14 }}>
 	                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
 	                    <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
-	                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+	                    <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
+	                    <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
 	                    <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
 	                    <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
 	                    <div className="field">
@@ -2135,8 +2139,9 @@ export function UserSettingsLive({
                   event.preventDefault();
                   void commitSettingsPatch('business-profile', {
                     name: currentForm.name,
+                    phone_number: currentForm.phone_number,
                     user_name: currentForm.user_name,
-                    user_phone: currentForm.user_phone,
+                    ...(currentForm.user_phone.trim() ? { user_phone: currentForm.user_phone } : {}),
                     handoff_phone: currentForm.handoff_phone || null,
                     address: currentForm.address || null,
                     timezone: currentForm.timezone,
@@ -2148,7 +2153,8 @@ export function UserSettingsLive({
                   <div className="form-grid settings-business-profile-form">
                     <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
                     <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
-                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+                    <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
+                    <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
                     <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
                     <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
                     <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>

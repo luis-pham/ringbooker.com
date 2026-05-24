@@ -317,7 +317,7 @@ const plans = [
     priceId: undefined,
     price: 'For multiple locations or high volume',
     note: 'Best when you need implementation planning before rollout.',
-    cta: 'Book a 15-min call →',
+    cta: 'Get in touch →',
     ctaSubnote: 'Usually responds within 1 business day',
     href: '/contact?intent=enterprise&source=pricing_custom',
     featured: false,

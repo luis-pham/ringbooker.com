@@ -135,3 +135,75 @@ test('billing notification dates render in the shop timezone', () => {
   assert.match(JSON.stringify(la), /Apr 30, 2026/);
   assert.match(JSON.stringify(ny), /May 1, 2026/);
 });
+
+test('over-limit notification uses overage copy for active paid subscriptions', () => {
+  const notifications = buildUserPortalNotifications({
+    access: createAccess({
+      blockReason: 'none',
+      subscriptionStatus: 'active',
+      paymentMethodStatus: 'valid',
+      canReceiveLiveCalls: true,
+    }),
+    subscription: createSubscription({
+      status: 'active',
+      paymentMethodStatus: 'valid',
+      provider: 'paddle',
+      providerCustomerId: 'ctm_active',
+      providerSubscriptionId: 'sub_active',
+    }),
+    usage: {
+      nearCapturedCallerLimit: false,
+      overCapturedCallerLimit: true,
+      capturedCallersUsed: 101,
+      capturedCallersLimit: 100,
+    },
+    now: new Date('2026-05-09T00:00:00.000Z'),
+  });
+
+  const usage = notifications.find((item) => item.id === 'usage_captured_over');
+  assert.equal(usage?.severity, 'warn');
+  assert.equal(usage?.body, "You've exceeded your caller limit. Additional callers are billed at $0.25 each.");
+});
+
+test('over-limit notification uses trial copy for trial subscriptions', () => {
+  const notifications = buildUserPortalNotifications({
+    access: createAccess({ subscriptionStatus: 'trialing', paymentMethodStatus: 'valid' }),
+    subscription: createSubscription({ status: 'trialing', paymentMethodStatus: 'valid' }),
+    usage: {
+      nearCapturedCallerLimit: false,
+      overCapturedCallerLimit: true,
+      capturedCallersUsed: 100,
+      capturedCallersLimit: 100,
+    },
+    now: new Date('2026-05-09T00:00:00.000Z'),
+  });
+
+  const usage = notifications.find((item) => item.id === 'usage_captured_over');
+  assert.equal(usage?.severity, 'critical');
+  assert.equal(usage?.body, "You've reached your trial caller limit. Add a payment method to continue.");
+});
+
+test('over-limit notification uses payment failed copy for past_due subscriptions', () => {
+  const notifications = buildUserPortalNotifications({
+    access: createAccess({
+      subscriptionStatus: 'past_due',
+      paymentMethodStatus: 'failed',
+      blockReason: 'subscription_inactive',
+    }),
+    subscription: createSubscription({
+      status: 'past_due',
+      paymentMethodStatus: 'failed',
+    }),
+    usage: {
+      nearCapturedCallerLimit: false,
+      overCapturedCallerLimit: true,
+      capturedCallersUsed: 100,
+      capturedCallersLimit: 100,
+    },
+    now: new Date('2026-05-09T00:00:00.000Z'),
+  });
+
+  const usage = notifications.find((item) => item.id === 'usage_captured_over');
+  assert.equal(usage?.severity, 'critical');
+  assert.equal(usage?.body, 'Your payment failed. Please update your payment method to continue receiving calls.');
+});

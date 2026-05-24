@@ -1,5 +1,8 @@
+import Script from 'next/script';
 import type { ReactNode } from 'react';
 
+import { adminShellBootstrapScript } from '@/components/admin/admin-shell-bootstrap';
+import { adminShellStyles } from '@/components/admin/admin-shell-styles';
 import { TemplatePageShell } from '@/components/shared/template-page-shell';
 
 type AdminLayoutProps = {
@@ -10,6 +13,15 @@ type AdminLayoutProps = {
   children: ReactNode;
 };
 
-export function AdminLayout(props: AdminLayoutProps) {
-  return <TemplatePageShell {...props} />;
+export function AdminLayout({ styles, ...props }: AdminLayoutProps) {
+  return (
+    <>
+      <Script
+        id="admin-shell-bootstrap"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{ __html: adminShellBootstrapScript }}
+      />
+      <TemplatePageShell {...props} styles={[...styles, ...adminShellStyles]} />
+    </>
+  );
 }

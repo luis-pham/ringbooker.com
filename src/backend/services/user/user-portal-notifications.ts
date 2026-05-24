@@ -160,11 +160,25 @@ export function buildUserPortalNotifications(params: {
   }
 
   if (usage?.overCapturedCallerLimit) {
+    const trialOverLimit = status === 'trialing' || !subscription;
+    const paymentFailedOverLimit =
+      status === 'past_due' ||
+      status === 'unpaid' ||
+      subscription?.paymentMethodStatus === 'failed' ||
+      access.paymentMethodStatus === 'failed';
     push({
       id: 'usage_captured_over',
-      severity: 'critical',
-      title: 'Captured caller limit reached',
-      body: 'Upgrade or adjust your plan for more monthly coverage.',
+      severity: trialOverLimit || paymentFailedOverLimit ? 'critical' : 'warn',
+      title: paymentFailedOverLimit
+        ? 'Payment failed'
+        : trialOverLimit
+          ? 'Trial caller limit reached'
+          : 'Caller overage active',
+      body: paymentFailedOverLimit
+        ? 'Your payment failed. Please update your payment method to continue receiving calls.'
+        : trialOverLimit
+          ? "You've reached your trial caller limit. Add a payment method to continue."
+          : "You've exceeded your caller limit. Additional callers are billed at $0.25 each.",
       href: '/user/billing',
     });
   } else if (usage?.nearCapturedCallerLimit) {

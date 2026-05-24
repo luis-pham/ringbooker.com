@@ -467,6 +467,37 @@ export interface BillingSubscription {
   updatedAt?: string;
 }
 
+export type ShopOverageChargeStatus = 'pending' | 'charged' | 'failed' | 'skipped';
+export type ShopUsageAlertType = '80pct_warning' | '100pct_overage' | 'overage_charged';
+
+export interface ShopOverageCharge {
+  id: string;
+  shopId: string;
+  billingSubscriptionId?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  includedCallers: number;
+  capturedCallers: number;
+  overageCallers: number;
+  rateCents: number;
+  amountCents: number;
+  paddleSubscriptionId?: string | null;
+  paddleTransactionId?: string | null;
+  status: ShopOverageChargeStatus;
+  idempotencyKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShopUsageAlert {
+  id: string;
+  shopId: string;
+  alertType: ShopUsageAlertType;
+  periodStart: string;
+  sentAt: string;
+  idempotencyKey: string;
+}
+
 export type ForwardingSetupVerifiedVia =
   | 'inbound_test_call'
   | 'manual_confirmation'

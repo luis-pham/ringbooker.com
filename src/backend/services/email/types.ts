@@ -22,6 +22,9 @@ export type EmailCategory =
   | 'live_answering_enabled'
   | 'live_answering_billing_paused'
   | 'live_answering_billing_restored'
+  | 'usage_80pct_warning'
+  | 'usage_100pct_overage'
+  | 'usage_overage_charged'
   | 'internal_alert';
 
 export type EmailSendResult = {

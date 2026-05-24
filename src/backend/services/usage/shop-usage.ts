@@ -1,7 +1,11 @@
 import type { CommercialAccount, Shop } from '@/src/backend/domain/types';
 import { getPlanUsageLimits, type PlanUsageLimits } from '@/src/backend/domain/plan-usage-limits';
-import type { CallLogsRepository, ShopActiveCallSessionsRepository } from '@/src/backend/ports/repositories';
-import { calendarMonthPeriod } from '@/src/backend/services/usage/period';
+import type {
+  BillingSubscriptionsRepository,
+  CallLogsRepository,
+  ShopActiveCallSessionsRepository,
+} from '@/src/backend/ports/repositories';
+import { getBillingPeriodForShop } from '@/src/backend/services/usage/period';
 
 export type ShopUsageForPeriod = {
   limits: PlanUsageLimits;
@@ -26,29 +30,36 @@ export async function getShopUsageForPeriod(
   deps: {
     callLogsRepository: CallLogsRepository;
     shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
   },
   params: {
     shop: Shop;
     commercialAccount?: CommercialAccount | null;
     now?: Date;
+    period?: { start: Date; end: Date };
     periodStart?: Date;
     periodEnd?: Date;
   },
 ): Promise<ShopUsageForPeriod> {
   const now = params.now ?? new Date();
-  const period = params.periodStart && params.periodEnd
-    ? { periodStart: params.periodStart, periodEnd: params.periodEnd }
-    : calendarMonthPeriod(now, params.shop.timezone);
+  let period: { start: Date; end: Date };
+  if (params.period) {
+    period = params.period;
+  } else if (params.periodStart && params.periodEnd) {
+    period = { start: params.periodStart, end: params.periodEnd };
+  } else {
+    period = await getBillingPeriodForShop(params.shop.id, deps, { now, shopTimezone: params.shop.timezone });
+  }
   const limits = getPlanUsageLimits(params.shop.plan, params.commercialAccount);
   const [capturedCallersUsed, voiceSecondsUsed, activeLiveCalls] = await Promise.all([
     deps.callLogsRepository.countByShop(params.shop.id, {
-      startedAfter: period.periodStart,
-      startedBefore: period.periodEnd,
+      startedAfter: period.start,
+      startedBefore: period.end,
       isCapturedCaller: true,
     }),
     deps.callLogsRepository.sumDurationSecsByShop(params.shop.id, {
-      startedAfter: period.periodStart,
-      startedBefore: period.periodEnd,
+      startedAfter: period.start,
+      startedBefore: period.end,
     }),
     deps.shopActiveCallSessionsRepository
       ? deps.shopActiveCallSessionsRepository.countActiveByShop({ shopId: params.shop.id, now })
@@ -56,10 +67,8 @@ export async function getShopUsageForPeriod(
   ]);
 
   const capturedLimit = limits.capturedCallersMonthlyLimit;
-  const voiceLimit = limits.softVoiceMinutesMonthlyLimit;
   const capturedPercent = capturedLimit ? Math.round((capturedCallersUsed / capturedLimit) * 100) : null;
   const voiceMinutesUsed = Math.round((voiceSecondsUsed / 60) * 10) / 10;
-  const voicePercent = voiceLimit ? voiceMinutesUsed / voiceLimit : 0;
 
   return {
     limits,
@@ -69,15 +78,15 @@ export async function getShopUsageForPeriod(
     capturedCallerUsagePercent: capturedPercent,
     voiceSecondsUsed,
     voiceMinutesUsed,
-    voiceMinutesSoftLimit: voiceLimit,
+    voiceMinutesSoftLimit: null,
     nearCapturedCallerLimit: capturedLimit != null && capturedCallersUsed >= Math.floor(capturedLimit * 0.8) && capturedCallersUsed < capturedLimit,
     overCapturedCallerLimit: capturedLimit != null && capturedCallersUsed >= capturedLimit,
-    nearVoiceMinuteLimit: voiceLimit != null && voicePercent >= 0.8 && voicePercent < 1,
-    overVoiceMinuteSoftLimit: voiceLimit != null && voiceMinutesUsed >= voiceLimit,
+    nearVoiceMinuteLimit: false,
+    overVoiceMinuteSoftLimit: false,
     activeLiveCalls,
     maxConcurrentLiveCalls: limits.maxConcurrentLiveCalls,
-    periodStart: period.periodStart.toISOString(),
-    periodEnd: period.periodEnd.toISOString(),
+    periodStart: period.start.toISOString(),
+    periodEnd: period.end.toISOString(),
   };
 }
 

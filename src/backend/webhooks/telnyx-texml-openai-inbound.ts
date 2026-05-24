@@ -36,7 +36,7 @@ import type {
 } from '@/src/backend/ports/repositories';
 import { resolveShopByInboundDidWithMeta, normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
-import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import { checkLiveCallUsageGate } from '@/src/backend/services/usage/live-call-usage-gate';
 import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
 import type { ShopBillingAccess } from '@/src/backend/services/billing/access';
 import { completeForwardingTestFromInboundCall } from '@/src/backend/services/go-live/forwarding-test-inbound';
@@ -243,13 +243,17 @@ export async function handleTelnyxTexmlOpenAiInbound(
           const commercialAccount = deps.commercialAccountsRepository
             ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null)
             : null;
-          const usage = await getShopUsageForPeriod(
-            { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+          const gate = await checkLiveCallUsageGate(
+            {
+              callLogsRepository: deps.callLogsRepository,
+              shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+              billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+            },
             { shop, commercialAccount },
           );
+          const usage = gate.usage;
           shopCallMaxDurationSecs = usage.limits.maxCallDurationSeconds;
-          if (usage.overCapturedCallerLimit) billingBlockedReason = 'usage_limit_reached';
-          else if (usage.activeLiveCalls >= usage.maxConcurrentLiveCalls) billingBlockedReason = 'concurrency_limit_reached';
+          if (!gate.ok) billingBlockedReason = gate.reason;
         } else {
           billingBlockedReason = 'usage_limit_unavailable';
           logger.warn(

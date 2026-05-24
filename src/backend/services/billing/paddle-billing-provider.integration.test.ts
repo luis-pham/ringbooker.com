@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
+import { InMemoryShopOverageChargesRepository } from '@/src/backend/adapters/memory/shop-overage-charges-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { PaddleBillingProvider } from '@/src/backend/adapters/paddle/billing-provider';
@@ -165,6 +167,52 @@ test('paddle manage billing creates sandbox customer portal session with subscri
     globalThis.fetch = originalFetch;
     applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
     resetEnvCacheForTests();
+  }
+});
+
+test('paddle chargeOverage calls subscription charge endpoint with amount and description', async () => {
+  applyRequiredTestEnv({ PADDLE_ENV: 'sandbox' });
+  resetEnvCacheForTests();
+  const { provider } = buildProvider();
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({
+      url: String(input),
+      body: init?.body ? JSON.parse(String(init.body)) : {},
+    });
+    return new Response(JSON.stringify({ data: { id: 'txn_overage_paddle' } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await provider.chargeOverage({
+      providerSubscriptionId: 'sub_demo_paddle',
+      amountCents: 1250,
+      description: 'Captured caller overage - 50 callers x $0.25',
+    });
+
+    assert.equal(result.providerTransactionId, 'txn_overage_paddle');
+    assert.equal(calls[0]?.url, 'https://sandbox-api.paddle.com/subscriptions/sub_demo_paddle/charge');
+    assert.deepEqual(calls[0]?.body, {
+      effective_from: 'immediately',
+      items: [
+        {
+          price: {
+            description: 'Captured caller overage - 50 callers x $0.25',
+            unit_price: {
+              amount: '1250',
+              currency_code: 'USD',
+            },
+          },
+          quantity: 1,
+        },
+      ],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
 
@@ -412,6 +460,135 @@ test('paddle billing provider syncs webhook payload into normalized billing reco
   assert.ok(shop);
   assert.equal(shop?.plan, 'professional');
   assert.equal(shop?.active, true);
+});
+
+test('paddle subscription.updated renewal processes overage for previous billing period', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const shopOverageChargesRepository = new InMemoryShopOverageChargesRepository();
+  const provider = new PaddleBillingProvider({
+    shopsRepository,
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    callLogsRepository,
+    shopOverageChargesRepository,
+  });
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  await billingSubscriptionsRepository.updateById('bs_demo', {
+    plan: 'professional',
+    status: 'active',
+    currentPeriodStart: '2026-03-15T00:00:00.000Z',
+    currentPeriodEnd: '2026-04-15T00:00:00.000Z',
+    providerSubscriptionId: 'sub_demo_paddle',
+    paymentMethodStatus: 'valid',
+  });
+  for (let i = 0; i < 302; i += 1) {
+    const requestId = `renewal-overage-req-${i}`;
+    await callLogsRepository.createOrUpdateInboundCall({
+      provider: 'telnyx_call_control',
+      providerCallId: `renewal-overage-call-${i}`,
+      shopId: shop.id,
+      callerPhone: '+15550000002',
+      startedAt: new Date('2026-03-20T12:00:00.000Z'),
+      requestId,
+    });
+    await callLogsRepository.updateStructuredSummary(shop.id, requestId, { summaryServiceRequest: 'gel manicure' });
+  }
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), body: init?.body ? JSON.parse(String(init.body)) : {} });
+    return new Response(JSON.stringify({ data: { id: 'txn_renewal_overage' } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await provider.syncWebhookEvent({
+      eventType: 'subscription.updated',
+      payload: {
+        id: 'sub_demo_paddle',
+        status: 'active',
+        currency_code: 'USD',
+        custom_data: { shop_id: shop.id },
+        customer_id: 'ctm_demo_paddle',
+        items: [{ price: { id: process.env.PADDLE_PRICE_PROFESSIONAL_MONTHLY } }],
+        recurring_transaction_details: { interval: 'month' },
+        current_billing_period: {
+          starts_at: '2026-04-15T00:00:00.000Z',
+          ends_at: '2026-05-15T00:00:00.000Z',
+        },
+        unit_totals: { total: '14900' },
+        occurred_at: '2026-04-15T00:00:01.000Z',
+      },
+    });
+
+    assert.equal(result?.subscription?.currentPeriodStart, '2026-04-15T00:00:00.000Z');
+    const overages = await shopOverageChargesRepository.listByShopId(shop.id);
+    assert.equal(overages.length, 1);
+    assert.equal(overages[0]?.status, 'charged');
+    assert.equal(overages[0]?.periodStart, '2026-03-15T00:00:00.000Z');
+    assert.equal(overages[0]?.periodEnd, '2026-04-15T00:00:00.000Z');
+    assert.equal(overages[0]?.overageCallers, 2);
+    assert.equal(overages[0]?.amountCents, 50);
+    assert.equal(calls.length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('paddle subscription.updated without period change does not process overage', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const shopOverageChargesRepository = new InMemoryShopOverageChargesRepository();
+  const provider = new PaddleBillingProvider({
+    shopsRepository,
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    callLogsRepository,
+    shopOverageChargesRepository,
+  });
+  const originalFetch = globalThis.fetch;
+  let paddleCalled = false;
+  globalThis.fetch = (async () => {
+    paddleCalled = true;
+    return new Response(JSON.stringify({ data: { id: 'txn_should_not_exist' } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    await provider.syncWebhookEvent({
+      eventType: 'subscription.updated',
+      payload: {
+        id: 'sub_demo_paddle',
+        status: 'active',
+        currency_code: 'USD',
+        custom_data: { shop_id: 'demo-shop' },
+        customer_id: 'ctm_demo_paddle',
+        items: [{ price: { id: process.env.PADDLE_PRICE_PROFESSIONAL_MONTHLY } }],
+        recurring_transaction_details: { interval: 'month' },
+        current_billing_period: {
+          starts_at: '2026-04-01T00:00:00.000Z',
+          ends_at: '2026-05-01T00:00:00.000Z',
+        },
+        unit_totals: { total: '14900' },
+        occurred_at: '2026-04-01T00:00:01.000Z',
+      },
+    });
+
+    assert.equal((await shopOverageChargesRepository.listByShopId('demo-shop')).length, 0);
+    assert.equal(paddleCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('paddle webhook customer upsert merges repeated customer events for the same shop provider', async () => {

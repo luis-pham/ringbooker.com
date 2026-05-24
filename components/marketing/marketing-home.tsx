@@ -1982,7 +1982,7 @@ export function MarketingHomeTemplate() {
                   <li>Priority implementation support</li>
                 </ul>
                 <a className="plan-btn pb-outline" href="/contact?intent=enterprise&source=homepage_custom">
-                  Book a 15-min call →
+                  Get in touch →
                 </a>
                 <p className="plan-cta-subnote">Usually responds within 1 business day</p>
               </div>

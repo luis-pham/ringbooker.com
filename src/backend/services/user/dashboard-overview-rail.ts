@@ -277,7 +277,7 @@ export function buildDashboardOverviewRail(params: {
       label: 'Monthly allowance',
       state: usage.overCapturedCallerLimit ? 'warn' : 'neutral',
       detail: usage.overCapturedCallerLimit
-        ? 'Captured caller limit reached — upgrade or adjust plan'
+        ? 'Captured caller overage applies at $0.25/caller'
         : 'Close to your captured caller limit',
       href: '/user/billing',
     });

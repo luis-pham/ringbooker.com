@@ -8,6 +8,8 @@ import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookin
 import { InMemoryCustomersRepository } from '@/src/backend/adapters/memory/customers-repository';
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryShopOverageChargesRepository } from '@/src/backend/adapters/memory/shop-overage-charges-repository';
+import { InMemoryShopUsageAlertsRepository } from '@/src/backend/adapters/memory/shop-usage-alerts-repository';
 import { InMemoryBillingNotificationsRepository } from '@/src/backend/adapters/memory/billing-notifications-repository';
 import { InMemoryBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/memory/business-knowledge-suggestions-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
@@ -39,6 +41,8 @@ import { SupabaseBookingsRepository } from '@/src/backend/adapters/supabase/book
 import { SupabaseCustomersRepository } from '@/src/backend/adapters/supabase/customers-repository';
 import { SupabaseBillingCustomersRepository } from '@/src/backend/adapters/supabase/billing-customers-repository';
 import { SupabaseBillingSubscriptionsRepository } from '@/src/backend/adapters/supabase/billing-subscriptions-repository';
+import { SupabaseShopOverageChargesRepository } from '@/src/backend/adapters/supabase/shop-overage-charges-repository';
+import { SupabaseShopUsageAlertsRepository } from '@/src/backend/adapters/supabase/shop-usage-alerts-repository';
 import { SupabaseBillingNotificationsRepository } from '@/src/backend/adapters/supabase/billing-notifications-repository';
 import { SupabaseBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/supabase/business-knowledge-suggestions-repository';
 import { SupabaseCallbacksRepository } from '@/src/backend/adapters/supabase/callbacks-repository';
@@ -165,6 +169,8 @@ export function createBackendRuntime() {
             customersRepository: new SupabaseCustomersRepository(supabase),
             billingCustomersRepository: new SupabaseBillingCustomersRepository(supabase),
             billingSubscriptionsRepository: new SupabaseBillingSubscriptionsRepository(supabase),
+            shopOverageChargesRepository: new SupabaseShopOverageChargesRepository(supabase),
+            shopUsageAlertsRepository: new SupabaseShopUsageAlertsRepository(supabase),
             billingNotificationsRepository: new SupabaseBillingNotificationsRepository(supabase),
             businessKnowledgeSuggestionsRepository: new SupabaseBusinessKnowledgeSuggestionsRepository(supabase),
             shopAccessStatesRepository: new SupabaseShopAccessStatesRepository(supabase),
@@ -196,6 +202,8 @@ export function createBackendRuntime() {
           customersRepository: new InMemoryCustomersRepository(),
           billingCustomersRepository: new InMemoryBillingCustomersRepository(),
           billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+          shopOverageChargesRepository: new InMemoryShopOverageChargesRepository(),
+          shopUsageAlertsRepository: new InMemoryShopUsageAlertsRepository(),
           billingNotificationsRepository: new InMemoryBillingNotificationsRepository(),
           businessKnowledgeSuggestionsRepository: new InMemoryBusinessKnowledgeSuggestionsRepository(),
           shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
@@ -284,8 +292,13 @@ export function createBackendRuntime() {
       ? new PaddleBillingProvider({
           billingCustomersRepository: repositories.billingCustomersRepository,
           billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+          shopOverageChargesRepository: repositories.shopOverageChargesRepository,
+          shopUsageAlertsRepository: repositories.shopUsageAlertsRepository,
+          callLogsRepository: repositories.callLogsRepository,
           shopAccessStatesRepository: repositories.shopAccessStatesRepository,
           shopsRepository: repositories.shopsRepository,
+          authUsersRepository: repositories.authUsersRepository,
+          emailService,
         })
       : undefined;
 
@@ -295,6 +308,8 @@ export function createBackendRuntime() {
     bookingsRepository: repositories.bookingsRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,
     billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+    shopOverageChargesRepository: repositories.shopOverageChargesRepository,
+    shopUsageAlertsRepository: repositories.shopUsageAlertsRepository,
     billingNotificationsRepository: repositories.billingNotificationsRepository,
     shopAccessStatesRepository: repositories.shopAccessStatesRepository,
     commercialGoLiveApprovalEventsRepository: repositories.commercialGoLiveApprovalEventsRepository,
@@ -341,11 +356,14 @@ export function createBackendRuntime() {
     customersRepository: repositories.customersRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,
     billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+    shopOverageChargesRepository: repositories.shopOverageChargesRepository,
+    shopUsageAlertsRepository: repositories.shopUsageAlertsRepository,
     billingNotificationsRepository: repositories.billingNotificationsRepository,
     shopAccessStatesRepository: repositories.shopAccessStatesRepository,
     shopLocationsRepository: repositories.shopLocationsRepository,
     shopRoutingRulesRepository: repositories.shopRoutingRulesRepository,
     commercialAccountsRepository: repositories.commercialAccountsRepository,
+    shopActiveCallSessionsRepository: repositories.shopActiveCallSessionsRepository,
     testCallAttemptsRepository: repositories.testCallAttemptsRepository,
     forwardingTestSessionsRepository: repositories.forwardingTestSessionsRepository,
     jobsRepository: repositories.jobsRepository,

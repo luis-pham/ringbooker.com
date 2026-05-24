@@ -136,6 +136,26 @@ export type BillingTransactionsResponse = {
   error?: string;
 };
 
+type OverageChargeRecord = {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  includedCallers: number;
+  capturedCallers: number;
+  overageCallers: number;
+  rateCents: number;
+  amountCents: number;
+  status: 'pending' | 'charged' | 'failed' | 'skipped';
+  paddleTransactionId?: string | null;
+  createdAt?: string | null;
+};
+
+type OverageChargesResponse = {
+  ok: boolean;
+  charges?: OverageChargeRecord[];
+  error?: string;
+};
+
 type BillingSubscriptionRow = NonNullable<NonNullable<UserBillingResponse['billing']>['subscription']>;
 
 type BillingPlanFeature = { text: string; included: boolean };
@@ -213,6 +233,10 @@ function formatMoney(amount: number, currency: string) {
     currency,
     maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
   }).format(amount);
+}
+
+function formatMoneyCents(amountCents: number, currency = 'USD') {
+  return formatMoney(amountCents / 100, currency);
 }
 
 function formatBillingDate(value: string | null | undefined, shopTimezone: string) {
@@ -477,6 +501,15 @@ export function UserBillingLive({
     rows: initialTransactions?.ok === true && Array.isArray(initialTransactions.transactions) ? initialTransactions.transactions : [],
     message: initialTransactions?.message ?? null,
   }));
+  const [overageChargesState, setOverageChargesState] = useState<{
+    loading: boolean;
+    rows: OverageChargeRecord[];
+    message: string | null;
+  }>({
+    loading: false,
+    rows: [],
+    message: null,
+  });
 
   const [goLiveStatus, setGoLiveStatus] = useState<GoLiveStatusResponse | null>(initialGoLiveStatus ?? null);
 
@@ -588,6 +621,42 @@ export function UserBillingLive({
       window.clearTimeout(timeout);
     };
   }, [data?.ok, data?.billing, initialTransactions]);
+
+  useEffect(() => {
+    if (!data?.ok || !data.billing) return;
+    let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    setOverageChargesState((current) => ({ ...current, loading: true }));
+    void fetch('/api/backend/user/billing/overage-charges', { signal: controller.signal })
+      .then(async (response) => {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) throw new Error('invalid_overage_charges_response');
+        const body = (await response.json()) as OverageChargesResponse;
+        if (!active) return;
+        setOverageChargesState({
+          loading: false,
+          rows: body.ok === true && Array.isArray(body.charges) ? body.charges : [],
+          message: body.ok === true ? null : 'We could not load overage history right now.',
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setOverageChargesState({
+          loading: false,
+          rows: [],
+          message: 'We could not load overage history right now.',
+        });
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [data?.ok, data?.billing]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1187,11 +1256,11 @@ export function UserBillingLive({
                         >
                           <div className="panel-head">
                             <div>
-                              <h3>Captured callers this month</h3>
+                              <h3>Captured callers this period</h3>
                               <p className="sub">
                                 {usage.capturedCallersLimit == null
                                   ? `${usage.capturedCallersUsed} captured callers · Custom allowance`
-                                  : `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} captured callers`}
+                                  : `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} callers this period`}
                               </p>
                             </div>
                             <span
@@ -1217,15 +1286,17 @@ export function UserBillingLive({
                               }}
                             >
                               {usage.overCapturedCallerLimit
-                                ? 'You have reached your monthly captured caller limit. Upgrade for more call coverage.'
+                                ? `You have ${Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed))} overage callers this period - estimated charge: ${formatMoneyCents(Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed)) * 25)}.`
                                 : 'You are close to your monthly captured caller limit.'}
                             </p>
                           ) : null}
+                          {usage.capturedCallersLimit != null ? (
+                            <p className="sub" style={{ marginTop: 8 }}>
+                              Additional callers billed at $0.25 each at end of billing period.
+                            </p>
+                          ) : null}
                           <p className="sub" style={{ marginTop: 8 }}>
-                            Voice usage: {usage.voiceMinutesUsed} min
-                            {usage.voiceMinutesSoftLimit
-                              ? ` / ${usage.voiceMinutesSoftLimit} soft cap`
-                              : ''}{' '}
+                            Voice usage: {usage.voiceMinutesUsed} min used this period{' '}
                             · Active calls: {usage.activeLiveCalls ?? 0}/{usage.maxConcurrentLiveCalls ?? 0}
                           </p>
                         </section>
@@ -1496,6 +1567,44 @@ export function UserBillingLive({
                           <p className="sub">
                             {transactionsState.message ?? 'Official invoices and receipts are available in Manage billing.'}
                           </p>
+                        )}
+                      </section>
+                      <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                        <div className="panel-head">
+                          <div>
+                            <h3>Overage charges</h3>
+                            <p className="sub">Captured callers above your plan allowance.</p>
+                          </div>
+                        </div>
+                        {overageChargesState.loading ? (
+                          <p className="sub">Loading overage history…</p>
+                        ) : overageChargesState.rows.length > 0 ? (
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>Period</th>
+                                <th>Overage callers</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {overageChargesState.rows.map((row) => (
+                                <tr key={row.id}>
+                                  <td>
+                                    {formatBillingDate(row.periodStart, shopTimezone)} - {formatBillingDate(row.periodEnd, shopTimezone)}
+                                  </td>
+                                  <td>{row.overageCallers}</td>
+                                  <td>{formatMoneyCents(row.amountCents)}</td>
+                                  <td>
+                                    <span className={`tag ${transactionStatusTone(row.status)}`}>{row.status}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="sub">{overageChargesState.message ?? 'No overage charges yet'}</p>
                         )}
                       </section>
                       {billingHistory.length > 0 ? (

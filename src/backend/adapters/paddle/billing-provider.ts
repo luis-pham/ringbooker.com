@@ -12,9 +12,15 @@ import type {
 import type {
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
+  CallLogsRepository,
+  AuthUsersRepository,
   ShopAccessStatesRepository,
+  ShopOverageChargesRepository,
+  ShopUsageAlertsRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
+import { processOverageForPeriod } from '@/src/backend/services/billing/process-overage';
+import type { EmailService } from '@/src/backend/services/email/types';
 import type { BillingProviderAdapter, BillingTransactionRecord, BillingWebhookSyncResult } from '@/src/backend/services/billing/types';
 
 function getPaddleApiBaseUrl() {
@@ -120,6 +126,12 @@ function extractPaddleEventTimestamp(data: Record<string, unknown> | undefined):
     if (Number.isFinite(timestamp)) return new Date(timestamp).toISOString();
   }
   return null;
+}
+
+function parseOptionalDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function latestPaddleEventTimestamp(subscription: BillingSubscription | null | undefined): string | null {
@@ -537,7 +549,12 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     private readonly deps: {
       billingCustomersRepository: BillingCustomersRepository;
       billingSubscriptionsRepository: BillingSubscriptionsRepository;
+      callLogsRepository?: CallLogsRepository;
       shopAccessStatesRepository?: ShopAccessStatesRepository;
+      shopOverageChargesRepository?: ShopOverageChargesRepository;
+      shopUsageAlertsRepository?: ShopUsageAlertsRepository;
+      authUsersRepository?: AuthUsersRepository;
+      emailService?: EmailService;
       shopsRepository: ShopsRepository;
     },
   ) {}
@@ -630,6 +647,45 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       providerCustomerId: json.data?.customer_id ?? null,
       trialConfigVerified,
     };
+  }
+
+  async chargeOverage(params: {
+    providerSubscriptionId: string;
+    amountCents: number;
+    description: string;
+  }): Promise<{ providerTransactionId: string }> {
+    const response = await fetch(`${getPaddleApiBaseUrl()}/subscriptions/${encodeURIComponent(params.providerSubscriptionId)}/charge`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getEnv().PADDLE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        effective_from: 'immediately',
+        items: [
+          {
+            price: {
+              description: params.description,
+              unit_price: {
+                amount: String(params.amountCents),
+                currency_code: 'USD',
+              },
+            },
+            quantity: 1,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      throw new Error(`paddle_charge_overage_failed:${response.status}:${bodyText}`);
+    }
+
+    const json = (await response.json()) as { data?: { id?: string; transaction_id?: string; transaction?: { id?: string } } };
+    const providerTransactionId = json.data?.id ?? json.data?.transaction_id ?? json.data?.transaction?.id;
+    if (!providerTransactionId) throw new Error('paddle_charge_overage_missing_transaction_id');
+    return { providerTransactionId };
   }
 
   async createManageBillingSession(params: {
@@ -787,6 +843,23 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     };
   }
 
+  private async processRenewalOverage(shop: Shop, oldPeriodStart: Date, oldPeriodEnd: Date): Promise<void> {
+    if (!this.deps.shopOverageChargesRepository || !this.deps.callLogsRepository) return;
+    try {
+      await processOverageForPeriod(shop, oldPeriodStart, oldPeriodEnd, {
+        overageRepository: this.deps.shopOverageChargesRepository,
+        billingSubscriptionsRepository: this.deps.billingSubscriptionsRepository,
+        callLogsRepository: this.deps.callLogsRepository,
+        billingProvider: this,
+        usageAlertsRepository: this.deps.shopUsageAlertsRepository,
+        authUsersRepository: this.deps.authUsersRepository,
+        emailService: this.deps.emailService,
+      });
+    } catch (err) {
+      logger.error({ err, shopId: shop.id, oldPeriodStart, oldPeriodEnd }, 'captured_caller_overage_renewal_processing_failed');
+    }
+  }
+
   async syncWebhookEvent(params: {
     eventType: string;
     payload: Record<string, unknown>;
@@ -922,6 +995,8 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       const period = extractPeriod(params.payload);
       const mappedInterval = mapPaddlePriceToInterval(params.payload);
       const providerPriceId = extractProviderPriceId(params.payload);
+      const oldPeriodStart = parseOptionalDate(staleTarget?.currentPeriodStart);
+      const oldPeriodEnd = parseOptionalDate(staleTarget?.currentPeriodEnd);
       const paymentMethodStatus: BillingSubscription['paymentMethodStatus'] = hasPaymentMethodEvidence(params.eventType, params.payload)
         ? 'valid'
         : mappedStatus === 'past_due' || mappedStatus === 'unpaid'
@@ -968,6 +1043,17 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         ...subscriptionPatch,
       });
       if (!subscription) return null;
+
+      const newPeriodStart = parseOptionalDate(subscription.currentPeriodStart);
+      if (
+        params.eventType.toLowerCase().includes('subscription.updated') &&
+        oldPeriodStart &&
+        oldPeriodEnd &&
+        newPeriodStart &&
+        newPeriodStart > oldPeriodStart
+      ) {
+        await this.processRenewalOverage(shop, oldPeriodStart, oldPeriodEnd);
+      }
 
       // Only 'canceled' fully deactivates the account; 'past_due'/'paused' keeps
       // the dashboard accessible but suspends live calls until billing recovers.

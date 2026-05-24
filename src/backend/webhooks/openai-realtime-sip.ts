@@ -48,7 +48,7 @@ import {
 } from '@/src/backend/security/rate-limit';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
-import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import { checkLiveCallUsageGate } from '@/src/backend/services/usage/live-call-usage-gate';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { callControlHangup } from '@/src/backend/services/calls/call-control-client';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
@@ -496,20 +496,25 @@ export async function handleOpenAiRealtimeSipWebhook(
       const commercialAccount = deps.commercialAccountsRepository
         ? await deps.commercialAccountsRepository.findByShopId(route.shop.id).catch(() => null)
         : null;
-      const usage = await getShopUsageForPeriod(
-        { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+      const gate = await checkLiveCallUsageGate(
+        {
+          callLogsRepository: deps.callLogsRepository,
+          shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        },
         { shop: route.shop, commercialAccount },
       );
-      if (usage.overCapturedCallerLimit) {
-        if (apiKey) await rejectCall(603, 'usage_limit_reached');
+      if (!gate.ok) {
+        if (apiKey) await rejectCall(gate.reason === 'concurrency_limit_reached' ? 486 : 603, gate.reason);
         await deps.providerEventsRepository.markProcessed({
           provider: 'openai',
           providerEventId: webhookId,
           eventType: 'realtime.call.incoming',
-          payload: { callId, shopId: route.shop.id, outcome: 'usage_blocked', reason: 'usage_limit_reached' },
+          payload: { callId, shopId: route.shop.id, outcome: gate.reason === 'concurrency_limit_reached' ? 'concurrency_blocked' : 'usage_blocked', reason: gate.reason },
         });
-        return c.json({ ok: true, blocked: true, reason: 'usage_limit_reached' });
+        return c.json({ ok: true, blocked: true, reason: gate.reason });
       }
+      const usage = gate.usage;
       shopCallLimits = usage.limits;
       const callControlAlreadyOwnsSlot = Boolean(ccDecoded?.shopId === route.shop.id && ccDecoded.telnyxCallControlId);
       if (deps.shopActiveCallSessionsRepository && !callControlAlreadyOwnsSlot) {

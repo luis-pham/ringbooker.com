@@ -526,6 +526,17 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
   const liveAnsweringOn = data?.goLive?.liveCallsEnabled === true;
   const enterpriseApprovalPending = data?.goLive?.commercialApprovalRequired === true;
   const isEnterprisePlan = data?.shop?.plan === 'enterprise';
+  const usageOverLimitMode =
+    data?.usage?.overCapturedCallerLimit && data?.goLive?.billingTrialing
+      ? 'trial'
+      : data?.usage?.overCapturedCallerLimit &&
+          (data?.goLive?.blockReason === 'payment_method_required' ||
+            data?.goLive?.blockReason === 'subscription_inactive' ||
+            data?.goLive?.paymentMethodValid === false)
+        ? 'payment_failed'
+        : data?.usage?.overCapturedCallerLimit
+          ? 'paid'
+          : null;
 
   const dashboardReady = !loading && data?.ok === true;
   const billingActive = !!(data?.goLive?.paymentMethodValid && data?.goLive?.subscriptionActiveLike);
@@ -993,8 +1004,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 </div>
                 <div className="usage-captured-footer">
                   <span className="usage-captured-footer-main">
-                    Voice usage: {data.usage.voiceMinutesUsed} min
-                    {data.usage.voiceMinutesSoftLimit ? ` / ${data.usage.voiceMinutesSoftLimit} soft cap` : ''} · Active calls:{' '}
+                    Voice usage: {data.usage.voiceMinutesUsed} min used this period · Active calls:{' '}
                     {data.usage.activeLiveCalls}/{data.usage.maxConcurrentLiveCalls}
                   </span>
                   <span className="usage-captured-reset">Resets {usageResetLabel}</span>
@@ -1004,8 +1014,24 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     className={`sub usage-captured-warn${data.usage.overCapturedCallerLimit ? ' usage-captured-warn--over' : ' usage-captured-warn--near'}`}
                   >
                     {data.usage.overCapturedCallerLimit
-                      ? 'You have reached your monthly captured caller limit. Upgrade for more call coverage.'
+                      ? usageOverLimitMode === 'trial'
+                        ? 'Trial limit reached.'
+                        : usageOverLimitMode === 'payment_failed'
+                          ? 'Payment failed - calls paused.'
+                          : 'Over limit - overage at $0.25/caller.'
                       : 'You are close to your monthly captured caller limit.'}
+                    {data.usage.overCapturedCallerLimit ? (
+                      <>
+                        {' '}
+                        <a href="/user/billing">
+                          {usageOverLimitMode === 'trial'
+                            ? 'Add payment method'
+                            : usageOverLimitMode === 'payment_failed'
+                              ? 'Update payment method'
+                              : 'View billing'}
+                        </a>
+                      </>
+                    ) : null}
                   </p>
                 ) : null}
               </section>

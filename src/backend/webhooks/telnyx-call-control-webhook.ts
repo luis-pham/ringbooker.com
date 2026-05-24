@@ -45,7 +45,7 @@ import {
   type HandoffOrchestratorDeps,
 } from '@/src/backend/services/calls/handoff-orchestrator';
 import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
-import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import { checkLiveCallUsageGate } from '@/src/backend/services/usage/live-call-usage-gate';
 import { getTelnyxOpenAiSipLegTimeoutSecs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/telnyx/telnyx-outbound-connection-id';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
@@ -563,16 +563,25 @@ async function processCallInitiated(
             const commercialAccount = deps.commercialAccountsRepository
               ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null)
               : null;
-            const usage = await getShopUsageForPeriod(
-              { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+            const gate = await checkLiveCallUsageGate(
+              {
+                callLogsRepository: deps.callLogsRepository,
+                shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+                billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+              },
               { shop, commercialAccount },
             );
-            if (usage.overCapturedCallerLimit) {
-              const rr = await callControlReject(result.callControlId, buildTelnyxCallRejectPayload('CALL_REJECTED'), fetchDeps);
-              log.warn({ shopId: shop.id, status: rr.ok ? 'rejected' : rr.status }, 'telnyx_call_control_usage_limit_rejected');
+            if (!gate.ok) {
+              const rr = await callControlReject(
+                result.callControlId,
+                buildTelnyxCallRejectPayload(gate.reason === 'concurrency_limit_reached' ? 'USER_BUSY' : 'CALL_REJECTED'),
+                fetchDeps,
+              );
+              log.warn({ shopId: shop.id, status: rr.ok ? 'rejected' : rr.status }, gate.reason === 'concurrency_limit_reached' ? 'telnyx_call_control_concurrency_limit_rejected' : 'telnyx_call_control_usage_limit_rejected');
               await deps.callLogsRepository.setOutcomeByProviderCallId({ provider: 'telnyx_call_control', providerCallId: result.callControlId, outcome: 'error' }).catch(() => {});
-              return c.json({ ok: true, blocked: true, reason: 'usage_limit_reached' });
+              return c.json({ ok: true, blocked: true, reason: gate.reason });
             }
+            const usage = gate.usage;
             if (deps.shopActiveCallSessionsRepository) {
               const now = new Date();
               const acquired = await deps.shopActiveCallSessionsRepository.acquireSlot({

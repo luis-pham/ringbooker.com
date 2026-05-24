@@ -21,7 +21,7 @@ export const DEFAULT_ENTERPRISE_USAGE_LIMITS: PlanUsageLimits = {
 export const PLAN_USAGE_LIMITS: Record<Exclude<ShopPlan, 'enterprise'>, PlanUsageLimits> = {
   starter: {
     capturedCallersMonthlyLimit: 100,
-    softVoiceMinutesMonthlyLimit: 200,
+    softVoiceMinutesMonthlyLimit: null,
     maxConcurrentLiveCalls: 1,
     maxCallDurationSeconds: 480,
     softWarningAfterSeconds: 300,
@@ -29,7 +29,7 @@ export const PLAN_USAGE_LIMITS: Record<Exclude<ShopPlan, 'enterprise'>, PlanUsag
   },
   professional: {
     capturedCallersMonthlyLimit: 300,
-    softVoiceMinutesMonthlyLimit: 600,
+    softVoiceMinutesMonthlyLimit: null,
     maxConcurrentLiveCalls: 2,
     maxCallDurationSeconds: 720,
     softWarningAfterSeconds: 420,
@@ -50,14 +50,13 @@ export function getPlanUsageLimits(
   if (plan !== 'enterprise') return PLAN_USAGE_LIMITS[plan];
 
   const captured = positiveInt(commercialAccount?.includedCapturedCallers);
-  const minutes = positiveInt(commercialAccount?.includedMinutes);
   const concurrent = positiveInt(commercialAccount?.maxConcurrentLiveCalls);
   const duration = positiveInt(commercialAccount?.maxCallDurationSeconds);
 
   return {
     ...DEFAULT_ENTERPRISE_USAGE_LIMITS,
     capturedCallersMonthlyLimit: captured,
-    softVoiceMinutesMonthlyLimit: minutes,
+    softVoiceMinutesMonthlyLimit: null,
     maxConcurrentLiveCalls: concurrent ?? DEFAULT_ENTERPRISE_USAGE_LIMITS.maxConcurrentLiveCalls,
     maxCallDurationSeconds: duration ?? DEFAULT_ENTERPRISE_USAGE_LIMITS.maxCallDurationSeconds,
     softWarningAfterSeconds: Math.min(

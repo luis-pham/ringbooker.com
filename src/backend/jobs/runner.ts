@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { runReleaseAbandonedForwardingNumbersJob } from '@/src/backend/jobs/release-abandoned-forwarding-numbers';
 import { extractCallSummary } from '@/src/backend/services/calls/extract-call-summary';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { scheduleUsageAlertCheck } from '@/src/backend/services/usage/usage-alerts';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import {
   buildAddPaymentMethodGoLiveEmailPayload,
@@ -1445,6 +1446,16 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       }
 
       const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (shop) {
+        scheduleUsageAlertCheck(shop, {
+          usageAlertsRepository: runtime.shopUsageAlertsRepository,
+          authUsersRepository: runtime.authUsersRepository,
+          emailService: runtime.emailService,
+          callLogsRepository,
+          billingSubscriptionsRepository: runtime.billingSubscriptionsRepository,
+          shopActiveCallSessionsRepository: runtime.shopActiveCallSessionsRepository,
+        });
+      }
       if (
         shop?.send_call_summary_sms &&
         shop.user_phone &&
