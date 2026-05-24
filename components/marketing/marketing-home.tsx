@@ -980,7 +980,8 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .footer-bottom p{font-size:14px;color:var(--text-light)}
 
 /* ─── REVEAL ─── */
-.rv{opacity:0;transform:translateY(22px);transition:opacity .85s ease,transform .85s ease}
+.rv{transition:opacity .85s ease,transform .85s ease}
+.rv.hidden{opacity:0;transform:translateY(22px)}
 .rv.show{opacity:1;transform:translateY(0)}
 .rv.d1{transition-delay:.1s}
 .rv.d2{transition-delay:.2s}
@@ -1295,11 +1296,26 @@ setPriceSafe('monthly')
       const rvObserver = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return
+          entry.target.classList.remove('hidden')
           entry.target.classList.add('show')
           rvObserver.unobserve(entry.target)
         })
-      }, { threshold: 0.2 })
-      rvEls.forEach((el) => rvObserver.observe(el))
+      }, { threshold: 0.05 })
+      rvEls.forEach((el) => {
+        const rect = el.getBoundingClientRect()
+        if (rect.top < window.innerHeight) {
+          el.classList.add('show')
+        } else {
+          el.classList.add('hidden')
+          rvObserver.observe(el)
+        }
+      })
+      setTimeout(() => {
+        document.querySelectorAll('.rv:not(.show)').forEach((el) => {
+          el.classList.remove('hidden')
+          el.classList.add('show')
+        })
+      }, 2000)
     }
   }
 
