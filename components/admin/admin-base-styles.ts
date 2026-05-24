@@ -21,6 +21,27 @@ export const adminBaseStyles: string[] = [
   --orange:#d97706;
   --red:#dc2626;
   --blue:#2563eb;
+  --tag-green-bg:rgba(22,163,74,.16);
+  --tag-green-fg:#4ade80;
+  --tag-green-border:rgba(34,197,94,.32);
+  --tag-blue-bg:rgba(37,99,235,.16);
+  --tag-blue-fg:#60a5fa;
+  --tag-blue-border:rgba(59,130,246,.32);
+  --tag-orange-bg:rgba(217,119,6,.16);
+  --tag-orange-fg:#fb923c;
+  --tag-orange-border:rgba(251,146,60,.32);
+  --tag-red-bg:rgba(220,38,38,.16);
+  --tag-red-fg:#f87171;
+  --tag-red-border:rgba(248,113,113,.32);
+  --tag-purple-bg:var(--accent-soft);
+  --tag-purple-fg:#93c5fd;
+  --tag-purple-border:var(--accent-border);
+  --tag-gray-bg:rgba(161,161,170,.14);
+  --tag-gray-fg:#d4d4d8;
+  --tag-gray-border:rgba(161,161,170,.28);
+  --tag-slate-bg:rgba(14,165,233,.14);
+  --tag-slate-fg:#38bdf8;
+  --tag-slate-border:rgba(56,189,248,.32);
   --shadow:0 1px 2px rgba(0,0,0,.24),0 8px 24px rgba(0,0,0,.18);
   --r-xl:16px;
   --r-lg:12px;
@@ -66,13 +87,14 @@ body.app-body{overflow-y:scroll}
 .card h3{margin:0 0 6px;font-size:16px;letter-spacing:-.02em;font-weight:600}
 .sub{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
 .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
-.badge-right,.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;line-height:1.2}
-.tag.purple,.badge-right{background:var(--accent-soft);color:#bfdbfe;border:1px solid var(--accent-border)}
-.tag.green{background:rgba(22,163,74,.12);color:#86efac;border:1px solid rgba(22,163,74,.2)}
-.tag.orange{background:rgba(217,119,6,.12);color:#fcd34d;border:1px solid rgba(217,119,6,.2)}
-.tag.red{background:rgba(220,38,38,.12);color:#fca5a5;border:1px solid rgba(220,38,38,.2)}
-.tag.blue{background:rgba(37,99,235,.12);color:#93c5fd;border:1px solid rgba(37,99,235,.2)}
-.tag.gray{background:rgba(161,161,170,.12);color:#d4d4d8;border:1px solid rgba(161,161,170,.2)}
+.badge-right,.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;line-height:1.25;letter-spacing:.01em;white-space:nowrap}
+.tag.purple,.badge-right{background:var(--tag-purple-bg);color:var(--tag-purple-fg);border:1px solid var(--tag-purple-border)}
+.tag.green{background:var(--tag-green-bg);color:var(--tag-green-fg);border:1px solid var(--tag-green-border)}
+.tag.orange{background:var(--tag-orange-bg);color:var(--tag-orange-fg);border:1px solid var(--tag-orange-border)}
+.tag.red{background:var(--tag-red-bg);color:var(--tag-red-fg);border:1px solid var(--tag-red-border)}
+.tag.blue{background:var(--tag-blue-bg);color:var(--tag-blue-fg);border:1px solid var(--tag-blue-border)}
+.tag.gray{background:var(--tag-gray-bg);color:var(--tag-gray-fg);border:1px solid var(--tag-gray-border)}
+.tag.slate{background:var(--tag-slate-bg);color:var(--tag-slate-fg);border:1px solid var(--tag-slate-border)}
 .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;box-shadow:none}
 .stat-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .stat-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--muted)}
@@ -108,6 +130,28 @@ body.app-body{overflow-y:scroll}
 .progress-item{display:grid;grid-template-columns:170px 1fr auto;gap:12px;align-items:center;font-size:13px}
 .bar{height:8px;border-radius:999px;background:var(--panel-3);overflow:hidden;border:1px solid var(--line)}
 .bar span{display:block;height:100%;border-radius:999px;background:var(--accent)}
+.admin-section-head{margin-top:24px;margin-bottom:8px}
+.admin-section-head h2{margin:0;font-size:14px;font-weight:600;color:var(--muted);letter-spacing:-.01em}
+.admin-breakdown-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 20px;margin-top:16px;box-shadow:none}
+.admin-breakdown-card>h3{margin:0 0 12px;font-size:15px;font-weight:600;color:var(--text)}
+.admin-breakdown-list{display:flex;flex-direction:column;gap:8px}
+.admin-breakdown-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px;line-height:1.35;margin-bottom:4px}
+.admin-breakdown-meta span:first-child{color:var(--text);font-weight:500}
+.admin-breakdown-meta span:last-child{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.admin-breakdown-bar{height:8px;border-radius:999px;background:var(--panel-3);overflow:hidden;border:1px solid var(--line)}
+.admin-breakdown-fill{display:block;height:100%;border-radius:999px;transition:width .4s ease;min-width:0}
+.admin-breakdown-fill.tone-green{background:var(--green)}
+.admin-breakdown-fill.tone-yellow{background:var(--orange)}
+.admin-breakdown-fill.tone-red{background:var(--red)}
+.admin-breakdown-fill.tone-blue{background:var(--accent)}
+.admin-breakdown-extra{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.admin-breakdown-extra-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.admin-breakdown-chips{display:flex;flex-wrap:wrap;gap:6px}
+.admin-table-note-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease;white-space:nowrap}
+.admin-table-note-btn:hover{background:var(--panel-3);border-color:var(--line-soft)}
+.admin-table-note-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.admin-table-note-btn.has-note{border-color:var(--accent-border);color:var(--accent)}
+.admin-table-note-btn:disabled{opacity:.55;cursor:not-allowed}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:600;color:var(--muted)}

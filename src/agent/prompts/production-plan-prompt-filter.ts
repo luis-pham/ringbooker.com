@@ -9,6 +9,9 @@ const CORE_MULTILINGUAL_SWITCH_BLOCK =
 const CORE_STARTER_LANGUAGE_REPLACEMENT =
   '\nKeep spoken dialogue in English unless RUNTIME BUSINESS CONFIG LANGUAGE DIRECTIVE explicitly allows otherwise. Do not switch languages based only on the caller speaking another language on Starter.';
 
+const CORE_DEMO_NAIL_LANGUAGE_REPLACEMENT =
+  '\nNAIL DEMO LANGUAGE POLICY: Keep spoken dialogue in English only. Do not switch to another language during the nail salon demo, even if the caller speaks another language.';
+
 /**
  * Starter production: replace core multilingual switching block with English-first alignment.
  */
@@ -16,6 +19,12 @@ export function filterCoreVoicePromptForProductionPlan(coreContent: string, plan
   if (mode !== 'production' || plan !== 'starter') return coreContent;
   if (!CORE_MULTILINGUAL_SWITCH_BLOCK.test(coreContent)) return coreContent;
   return coreContent.replace(CORE_MULTILINGUAL_SWITCH_BLOCK, CORE_STARTER_LANGUAGE_REPLACEMENT);
+}
+
+export function filterCoreVoicePromptForNailDemo(coreContent: string, mode: VoicePromptMode, vertical: string): string {
+  if (mode !== 'demo' || vertical !== 'nail-salon') return coreContent;
+  if (!CORE_MULTILINGUAL_SWITCH_BLOCK.test(coreContent)) return coreContent;
+  return coreContent.replace(CORE_MULTILINGUAL_SWITCH_BLOCK, CORE_DEMO_NAIL_LANGUAGE_REPLACEMENT);
 }
 
 function shouldStripVerticalLanguageLine(line: string): boolean {
@@ -49,6 +58,13 @@ export function filterVerticalPackForProductionPlan(
 
   if (!stripVerticalLanguage) return verticalContent;
 
+  const lines = verticalContent.split('\n');
+  const kept = lines.filter((line) => !shouldStripVerticalLanguageLine(line));
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+export function filterVerticalPackForNailDemo(verticalContent: string, mode: VoicePromptMode, vertical: string): string {
+  if (mode !== 'demo' || vertical !== 'nail-salon') return verticalContent;
   const lines = verticalContent.split('\n');
   const kept = lines.filter((line) => !shouldStripVerticalLanguageLine(line));
   return kept.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();

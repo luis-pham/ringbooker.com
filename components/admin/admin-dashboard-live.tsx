@@ -82,16 +82,30 @@ function formatDuration(secs: number | null): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-function DemoStatusBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+type DemoBreakdownTone = 'green' | 'yellow' | 'red' | 'blue';
+
+function DemoStatusBar({
+  label,
+  value,
+  total,
+  tone,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone: DemoBreakdownTone;
+}) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
-    <div style={{ marginBottom: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
+    <div className="admin-breakdown-row">
+      <div className="admin-breakdown-meta">
         <span>{label}</span>
-        <span>{value} ({pct}%)</span>
+        <span>
+          {value} ({pct}%)
+        </span>
       </div>
-      <div style={{ height: 6, background: 'var(--bg-secondary, #1e293b)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s' }} />
+      <div className="admin-breakdown-bar">
+        <span className={`admin-breakdown-fill tone-${tone}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -410,8 +424,8 @@ export function AdminDashboardLive() {
 
               {demoHealth ? (
                 <>
-                  <div style={{ marginTop: 24, marginBottom: 8 }}>
-                    <h2 style={{ fontSize: 14, fontWeight: 600, opacity: 0.7, margin: 0 }}>Web demo health</h2>
+                  <div className="admin-section-head">
+                    <h2>Web demo health</h2>
                   </div>
                   <section className="grid grid-4">
                     <div className="stat-card">
@@ -459,18 +473,32 @@ export function AdminDashboardLive() {
                   </section>
 
                   {demoHealth.week.total > 0 ? (
-                    <div style={{ marginTop: 16, padding: '16px 20px', background: 'var(--card-bg, #0f172a)', borderRadius: 10, border: '1px solid var(--border, #1e293b)' }}>
-                      <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 12px' }}>7-day status breakdown</h3>
-                      <DemoStatusBar label="Completed" value={demoHealth.week.completed} total={demoHealth.week.total} color="#4ade80" />
-                      <DemoStatusBar label="Timed out" value={demoHealth.week.timedOut} total={demoHealth.week.total} color="#facc15" />
-                      <DemoStatusBar label="Failed" value={demoHealth.week.failed} total={demoHealth.week.total} color="#f87171" />
-                      <DemoStatusBar label="In progress / started" value={demoHealth.week.total - demoHealth.week.completed - demoHealth.week.timedOut - demoHealth.week.failed} total={demoHealth.week.total} color="#60a5fa" />
+                    <div className="admin-breakdown-card">
+                      <h3>7-day status breakdown</h3>
+                      <div className="admin-breakdown-list">
+                        <DemoStatusBar label="Completed" value={demoHealth.week.completed} total={demoHealth.week.total} tone="green" />
+                        <DemoStatusBar label="Timed out" value={demoHealth.week.timedOut} total={demoHealth.week.total} tone="yellow" />
+                        <DemoStatusBar label="Failed" value={demoHealth.week.failed} total={demoHealth.week.total} tone="red" />
+                        <DemoStatusBar
+                          label="In progress / started"
+                          value={
+                            demoHealth.week.total -
+                            demoHealth.week.completed -
+                            demoHealth.week.timedOut -
+                            demoHealth.week.failed
+                          }
+                          total={demoHealth.week.total}
+                          tone="blue"
+                        />
+                      </div>
                       {demoHealth.week.byVertical.length > 0 ? (
-                        <div style={{ marginTop: 14 }}>
-                          <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 6 }}>Top verticals (7d)</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <div className="admin-breakdown-extra">
+                          <div className="admin-breakdown-extra-label">Top verticals (7d)</div>
+                          <div className="admin-breakdown-chips">
                             {demoHealth.week.byVertical.slice(0, 5).map(({ slug, count }) => (
-                              <span key={slug} className="tag blue" style={{ fontSize: 11 }}>{slug} · {count}</span>
+                              <span key={slug} className="tag blue">
+                                {slug} · {count}
+                              </span>
                             ))}
                           </div>
                         </div>

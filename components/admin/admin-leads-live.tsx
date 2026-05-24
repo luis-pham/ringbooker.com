@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
@@ -129,6 +129,9 @@ export function AdminLeadsLive() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
+  const [noteLead, setNoteLead] = useState<LeadRecord | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const noteDialogRef = useRef<HTMLDialogElement>(null);
 
   async function reload() {
     setLoading(true);
@@ -157,6 +160,21 @@ export function AdminLeadsLive() {
     void reload();
   }, [statusFilter, intentFilter, query]);
 
+  useEffect(() => {
+    const el = noteDialogRef.current;
+    if (!el) return;
+    if (noteLead) {
+      if (!el.open) el.showModal();
+    } else if (el.open) {
+      el.close();
+    }
+  }, [noteLead]);
+
+  function openNoteDialog(lead: LeadRecord) {
+    setNoteDraft(lead.notes ?? '');
+    setNoteLead(lead);
+  }
+
   async function updateStatus(lead: LeadRecord, status: LeadStatus) {
     setUpdatingLeadId(lead.id);
     setError(null);
@@ -182,7 +200,7 @@ export function AdminLeadsLive() {
     }
   }
 
-  async function updateNotes(lead: LeadRecord, notes: string) {
+  async function updateNotes(lead: LeadRecord, notes: string): Promise<boolean> {
     setUpdatingLeadId(lead.id);
     setError(null);
     try {
@@ -197,11 +215,13 @@ export function AdminLeadsLive() {
       const body = (await response.json()) as LeadStatusPatchResponse;
       if (!body.ok || !body.lead) {
         setError(body.error ?? 'update_failed');
-        return;
+        return false;
       }
       setLeads((current) => current.map((item) => (item.id === body.lead?.id ? body.lead : item)));
+      return true;
     } catch {
       setError('network_error');
+      return false;
     } finally {
       setUpdatingLeadId(null);
     }
@@ -358,7 +378,7 @@ export function AdminLeadsLive() {
             <div className="panel-head">
               <div>
                 <h3>Lead queue</h3>
-                <p className="sub">Set status and notes directly from this table. Changes are saved immediately.</p>
+                <p className="sub">Update status inline. Open Note to add or edit sales notes in a dialog.</p>
               </div>
             </div>
             {loading ? (
@@ -446,14 +466,20 @@ export function AdminLeadsLive() {
                           <div className="sub">Handled at: {formatDateTime(lead.handledAt ?? undefined)}</div>
                         </div>
                       </td>
-                      <td style={{ minWidth: 260 }}>
-                        <LeadNotesEditor
-                          lead={lead}
+                      <td>
+                        <button
+                          type="button"
+                          className={`admin-table-note-btn${lead.notes?.trim() ? ' has-note' : ''}`}
                           disabled={updatingLeadId === lead.id}
-                          onSave={async (notes) => {
-                            await updateNotes(lead, notes);
-                          }}
-                        />
+                          onClick={() => openNoteDialog(lead)}
+                          aria-label={lead.notes?.trim() ? 'Edit sales note' : 'Add sales note'}
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden>
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                          </svg>
+                          Note
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -461,42 +487,65 @@ export function AdminLeadsLive() {
               </table>
             )}
           </section>
+
+          <dialog
+            ref={noteDialogRef}
+            className="rb-admin-modal"
+            onClose={() => {
+              setNoteLead(null);
+              setNoteDraft('');
+            }}
+          >
+            {noteLead ? (
+              <>
+                <div className="rb-admin-modal-head">
+                  <div>
+                    <h3 style={{ margin: '0 0 6px' }}>Sales note</h3>
+                    <p className="sub" style={{ margin: 0 }}>
+                      {noteLead.businessName} · {noteLead.fullName}
+                    </p>
+                  </div>
+                  <button type="button" className="btn ghost" onClick={() => noteDialogRef.current?.close()}>
+                    Close
+                  </button>
+                </div>
+                <div className="rb-admin-modal-body">
+                  <div className="field">
+                    <label htmlFor="lead-note-textarea">Note</label>
+                    <textarea
+                      id="lead-note-textarea"
+                      value={noteDraft}
+                      disabled={updatingLeadId === noteLead.id}
+                      onChange={(e) => setNoteDraft(e.target.value)}
+                      placeholder="Sales note..."
+                      rows={6}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="top-actions" style={{ marginTop: 8, justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn ghost" onClick={() => noteDialogRef.current?.close()}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn purple"
+                      disabled={updatingLeadId === noteLead.id}
+                      onClick={() => {
+                        void (async () => {
+                          const saved = await updateNotes(noteLead, noteDraft);
+                          if (saved) noteDialogRef.current?.close();
+                        })();
+                      }}
+                    >
+                      {updatingLeadId === noteLead.id ? 'Saving…' : 'Save note'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </dialog>
         </main>
       </div>
     </AdminLayout>
-  );
-}
-
-function LeadNotesEditor(props: {
-  lead: LeadRecord;
-  disabled: boolean;
-  onSave: (notes: string) => Promise<void>;
-}) {
-  const [draft, setDraft] = useState(props.lead.notes ?? '');
-
-  useEffect(() => {
-    setDraft(props.lead.notes ?? '');
-  }, [props.lead.id, props.lead.notes]);
-
-  return (
-    <div className="field">
-      <textarea
-        value={draft}
-        disabled={props.disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="Sales note..."
-        style={{ minHeight: 88 }}
-      />
-      <button
-        className="btn ghost"
-        type="button"
-        disabled={props.disabled}
-        onClick={() => {
-          void props.onSave(draft);
-        }}
-      >
-        Save note
-      </button>
-    </div>
   );
 }

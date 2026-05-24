@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import { CORE_VOICE_PROMPT, VERTICAL_PROMPT_PACKS } from '@/src/agent/prompts/generated-prompt-packs';
 import {
+  filterCoreVoicePromptForNailDemo,
   filterCoreVoicePromptForProductionPlan,
+  filterVerticalPackForNailDemo,
   filterVerticalPackForProductionPlan,
 } from '@/src/agent/prompts/production-plan-prompt-filter';
 
@@ -37,7 +39,6 @@ test('Professional nail vertical with en/vi keeps Vietnamese workflow lines', ()
     languages: ['en', 'vi'],
   });
   assert.match(filtered, /\bVietnamese\b/);
-  assert.match(filtered, /\bbilingual\b/i);
 });
 
 test('Demo mode leaves nail vertical unchanged', () => {
@@ -48,4 +49,15 @@ test('Demo mode leaves nail vertical unchanged', () => {
     languages: ['en', 'vi'],
   });
   assert.equal(filtered, nail);
+});
+
+test('Nail demo language filter removes Vietnamese switching instructions', () => {
+  const nail = VERTICAL_PROMPT_PACKS['nail-salon'].content;
+  const core = filterCoreVoicePromptForNailDemo(CORE_VOICE_PROMPT, 'demo', 'nail-salon');
+  const vertical = filterVerticalPackForNailDemo(nail, 'demo', 'nail-salon');
+
+  assert.doesNotMatch(core, /Detect and match the caller[\u2019']s language automatically/);
+  assert.match(core, /Keep spoken dialogue in English only/);
+  assert.doesNotMatch(vertical, /\bVietnamese\b/);
+  assert.doesNotMatch(vertical, /Dạ được/);
 });

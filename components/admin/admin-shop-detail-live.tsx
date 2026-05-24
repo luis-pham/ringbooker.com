@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 
+import { callOutcomeTagClass } from '@/components/admin/admin-call-outcome-tag';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { adminSidebarAddonStyles } from '@/components/admin/admin-sidebar-styles';
@@ -1475,20 +1476,12 @@ export function AdminShopDetailLive() {
                                           <td>{call.callerPhone ?? 'Unknown'}</td>
                                           <td>{formatDateTime(call.startedAt)}</td>
                                           <td>
-                                            <span
-                                              className={`tag ${
-                                                call.outcome === 'booked'
-                                                  ? 'green'
-                                                  : call.outcome === 'missed'
-                                                    ? 'orange'
-                                                    : 'blue'
-                                              }`}
-                                            >
+                                            <span className={callOutcomeTagClass(call.outcome)}>
                                               {call.outcome ?? 'in_progress'}
                                             </span>
                                           </td>
                                           <td>
-                                            <span className="tag purple" style={{ opacity: 0.9 }}>
+                                            <span className="tag purple">
                                               Details
                                             </span>
                                           </td>

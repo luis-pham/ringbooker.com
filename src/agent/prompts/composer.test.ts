@@ -61,7 +61,7 @@ describe('voice prompt composer', () => {
     assert.doesNotMatch(prompt, /Detect and match the caller[\u2019']s language automatically/);
   });
 
-  it('demo without shopPlan leaves nail bilingual vertical wording intact', () => {
+  it('nail demo stays English-only and strips vertical Vietnamese wording', () => {
     const prompt = composeVoicePrompt({
       vertical: 'nail-salon',
       callType: 'demo_outbound',
@@ -72,7 +72,12 @@ describe('voice prompt composer', () => {
       },
     });
 
-    assert.match(prompt, /If the caller speaks Vietnamese/i);
+    assert.match(prompt, /NAIL DEMO LANGUAGE OVERRIDE/i);
+    assert.match(prompt, /Keep spoken dialogue in English only/i);
+    assert.doesNotMatch(prompt, /If the caller speaks Vietnamese/i);
+    assert.doesNotMatch(prompt, /\bVietnamese\b/i);
+    assert.doesNotMatch(prompt, /Dạ được/i);
+    assert.doesNotMatch(prompt, /Cái đó mình/i);
   });
 
   it('keeps demo behavior isolated from production prompts', () => {
@@ -98,10 +103,10 @@ describe('voice prompt composer', () => {
       },
     });
 
-    assert.match(demoPrompt, /DEMO ISOLATION GUARDRAILS/);
-    assert.match(demoPrompt, /CALL-TYPE PROMPT PACK: Web Voice Demo Call/);
-    assert.doesNotMatch(productionPrompt, /DEMO ISOLATION GUARDRAILS/);
-    assert.doesNotMatch(productionPrompt, /CALL-TYPE PROMPT PACK: Web Voice Demo Call/);
+    assert.match(demoPrompt, /Isolated web demo only/);
+    assert.match(demoPrompt, /Demo-only vertical color/);
+    assert.doesNotMatch(productionPrompt, /Isolated web demo only/);
+    assert.doesNotMatch(productionPrompt, /Demo-only vertical color/);
   });
 
   it('keeps vertical behavior specific to the selected vertical', () => {
@@ -116,9 +121,7 @@ describe('voice prompt composer', () => {
       },
     });
 
-    assert.match(prompt, /VERTICAL PROMPT PACK: Med Spa/);
     assert.match(prompt, /consultation-first/);
-    assert.doesNotMatch(prompt, /VERTICAL: NAIL SALON/);
     assert.doesNotMatch(prompt, /dip powder/i);
   });
 

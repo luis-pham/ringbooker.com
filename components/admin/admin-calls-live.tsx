@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { adminSidebarAddonStyles } from '@/components/admin/admin-sidebar-styles';
+import { callOutcomeTagClass } from '@/components/admin/admin-call-outcome-tag';
 import { adminCallsScripts, adminCallsStyles } from '@/components/admin/admin-calls';
 
 type Call = {
@@ -68,13 +69,6 @@ function formatDateTime(value?: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return 'Unknown';
   return parsed.toLocaleString();
-}
-
-function callStatusClass(call: Call) {
-  if (call.outcome === 'missed') return 'tag orange';
-  if (call.outcome === 'error') return 'tag red';
-  if (call.outcome === 'booked') return 'tag green';
-  return 'tag blue';
 }
 
 function transcriptStatusLabel(call: Call) {
@@ -408,7 +402,7 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
                             </td>
                             <td>{formatDateTime(call.startedAt)}</td>
                             <td>
-                              <span className={callStatusClass(call)}>{call.outcome ?? 'in_progress'}</span>
+                              <span className={callOutcomeTagClass(call.outcome)}>{call.outcome ?? 'in_progress'}</span>
                             </td>
                             <td>
                               {call.agentJoined ? 'AI joined' : 'Waiting'}
@@ -497,7 +491,7 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
                           <p>{formatDateTime(transcriptDialogCall.startedAt)}</p>
                         </div>
                       </div>
-                      <span className={callStatusClass(transcriptDialogCall)}>
+                      <span className={callOutcomeTagClass(transcriptDialogCall.outcome)}>
                         {transcriptDialogCall.outcome ?? 'in_progress'}
                       </span>
                     </div>

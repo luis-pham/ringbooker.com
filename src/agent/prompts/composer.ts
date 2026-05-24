@@ -6,7 +6,9 @@ import {
   VERTICAL_PROMPT_PACKS,
 } from './generated-prompt-packs';
 import {
+  filterCoreVoicePromptForNailDemo,
   filterCoreVoicePromptForProductionPlan,
+  filterVerticalPackForNailDemo,
   filterVerticalPackForProductionPlan,
 } from './production-plan-prompt-filter';
 import { renderRuntimeBusinessConfig, STATIC_SERVICE_SCOPE_RULES } from './runtime-config';
@@ -19,6 +21,18 @@ const COMPOSITION_NOTE =
   'COMPOSITION NOTE: Core and guardrails first, then vertical, call-type, runtime. Safety and runtime facts win conflicts.';
 
 const COMPACTED_MARKER = '\n\n[Prompt compacted to fit latency/context budget]';
+
+const NAIL_DEMO_ENGLISH_ONLY_PROMPT =
+  'NAIL DEMO LANGUAGE OVERRIDE: This nail salon demo must stay in English only. Do not switch to another language, and do not use non-English wording, even if another prompt section or the caller asks for it.';
+
+function renderDemoGuardrailPrompt(input: VoicePromptInput): string | null {
+  if (input.mode !== 'demo') return null;
+  if (input.vertical !== 'nail-salon') return DEMO_GUARDRAIL_PROMPT;
+  return DEMO_GUARDRAIL_PROMPT.replace(
+    /Respond in the caller's language with one short warm line, then redirect:[\s\S]*?Decline first, redirect second, always\./,
+    'Respond in English with one short warm line, then redirect: "That\'s a bit outside what I can help with here — anything about our services or scheduling?" Never answer first and redirect second, always.',
+  );
+}
 
 export function composeVoicePrompt(input: VoicePromptInput): string {
   const verticalPack = VERTICAL_PROMPT_PACKS[input.vertical];
@@ -47,6 +61,9 @@ export function composeVoicePrompt(input: VoicePromptInput): string {
       mode: input.mode,
       languages: input.shopLanguages,
     });
+  } else if (input.mode === 'demo' && input.vertical === 'nail-salon') {
+    coreText = filterCoreVoicePromptForNailDemo(coreText, input.mode, input.vertical);
+    verticalText = filterVerticalPackForNailDemo(verticalText, input.mode, input.vertical);
   }
 
   const runtimeText = renderRuntimeBusinessConfig(businessForRuntime);
@@ -54,7 +71,8 @@ export function composeVoicePrompt(input: VoicePromptInput): string {
   const prefixSections = [
     coreText,
     UNIVERSAL_GUARDRAIL_PROMPT,
-    input.mode === 'demo' ? DEMO_GUARDRAIL_PROMPT : null,
+    renderDemoGuardrailPrompt(input),
+    input.mode === 'demo' && input.vertical === 'nail-salon' ? NAIL_DEMO_ENGLISH_ONLY_PROMPT : null,
     verticalText,
     callTypePack.content,
     STATIC_SERVICE_SCOPE_RULES,
