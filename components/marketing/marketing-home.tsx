@@ -1538,12 +1538,12 @@ export function MarketingHomeTemplate() {
             <div className="leak-intro">
               <div className="sec-label sec-label-left">Where calls get lost</div>
               <h2 className="sec-title reveal">
-                Your phone is <em>leaking bookings.</em>
+                Your phone is <em>leaking</em>
                 <br />
-                every day.
+                <em>bookings.</em> every day.
               </h2>
             <p className="sec-sub reveal">
-                Most missed opportunities happen at predictable moments. For a busy salon, that can add up to $1,640–$2,460 in lost revenue every month.
+                Most missed opportunities happen at predictable moments. Each one costs real revenue that you never see.
             </p>
             </div>
             <div className="leak-body">
@@ -1614,9 +1614,9 @@ export function MarketingHomeTemplate() {
             <div className="coverage-intro">
               <p className="coverage-kicker reveal">Core coverage</p>
               <h2 className="coverage-title reveal">
-                Coverage built around
+                The phone moments
                 <br />
-                how <em>beauty businesses</em> actually work.
+                <em>RingBooker</em> covers
               </h2>
               <p className="coverage-lead reveal">
                 Built around the exact situations where beauty businesses lose bookings — not generic call-center logic.
