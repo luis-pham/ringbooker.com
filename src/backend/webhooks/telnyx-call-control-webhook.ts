@@ -238,6 +238,7 @@ async function checkBridgeReady(
   params: {
     fetchDeps: { fetchImpl?: typeof fetch; apiKey?: string };
     log: ReturnType<typeof withLogContext>;
+    providerEventsRepository: ProviderEventsRepository;
   },
 ): Promise<void> {
   if (session.cleanupInitiated) return;
@@ -258,10 +259,40 @@ async function checkBridgeReady(
     'both_legs_ready_initiating_bridge',
   );
 
+  const commitKey = openAiBridgeCommitKey(session.callerLegId, session.openaiLegId);
+  const bridgeCommit = await params.providerEventsRepository.tryMarkProcessing({
+    provider: OPENAI_BRIDGE_COMMIT_PROVIDER,
+    providerEventId: commitKey,
+    eventType: 'openai_bridge_commit',
+    payload: {
+      source: 'parallel_legs_ready',
+      parentCallControlId: session.callerLegId,
+      openaiLegCallControlId: session.openaiLegId,
+      rbCallId: session.rbCallId,
+    },
+  });
+  if (!bridgeCommit.acquired) {
+    params.log.info(
+      { callId: session.callId, rbCallId: session.rbCallId, shopId: session.shopId, commitKey },
+      'bridge_command_idempotent_skip',
+    );
+    return;
+  }
+
   const tBridge0 = Date.now();
-  const br = await callControlBridgeCalls(session.callerLegId, session.openaiLegId, params.fetchDeps);
+  const br = await callControlBridgeCalls(
+    session.callerLegId,
+    session.openaiLegId,
+    params.fetchDeps,
+    `openai_bridge:${session.rbCallId ?? session.callId}`,
+  );
   if (!br.ok) {
     session.bridgeState = 'failed';
+    await params.providerEventsRepository.markProcessingError(
+      OPENAI_BRIDGE_COMMIT_PROVIDER,
+      commitKey,
+      `openai_bridge_http_error:${br.status}`,
+    );
     params.log.warn(
       {
         status: br.status,
@@ -279,6 +310,17 @@ async function checkBridgeReady(
     return;
   }
 
+  await params.providerEventsRepository.markProcessed({
+    provider: OPENAI_BRIDGE_COMMIT_PROVIDER,
+    providerEventId: commitKey,
+    eventType: 'openai_bridge_commit',
+    payload: {
+      source: 'parallel_legs_ready',
+      parentCallControlId: session.callerLegId,
+      openaiLegCallControlId: session.openaiLegId,
+      rbCallId: session.rbCallId,
+    },
+  });
   params.log.info(
     {
       callId: session.callId,
@@ -896,6 +938,9 @@ async function processCallInitiated(
           };
           const openAiClientState = Buffer.from(JSON.stringify(openAiLegPayload), 'utf8').toString('base64');
 
+          // Mark commands in flight before sending them: a webhook can arrive before either HTTP response.
+          session.callerLegState = 'answering';
+          session.openaiLegState = 'dialing';
           const answerStartedAt = Date.now();
           const answerPromise = callControlAnswer(result.callControlId, answerBody, fetchDeps);
           const dialPromise = callControlCreateCall(
@@ -923,7 +968,6 @@ async function processCallInitiated(
             dialResult.value.callControlId.trim() !== '';
 
           if (answerOk) {
-            session.callerLegState = 'answering';
             scheduleSilentCallerRiskWatch({
               parentCallControlId: result.callControlId,
               rbCallId,
@@ -963,7 +1007,6 @@ async function processCallInitiated(
           if (dialOk && dialResult.status === 'fulfilled') {
             const openaiLegCallControlId = dialResult.value.callControlId as string;
             setParallelOpenAiLegId(session, openaiLegCallControlId);
-            session.openaiLegState = 'dialing';
             initializeBridgeGreetingSession({
               parentCallControlId: result.callControlId,
               openaiLegCallControlId,
@@ -1236,7 +1279,7 @@ async function processCallAnswered(
           );
         }
       }
-      await checkBridgeReady(parallelCallerSession, { fetchDeps, log });
+      await checkBridgeReady(parallelCallerSession, { fetchDeps, log, providerEventsRepository: deps.providerEventsRepository });
       await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
       incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
       return c.json({ ok: true, phase: 'answered', parallel: true, leg: 'caller' }, 200);
@@ -1310,8 +1353,18 @@ async function processCallAnswered(
             log.warn({ err, shopId: decodedClient.shopId, rbCallId: rbId }, 'openai_leg_webhook_upsert_failed');
           }
         }
-        const parallelOpenAiSession = parallelCallSessionsByOpenAiLeg.get(openaiLegCallControlId);
+        const parallelOpenAiSession =
+          parallelCallSessionsByOpenAiLeg.get(openaiLegCallControlId) ??
+          findParallelCallSession(parentCallControlId);
         if (parallelOpenAiSession) {
+          // The outbound answer webhook can beat the create-call HTTP response and leg indexing.
+          setParallelOpenAiLegId(parallelOpenAiSession, openaiLegCallControlId);
+          initializeBridgeGreetingSession({
+            parentCallControlId: parallelOpenAiSession.callerLegId ?? parentCallControlId,
+            openaiLegCallControlId,
+            rbCallId: parallelOpenAiSession.rbCallId,
+            shopId: parallelOpenAiSession.shopId,
+          });
           parallelOpenAiSession.openaiLegState = 'ready';
           log.info(
             {
@@ -1324,13 +1377,11 @@ async function processCallAnswered(
             },
             'openai_leg_ready',
           );
-          const ringbackUrlForStop = env.TELNYX_RINGBACK_AUDIO_URL?.trim();
-          if (ringbackUrlForStop && parallelOpenAiSession.callerLegId) {
-            await callControlPlaybackStop(parallelOpenAiSession.callerLegId, fetchDeps).catch((err) => {
-              log.warn({ err, parentCallControlId: parallelOpenAiSession.callerLegId }, 'ringback_playback_stop_failed');
-            });
-          }
-          await checkBridgeReady(parallelOpenAiSession, { fetchDeps, log });
+          await checkBridgeReady(parallelOpenAiSession, {
+            fetchDeps,
+            log,
+            providerEventsRepository: deps.providerEventsRepository,
+          });
           await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
           incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
           return c.json({ ok: true, phase: 'answered', parallel: true, leg: 'openai' }, 200);
@@ -1959,6 +2010,14 @@ async function processCallBridged(
     const peerCc = bridgedPeerCallControlIdFromPayload(payload);
     const clientStateRaw = firstStringFromPayload(payload, ['client_state']);
     const decoded = decodeCallControlClientState(clientStateRaw);
+    const bridgeFetchDeps = { fetchImpl: deps.testingTelnyxFetch, apiKey: getEnv().TELNYX_API_KEY };
+    const stopParallelRingback = async (session: ParallelCallSession | null) => {
+      const ringbackUrl = getEnv().TELNYX_RINGBACK_AUDIO_URL?.trim();
+      if (!session?.callerLegId || !ringbackUrl) return;
+      await callControlPlaybackStop(session.callerLegId, bridgeFetchDeps).catch((err) => {
+        log.warn({ err, parentCallControlId: session.callerLegId }, 'ringback_playback_stop_failed');
+      });
+    };
 
     log.info(
       {
@@ -1972,13 +2031,14 @@ async function processCallBridged(
     if (decoded?.purpose === 'openai_sip_leg') {
       const parentCallControlId = decoded.parentCallControlId ?? decoded.telnyxCallControlId;
       const openaiLegCallControlId = selfCc;
+      const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
+      await stopParallelRingback(parallelSession);
       const greetingStatus = markBridgeReadyForGreeting({
         parentCallControlId,
         openaiLegCallControlId,
         callControlId: selfCc,
         peerCallControlId: peerCc,
       });
-      const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
       log.info(
         {
           rbCallId: decoded.rbCallId ?? decoded.requestId,
@@ -1994,23 +2054,40 @@ async function processCallBridged(
         'telnyx_call_control_openai_bridge_confirmed',
       );
     } else if (selfCc && peerCc) {
-      const k1 = openAiBridgeCommitKey(selfCc, peerCc);
-      const k2 = openAiBridgeCommitKey(peerCc, selfCc);
-      const confirmed =
-        (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k1)) ||
-        (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k2));
-      if (confirmed) {
+      const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
+      if (parallelSession) {
+        await stopParallelRingback(parallelSession);
         const greetingStatus = markBridgeReadyForGreeting({
           callControlId: selfCc,
           peerCallControlId: peerCc,
         });
-        const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
         log.info(
           {
             callControlId: selfCc,
             peerCallControlId: peerCc,
             greetingStatus,
-            parallelBridgeState: parallelSession?.bridgeState ?? null,
+            parallelBridgeState: parallelSession.bridgeState,
+            event_type: event.event_type,
+          },
+          'telnyx_call_control_openai_bridge_confirmed',
+        );
+      }
+      const k1 = openAiBridgeCommitKey(selfCc, peerCc);
+      const k2 = openAiBridgeCommitKey(peerCc, selfCc);
+      const confirmed =
+        (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k1)) ||
+        (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k2));
+      if (confirmed && !parallelSession) {
+        const greetingStatus = markBridgeReadyForGreeting({
+          callControlId: selfCc,
+          peerCallControlId: peerCc,
+        });
+        log.info(
+          {
+            callControlId: selfCc,
+            peerCallControlId: peerCc,
+            greetingStatus,
+            parallelBridgeState: null,
             event_type: event.event_type,
           },
           'telnyx_call_control_openai_bridge_confirmed',

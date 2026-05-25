@@ -1,7 +1,5 @@
 import { logger } from '@/src/backend/observability/logger';
 
-export const BRIDGE_READY_FALLBACK_MS = 2000;
-
 type BridgeGreetingKey = string;
 
 type BridgeGreetingState = {
@@ -9,13 +7,12 @@ type BridgeGreetingState = {
   greetingSent: boolean;
   greetingPending: boolean;
   pendingGreetingPayload: unknown | null;
-  fallbackTimer: ReturnType<typeof setTimeout> | null;
   sendPendingGreeting: (() => void) | null;
   rbCallId?: string | null;
   shopId?: string | null;
   parentCallControlId: string;
   openaiLegCallControlId: string;
-  sentBy: 'bridge_ready' | 'fallback' | 'immediate' | null;
+  sentBy: 'bridge_ready' | 'immediate' | null;
 };
 
 const sessions = new Map<BridgeGreetingKey, BridgeGreetingState>();
@@ -50,7 +47,6 @@ export function initializeBridgeGreetingSession(params: {
     greetingSent: false,
     greetingPending: false,
     pendingGreetingPayload: null,
-    fallbackTimer: null,
     sendPendingGreeting: null,
     rbCallId: params.rbCallId ?? null,
     shopId: params.shopId ?? null,
@@ -83,7 +79,7 @@ function findSessionKey(params: {
   return null;
 }
 
-function sendGreetingForState(key: BridgeGreetingKey, state: BridgeGreetingState, sentBy: 'bridge_ready' | 'fallback' | 'immediate'): void {
+function sendGreetingForState(key: BridgeGreetingKey, state: BridgeGreetingState, sentBy: 'bridge_ready' | 'immediate'): void {
   if (state.greetingSent) {
     logger.info(
       {
@@ -96,11 +92,6 @@ function sendGreetingForState(key: BridgeGreetingKey, state: BridgeGreetingState
       'openai_sip_greeting_skipped_already_sent',
     );
     return;
-  }
-
-  if (state.fallbackTimer) {
-    clearTimeout(state.fallbackTimer);
-    state.fallbackTimer = null;
   }
 
   state.greetingSent = true;
@@ -133,7 +124,6 @@ export function queueGreetingUntilBridgeReady(params: {
   shopId?: string | null;
   pendingGreetingPayload: unknown;
   sendGreeting: () => void;
-  fallbackMs?: number;
 }): 'sent_immediately' | 'queued' | 'already_sent' {
   const key = initializeBridgeGreetingSession(params);
   const state = sessions.get(key);
@@ -173,24 +163,6 @@ export function queueGreetingUntilBridgeReady(params: {
     },
     'openai_sip_greeting_queued_waiting_for_bridge',
   );
-
-  if (state.fallbackTimer) clearTimeout(state.fallbackTimer);
-  state.fallbackTimer = setTimeout(() => {
-    const current = sessions.get(key);
-    if (!current || current.greetingSent) return;
-    logger.warn(
-      {
-        rbCallId: current.rbCallId ?? undefined,
-        shopId: current.shopId ?? undefined,
-        parentCallControlId: current.parentCallControlId,
-        openaiLegCallControlId: current.openaiLegCallControlId,
-        fallbackMs: params.fallbackMs ?? BRIDGE_READY_FALLBACK_MS,
-      },
-      'openai_sip_greeting_fallback_timeout_fired',
-    );
-    sendGreetingForState(key, current, 'fallback');
-  }, params.fallbackMs ?? BRIDGE_READY_FALLBACK_MS);
-  state.fallbackTimer.unref?.();
 
   return 'queued';
 }
@@ -234,7 +206,6 @@ export function cleanupBridgeGreetingSessionByCallControlId(callControlId: strin
   if (!key) return;
   const state = sessions.get(key);
   if (!state) return;
-  if (state.fallbackTimer) clearTimeout(state.fallbackTimer);
   logger.info(
     {
       rbCallId: state.rbCallId ?? undefined,

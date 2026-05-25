@@ -24,7 +24,6 @@ test('queues production greeting until Telnyx bridge is ready', () => {
     sendGreeting: () => {
       sent += 1;
     },
-    fallbackMs: 30_000,
   });
 
   assert.equal(queued, 'queued');
@@ -68,7 +67,6 @@ test('sends production greeting immediately when bridge event already arrived', 
     sendGreeting: () => {
       sent += 1;
     },
-    fallbackMs: 30_000,
   });
 
   assert.equal(result, 'sent_immediately');
@@ -76,7 +74,7 @@ test('sends production greeting immediately when bridge event already arrived', 
   cleanupBridgeGreetingSessionByCallControlId('cc_openai_ready');
 });
 
-test('fallback timer sends greeting when bridge event never arrives', async () => {
+test('does not send a production greeting when bridge event never arrives', async () => {
   initializeBridgeGreetingSession({
     parentCallControlId: 'cc_parent_fallback',
     openaiLegCallControlId: 'cc_openai_fallback',
@@ -90,12 +88,11 @@ test('fallback timer sends greeting when bridge event never arrives', async () =
     sendGreeting: () => {
       sent += 1;
     },
-    fallbackMs: 10,
   });
 
   assert.equal(result, 'queued');
   assert.equal(sent, 0);
   await new Promise((resolve) => setTimeout(resolve, 30));
-  assert.equal(sent, 1);
+  assert.equal(sent, 0);
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_fallback');
 });

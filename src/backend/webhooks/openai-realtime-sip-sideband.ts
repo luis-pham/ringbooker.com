@@ -5,10 +5,7 @@ import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
 import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
-import {
-  BRIDGE_READY_FALLBACK_MS,
-  queueGreetingUntilBridgeReady,
-} from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
+import { queueGreetingUntilBridgeReady } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 
 function compactToolOutput(output: string): string {
   return output.length > 8000 ? `${output.slice(0, 8000)}…` : output;
@@ -51,7 +48,6 @@ export type OpenAiRealtimeSipSidebandParams =
         openaiLegCallControlId: string;
         rbCallId?: string | null;
         shopId?: string | null;
-        fallbackMs?: number;
       };
       /** When set, used for `openai_accepted_to_initial_response_ms` after first greeting send. */
       acceptedAtMs?: number;
@@ -186,7 +182,6 @@ export function startOpenAiRealtimeSipSideband(
     queueGreetingUntilBridgeReady({
       ...params.initialResponseBridgeGate,
       pendingGreetingPayload: { instructions: instructions ?? null },
-      fallbackMs: params.initialResponseBridgeGate.fallbackMs ?? BRIDGE_READY_FALLBACK_MS,
       sendGreeting: trySendInitialResponse,
     });
   }
@@ -293,10 +288,15 @@ export function startOpenAiRealtimeSipSideband(
       return;
     }
 
-    initialTimer = setTimeout(() => {
-      initialTimer = null;
+    if (params.variant === 'shop' && params.initialResponseBridgeGate) {
+      // `call.bridged` is the media-ready gate; do not add a fixed greeting delay on this path.
       queueOrSendInitialResponse();
-    }, greetingDelayMs);
+    } else {
+      initialTimer = setTimeout(() => {
+        initialTimer = null;
+        queueOrSendInitialResponse();
+      }, greetingDelayMs);
+    }
   });
 
   ws.on('message', (data) => {

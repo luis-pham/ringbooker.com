@@ -20,6 +20,11 @@ import { AddressInfo } from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
 
 import { startOpenAiRealtimeSipSideband } from './openai-realtime-sip-sideband';
+import {
+  cleanupBridgeGreetingSessionByCallControlId,
+  initializeBridgeGreetingSession,
+  markBridgeReadyForGreeting,
+} from './openai-sip-bridge-greeting-coordinator';
 
 // ---------------------------------------------------------------------------
 // Local WS server (shared across all tests in this file)
@@ -80,7 +85,7 @@ test('onWsDropped fires when server closes with unexpected code', async () => {
     { wsUrlOverride: sidebandUrl('drop-test'), greetingDelayMs: 0 },
   );
 
-  const srv = await serverSocket;
+  await serverSocket;
   // Wait for sideband open event to propagate
   await flushIO(30);
 
@@ -142,7 +147,7 @@ test('onHardLimit fires after hardLimitMs from WS open', async (t) => {
   );
 
   // Wait for the real WS connection to be established (I/O is not faked)
-  await serverSocket;
+  const srv = await serverSocket;
   await flushIO(30);
 
   // Timer has been set; advance fake clock past hardLimitMs
@@ -186,6 +191,43 @@ test('hard-limit timer is cleared when WS closes with code 1000', async (t) => {
   t.mock.timers.tick(10_000);
 
   assert.equal(hardLimitFired, false, 'onHardLimit must not fire after clean WS close');
+});
+
+test('bridge-ready production greeting sends immediately without fixed sideband delay', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_no_delay',
+    openaiLegCallControlId: 'cc_openai_no_delay',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_no_delay',
+    openaiLegCallControlId: 'cc_openai_no_delay',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'bridge-no-delay-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_no_delay',
+        openaiLegCallControlId: 'cc_openai_no_delay',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('bridge-no-delay-test'), greetingDelayMs: 30_000 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+
+  assert.equal(messages.length, 1);
+  assert.match(messages[0] ?? '', /response\.create/);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_no_delay');
 });
 
 // ---------------------------------------------------------------------------

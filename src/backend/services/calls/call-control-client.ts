@@ -255,8 +255,14 @@ export async function callControlBridgeCalls(
   callControlId: string,
   otherLegCallControlId: string,
   deps?: CallControlClientDeps,
+  commandId?: string,
 ): Promise<CallControlHttpResult> {
-  return postCallControlAction(callControlId, 'bridge', { call_control_id: otherLegCallControlId }, deps);
+  return postCallControlAction(
+    callControlId,
+    'bridge',
+    { call_control_id: otherLegCallControlId, ...(commandId ? { command_id: commandId } : {}) },
+    deps,
+  );
 }
 
 /** @see https://developers.telnyx.com/api/call-control/playback-start */

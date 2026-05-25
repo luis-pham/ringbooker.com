@@ -240,6 +240,121 @@ test('telnyx call-control webhook invokes answer when dry-run off', async () => 
   assert.ok(urls.some((url) => /\/v2\/calls$/.test(url)));
 });
 
+test('parallel Call Control does not downgrade ready leg states when answered webhooks beat command responses', async () => {
+  resetEnvCacheForTests();
+  applyRequiredTestEnv({
+    ...TELNYX_INBOUND_CALL_CONTROL_STACK,
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+    TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+    TELNYX_CALL_CONTROL_DRY_RUN: 'false',
+  });
+
+  let releaseAnswer!: () => void;
+  let releaseDial!: () => void;
+  const answerResponse = new Promise<void>((resolve) => { releaseAnswer = resolve; });
+  const dialResponse = new Promise<void>((resolve) => { releaseDial = resolve; });
+  const bridgeBodies: string[] = [];
+  const testingTelnyxFetch: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (/\/v2\/calls\/cc_parallel_race\/actions\/answer$/.test(url)) {
+      await answerResponse;
+      return new Response(JSON.stringify({ data: {} }), { status: 200 });
+    }
+    if (/\/v2\/calls$/.test(url)) {
+      await dialResponse;
+      return new Response(JSON.stringify({ data: { call_control_id: 'cc_openai_race' } }), { status: 200 });
+    }
+    if (/\/actions\/bridge$/.test(url)) {
+      bridgeBodies.push(typeof init?.body === 'string' ? init.body : '');
+    }
+    return new Response(JSON.stringify({ data: {} }), { status: 200 });
+  };
+
+  const shopsRepository = new InMemoryShopsRepository();
+  await shopsRepository.updateUserSettings('demo-shop', {
+    telnyx_number: '+15551110070',
+    phone_number: '+15552220070',
+  });
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository,
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    testingTelnyxFetch,
+  });
+
+  async function postEvent(event: Record<string, unknown>) {
+    const body = JSON.stringify({ data: event });
+    const ts = `${Date.now()}`;
+    return app.request('/webhooks/telnyx/call-control', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'telnyx-timestamp': ts,
+        'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+      },
+      body,
+    });
+  }
+
+  const initiatedPromise = postEvent({
+    event_type: 'call.initiated',
+    id: 'evt-parallel-race-init',
+    payload: {
+      call_control_id: 'cc_parallel_race',
+      to: '+15551110070',
+      from: '+14155550000',
+      direction: 'incoming',
+    },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const callerAnswered = await postEvent({
+    event_type: 'call.answered',
+    id: 'evt-parallel-race-caller-answered',
+    payload: { call_control_id: 'cc_parallel_race', call_direction: 'incoming' },
+  });
+  assert.equal(callerAnswered.status, 200);
+
+  releaseAnswer();
+  releaseDial();
+  assert.equal((await initiatedPromise).status, 200);
+
+  const clientState = buildCallControlClientState({
+    shopId: 'demo-shop',
+    requestId: 'req_parallel_race',
+    rbCallId: 'req_parallel_race',
+    callerPhone: '+14155550000',
+    ts: new Date().toISOString(),
+    telnyxCallControlId: 'cc_parallel_race',
+    parentCallControlId: 'cc_parallel_race',
+    purpose: 'openai_sip_leg',
+    transport: 'openai_sip_direct',
+    handoffTransport: 'telnyx_call_control',
+  });
+  const openAiAnswered = await postEvent({
+    event_type: 'call.answered',
+    id: 'evt-parallel-race-openai-answered',
+    payload: {
+      call_control_id: 'cc_openai_race',
+      call_direction: 'outbound',
+      client_state: clientState,
+    },
+  });
+  assert.equal(openAiAnswered.status, 200);
+  assert.equal(bridgeBodies.length, 1);
+  assert.match(bridgeBodies[0] ?? '', /"command_id":"openai_bridge:/);
+
+  const bridged = await postEvent({
+    event_type: 'call.bridged',
+    id: 'evt-parallel-race-bridged',
+    payload: {
+      call_control_id: 'cc_parallel_race',
+      peer_call_control_id: 'cc_openai_race',
+    },
+  });
+  assert.equal(bridged.status, 200);
+});
+
 test('telnyx call-control live inbound allows active and trialing billing before answer', async () => {
   for (const entry of [
     { status: 'active' as const, eventId: 'evt-cc-active-allowed', callControlId: 'cc_active_allowed' },
