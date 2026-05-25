@@ -68,6 +68,28 @@ test('buildOpenAiSipAcceptBody can suppress VAD create_response for SIP demo pil
         sipPilotSuppressVadCreateResponse: true,
       });
       assert.equal(body.audio?.input?.turn_detection?.create_response, false);
+      assert.equal(body.audio?.input?.turn_detection?.interrupt_response, false);
+    },
+  );
+});
+
+test('buildOpenAiSipAcceptBody suppresses VAD interruption for a bridge-gated shop greeting', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'server_vad',
+      AGENT_OPENAI_CREATE_RESPONSE: 'true',
+      AGENT_OPENAI_INTERRUPT_RESPONSE: 'true',
+    },
+    () => {
+      const body = buildOpenAiSipAcceptBody({
+        instructions: 'Shop',
+        model: 'gpt-realtime',
+        voice: 'alloy',
+        sipPilotSuppressVadCreateResponse: true,
+      });
+      assert.equal(body.audio?.input?.turn_detection?.create_response, false);
+      assert.equal(body.audio?.input?.turn_detection?.interrupt_response, false);
     },
   );
 });

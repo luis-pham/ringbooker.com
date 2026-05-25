@@ -85,7 +85,7 @@ test('onWsDropped fires when server closes with unexpected code', async () => {
     { wsUrlOverride: sidebandUrl('drop-test'), greetingDelayMs: 0 },
   );
 
-  await serverSocket;
+  const srv = await serverSocket;
   // Wait for sideband open event to propagate
   await flushIO(30);
 
@@ -226,6 +226,11 @@ test('bridge-ready production greeting sends immediately without fixed sideband 
 
   assert.equal(messages.length, 1);
   assert.match(messages[0] ?? '', /response\.create/);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  assert.ok(messages.some((message) => message.includes('session.update')));
+  assert.ok(messages.some((message) => message.includes('"create_response":true')));
   srv.close(1000, 'test complete');
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_no_delay');
 });

@@ -126,7 +126,10 @@ export function buildOpenAiSipAcceptBody(params: {
   voice: string;
   /** Demo pilot: single `demo_noop` tool (mutually exclusive with `shopBusinessTools` in callers). */
   includeDemoNoopTool?: boolean;
-  /** When true, force `create_response: false` on VAD so the first turn is not doubled with sideband `response.create`. */
+  /**
+   * When true, sideband owns the opening greeting. Disable auto response and
+   * interruption until sideband restores normal VAD after greeting audio ends.
+   */
   sipPilotSuppressVadCreateResponse?: boolean;
   /** Production shop SIP: business tools from shared Realtime definitions. */
   shopBusinessTools?: OpenAiSipFunctionTool[];
@@ -176,7 +179,7 @@ export function buildOpenAiSipAcceptBody(params: {
     !Array.isArray(audioInput.turn_detection)
   ) {
     audioInput = {
-      turn_detection: { ...audioInput.turn_detection, create_response: false },
+      turn_detection: { ...audioInput.turn_detection, create_response: false, interrupt_response: false },
     };
   }
 

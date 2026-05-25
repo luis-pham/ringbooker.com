@@ -760,6 +760,10 @@ export async function handleOpenAiRealtimeSipWebhook(
 
   const shopToolsAndSideband =
     Boolean(env.OPENAI_SIP_SIDEBAND_ENABLED) && route.kind === 'shop' && shopSidebandDepsReady;
+  const shopBridgeGatedGreeting =
+    shopToolsAndSideband &&
+    !!shopRoomContext?.parentTelnyxCallControlId &&
+    !!shopRoomContext?.openAiLegCallControlId;
 
   if (route.kind === 'shop' && env.OPENAI_SIP_SIDEBAND_ENABLED && !shopSidebandDepsReady) {
     logger.warn({ callId }, 'openai_sip_shop_tools_missing_dependencies');
@@ -771,7 +775,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     model,
     voice,
     includeDemoNoopTool,
-    sipPilotSuppressVadCreateResponse: includeDemoNoopTool,
+    sipPilotSuppressVadCreateResponse: includeDemoNoopTool || shopBridgeGatedGreeting,
     shopBusinessTools: shopToolsAndSideband ? getSipShopToolsForOpenAiAccept() : undefined,
     toolChoice: shopToolsAndSideband ? 'auto' : undefined,
   });

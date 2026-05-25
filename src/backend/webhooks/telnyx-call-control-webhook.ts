@@ -976,12 +976,8 @@ async function processCallInitiated(
               log,
               answeredAtMs: answerStartedAt,
             });
-            const ringbackUrl = env.TELNYX_RINGBACK_AUDIO_URL?.trim();
-            if (ringbackUrl) {
-              callControlPlaybackStart(result.callControlId, ringbackUrl, 'infinity', fetchDeps).catch((err) => {
-                log.warn({ err, rbCallId, callControlId: result.callControlId }, 'ringback_playback_start_failed');
-              });
-            }
+            // Parallel setup bridges as soon as both legs answer. Starting asynchronous
+            // ringback here can complete after `call.bridged` and mask OpenAI's greeting.
             if (deps.voiceCallLegsRepository) {
               try {
                 await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
@@ -2010,15 +2006,6 @@ async function processCallBridged(
     const peerCc = bridgedPeerCallControlIdFromPayload(payload);
     const clientStateRaw = firstStringFromPayload(payload, ['client_state']);
     const decoded = decodeCallControlClientState(clientStateRaw);
-    const bridgeFetchDeps = { fetchImpl: deps.testingTelnyxFetch, apiKey: getEnv().TELNYX_API_KEY };
-    const stopParallelRingback = async (session: ParallelCallSession | null) => {
-      const ringbackUrl = getEnv().TELNYX_RINGBACK_AUDIO_URL?.trim();
-      if (!session?.callerLegId || !ringbackUrl) return;
-      await callControlPlaybackStop(session.callerLegId, bridgeFetchDeps).catch((err) => {
-        log.warn({ err, parentCallControlId: session.callerLegId }, 'ringback_playback_stop_failed');
-      });
-    };
-
     log.info(
       {
         call_control_id: selfCc,
@@ -2032,7 +2019,6 @@ async function processCallBridged(
       const parentCallControlId = decoded.parentCallControlId ?? decoded.telnyxCallControlId;
       const openaiLegCallControlId = selfCc;
       const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
-      await stopParallelRingback(parallelSession);
       const greetingStatus = markBridgeReadyForGreeting({
         parentCallControlId,
         openaiLegCallControlId,
@@ -2056,7 +2042,6 @@ async function processCallBridged(
     } else if (selfCc && peerCc) {
       const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
       if (parallelSession) {
-        await stopParallelRingback(parallelSession);
         const greetingStatus = markBridgeReadyForGreeting({
           callControlId: selfCc,
           peerCallControlId: peerCc,

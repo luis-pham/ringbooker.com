@@ -4,7 +4,10 @@ import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
 import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
-import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
+import {
+  buildDirectWebDemoClientSecretAudioInput,
+  buildOpenAiSipAcceptAudioInputFromEnv,
+} from '@/src/backend/webhooks/openai-sip-accept-payload';
 import { queueGreetingUntilBridgeReady } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 
 function compactToolOutput(output: string): string {
@@ -119,6 +122,9 @@ export function startOpenAiRealtimeSipSideband(
   let hardLimitTimer: ReturnType<typeof setTimeout> | null = null;
   let initialResponseSent = false;
   let vadResumeAfterWelcomeSent = false;
+  let shopVadResumeAfterWelcomeSent = false;
+  let initialGreetingAudioStarted = false;
+  let initialGreetingAudioStopped = false;
   let sawUserSpeechBeforeInitial = false;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -228,6 +234,34 @@ export function startOpenAiRealtimeSipSideband(
     }
   }
 
+  function maybeResumeShopVadAfterWelcome(fromEvent: string): void {
+    if (params.variant !== 'shop' || !params.initialResponseBridgeGate || !initialResponseSent || shopVadResumeAfterWelcomeSent) return;
+    if (ws.readyState !== WebSocket.OPEN) return;
+    const td = buildOpenAiSipAcceptAudioInputFromEnv().turn_detection;
+    if (!td || typeof td !== 'object' || Array.isArray(td)) return;
+
+    shopVadResumeAfterWelcomeSent = true;
+    try {
+      ws.send(
+        JSON.stringify({
+          type: 'session.update',
+          session: {
+            type: 'realtime',
+            audio: {
+              input: {
+                turn_detection: td,
+              },
+            },
+          },
+        }),
+      );
+      logger.info({ callId: params.callId, fromEvent }, 'openai_sip_shop_vad_resumed_after_greeting');
+    } catch (err) {
+      shopVadResumeAfterWelcomeSent = false;
+      logger.warn({ err, callId: params.callId, fromEvent }, 'openai_sip_shop_vad_resume_failed');
+    }
+  }
+
   ws.on('open', () => {
     wsOpened = true;
     logger.info(
@@ -324,6 +358,18 @@ export function startOpenAiRealtimeSipSideband(
       (evt.type === 'response.done' || evt.type === 'output_audio_buffer.stopped')
     ) {
       maybeResumeDemoVadAfterWelcome(evt.type ?? 'unknown');
+    }
+
+    if (params.variant === 'shop' && params.initialResponseBridgeGate && initialResponseSent) {
+      if (evt.type === 'output_audio_buffer.started' && !initialGreetingAudioStarted) {
+        initialGreetingAudioStarted = true;
+        logger.info({ callId: params.callId }, 'openai_sip_initial_greeting_audio_started');
+      }
+      if (evt.type === 'output_audio_buffer.stopped' && !initialGreetingAudioStopped) {
+        initialGreetingAudioStopped = true;
+        logger.info({ callId: params.callId }, 'openai_sip_initial_greeting_audio_stopped');
+        maybeResumeShopVadAfterWelcome(evt.type);
+      }
     }
 
     // Fire onEndCall once the goodbye audio finishes playing.

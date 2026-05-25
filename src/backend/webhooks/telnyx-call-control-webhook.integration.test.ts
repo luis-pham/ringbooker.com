@@ -247,6 +247,7 @@ test('parallel Call Control does not downgrade ready leg states when answered we
     TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
     TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
     TELNYX_CALL_CONTROL_DRY_RUN: 'false',
+    TELNYX_RINGBACK_AUDIO_URL: 'https://example.com/ringback.wav',
   });
 
   let releaseAnswer!: () => void;
@@ -254,8 +255,10 @@ test('parallel Call Control does not downgrade ready leg states when answered we
   const answerResponse = new Promise<void>((resolve) => { releaseAnswer = resolve; });
   const dialResponse = new Promise<void>((resolve) => { releaseDial = resolve; });
   const bridgeBodies: string[] = [];
+  const telnyxUrls: string[] = [];
   const testingTelnyxFetch: typeof fetch = async (input, init) => {
     const url = String(input);
+    telnyxUrls.push(url);
     if (/\/v2\/calls\/cc_parallel_race\/actions\/answer$/.test(url)) {
       await answerResponse;
       return new Response(JSON.stringify({ data: {} }), { status: 200 });
@@ -343,6 +346,7 @@ test('parallel Call Control does not downgrade ready leg states when answered we
   assert.equal(openAiAnswered.status, 200);
   assert.equal(bridgeBodies.length, 1);
   assert.match(bridgeBodies[0] ?? '', /"command_id":"openai_bridge:/);
+  assert.equal(telnyxUrls.some((url) => url.includes('/actions/playback_')), false);
 
   const bridged = await postEvent({
     event_type: 'call.bridged',
