@@ -260,3 +260,52 @@ test('Starter cannot request recording playback even when a stored recording exi
   assert.equal(playbackBody.error, 'plan_feature_locked');
   assert.equal(playbackBody.requirements.capability, 'call_recording_playback');
 });
+
+test('Starter cannot request call recovery insights', async () => {
+  const { app, shopsRepository } = createCallsTestApp();
+  await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'starter' });
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calls/insights', { headers: { cookie } });
+  assert.equal(response.status, 403);
+  const body = await response.json() as { error: string; requirements: { capability: string } };
+  assert.equal(body.error, 'plan_feature_locked');
+  assert.equal(body.requirements.capability, 'call_recovery_insights');
+});
+
+test('Professional call recovery insights aggregate calls in the current usage period', async () => {
+  const { app, callLogsRepository } = createCallsTestApp();
+  const cookie = await loginUser(app);
+  const startedAt = new Date();
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx',
+    providerCallId: 'insights-missed',
+    shopId: 'demo-shop',
+    requestId: 'req-insights-missed',
+    startedAt,
+  });
+  for (const [index, service] of ['Haircut', 'Haircut', 'Color'].entries()) {
+    const requestId = `req-insights-captured-${index}`;
+    await callLogsRepository.createOrUpdateInboundCall({
+      provider: 'telnyx',
+      providerCallId: `insights-captured-${index}`,
+      shopId: 'demo-shop',
+      requestId,
+      startedAt,
+    });
+    await callLogsRepository.updateStructuredSummary('demo-shop', requestId, { summaryServiceRequest: service });
+  }
+
+  const response = await app.request('/user/calls/insights', { headers: { cookie } });
+  assert.equal(response.status, 200);
+  const body = await response.json() as {
+    missedOpportunities: { percentage: number; trend: Array<{ date: string; count: number }> };
+    topServices: Array<{ service: string; count: number; percentage: number }>;
+    peakCallTimes: Array<{ hour: number; count: number }>;
+  };
+  assert.equal(body.missedOpportunities.percentage, 25);
+  assert.equal(body.missedOpportunities.trend.reduce((sum, item) => sum + item.count, 0), 1);
+  assert.deepEqual(body.topServices[0], { service: 'Haircut', count: 2, percentage: 67 });
+  assert.equal(body.peakCallTimes.reduce((sum, item) => sum + item.count, 0), 4);
+});

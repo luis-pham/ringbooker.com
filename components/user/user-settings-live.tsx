@@ -182,6 +182,7 @@ type ShopCapabilities = Record<
   | 'provider_context'
   | 'third_party_integrations'
   | 'advanced_call_analytics'
+  | 'call_recovery_insights'
   | 'configure_call_recording'
   | 'call_recording_playback',
   boolean
@@ -732,6 +733,7 @@ const DEFAULT_SETTINGS_CAPABILITIES: ShopCapabilities = {
   provider_context: false,
   third_party_integrations: false,
   advanced_call_analytics: false,
+  call_recovery_insights: false,
   configure_call_recording: false,
   call_recording_playback: false,
 };

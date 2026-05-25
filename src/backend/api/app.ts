@@ -103,6 +103,8 @@ import { resolveGoLiveDashboardPrimaryCta } from '@/src/backend/services/billing
 import { normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import { getBillingPeriodForShop } from '@/src/backend/services/usage/period';
+import { normalizeShopTimezone } from '@/src/shared/timezone';
 import {
   buildAdminTrialEndingSoonWatchlist,
   type AdminTrialEndingSoonItem,
@@ -1372,6 +1374,27 @@ function toBasicUserCallResponse(
     updatedAt: call.endedAt ?? call.startedAt,
     missedFollowupSmsSent: extras.missedFollowupSmsSent ?? false,
   };
+}
+
+function shopLocalDateKey(value: Date | string, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function shopLocalHour(value: Date | string, timezone: string): number | null {
+  const rendered = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hourCycle: 'h23',
+  }).format(new Date(value));
+  const hour = Number(rendered);
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : null;
 }
 
 type SessionRole = 'user' | 'admin';
@@ -6430,6 +6453,88 @@ export function createBackendApp(deps: {
     });
   });
 
+  app.get(path('/user/calls/insights'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_insights');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'call_recovery_insights')) {
+      return planFeatureLockedJson(c, 'call_recovery_insights');
+    }
+
+    const period = await getBillingPeriodForShop(shop.id, deps, { shopTimezone: shop.timezone });
+    const periodCalls: CallLogListItem[] = [];
+    const batchSize = 1000;
+    for (let offset = 0; ; offset += batchSize) {
+      const batch = await deps.callLogsRepository.listByShop(shop.id, {
+        startedAfter: period.start,
+        startedBefore: period.end,
+        limit: batchSize,
+        offset,
+      });
+      periodCalls.push(...batch);
+      if (batch.length < batchSize) break;
+    }
+
+    const timezone = normalizeShopTimezone(shop.timezone);
+    const missed = periodCalls.filter((call) => !call.isCapturedCaller);
+    const missedByDate = new Map<string, number>();
+    for (const call of missed) {
+      if (!call.startedAt) continue;
+      const date = shopLocalDateKey(call.startedAt, timezone);
+      missedByDate.set(date, (missedByDate.get(date) ?? 0) + 1);
+    }
+    const now = new Date();
+    const trend = Array.from({ length: 7 }, (_, index) => {
+      const date = shopLocalDateKey(new Date(now.getTime() - (6 - index) * 24 * 60 * 60 * 1000), timezone);
+      return { date, count: missedByDate.get(date) ?? 0 };
+    });
+
+    const services = new Map<string, { service: string; count: number }>();
+    for (const call of periodCalls) {
+      const service = call.summaryServiceRequest?.trim();
+      if (!service) continue;
+      const key = service.toLocaleLowerCase();
+      const current = services.get(key);
+      services.set(key, { service: current?.service ?? service, count: (current?.count ?? 0) + 1 });
+    }
+    const totalServiceRequests = [...services.values()].reduce((sum, item) => sum + item.count, 0);
+    const topServices = [...services.values()]
+      .sort((a, b) => b.count - a.count || a.service.localeCompare(b.service))
+      .slice(0, 5)
+      .map((item) => ({
+        ...item,
+        percentage: totalServiceRequests ? Math.round((item.count / totalServiceRequests) * 100) : 0,
+      }));
+
+    const callCountsByHour = new Map<number, number>();
+    for (const call of periodCalls) {
+      if (!call.startedAt) continue;
+      const hour = shopLocalHour(call.startedAt, timezone);
+      if (hour == null) continue;
+      callCountsByHour.set(hour, (callCountsByHour.get(hour) ?? 0) + 1);
+    }
+    const peakCallTimes = periodCalls.length
+      ? Array.from({ length: 24 }, (_, hour) => ({ hour, count: callCountsByHour.get(hour) ?? 0 }))
+      : [];
+
+    return c.json({
+      ok: true,
+      missedOpportunities: {
+        percentage: periodCalls.length ? Math.round((missed.length / periodCalls.length) * 100) : 0,
+        trend,
+      },
+      topServices,
+      peakCallTimes,
+    });
+  });
+
   app.get(path('/user/calls/:id/recording-playback-url'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_call_recording_playback');
     if (limited) return limited;
@@ -6564,6 +6669,7 @@ export function createBackendApp(deps: {
       stats: canUseAdvancedCallAnalytics
         ? { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency }
         : { last7Days: last7DaysCount, missed },
+      capabilities: { call_recovery_insights: isCapabilityAllowed(shop.plan, 'call_recovery_insights') },
       pagination: { page, limit, pageSize: limit, total, totalPages },
       ...(canUseAdvancedCallAnalytics ? { summary: { total, booked: bookings, missed, transcriptsReady } } : {}),
     });

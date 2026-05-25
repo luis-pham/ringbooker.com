@@ -65,9 +65,14 @@ const callsPortalStyles = String.raw`
 .calls-status--progress{background:#fef3c7;color:#92400e}
 .calls-status--completed{background:#f3f4f6;color:#6b7280}
 .calls-status--missed{background:#fef2f2;color:#dc2626}
-.calls-transcript-view-btn{appearance:none;background:var(--surface-card);border:1px solid var(--border);border-radius:8px;color:var(--text-dark);cursor:pointer;font:inherit;font-size:12px;font-weight:500;padding:5px 12px;transition:border-color .15s ease,color .15s ease}
-.calls-transcript-view-btn:hover{border-color:var(--purple-dark);color:var(--purple-dark)}
-.calls-row-actions{display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.calls-row-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.calls-log-action{display:inline-flex}
+.calls-log-icon-btn{appearance:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text-gray);cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.calls-log-icon-btn:hover{background:var(--bg-gray);border-color:var(--border);color:var(--text-dark)}
+.calls-log-icon-btn:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
+.calls-log-icon-btn:active{background:var(--bg-gray)}
+.calls-log-icon-btn:disabled{color:var(--text-light);cursor:not-allowed;opacity:.55}
+.calls-log-icon-btn:disabled:hover{background:transparent;border-color:transparent;color:var(--text-light)}
 .calls-transcript-pending{font-size:12px;color:var(--text-light)}
 .calls-empty{padding:54px 20px;text-align:center;color:var(--text-gray)}
 .calls-empty-icon{font-size:32px;opacity:.3;margin-bottom:10px}

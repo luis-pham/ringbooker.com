@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { IconChartBar, IconFileDescription, IconLock, IconPlayerPlay } from '@tabler/icons-react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
@@ -27,7 +28,7 @@ type CallOutcome =
   | 'complaint'
   | 'wrong_number'
   | 'no_outcome';
-type CallFilter = 'all' | 'follow_up' | 'high_urgency' | 'missed';
+type CallFilter = 'all' | 'follow_up' | 'high_urgency' | 'missed' | 'insights';
 
 type Call = {
   id: string;
@@ -75,10 +76,17 @@ export type CallsResponse = {
   calls?: Call[];
   total?: number;
   stats?: CallsStats;
+  capabilities?: { call_recovery_insights?: boolean };
   shop?: { timezone?: string | null };
   pagination?: { page: number; limit?: number; pageSize?: number; total: number; totalPages?: number };
   summary?: { total: number; booked: number; missed: number; transcriptsReady?: number };
   error?: string;
+};
+
+type CallRecoveryInsights = {
+  missedOpportunities: { percentage: number; trend: Array<{ date: string; count: number }> };
+  topServices: Array<{ service: string; count: number; percentage: number }>;
+  peakCallTimes: Array<{ hour: number; count: number }>;
 };
 
 export type IntentSummaryResponse = {
@@ -160,12 +168,127 @@ function statusMeta(status: CallStatus) {
 }
 
 function tabFromSearch(value: string | null): CallFilter {
-  if (value === 'follow_up' || value === 'high_urgency' || value === 'missed') return value;
+  if (value === 'follow_up' || value === 'high_urgency' || value === 'missed' || value === 'insights') return value;
   return 'all';
 }
 
 function hasAnyStats(stats: CallsStats) {
   return stats.last7Days + stats.bookings + stats.followUp + stats.missed + stats.highUrgency > 0;
+}
+
+function hourLabel(hour: number): string {
+  const suffix = hour >= 12 ? 'pm' : 'am';
+  const displayed = hour % 12 || 12;
+  return `${displayed}${suffix}`;
+}
+
+function InsightChartBars({ values, highlightIndex }: { values: number[]; highlightIndex?: number }) {
+  const max = Math.max(1, ...values);
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, minHeight: 62, marginTop: 18 }}>
+      {values.map((count, index) => (
+        <span
+          key={`${index}:${count}`}
+          title={`${count} calls`}
+          style={{
+            display: 'block',
+            flex: 1,
+            height: Math.max(5, Math.round((count / max) * 60)),
+            background: index === highlightIndex ? 'var(--purple-dark)' : 'var(--border)',
+            borderRadius: 6,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CallRecoveryInsightsPanel({ insights }: { insights: CallRecoveryInsights }) {
+  const visibleHours = insights.peakCallTimes.filter(({ hour }) => hour >= 8 && hour <= 22);
+  const peak = visibleHours.reduce<{ hour: number; count: number } | null>(
+    (best, item) => (!best || item.count > best.count ? item : best),
+    null,
+  );
+  const visiblePeakIndex = peak ? visibleHours.findIndex(({ hour }) => hour === peak.hour) : -1;
+  return (
+    <section className="grid grid-3" aria-label="Call recovery insights">
+      <div className="card">
+        <div className="panel-head">
+          <div><h3>Missed opportunities</h3><p className="sub">Calls not captured</p></div>
+        </div>
+        {insights.missedOpportunities.percentage === 0 ? (
+          <p className="sub">No missed calls this period 🎉</p>
+        ) : (
+          <>
+            <div className="stat-value">{insights.missedOpportunities.percentage}%</div>
+            <div className="stat-meta">of calls this billing period</div>
+          </>
+        )}
+        <InsightChartBars values={insights.missedOpportunities.trend.map(({ count }) => count)} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, marginTop: 8, fontSize: 10, color: 'var(--text-light)' }}>
+          {insights.missedOpportunities.trend.map(({ date }) => <span key={date}>{date.slice(5)}</span>)}
+        </div>
+      </div>
+      <div className="card">
+        <div className="panel-head">
+          <div><h3>Top requested services</h3><p className="sub">Demand this billing period</p></div>
+        </div>
+        {insights.topServices.length === 0 ? <p className="sub">Not enough data yet — check back after more calls</p> : (
+          <div className="progress-list">
+            {insights.topServices.map((item) => (
+              <div className="progress-item" key={item.service}>
+                <strong>{item.service}</strong>
+                <div className="bar"><span style={{ width: `${item.percentage}%` }} /></div>
+                <span>{item.percentage}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="card">
+        <div className="panel-head">
+          <div><h3>Peak call times</h3><p className="sub">Volume by local hour</p></div>
+        </div>
+        {visibleHours.length === 0 || !peak || peak.count === 0 ? <p className="sub">Not enough data yet</p> : (
+          <>
+            <InsightChartBars values={visibleHours.map(({ count }) => count)} highlightIndex={visiblePeakIndex} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: 'var(--text-light)' }}>
+              <span>8am</span><span>3pm</span><span>10pm</span>
+            </div>
+            <p className="sub" style={{ marginTop: 18 }}>Busiest time: {hourLabel(peak.hour)} – {hourLabel((peak.hour + 1) % 24)}</p>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CallRecoveryInsightsUpsell() {
+  const preview: CallRecoveryInsights = {
+    missedOpportunities: { percentage: 18, trend: [1, 0, 2, 1, 3, 1, 2].map((count, index) => ({ date: `05-${18 + index}`, count })) },
+    topServices: [
+      { service: 'Haircut', count: 14, percentage: 42 },
+      { service: 'Color', count: 9, percentage: 27 },
+      { service: 'Blowout', count: 5, percentage: 15 },
+    ],
+    peakCallTimes: Array.from({ length: 24 }, (_, hour) => ({ hour, count: hour === 17 ? 12 : hour >= 8 && hour <= 22 ? (hour % 5) + 2 : 0 })),
+  };
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{ filter: 'blur(4px)', pointerEvents: 'none', opacity: 0.58 }} aria-hidden="true">
+        <CallRecoveryInsightsPanel insights={preview} />
+      </div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div className="modal-card" style={{ width: 'min(440px, 100%)', textAlign: 'center', padding: 28 }}>
+          <span className="calls-stat-icon calls-stat-icon--purple" style={{ margin: '0 auto 14px' }}><IconChartBar size={22} stroke={1.8} /></span>
+          <div className="modal-title"><h3>Call recovery insights</h3></div>
+          <p className="sub" style={{ lineHeight: 1.6, margin: '10px 0 22px' }}>See missed opportunities, top requested services, and peak call times. Available on Professional.</p>
+          <a className="btn user-save" href="/user/billing#upgrade">Upgrade to Professional</a>
+          <p className="sub" style={{ margin: '14px 0 0' }}>$149/month · 14-day free trial</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function UserCallsLive({
@@ -192,6 +315,10 @@ export function UserCallsLive({
   const [recordingLoading, setRecordingLoading] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(initialData?.ok ? initialData.shop : null));
+  const [canViewRecoveryInsights, setCanViewRecoveryInsights] = useState(Boolean(initialData?.capabilities?.call_recovery_insights));
+  const [insights, setInsights] = useState<CallRecoveryInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   useEffect(() => {
     const next = tabFromSearch(searchParams.get('tab'));
@@ -199,6 +326,10 @@ export function UserCallsLive({
   }, [searchParams]);
 
   useEffect(() => {
+    if (activeFilter === 'insights') {
+      setLoading(false);
+      return;
+    }
     if (didUseInitialCalls.current && activeFilter === 'all' && page === 1) {
       didUseInitialCalls.current = false;
       return;
@@ -221,6 +352,7 @@ export function UserCallsLive({
           return;
         }
         setCalls(body.calls ?? []);
+        setCanViewRecoveryInsights(Boolean(body.capabilities?.call_recovery_insights));
         setShopTimezone(getShopTimezone(body.shop));
         setTotalCount(body.pagination?.total ?? body.total ?? 0);
         setTotalPages(body.pagination?.totalPages ?? Math.max(1, Math.ceil((body.pagination?.total ?? body.total ?? 0) / USER_CALLS_PAGE_SIZE)));
@@ -236,6 +368,31 @@ export function UserCallsLive({
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, [activeFilter, page]);
+
+  useEffect(() => {
+    if (activeFilter !== 'insights' || !canViewRecoveryInsights) return;
+    const controller = new AbortController();
+    setInsightsLoading(true);
+    setInsightsError(null);
+    void fetch('/api/backend/user/calls/insights', { signal: controller.signal })
+      .then(async (response) => {
+        const body = (await response.json()) as { ok?: boolean; error?: string } & Partial<CallRecoveryInsights>;
+        if (!response.ok || !body.ok || !body.missedOpportunities || !body.topServices || !body.peakCallTimes) {
+          setInsightsError(body.error ?? 'unable_to_load');
+          return;
+        }
+        setInsights({
+          missedOpportunities: body.missedOpportunities,
+          topServices: body.topServices,
+          peakCallTimes: body.peakCallTimes,
+        });
+      })
+      .catch((err) => {
+        if ((err as Error).name !== 'AbortError') setInsightsError('network_error');
+      })
+      .finally(() => setInsightsLoading(false));
+    return () => controller.abort();
+  }, [activeFilter, canViewRecoveryInsights]);
 
   function changeFilter(filter: CallFilter) {
     const query = new URLSearchParams(searchParams.toString());
@@ -294,6 +451,7 @@ export function UserCallsLive({
       { value: 'follow_up' as const, label: 'Follow up needed', count: stats.followUp },
       { value: 'high_urgency' as const, label: 'High urgency', count: stats.highUrgency },
       { value: 'missed' as const, label: 'Missed', count: stats.missed },
+      { value: 'insights' as const, label: 'Insights', count: 0 },
     ],
     [stats],
   );
@@ -317,7 +475,7 @@ export function UserCallsLive({
             <UserPortalPageContent pageClass="page-calls">
               {error ? <div className="calls-error">Unable to load calls: {error}</div> : null}
 
-              {hasAnyStats(stats) ? (
+              {activeFilter !== 'insights' && hasAnyStats(stats) ? (
                 <section className="calls-metric-grid" aria-label="Call activity summary">
                   <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--blue">☎</span><div><p>This week</p><strong>{stats.last7Days}</strong></div></div>
                   <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--purple">▣</span><div><p>Bookings captured</p><strong>{stats.bookings}</strong></div></div>
@@ -330,6 +488,7 @@ export function UserCallsLive({
                 <div className="calls-filter-tabs" role="tablist" aria-label="Call filters">
                   {tabs.map((tab) => (
                     <button key={tab.value} type="button" role="tab" aria-selected={activeFilter === tab.value} className={`calls-filter-tab${activeFilter === tab.value ? ' active' : ''}`} onClick={() => changeFilter(tab.value)}>
+                      {tab.value === 'insights' && !canViewRecoveryInsights ? <IconLock size={13} stroke={2} style={{ marginRight: 5, verticalAlign: '-2px' }} /> : null}
                       {tab.label}
                       {tab.count > 0 ? <span>{`(${tab.count})`}</span> : null}
                     </button>
@@ -337,7 +496,14 @@ export function UserCallsLive({
                 </div>
               </div>
 
-              <div className="calls-list-card">
+              {activeFilter === 'insights' ? (
+                <>
+                  {!canViewRecoveryInsights ? <CallRecoveryInsightsUpsell /> : null}
+                  {canViewRecoveryInsights && insightsLoading && !insights ? <div className="calls-empty"><p>Loading insights…</p></div> : null}
+                  {canViewRecoveryInsights && insightsError ? <div className="calls-error">Unable to load insights: {insightsError}</div> : null}
+                  {canViewRecoveryInsights && insights ? <CallRecoveryInsightsPanel insights={insights} /> : null}
+                </>
+              ) : <div className="calls-list-card">
                 {!loading && calls.length === 0 ? (
                   <div className="calls-empty">
                     <div className="calls-empty-icon">☎</div>
@@ -356,7 +522,7 @@ export function UserCallsLive({
                           <th>Date &amp; Time</th>
                           <th>Outcome</th>
                           <th>Status</th>
-                          <th>Transcript</th>
+                          <th>Logs</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -364,6 +530,8 @@ export function UserCallsLive({
                           const outcome = outcomeMeta(call.outcome);
                           const status = statusMeta(call.status);
                           const duration = formatDuration(call.durationSeconds);
+                          const supportsRecordingPlayback =
+                            call.recordingAvailable !== undefined || call.recordingStatus !== undefined;
                           return (
                             <tr key={call.id} className={`${call.highUrgency ? 'is-high-urgency' : ''}${call.followUpNeeded ? ' is-follow-up' : ''}`} onClick={() => void openCall(call)}>
                               <td>
@@ -393,12 +561,34 @@ export function UserCallsLive({
                               <td>
                                 <div className="calls-row-actions">
                                   {call.transcriptAvailable ? (
-                                    <button className="calls-transcript-view-btn" type="button" onClick={(event) => { event.stopPropagation(); void openCall(call); }}>View</button>
+                                    <button
+                                      className="calls-log-icon-btn"
+                                      type="button"
+                                      title="View transcript"
+                                      aria-label="View transcript"
+                                      onClick={(event) => { event.stopPropagation(); void openCall(call); }}
+                                    >
+                                      <IconFileDescription size={18} stroke={1.7} />
+                                    </button>
                                   ) : (
                                     <span className="calls-transcript-pending">Pending</span>
                                   )}
-                                  {call.recordingAvailable ? (
-                                    <button className="calls-transcript-view-btn" type="button" onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}>Listen</button>
+                                  {supportsRecordingPlayback ? (
+                                    <span
+                                      className="calls-log-action"
+                                      title={call.recordingAvailable ? 'Play recording' : 'Recording not available'}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      <button
+                                        className="calls-log-icon-btn"
+                                        type="button"
+                                        disabled={!call.recordingAvailable}
+                                        aria-label={call.recordingAvailable ? 'Play recording' : 'Recording not available'}
+                                        onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
+                                      >
+                                        <IconPlayerPlay size={18} stroke={1.7} />
+                                      </button>
+                                    </span>
                                   ) : null}
                                 </div>
                               </td>
@@ -440,9 +630,9 @@ export function UserCallsLive({
                     </div>
                   </>
                 ) : null}
-              </div>
+              </div>}
 
-              {totalPages > 1 ? (
+              {activeFilter !== 'insights' && totalPages > 1 ? (
                 <div className="calls-pagination">
                   <button type="button" className="calls-pager-btn" disabled={!canGoPrev || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>← Previous</button>
                   <span>Page {page} of {totalPages}</span>
@@ -479,7 +669,7 @@ export function UserCallsLive({
                   </div>
                   {recordingLoading ? <p>Loading recording...</p> : null}
                   {recordingError ? <p>Recording is unavailable right now.</p> : null}
-                  {recordingUrl ? <audio controls autoPlay preload="metadata" src={recordingUrl}>Your browser cannot play this recording.</audio> : null}
+                  {recordingUrl ? <audio controls preload="metadata" src={recordingUrl}>Your browser cannot play this recording.</audio> : null}
                 </div>
               ) : null}
               <div className="transcript-toggle">
