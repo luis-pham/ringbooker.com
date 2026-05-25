@@ -23,7 +23,10 @@ import {
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
-import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
+import {
+  buildProductionInitialGreetingInstructions,
+  resolveEffectiveRuntimeConfig,
+} from '@/src/backend/domain/resolve-effective-runtime-config';
 import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
@@ -933,7 +936,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             callId,
             apiKey: apiKey!,
             acceptedAtMs,
-            initialResponseInstructions: effectiveRuntimeConfig.aiWelcomeMessage,
+            initialResponseInstructions: buildProductionInitialGreetingInstructions(effectiveRuntimeConfig.aiWelcomeMessage),
             initialResponseBridgeGate:
               parentCcId && sidebandCtx.openAiLegCallControlId
                 ? {

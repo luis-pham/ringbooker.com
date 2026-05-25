@@ -379,7 +379,7 @@ const PROMOTION_PRESETS = [
 ];
 
 const AI_GREETING_PRESETS = [
-  'Thanks for calling {business}. How can I help you today?',
+  'Thank you for calling {business}, how can I help you today?',
   'Welcome to {business}. I can help with bookings, pricing, and availability.',
   'Hi, this is the AI booking desk for {business}. What service would you like today?',
 ];

@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import type { Shop, ShopPlan } from '@/src/backend/domain/types';
 import {
   DEFAULT_RUNTIME_AI_VOICE,
-  DEFAULT_RUNTIME_GREETING,
+  buildDefaultRuntimeGreeting,
+  buildProductionInitialGreetingInstructions,
   resolveEffectiveRuntimeConfig,
 } from '@/src/backend/domain/resolve-effective-runtime-config';
 
@@ -43,7 +44,7 @@ function createDowngradedShop(plan: ShopPlan): Shop {
 test('Starter runtime config strips paid fields from a previously upgraded shop', () => {
   const config = resolveEffectiveRuntimeConfig(createDowngradedShop('starter'));
 
-  assert.equal(config.aiWelcomeMessage, DEFAULT_RUNTIME_GREETING);
+  assert.equal(config.aiWelcomeMessage, buildDefaultRuntimeGreeting('Runtime Config Salon'));
   assert.equal(config.aiVoice, DEFAULT_RUNTIME_AI_VOICE);
   assert.equal(config.aiCustomInstructions, null);
   assert.deepEqual(config.staff, []);
@@ -65,4 +66,26 @@ test('Enterprise runtime config allows all paid runtime fields', () => {
   assert.equal(config.aiVoice, 'Verse');
   assert.equal(config.aiCustomInstructions, 'Use enterprise-only escalation wording.');
   assert.equal(config.staff?.[0]?.name, 'Mia');
+});
+
+test('Professional and Enterprise fall back to the business-name greeting when none is configured', () => {
+  for (const plan of ['professional', 'enterprise'] as const) {
+    const shop = createDowngradedShop(plan);
+    shop.ai_welcome_message = null;
+
+    const config = resolveEffectiveRuntimeConfig(shop);
+
+    assert.equal(config.aiWelcomeMessage, 'Thank you for calling Runtime Config Salon, how can I help you today?');
+  }
+});
+
+test('Production initial greeting instructions require the greeting exactly once before waiting', () => {
+  assert.equal(
+    buildProductionInitialGreetingInstructions('Thank you for calling Runtime Config Salon, how can I help you today?'),
+    [
+      'When a caller connects, say exactly:',
+      '"Thank you for calling Runtime Config Salon, how can I help you today?"',
+      'Then wait. Do not say anything else until the caller speaks.',
+    ].join('\n'),
+  );
 });
