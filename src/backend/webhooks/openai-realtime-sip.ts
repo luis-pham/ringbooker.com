@@ -63,6 +63,7 @@ import {
   type OpenAiSipDidContext,
 } from '@/src/backend/webhooks/openai-sip-did';
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
+import { markSidebandReadyForAnswer } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 import { decodeCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 import { callControlSpeak } from '@/src/backend/services/calls/call-control-client';
 import { evaluateOwnerHandoffDestination } from '@/src/backend/services/calls/destination-policy';
@@ -1101,7 +1102,17 @@ export async function handleOpenAiRealtimeSipWebhook(
 
         startOpenAiRealtimeSipSideband({
           ...buildShopSidebandCore(),
-          onConnected: () => { fallbackTriggered = false; },
+          onConnected: () => {
+            fallbackTriggered = false;
+            if (parentCcId && sidebandCtx.openAiLegCallControlId) {
+              markSidebandReadyForAnswer({
+                parentCallControlId: parentCcId,
+                openaiLegCallControlId: sidebandCtx.openAiLegCallControlId,
+                rbCallId: sidebandCtx.rbCallId,
+                shopId: shop.id,
+              });
+            }
+          },
           onWsDropped: (closeCode) => { void handleWsDrop(closeCode); },
           onHardLimit: () => {
             hangupInitiated = true; // prevent stale onEndCall from double-hanging

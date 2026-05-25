@@ -4,9 +4,34 @@ import assert from 'node:assert/strict';
 import {
   cleanupBridgeGreetingSessionByCallControlId,
   initializeBridgeGreetingSession,
+  markSidebandReadyForAnswer,
   markBridgeReadyForGreeting,
   queueGreetingUntilBridgeReady,
+  registerSidebandReadyForAnswer,
 } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
+
+test('signals preanswer exactly once when sideband is ready', () => {
+  let ready = 0;
+  registerSidebandReadyForAnswer({
+    parentCallControlId: 'cc_parent_preanswer',
+    openaiLegCallControlId: 'cc_openai_preanswer',
+    onReady: () => {
+      ready += 1;
+    },
+  });
+
+  markSidebandReadyForAnswer({
+    parentCallControlId: 'cc_parent_preanswer',
+    openaiLegCallControlId: 'cc_openai_preanswer',
+  });
+  markSidebandReadyForAnswer({
+    parentCallControlId: 'cc_parent_preanswer',
+    openaiLegCallControlId: 'cc_openai_preanswer',
+  });
+
+  assert.equal(ready, 1);
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_preanswer');
+});
 
 test('queues production greeting until Telnyx bridge is ready', () => {
   initializeBridgeGreetingSession({

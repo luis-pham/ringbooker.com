@@ -16,6 +16,7 @@ import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import type { BillingSubscriptionStatus } from '@/src/backend/domain/types';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
+import { markSidebandReadyForAnswer } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 
 const keyPair = generateKeyPairSync('ed25519');
 const publicPem = keyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -181,7 +182,7 @@ test('telnyx call-control webhook dry-run does not call Telnyx REST', async () =
   assert.equal(fetchCalls, 0);
 });
 
-test('telnyx call-control webhook invokes answer when dry-run off', async () => {
+test('telnyx call-control prewarms OpenAI without answering inbound caller immediately', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({
     ...TELNYX_INBOUND_CALL_CONTROL_STACK,
@@ -236,11 +237,11 @@ test('telnyx call-control webhook invokes answer when dry-run off', async () => 
   assert.equal(json.ok, true);
   assert.equal(json.phase, 'initiated');
   assert.equal(json.decision, 'answer');
-  assert.ok(urls.some((url) => /\/v2\/calls\/cc_answer\/actions\/answer$/.test(url)));
+  assert.equal(urls.some((url) => /\/v2\/calls\/cc_answer\/actions\/answer$/.test(url)), false);
   assert.ok(urls.some((url) => /\/v2\/calls$/.test(url)));
 });
 
-test('parallel Call Control does not downgrade ready leg states when answered webhooks beat command responses', async () => {
+test('production Call Control answers only after OpenAI leg and sideband are ready, without ringback', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({
     ...TELNYX_INBOUND_CALL_CONTROL_STACK,
@@ -250,19 +251,13 @@ test('parallel Call Control does not downgrade ready leg states when answered we
     TELNYX_RINGBACK_AUDIO_URL: 'https://example.com/ringback.wav',
   });
 
-  let releaseAnswer!: () => void;
   let releaseDial!: () => void;
-  const answerResponse = new Promise<void>((resolve) => { releaseAnswer = resolve; });
   const dialResponse = new Promise<void>((resolve) => { releaseDial = resolve; });
   const bridgeBodies: string[] = [];
   const telnyxUrls: string[] = [];
   const testingTelnyxFetch: typeof fetch = async (input, init) => {
     const url = String(input);
     telnyxUrls.push(url);
-    if (/\/v2\/calls\/cc_parallel_race\/actions\/answer$/.test(url)) {
-      await answerResponse;
-      return new Response(JSON.stringify({ data: {} }), { status: 200 });
-    }
     if (/\/v2\/calls$/.test(url)) {
       await dialResponse;
       return new Response(JSON.stringify({ data: { call_control_id: 'cc_openai_race' } }), { status: 200 });
@@ -310,17 +305,9 @@ test('parallel Call Control does not downgrade ready leg states when answered we
     },
   });
   await new Promise((resolve) => setTimeout(resolve, 0));
-
-  const callerAnswered = await postEvent({
-    event_type: 'call.answered',
-    id: 'evt-parallel-race-caller-answered',
-    payload: { call_control_id: 'cc_parallel_race', call_direction: 'incoming' },
-  });
-  assert.equal(callerAnswered.status, 200);
-
-  releaseAnswer();
   releaseDial();
   assert.equal((await initiatedPromise).status, 200);
+  assert.equal(telnyxUrls.some((url) => /\/v2\/calls\/cc_parallel_race\/actions\/answer$/.test(url)), false);
 
   const clientState = buildCallControlClientState({
     shopId: 'demo-shop',
@@ -344,6 +331,22 @@ test('parallel Call Control does not downgrade ready leg states when answered we
     },
   });
   assert.equal(openAiAnswered.status, 200);
+  assert.equal(telnyxUrls.some((url) => /\/v2\/calls\/cc_parallel_race\/actions\/answer$/.test(url)), false);
+  assert.equal(bridgeBodies.length, 0);
+
+  markSidebandReadyForAnswer({
+    parentCallControlId: 'cc_parallel_race',
+    openaiLegCallControlId: 'cc_openai_race',
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(telnyxUrls.some((url) => /\/v2\/calls\/cc_parallel_race\/actions\/answer$/.test(url)));
+
+  const callerAnswered = await postEvent({
+    event_type: 'call.answered',
+    id: 'evt-parallel-race-caller-answered',
+    payload: { call_control_id: 'cc_parallel_race', call_direction: 'incoming' },
+  });
+  assert.equal(callerAnswered.status, 200);
   assert.equal(bridgeBodies.length, 1);
   assert.match(bridgeBodies[0] ?? '', /"command_id":"openai_bridge:/);
   assert.equal(telnyxUrls.some((url) => url.includes('/actions/playback_')), false);
@@ -424,7 +427,8 @@ test('telnyx call-control live inbound allows active and trialing billing before
     assert.equal(res.status, 200);
     const json = (await res.json()) as Record<string, unknown>;
     assert.equal(json.decision, 'answer');
-    assert.ok(urls.some((u) => new RegExp(`/v2/calls/${entry.callControlId}/actions/answer$`).test(u)));
+    assert.equal(urls.some((u) => new RegExp(`/v2/calls/${entry.callControlId}/actions/answer$`).test(u)), false);
+    assert.ok(urls.some((u) => /\/v2\/calls$/.test(u)));
     assert.equal(urls.some((u) => /\/actions\/reject$/.test(u)), false);
   }
 });

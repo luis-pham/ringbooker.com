@@ -70,6 +70,7 @@ import {
   cleanupBridgeGreetingSessionByCallControlId,
   initializeBridgeGreetingSession,
   markBridgeReadyForGreeting,
+  registerSidebandReadyForAnswer,
 } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 
 const CALL_CONTROL_EVENTS_PROVIDER = 'telnyx_call_control';
@@ -91,6 +92,8 @@ type ParallelCallSession = {
   greetingSent: boolean;
   greetingPending: boolean;
   pendingGreetingPayload: unknown | null;
+  sidebandReady: boolean;
+  answerBody: Record<string, unknown>;
   cleanupInitiated: boolean;
   createdAt: number;
   timeout: ReturnType<typeof setTimeout> | null;
@@ -331,6 +334,81 @@ async function checkBridgeReady(
       bridgeDurationMs: Date.now() - tBridge0,
     },
     'bridge_command_sent',
+  );
+}
+
+async function answerCallerAfterOpenAiPrepared(
+  session: ParallelCallSession,
+  params: {
+    fetchDeps: { fetchImpl?: typeof fetch; apiKey?: string };
+    log: ReturnType<typeof withLogContext>;
+    telnyxEventId?: string;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
+  },
+): Promise<void> {
+  if (session.cleanupInitiated || session.callerLegState !== 'pending') return;
+  if (session.openaiLegState !== 'ready' || !session.sidebandReady || !session.callerLegId) return;
+
+  session.callerLegState = 'answering';
+  const answerStartedAt = Date.now();
+  params.log.info(
+    {
+      rbCallId: session.rbCallId,
+      shopId: session.shopId,
+      callerLegId: session.callerLegId,
+      openaiLegId: session.openaiLegId,
+    },
+    'prewarmed_openai_ready_answering_caller',
+  );
+  const answerResult = await callControlAnswer(session.callerLegId, session.answerBody, params.fetchDeps).catch((err) => {
+    params.log.warn({ err, rbCallId: session.rbCallId, shopId: session.shopId }, 'prewarmed_caller_answer_failed');
+    return null;
+  });
+  if (!answerResult?.ok) {
+    session.callerLegState = 'failed';
+    await callControlReject(
+      session.callerLegId,
+      buildTelnyxCallRejectPayload('CALL_REJECTED'),
+      params.fetchDeps,
+    ).catch((err) => {
+      params.log.warn({ err, rbCallId: session.rbCallId, shopId: session.shopId }, 'prewarmed_caller_reject_after_answer_failure_failed');
+    });
+    await triggerParallelCallCleanup(session, 'caller_leg_answer_failed', params);
+    return;
+  }
+
+  if (session.rbCallId && session.shopId) {
+    scheduleSilentCallerRiskWatch({
+      parentCallControlId: session.callerLegId,
+      rbCallId: session.rbCallId,
+      shopId: session.shopId,
+      telnyxEventId: params.telnyxEventId,
+      log: params.log,
+      answeredAtMs: answerStartedAt,
+    });
+    if (params.voiceCallLegsRepository) {
+      try {
+        await params.voiceCallLegsRepository.createOrUpdateCallLeg({
+          shopId: session.shopId,
+          rbCallId: session.rbCallId,
+          purpose: 'parent_caller_leg',
+          callControlId: session.callerLegId,
+          callSessionId: session.parentCallSessionId ?? null,
+          status: 'parent_leg_answer_sent',
+        });
+      } catch (err) {
+        params.log.warn({ err, shopId: session.shopId, rbCallId: session.rbCallId }, 'voice_call_leg_persist_parent_failed');
+      }
+    }
+  }
+  params.log.info(
+    {
+      rbCallId: session.rbCallId,
+      shopId: session.shopId,
+      callerLegId: session.callerLegId,
+      openaiLegId: session.openaiLegId,
+    },
+    'prewarmed_caller_answer_command_sent',
   );
 }
 
@@ -894,6 +972,8 @@ async function processCallInitiated(
             greetingSent: false,
             greetingPending: false,
             pendingGreetingPayload: null,
+            sidebandReady: false,
+            answerBody,
             cleanupInitiated: false,
             createdAt: Date.now(),
             timeout: null,
@@ -938,12 +1018,10 @@ async function processCallInitiated(
           };
           const openAiClientState = Buffer.from(JSON.stringify(openAiLegPayload), 'utf8').toString('base64');
 
-          // Mark commands in flight before sending them: a webhook can arrive before either HTTP response.
-          session.callerLegState = 'answering';
+          // Keep the inbound caller ringing while OpenAI SIP and sideband initialize.
+          // Caller answer is issued only when the AI leg can be bridged immediately.
           session.openaiLegState = 'dialing';
-          const answerStartedAt = Date.now();
-          const answerPromise = callControlAnswer(result.callControlId, answerBody, fetchDeps);
-          const dialPromise = callControlCreateCall(
+          const dialResult = await callControlCreateCall(
             {
               to: sipUri,
               from: result.destinationPhone,
@@ -957,57 +1035,42 @@ async function processCallInitiated(
               operation: 'call_control.create_openai_sip_leg',
               correlation: { rbCallId, shopId },
             },
-          );
-
-          const [answerResult, dialResult] = await Promise.allSettled([answerPromise, dialPromise]);
-          const answerOk = answerResult.status === 'fulfilled' && answerResult.value.ok;
+          ).catch((err) => {
+            log.warn({ err, rbCallId, shopId }, 'preanswer_openai_leg_dial_failed');
+            return null;
+          });
           const dialOk =
-            dialResult.status === 'fulfilled' &&
-            dialResult.value.ok &&
-            typeof dialResult.value.callControlId === 'string' &&
-            dialResult.value.callControlId.trim() !== '';
+            Boolean(dialResult?.ok) &&
+            typeof dialResult?.callControlId === 'string' &&
+            dialResult.callControlId.trim() !== '';
 
-          if (answerOk) {
-            scheduleSilentCallerRiskWatch({
-              parentCallControlId: result.callControlId,
-              rbCallId,
-              shopId,
-              telnyxEventId: event.id,
-              log,
-              answeredAtMs: answerStartedAt,
-            });
-            // Parallel setup bridges as soon as both legs answer. Starting asynchronous
-            // ringback here can complete after `call.bridged` and mask OpenAI's greeting.
-            if (deps.voiceCallLegsRepository) {
-              try {
-                await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
-                  shopId,
-                  rbCallId,
-                  purpose: 'parent_caller_leg',
-                  callControlId: result.callControlId,
-                  callSessionId: parentCallSessionId ?? null,
-                  status: 'parent_leg_answer_sent',
-                });
-                log.info(
-                  { shopId, rbCallId, purpose: 'parent_caller_leg', parentCallControlId: result.callControlId },
-                  'voice_call_leg_persisted',
-                );
-              } catch (err) {
-                log.warn({ err, shopId, rbCallId }, 'voice_call_leg_persist_parent_failed');
-              }
-            }
-          } else {
-            session.callerLegState = 'failed';
-          }
-
-          if (dialOk && dialResult.status === 'fulfilled') {
-            const openaiLegCallControlId = dialResult.value.callControlId as string;
+          if (dialOk && dialResult) {
+            const openaiLegCallControlId = dialResult.callControlId as string;
             setParallelOpenAiLegId(session, openaiLegCallControlId);
             initializeBridgeGreetingSession({
               parentCallControlId: result.callControlId,
               openaiLegCallControlId,
               rbCallId,
               shopId,
+            });
+            registerSidebandReadyForAnswer({
+              parentCallControlId: result.callControlId,
+              openaiLegCallControlId,
+              rbCallId,
+              shopId,
+              onReady: () => {
+                session.sidebandReady = true;
+                log.info(
+                  { rbCallId, shopId, callerLegId: result.callControlId, openaiLegCallControlId },
+                  'preanswer_openai_sideband_ready',
+                );
+                void answerCallerAfterOpenAiPrepared(session, {
+                  fetchDeps,
+                  log,
+                  telnyxEventId: event.id,
+                  voiceCallLegsRepository: deps.voiceCallLegsRepository,
+                });
+              },
             });
             if (deps.voiceCallLegsRepository) {
               try {
@@ -1016,7 +1079,7 @@ async function processCallInitiated(
                   rbCallId,
                   purpose: 'openai_sip_leg',
                   callControlId: openaiLegCallControlId,
-                  callLegId: dialResult.value.callLegId ?? null,
+                  callLegId: dialResult.callLegId ?? null,
                   parentCallControlId: result.callControlId,
                   parentCallSessionId: parentCallSessionId ?? null,
                   status: 'openai_leg_created',
@@ -1038,21 +1101,15 @@ async function processCallInitiated(
               callerLegState: session.callerLegState,
               openaiLegId: session.openaiLegId,
               openaiLegState: session.openaiLegState,
-              answerResult:
-                answerResult.status === 'fulfilled'
-                  ? { ok: answerResult.value.ok, status: answerResult.value.status }
-                  : { ok: false, error: answerResult.reason instanceof Error ? answerResult.reason.message : String(answerResult.reason) },
               dialResult:
-                dialResult.status === 'fulfilled'
-                  ? { ok: dialResult.value.ok, status: dialResult.value.status, callControlId: dialResult.value.callControlId ?? null }
-                  : { ok: false, error: dialResult.reason instanceof Error ? dialResult.reason.message : String(dialResult.reason) },
+                dialResult
+                  ? { ok: dialResult.ok, status: dialResult.status, callControlId: dialResult.callControlId ?? null }
+                  : { ok: false },
             },
-            'parallel_legs_initiated',
+            'preanswer_openai_leg_initiated',
           );
 
-          if (!answerOk) {
-            await triggerParallelCallCleanup(session, 'caller_leg_answer_failed', { fetchDeps, log });
-          } else if (!dialOk) {
+          if (!dialOk) {
             await triggerParallelCallCleanup(session, 'openai_leg_dial_failed', { fetchDeps, log });
           }
         } else {
@@ -1373,10 +1430,10 @@ async function processCallAnswered(
             },
             'openai_leg_ready',
           );
-          await checkBridgeReady(parallelOpenAiSession, {
+          await answerCallerAfterOpenAiPrepared(parallelOpenAiSession, {
             fetchDeps,
             log,
-            providerEventsRepository: deps.providerEventsRepository,
+            voiceCallLegsRepository: deps.voiceCallLegsRepository,
           });
           await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
           incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });

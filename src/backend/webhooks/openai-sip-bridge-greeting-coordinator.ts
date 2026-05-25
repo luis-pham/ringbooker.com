@@ -3,6 +3,8 @@ import { logger } from '@/src/backend/observability/logger';
 type BridgeGreetingKey = string;
 
 type BridgeGreetingState = {
+  sidebandReady: boolean;
+  notifySidebandReady: (() => void) | null;
   bridgeReady: boolean;
   greetingSent: boolean;
   greetingPending: boolean;
@@ -43,6 +45,8 @@ export function initializeBridgeGreetingSession(params: {
   }
 
   const state: BridgeGreetingState = {
+    sidebandReady: false,
+    notifySidebandReady: null,
     bridgeReady: false,
     greetingSent: false,
     greetingPending: false,
@@ -57,6 +61,43 @@ export function initializeBridgeGreetingSession(params: {
   sessions.set(key, state);
   indexSession(key, state);
   return key;
+}
+
+export function registerSidebandReadyForAnswer(params: {
+  parentCallControlId: string;
+  openaiLegCallControlId: string;
+  rbCallId?: string | null;
+  shopId?: string | null;
+  onReady: () => void;
+}): void {
+  const key = initializeBridgeGreetingSession(params);
+  const state = sessions.get(key);
+  if (!state) return;
+
+  state.notifySidebandReady = params.onReady;
+  if (state.sidebandReady) {
+    const notify = state.notifySidebandReady;
+    state.notifySidebandReady = null;
+    notify?.();
+  }
+}
+
+export function markSidebandReadyForAnswer(params: {
+  parentCallControlId: string;
+  openaiLegCallControlId: string;
+  rbCallId?: string | null;
+  shopId?: string | null;
+}): void {
+  const key = initializeBridgeGreetingSession(params);
+  const state = sessions.get(key);
+  if (!state || state.sidebandReady) return;
+
+  state.sidebandReady = true;
+  state.rbCallId = params.rbCallId ?? state.rbCallId;
+  state.shopId = params.shopId ?? state.shopId;
+  const notify = state.notifySidebandReady;
+  state.notifySidebandReady = null;
+  notify?.();
 }
 
 function findSessionKey(params: {
@@ -212,6 +253,7 @@ export function cleanupBridgeGreetingSessionByCallControlId(callControlId: strin
       shopId: state.shopId ?? undefined,
       parentCallControlId: state.parentCallControlId,
       openaiLegCallControlId: state.openaiLegCallControlId,
+      sidebandReady: state.sidebandReady,
       bridgeReady: state.bridgeReady,
       greetingSent: state.greetingSent,
       greetingPending: state.greetingPending,
