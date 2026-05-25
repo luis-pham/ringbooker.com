@@ -788,6 +788,105 @@ test('Starter active user can request Professional upgrade without local plan mu
   }
 });
 
+test('Professional active user can request Starter downgrade without local plan mutation', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-downgrade-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+    PADDLE_PRICE_STARTER_MONTHLY: 'pri_test_starter_monthly_downgrade_api',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Downgrade Professional Salon',
+    phone_number: '+17145551235',
+    user_phone: '+17145551236',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_downgrade_api',
+    email: 'billing-downgrade-user@ringbooker.local',
+  });
+  const subscription = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_downgrade_api',
+    providerCustomerId: 'ctm_downgrade_api',
+    providerPriceId: process.env.PADDLE_PRICE_PROFESSIONAL_MONTHLY,
+    plan: 'professional',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 149,
+    amountCents: 14900,
+    paymentMethodStatus: 'valid',
+  });
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  const paddleRequests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    paddleRequests.push({
+      url: String(input),
+      body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
+    });
+    return new Response(JSON.stringify({ data: { id: 'sub_downgrade_api', customer_id: 'ctm_downgrade_api' } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+    const cookie = await loginBillingUser(app, 'billing-downgrade-user@ringbooker.local');
+    const billing = await app.request('/user/billing', { headers: { cookie } });
+    const billingBody = (await billing.json()) as { billing: { selfServeUpgradeAvailable: boolean } };
+    assert.equal(billingBody.billing.selfServeUpgradeAvailable, true);
+
+    const downgrade = await app.request('/user/billing/upgrade', {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ target_plan: 'starter', billing_interval: 'monthly' }),
+    });
+    assert.equal(downgrade.status, 200);
+    assert.deepEqual(await downgrade.json(), {
+      ok: true,
+      status: 'pending',
+      message: 'Your change to Starter is being processed. Your plan will update after billing is confirmed.',
+    });
+    assert.equal(paddleRequests[0]?.url, 'https://sandbox-api.paddle.com/subscriptions/sub_downgrade_api');
+    assert.deepEqual(paddleRequests[0]?.body, {
+      items: [{ price_id: 'pri_test_starter_monthly_downgrade_api', quantity: 1 }],
+      proration_billing_mode: 'prorated_next_billing_period',
+      on_payment_failure: 'prevent_change',
+    });
+
+    const afterSubscription = await billingSubscriptionsRepository.findById(subscription.id);
+    const afterShop = await shopsRepository.findById(shop.id);
+    assert.equal(afterSubscription?.plan, 'professional');
+    assert.equal(afterShop?.plan, 'professional');
+    assert.equal((afterSubscription?.metadata?.pending_plan_upgrade as { targetPlan?: string } | undefined)?.targetPlan, 'starter');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+      PADDLE_PRICE_STARTER_MONTHLY: 'pri_test_starter_monthly',
+    });
+    resetEnvCacheForTests();
+  }
+});
+
 test('billing upgrade rejects unauthenticated CSRF invalid payload non-Starter and billing issue states', async () => {
   applyRequiredTestEnv({
     BILLING_CHECKOUT_ENABLED: 'true',
@@ -878,7 +977,7 @@ test('billing upgrade rejects unauthenticated CSRF invalid payload non-Starter a
     body: JSON.stringify({ target_plan: 'professional' }),
   });
   assert.equal(enterpriseUpgrade.status, 409);
-  assert.equal((await enterpriseUpgrade.json() as { error: string }).error, 'current_plan_not_starter');
+  assert.equal((await enterpriseUpgrade.json() as { error: string }).error, 'current_plan_not_self_serve');
 
   applyRequiredTestEnv({
     USER_AUTH_EMAIL: 'billing-user@ringbooker.local',

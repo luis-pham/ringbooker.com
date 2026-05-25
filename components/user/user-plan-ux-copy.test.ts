@@ -47,8 +47,10 @@ test('returning caller notes UX is locked for Starter and active for Professiona
 });
 
 test('billing plan card copy matches public usage limits and Custom managed volume', () => {
-  assert.ok(BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /100 captured calls per billing period/i.test(feature)));
-  assert.ok(BILLING_PLAN_CARD_FEATURES.professional.some((feature) => /200 captured calls per billing period/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /100 captured calls\/month/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.professional.some((feature) => /200 captured calls\/month/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /Call transcripts/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.professional.some((feature) => /Call transcripts and audio recordings/i.test(feature)));
   assert.ok(BILLING_PLAN_CARD_FEATURES.enterprise.some((feature) => /Custom captured call volume/i.test(feature)));
   assert.ok(!BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /1 number included/i.test(feature)));
 });
@@ -74,6 +76,7 @@ test('bookings pages use safer availability copy', () => {
 test('billing UI exposes self-serve Professional upgrade copy and endpoint', () => {
   const billingLive = readFileSync('components/user/user-billing-live.tsx', 'utf8');
   assert.match(billingLive, /Upgrade to Professional/);
+  assert.match(billingLive, /Switch to Starter/);
   assert.match(billingLive, /Professional features will unlock after billing confirms the change/);
   assert.ok(billingLive.includes('/api/backend/user/billing/upgrade'));
   assert.match(billingLive, /Resolve billing first/);

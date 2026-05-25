@@ -83,7 +83,7 @@ function BookingMethodQuestion({ onChoose }: { onChoose: (method: 'app' | 'direc
           </span>
         </button>
       </div>
-      <button type="button" className="subtle-link integrations-later-link" onClick={() => onChoose('later')}>
+      <button type="button" className="user-link--subtle integrations-later-link" onClick={() => onChoose('later')}>
         I&apos;ll set this up later
       </button>
     </div>
@@ -118,7 +118,7 @@ function AppPicker({ selectedApp, providers, onBack, onSelect }: {
 
   return (
     <div className="integrations-flow-stack">
-      <button type="button" className="subtle-link integrations-back-link" onClick={onBack}>← Back</button>
+      <button type="button" className="user-link--subtle integrations-back-link" onClick={onBack}>← Back</button>
       <section className="integrations-app-section">
         <div>
           <h4>Full sync — live availability</h4>
@@ -191,7 +191,7 @@ function LinkConfigPanel({ app, savedUrl, onSave }: { app: IntegrationApp; saved
           {saving ? 'Saving...' : 'Save booking link'}
         </button>
         {isVagaro && app.helpUrl ? (
-          <a className="subtle-link" href={app.helpUrl} target="_blank" rel="noreferrer">
+          <a className="user-link" href={app.helpUrl} target="_blank" rel="noreferrer">
             Want full sync? Apply for Vagaro API access →
           </a>
         ) : null}
@@ -377,7 +377,7 @@ function MindbodyConfigPanel({
             Disconnect Mindbody
           </button>
         ) : null}
-        <a className="subtle-link" href="https://developers.mindbodyonline.com/" target="_blank" rel="noreferrer">
+        <a className="user-link" href="https://developers.mindbodyonline.com/" target="_blank" rel="noreferrer">
           Mindbody developer docs →
         </a>
       </div>
@@ -554,7 +554,7 @@ function AcuityConfigPanel({
             Disconnect Acuity
           </button>
         ) : null}
-        <a className="subtle-link" href="https://developers.acuityscheduling.com/" target="_blank" rel="noreferrer">
+        <a className="user-link" href="https://developers.acuityscheduling.com/" target="_blank" rel="noreferrer">
           Acuity developer docs →
         </a>
       </div>

@@ -257,7 +257,7 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
 }
 .rb-account-panel{padding:18px 18px 22px}
 .rb-account-panel-title{
-  margin:0 0 18px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
+  margin:0 0 18px;
 }
 @media(min-width:861px){
   .rb-account-shell{max-width:760px;padding:0 0 40px}
@@ -306,10 +306,7 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
 .rb-account-card-head-main{display:flex;align-items:center;gap:10px;min-width:0}
 .rb-account-section-icon{flex-shrink:0;color:var(--purple-dark)}
 .rb-account-card-head h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.3;color:var(--text-dark)}
-.rb-account-link{font-size:14px;font-weight:600;color:var(--purple-dark);text-decoration:none}
-.rb-account-link:hover{text-decoration:underline}
-button.rb-account-link{font:inherit;font-size:14px;font-weight:600;color:var(--purple-dark);background:none;border:none;padding:0;cursor:pointer;text-decoration:none;text-align:right}
-button.rb-account-link:hover{text-decoration:underline}
+button.rb-account-link{text-align:right}
 .rb-account-rows{display:flex;flex-direction:column}
 .rb-account-row{
   display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--border);
@@ -318,7 +315,7 @@ button.rb-account-link:hover{text-decoration:underline}
   .rb-account-row{flex-direction:row;align-items:center;gap:16px}
 }
 .rb-account-row:last-child{border-bottom:none;padding-bottom:0}
-.rb-account-row dt{margin:0;width:12rem;flex-shrink:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-gray)}
+.rb-account-row dt{margin:0;width:12rem;flex-shrink:0}
 .rb-account-row dd{margin:0;font-size:15px;font-weight:500;color:var(--text-dark);line-height:1.45;word-break:break-word}
 .rb-account-plan-pill{
   display:inline-flex;align-items:center;margin-left:8px;padding:2px 10px;border-radius:999px;
@@ -335,7 +332,7 @@ button.rb-account-link:hover{text-decoration:underline}
   display:flex;flex-direction:column;align-items:flex-start;gap:14px;
 }
 .rb-account-sign-out{
-  font:inherit;font-size:14px;font-weight:600;color:var(--red-deep);
+  font:inherit;font-size:14px;font-weight:500;color:var(--red-deep);
   background:transparent;border:1px solid color-mix(in srgb,var(--red-deep) 35%,var(--border));
   border-radius:8px;padding:10px 16px;cursor:pointer;
 }
@@ -346,7 +343,7 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-subsection{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
 .rb-account-subsection:first-of-type{margin-top:0;padding-top:0;border-top:none}
 .rb-account-subsection-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.rb-account-subsection-title{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
+.rb-account-subsection-title{margin:0}
 .rb-account-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
 .rb-account-contact-name-field.field{margin-bottom:0;width:100%;max-width:100%}
 @media(min-width:641px){
@@ -356,7 +353,7 @@ button.rb-account-link:hover{text-decoration:underline}
   .rb-account-contact-name-field.field{max-width:min(100%,832px)}
 }
 .rb-account-btn-ghost{
-  font:inherit;font-size:13px;font-weight:650;color:var(--text-dark);
+  font:inherit;
   background:var(--surface-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;
 }
 .rb-account-btn-ghost:hover:not(:disabled){background:#f9fafb;border-color:#d1d5db}
@@ -590,7 +587,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                             {!accountEditOpen ? (
                               <button
                                 type="button"
-                                className="rb-account-link"
+                                className="user-link rb-account-link"
                                 onClick={() => {
                                   setContactNameDraft(nav.userName?.trim() ?? '');
                                   setAccountSaveMessage(null);
@@ -644,7 +641,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                                       </button>
                                       <button
                                         type="button"
-                                        className="rb-account-btn-ghost"
+                                        className="user-link--subtle rb-account-btn-ghost"
                                         disabled={accountSaveLoading}
                                         onClick={() => {
                                           setAccountEditOpen(false);
@@ -702,7 +699,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                         {showBillingHint ? (
                           <div className="rb-account-callout" style={{ marginTop: 0, width: '100%', boxSizing: 'border-box' }}>
                             <IconInfo className="rb-account-section-icon" />
-                            <a href="/user/billing" className="rb-account-link">
+                            <a href="/user/billing" className="user-link rb-account-link">
                               Billing
                             </a>
                           </div>

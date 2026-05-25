@@ -3158,7 +3158,7 @@ export function UserSettingsLive({
                           setExpandedStaffIndex(expandedStaffIndex === index ? null : index);
                         }
                       }}>
-                        <div className={`staff-avatar staff-avatar-${(index % 4) + 1}`}>
+                        <div className="staff-avatar">
                           {(member.name.trim() || 'S').slice(0, 1).toUpperCase()}
                         </div>
                         <div className="staff-info">
@@ -3388,9 +3388,9 @@ export function UserSettingsLive({
                       </div>
                     </div>
                     {!ownerTransferUx.locked && currentForm.allow_transfers ? (
-                      <div className="handoff-phone-section" style={{ padding: '12px 0 4px', borderTop: '1px solid #e5e7eb', marginTop: 12 }}>
-                        <div className="field" style={{ marginBottom: 12 }}>
-                          <label style={{ fontSize: 13 }}>Transfer calls to</label>
+                      <div className="handoff-phone-section">
+                        <div className="field handoff-transfer-phone">
+                          <label className="handoff-section-label">Transfer calls to</label>
                           {!effectiveShop.handoff_phone ? (
                             <p style={{ color: '#b45309', fontSize: 12, marginBottom: 6 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</p>
                           ) : handoffPhoneWarnings.includes('matches_business_line') ? (
@@ -3405,11 +3405,11 @@ export function UserSettingsLive({
                             aria-label="Handoff phone number"
                           />
                         </div>
-                        <div className="field" style={{ marginBottom: handoffAvailabilityDraft === 'custom' ? 12 : 0 }}>
-                          <label style={{ fontSize: 13 }}>Transfer availability</label>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                        <div className={`field handoff-availability${handoffAvailabilityDraft === 'custom' ? ' handoff-availability--custom' : ''}`}>
+                          <label className="handoff-section-label">Transfer availability</label>
+                          <div className="handoff-radio-group">
                             {(['business_hours', 'always', 'custom'] as const).map((option) => (
-                              <label key={option} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                              <label key={option} className="handoff-radio-option">
                                 <input
                                   type="radio"
                                   name="handoff_availability"
@@ -3423,8 +3423,8 @@ export function UserSettingsLive({
                           </div>
                         </div>
                         {handoffAvailabilityDraft === 'custom' ? (
-                          <div className="field" style={{ marginBottom: 12 }}>
-                            <label style={{ fontSize: 13 }}>Custom transfer hours</label>
+                          <div className="field handoff-custom-hours">
+                            <label className="handoff-section-label">Custom transfer hours</label>
                             <div className="sh-hours-wrap" style={{ marginTop: 8 }}>
                               <div className="sh-hours-thead" aria-hidden="true">
                                 <span>Day</span>
@@ -3472,7 +3472,7 @@ export function UserSettingsLive({
                             </div>
                           </div>
                         ) : null}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                        <div className="handoff-actions">
                           <button
                             type="button"
                             className="btn user-save"

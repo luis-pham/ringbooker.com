@@ -172,10 +172,6 @@ function tabFromSearch(value: string | null): CallFilter {
   return 'all';
 }
 
-function hasAnyStats(stats: CallsStats) {
-  return stats.last7Days + stats.bookings + stats.followUp + stats.missed + stats.highUrgency > 0;
-}
-
 function hourLabel(hour: number): string {
   const suffix = hour >= 12 ? 'pm' : 'am';
   const displayed = hour % 12 || 12;
@@ -475,7 +471,7 @@ export function UserCallsLive({
             <UserPortalPageContent pageClass="page-calls">
               {error ? <div className="calls-error">Unable to load calls: {error}</div> : null}
 
-              {activeFilter !== 'insights' && hasAnyStats(stats) ? (
+              {activeFilter !== 'insights' ? (
                 <section className="calls-metric-grid" aria-label="Call activity summary">
                   <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--blue">☎</span><div><p>This week</p><strong>{stats.last7Days}</strong></div></div>
                   <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--purple">▣</span><div><p>Bookings captured</p><strong>{stats.bookings}</strong></div></div>
@@ -487,7 +483,7 @@ export function UserCallsLive({
               <div className="calls-filter-bar">
                 <div className="calls-filter-tabs" role="tablist" aria-label="Call filters">
                   {tabs.map((tab) => (
-                    <button key={tab.value} type="button" role="tab" aria-selected={activeFilter === tab.value} className={`calls-filter-tab${activeFilter === tab.value ? ' active' : ''}`} onClick={() => changeFilter(tab.value)}>
+                    <button key={tab.value} type="button" role="tab" aria-selected={activeFilter === tab.value} className={`calls-filter-tab${tab.value === 'insights' ? ' calls-filter-tab--insights' : ''}${activeFilter === tab.value ? ' active' : ''}`} onClick={() => changeFilter(tab.value)}>
                       {tab.value === 'insights' && !canViewRecoveryInsights ? <IconLock size={13} stroke={2} style={{ marginRight: 5, verticalAlign: '-2px' }} /> : null}
                       {tab.label}
                       {tab.count > 0 ? <span>{`(${tab.count})`}</span> : null}

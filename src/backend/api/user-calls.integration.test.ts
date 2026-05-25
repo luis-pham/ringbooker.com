@@ -148,7 +148,7 @@ test('user calls endpoint returns real tab-filtered calls, stats, and resolves s
   assert.match(detailBody.call.transcriptText ?? '', /haircut/);
 });
 
-test('Starter can view call transcripts without receiving advanced analytics fields', async () => {
+test('Starter can view call transcripts and advanced call analytics fields', async () => {
   const { app, callLogsRepository, shopsRepository } = createCallsTestApp();
   await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'starter' });
   const cookie = await loginUser(app);
@@ -167,13 +167,25 @@ test('Starter can view call transcripts without receiving advanced analytics fie
     speaker: 'caller',
     text: 'Can I book a manicure?',
   });
+  await callLogsRepository.updateStructuredSummary('demo-shop', 'req-starter-transcript', {
+    summaryServiceRequest: 'Manicure',
+    summaryFollowUpRequired: true,
+    summaryUrgency: 'high',
+  });
 
   const list = await app.request('/user/calls', { headers: { cookie } });
   assert.equal(list.status, 200);
-  const listBody = await list.json() as { calls: Array<{ id: string; transcriptAvailable?: boolean; transcriptText?: string }> };
+  const listBody = await list.json() as {
+    calls: Array<{ id: string; transcriptAvailable?: boolean; transcriptText?: string; highUrgency?: boolean; summary?: string }>;
+    stats: { followUp: number; highUrgency: number };
+  };
   const listedCall = listBody.calls.find((call) => call.id === 'req-starter-transcript');
   assert.equal(listedCall?.transcriptAvailable, true);
-  assert.equal(listedCall?.transcriptText, undefined);
+  assert.match(listedCall?.transcriptText ?? '', /manicure/);
+  assert.equal(listedCall?.highUrgency, true);
+  assert.match(listedCall?.summary ?? '', /Manicure/);
+  assert.equal(listBody.stats.followUp, 1);
+  assert.equal(listBody.stats.highUrgency, 1);
 
   const detail = await app.request('/user/calls/req-starter-transcript', { headers: { cookie } });
   assert.equal(detail.status, 200);
@@ -182,8 +194,8 @@ test('Starter can view call transcripts without receiving advanced analytics fie
   };
   assert.equal(detailBody.call.transcriptAvailable, true);
   assert.match(detailBody.call.transcriptText ?? '', /manicure/);
-  assert.equal(detailBody.call.highUrgency, undefined);
-  assert.equal(detailBody.call.summary, undefined);
+  assert.equal(detailBody.call.highUrgency, true);
+  assert.match(detailBody.call.summary ?? '', /Manicure/);
 });
 
 test('Professional can request a signed recording playback URL for its available call recording', async () => {

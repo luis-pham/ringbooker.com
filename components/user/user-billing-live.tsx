@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
+import { BILLING_PLAN_CARD_FEATURES } from '@/components/user/user-plan-ux-copy';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import {
@@ -158,8 +159,6 @@ type OverageChargesResponse = {
 
 type BillingSubscriptionRow = NonNullable<NonNullable<UserBillingResponse['billing']>['subscription']>;
 
-type BillingPlanFeature = { text: string; included: boolean };
-
 type BillingPlansCatalogEntry = {
   key: ShopPlan;
   name: string;
@@ -167,7 +166,7 @@ type BillingPlansCatalogEntry = {
   annualPrice?: number;
   priceLabel?: string;
   description: string;
-  features: BillingPlanFeature[];
+  features: string[];
   badge?: string;
   ctaLabel: string;
   ctaVariant: 'active' | 'outline-purple' | 'ghost';
@@ -181,15 +180,7 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     monthlyPrice: 79,
     annualPrice: 63,
     description: 'Answer calls and capture bookings.',
-    features: [
-      { text: '100 captured calls per billing period', included: true },
-      { text: 'Forwarded call answering', included: true },
-      { text: 'Booking request capture', included: true },
-      { text: 'Missed-call text back', included: true },
-      { text: 'Call summaries', included: true },
-      { text: 'Bilingual answering', included: false },
-      { text: 'Returning caller memory', included: false },
-    ],
+    features: BILLING_PLAN_CARD_FEATURES.starter,
     ctaLabel: 'Current plan',
     ctaVariant: 'active',
   },
@@ -200,14 +191,7 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     annualPrice: 119,
     description: 'Adds SMS, caller memory, bilingual & owner transfer.',
     badge: 'Popular',
-    features: [
-      { text: '200 captured calls per billing period', included: true },
-      { text: 'Everything in Starter', included: true },
-      { text: 'Reminder & review SMS', included: true },
-      { text: 'Returning caller notes', included: true },
-      { text: 'Bilingual answering', included: true },
-      { text: 'Owner transfer', included: true },
-    ],
+    features: BILLING_PLAN_CARD_FEATURES.professional,
     ctaLabel: 'Upgrade to Pro',
     ctaVariant: 'outline-purple',
   },
@@ -216,12 +200,7 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     name: 'Enterprise',
     priceLabel: 'Custom',
     description: 'Multi-location, high volume, custom routing.',
-    features: [
-      { text: 'Custom caller volume', included: true },
-      { text: 'Managed routing & integrations', included: true },
-      { text: 'Multi-location support', included: true },
-      { text: 'Dedicated CSM', included: true },
-    ],
+    features: BILLING_PLAN_CARD_FEATURES.enterprise,
     ctaLabel: 'Talk to sales',
     ctaVariant: 'ghost',
   },
@@ -756,8 +735,9 @@ export function UserBillingLive({
   const manageBillingAvailable = data?.billing?.manageBillingAvailable === true;
   const selfServeUpgradeAvailable = data?.billing?.selfServeUpgradeAvailable === true;
   const pendingPlanUpgrade = data?.billing?.pendingPlanUpgrade ?? null;
-  const upgradePending =
-    upgradePendingMessage != null || pendingPlanUpgrade?.targetPlan === 'professional';
+  const planChangePending =
+    upgradePendingMessage != null ||
+    (pendingPlanUpgrade?.targetPlan != null && pendingPlanUpgrade.targetPlan !== currentPlan);
   const availableBillingIntervals = data?.billing?.availableBillingIntervals ?? ['monthly'];
   const canChooseAnnual = checkoutAvailable && availableBillingIntervals.includes('annual');
   const effectiveBillingInterval =
@@ -892,12 +872,12 @@ export function UserBillingLive({
     }
   }
 
-  async function upgradeToProfessional() {
+  async function changePlan(targetPlan: Extract<ShopPlan, 'starter' | 'professional'>) {
     if (!selfServeUpgradeAvailable) {
-      setCheckoutError('Plan upgrade is not available right now. Resolve billing or contact support.');
+      setCheckoutError('Plan change is not available right now. Resolve billing or contact support.');
       return;
     }
-    setUpgradingPlan('professional');
+    setUpgradingPlan(targetPlan);
     setCheckoutError(null);
     setUpgradePendingMessage(null);
     try {
@@ -905,7 +885,7 @@ export function UserBillingLive({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          target_plan: 'professional',
+          target_plan: targetPlan,
           billing_interval: effectiveBillingInterval,
         }),
       });
@@ -916,14 +896,17 @@ export function UserBillingLive({
         error?: string;
       };
       if (!response.ok || !body.ok) {
-        throw new Error(body.message ?? body.error ?? 'Plan upgrade could not start.');
+        throw new Error(body.message ?? body.error ?? 'Plan change could not start.');
       }
       setUpgradePendingMessage(
-        body.message ?? 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.',
+        body.message ??
+          (targetPlan === 'starter'
+            ? 'Your change to Starter is being processed. Your plan will update after billing is confirmed.'
+            : 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.'),
       );
       await refreshBilling().catch(() => undefined);
     } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : 'billing_upgrade_failed');
+      setCheckoutError(error instanceof Error ? error.message : 'billing_plan_change_failed');
     } finally {
       setUpgradingPlan(null);
     }
@@ -1007,12 +990,14 @@ export function UserBillingLive({
                   </section>
                 ) : null}
 
-                {upgradePending ? (
+                {planChangePending ? (
                   <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }}>
                     <p>
-                      <strong>Upgrade pending.</strong>{' '}
+                      <strong>Plan change pending.</strong>{' '}
                       {upgradePendingMessage ??
-                        'Your upgrade is being processed. Professional features will unlock after billing confirms the change.'}
+                        (pendingPlanUpgrade?.targetPlan === 'starter'
+                          ? 'Your change to Starter is being processed. Your plan will update after billing confirms the change.'
+                          : 'Your upgrade is being processed. Professional features will unlock after billing confirms the change.')}
                     </p>
                     <button type="button" className="btn" onClick={() => void refreshBilling()}>
                       Refresh status
@@ -1449,7 +1434,7 @@ export function UserBillingLive({
                           } else if (plan.key === 'professional' && currentPlan === 'starter') {
                             if (subscriptionBillingBlocked) {
                               cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Resolve billing first</span>;
-                            } else if (upgradePending) {
+                            } else if (planChangePending) {
                               cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Upgrade pending</span>;
                             } else if (selfServeUpgradeAvailable) {
                               cta = (
@@ -1457,7 +1442,7 @@ export function UserBillingLive({
                                   type="button"
                                   className="btn purple"
                                   disabled={upgradingPlan === 'professional'}
-                                  onClick={() => void upgradeToProfessional()}
+                                  onClick={() => void changePlan('professional')}
                                 >
                                   {upgradingPlan === 'professional' ? 'Starting…' : 'Upgrade to Pro'}
                                 </button>
@@ -1486,6 +1471,31 @@ export function UserBillingLive({
                                 </a>
                               );
                             }
+                          } else if (plan.key === 'starter' && currentPlan === 'professional') {
+                            if (subscriptionBillingBlocked) {
+                              cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Resolve billing first</span>;
+                            } else if (planChangePending) {
+                              cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Change pending</span>;
+                            } else if (selfServeUpgradeAvailable) {
+                              cta = (
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  disabled={upgradingPlan === 'starter'}
+                                  onClick={() => void changePlan('starter')}
+                                >
+                                  {upgradingPlan === 'starter' ? 'Starting…' : 'Switch to Starter'}
+                                </button>
+                              );
+                            } else if (manageBillingAvailable) {
+                              cta = (
+                                <button type="button" className="btn" disabled={managingBilling} onClick={() => void openManageBilling()}>
+                                  {managingBilling ? 'Opening…' : 'Switch via billing portal'}
+                                </button>
+                              );
+                            } else {
+                              cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Plan change unavailable</span>;
+                            }
                           } else {
                             cta = (
                               <a className="btn" href={`/contact?topic=sales&source=user_billing_plan_change&plan=${plan.key}`}>
@@ -1513,10 +1523,8 @@ export function UserBillingLive({
                               <div className="billing-plan-card__price">{bigPrice}</div>
                               {priceNote ? <p className="billing-plan-card__price-note">{priceNote}</p> : null}
                               <ul className="billing-plan-card__feats">
-                                {plan.features.map((f) => (
-                                  <li key={f.text} data-included={f.included}>
-                                    {f.text}
-                                  </li>
+                                {plan.features.map((feature) => (
+                                  <li key={feature}>{feature}</li>
                                 ))}
                               </ul>
                               <div className="billing-plan-card__cta">{cta}</div>
@@ -1524,22 +1532,6 @@ export function UserBillingLive({
                           );
                         })}
                       </div>
-
-                      <section className="card soft billing-plan-includes-card">
-                        <div className="panel-head">
-                          <div>
-                            <h3>Current plan includes</h3>
-                          </div>
-                        </div>
-                        <ul className="plan-includes-list">
-                          <li>AI receptionist and answering service</li>
-                          <li>Booking request capture</li>
-                          <li>Missed-call follow-up</li>
-                          <li>Call summaries</li>
-                          <li>SMS workflows where enabled for your plan</li>
-                        </ul>
-                        <p className="plan-includes-foot">Billing is managed securely by our payment provider.</p>
-                      </section>
                     </div>
                   ) : null}
 
@@ -1646,12 +1638,14 @@ export function UserBillingLive({
                             <h3>Usage and overage FAQ</h3>
                           </div>
                         </div>
-                        <div style={{ display: 'grid', gap: 16 }}>
+                        <div className="billing-faq-list">
                           {BILLING_USAGE_FAQ.map((item) => (
-                            <div key={item.question}>
-                              <h4 style={{ margin: '0 0 6px', fontSize: 14 }}>{item.question}</h4>
-                              <p className="sub" style={{ margin: 0 }}>{item.answer}</p>
-                            </div>
+                            <details className="billing-faq-item" key={item.question}>
+                              <summary className="billing-faq-q">{item.question}</summary>
+                              <div className="billing-faq-a">
+                                <p className="sub">{item.answer}</p>
+                              </div>
+                            </details>
                           ))}
                         </div>
                       </section>

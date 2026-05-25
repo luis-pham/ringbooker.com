@@ -1,5 +1,6 @@
 import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardStyles } from '@/components/user/user-dashboard';
+import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
 
 export const userBillingStyles: string[] = [
   ...userDashboardStyles,
@@ -9,7 +10,7 @@ export const userBillingStyles: string[] = [
   background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:none;
   padding:22px;min-width:0;min-height:100%;display:flex;flex-direction:column;gap:6px;
 }
-.billing-status-card .bst-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light)}
+.billing-status-card .bst-label{margin:0}
 .billing-status-card .bst-value{font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
 .billing-status-card .bst-meta{font-size:12px;color:var(--text-gray);line-height:1.45;margin-top:auto}
 .billing-alert-strip{
@@ -68,6 +69,58 @@ export const userBillingStyles: string[] = [
 }
 .billing-history-compact .panel-head{margin-bottom:10px}
 .billing-history-compact .table th,.billing-history-compact .table td{padding:10px 0;font-size:13px}
+.billing-faq-list{
+  display:flex;
+  flex-direction:column;
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  background:var(--surface-card);
+}
+.billing-faq-item{border-bottom:1px solid var(--border)}
+.billing-faq-item:last-child{border-bottom:none}
+.billing-faq-q{
+  list-style:none;
+  cursor:pointer;
+  padding:14px 16px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text-dark);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  transition:background .15s ease,color .15s ease;
+}
+.billing-faq-q::-webkit-details-marker{display:none}
+.billing-faq-q::marker{content:''}
+.billing-faq-q:hover{background:var(--surface-page)}
+.billing-faq-q:focus-visible{
+  outline:2px solid var(--purple-dark);
+  outline-offset:-2px;
+}
+.billing-faq-q::after{
+  content:'';
+  width:8px;
+  height:8px;
+  border-right:2px solid var(--purple-dark);
+  border-bottom:2px solid var(--purple-dark);
+  transform:rotate(45deg);
+  transition:transform .2s ease;
+  flex-shrink:0;
+  margin-top:-3px;
+}
+.billing-faq-item[open] .billing-faq-q{color:var(--text-gray)}
+.billing-faq-item[open] .billing-faq-q::after{
+  transform:rotate(-135deg);
+  margin-top:3px;
+}
+.billing-faq-a{padding:0 16px 14px}
+.billing-faq-a .sub{margin:0;line-height:1.55;font-size:13px}
+@media (prefers-reduced-motion: reduce){
+  .billing-faq-q::after{transition:none}
+}
+html[data-user-theme="dark"] .billing-faq-q:hover{background:rgba(255,255,255,.04)}
 .plan-includes-list{
   margin:0;
   padding:0;
@@ -200,23 +253,33 @@ export const userBillingStyles: string[] = [
 .billing-plan-card__feats li{
   display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.45;color:var(--text-gray);
 }
-.billing-plan-card__feats li[data-included="false"]{opacity:.55;text-decoration:line-through}
-.billing-plan-card__feats li::before{
+.billing-plan-card:not(.billing-plan-card--current) .billing-plan-card__feats li{
+  gap:10px;
+}
+.billing-plan-card:not(.billing-plan-card--current) .billing-plan-card__feats li::before{
+  content:'';
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#C4B5FD,#A78BFA);
+  flex-shrink:0;
+  margin-top:6px;
+  border:none;
+  box-shadow:0 0 0 1px rgba(139,92,246,.2);
+  background-image:none;
+}
+.billing-plan-card--current .billing-plan-card__feats li::before{
   content:'';width:14px;height:14px;flex-shrink:0;margin-top:2px;border-radius:999px;
   border:1px solid rgba(63,185,80,0.35);background:rgba(63,185,80,0.12);
   box-sizing:border-box;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 8.3 6.7 11 12 5.7' stroke='%23047857' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:center;background-size:11px 11px;
 }
-.billing-plan-card__feats li[data-included="false"]::before{
-  border-color:var(--border);background:var(--surface-page);background-image:none;
-}
 .billing-plan-card__cta{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 .billing-plan-card--feats-compact .billing-plan-card__feats{gap:3px}
 .billing-plan-card--feats-compact .billing-plan-card__feats li{line-height:1.3}
 .billing-plan-card--feats-compact .billing-plan-card__feats li::before{margin-top:1px}
 
-html[data-user-theme="dark"] .billing-plan-card__feats li[data-included="false"]::before{background:var(--surface-card)}
 
 @media (max-width:1200px){
   .billing-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -323,6 +386,7 @@ html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab.
   border-bottom-color:var(--text-dark);
 }
 `,
+  userPortalTypographyStyles,
 ];
 
 export const userBillingScripts: string[] = [

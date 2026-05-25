@@ -29,10 +29,12 @@ const callsPortalStyles = String.raw`
 .calls-filter-tab:focus-visible{outline:2px solid var(--purple-dark);outline-offset:3px}
 .calls-filter-tab.active{color:var(--text-dark);font-weight:500;border-bottom-color:var(--text-dark)}
 .calls-filter-tab.active:hover{color:var(--text-dark)}
+.calls-filter-tab--insights,.calls-filter-tab--insights:hover{color:var(--purple-dark);font-weight:600}
+.calls-filter-tab--insights.active,.calls-filter-tab--insights.active:hover{color:var(--purple-dark);font-weight:600;border-bottom-color:var(--purple-dark)}
 .calls-filter-tab span{margin-left:4px;font-size:12px;color:var(--text-light)}
 .calls-list-card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .calls-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.calls-table th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);text-align:left;padding:10px 20px;border-bottom:1px solid var(--border)}
+.calls-table th{text-align:left;padding:10px 20px;border-bottom:1px solid var(--border)}
 .calls-table th:nth-child(1){width:29%}
 .calls-table th:nth-child(2){width:19%}
 .calls-table th:nth-child(3){width:19%}
@@ -94,7 +96,7 @@ const callsPortalStyles = String.raw`
 .modal-title p{margin:6px 0 0;color:var(--text-gray);font-size:13px}
 .modal-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px}
 .meta-tile{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--bg-gray)}
-.meta-tile strong{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);margin-bottom:5px}
+.meta-tile strong{display:block;margin-bottom:5px}
 .meta-tile span{font-size:13px;color:var(--text-dark)}
 .summary-panel,.transcript-note{background:var(--bg-gray);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:13px;line-height:1.6;color:var(--text-dark);white-space:pre-wrap;margin-bottom:14px}
 .recording-panel{background:var(--bg-gray);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}

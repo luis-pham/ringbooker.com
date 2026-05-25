@@ -455,7 +455,7 @@ function OverviewSystemStatusCard(props: {
               );
             })}
           </div>
-          <a className="subtle-link" href="/user/calls" style={{ marginTop: 12, display: 'inline-block' }}>
+          <a className="user-link" href="/user/calls" style={{ marginTop: 12, display: 'inline-block' }}>
             View all calls
           </a>
         </div>

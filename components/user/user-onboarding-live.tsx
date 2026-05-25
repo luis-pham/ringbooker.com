@@ -8,6 +8,7 @@ import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder'
 import { UserLayout } from '@/components/user/user-layout';
 import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
+import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
 import { DemoCallModal } from '@/components/user/demo-call-modal';
 import { DemoBottomSheet } from '@/components/user/demo-bottom-sheet';
 import type { DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
@@ -2284,7 +2285,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-progress-line{height:2px;background:#d9deea;border-radius:999px}.onb-progress-line.done{background:#3f7d2f}.onb-progress-line.current{background:#7c3aed}
 .onb-title{margin:0;color:#020617;font-size:1.5rem;line-height:1.3;letter-spacing:-.02em;font-weight:500}
 .onb-subtitle{margin:8px 0 10px;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px;font-weight:400}
-.onb-section-title{display:block;margin:0 0 8px;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.onb-section-title{display:block;margin:0 0 8px}
 .onb-source-badge{display:inline-flex;align-items:center;border-radius:999px;background:#eef2ff;color:#4338ca;padding:3px 10px;font-size:11px;font-weight:500;margin-left:8px}
 .onb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .onb-stack{display:grid;gap:18px}
@@ -2292,7 +2293,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .choice-card:hover{background:#faf5ff;border-color:#e2e8f0;box-shadow:none}
 .choice-card.active{background:#faf5ff;border-color:#7c3aed;border-width:1.5px;box-shadow:none}
 .choice-card .emoji{font-size:2rem;line-height:1}.choice-card h4{margin:12px 0 0;font-size:15px;font-weight:500;color:#111827}
-.onb-field{display:grid;gap:6px;margin-bottom:20px}.onb-field label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.onb-field{display:grid;gap:6px;margin-bottom:20px}.onb-field label{margin-bottom:5px}
 .onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:15px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
@@ -2306,7 +2307,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-import-steps{display:grid;gap:8px;margin:2px 0}.onb-import-step{display:flex;align-items:center;gap:10px;color:#64748b;font-size:13px;font-weight:500}.onb-import-step.done{color:#166534}.onb-import-step.active{color:#111827}
 .onb-import-step-mark{width:22px;height:22px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#64748b}.onb-import-step.done .onb-import-step-mark{border-color:#86efac;background:#ecfdf5;color:#166534}.onb-import-step.active .onb-import-step-mark{border-color:#111827;color:#111827}
 .onb-spinner{width:12px;height:12px;border:2px solid #d1d5db;border-top-color:#111827;border-radius:999px;animation:onbSpin .8s linear infinite}
-.onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:center;width:100%}.onb-import-progress-actions .onb-help-link{color:#111827;font-size:12px;font-weight:500;text-align:center;text-decoration:none;width:100%;padding:8px 0}.onb-import-progress-actions .onb-help-link:hover{color:#5b21b6;text-decoration:none}
+.onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:center;width:100%}.onb-import-progress-actions .onb-help-link{text-align:center;width:100%;padding:8px 0}
 @keyframes onbSpin{to{transform:rotate(360deg)}}
 .onb-import-manual-link-desktop{display:none;margin-top:14px;text-align:center;border:0;background:transparent;color:#111827;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;font:inherit;padding:0;width:100%;box-sizing:border-box}
 .onb-import-manual-link-desktop:hover{color:#5b21b6;text-decoration:none}
@@ -2483,6 +2484,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 @media(max-width:640px){.onb-shell{padding-bottom:120px;padding-left:max(16px, env(safe-area-inset-left));padding-right:max(16px, env(safe-area-inset-right));overflow-x:hidden}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{min-height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:flex;width:100%;box-sizing:border-box}.onb-service-edit-row{grid-template-columns:minmax(0,1fr)!important;gap:10px}.onb-svc-var-row2{grid-template-columns:1fr 1fr}.onb-step2-hours-editor-row{grid-template-columns:minmax(0,1fr);gap:8px}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
+      userPortalTypographyStyles,
     ],
     [],
   );

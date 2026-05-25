@@ -1,4 +1,5 @@
 import { UserLayout } from '@/components/user/user-layout';
+import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
 
 const styles: string[] = [
   String.raw`
@@ -1412,7 +1413,7 @@ const scripts: string[] = [
 
 ];
 
-export const userDashboardStyles = styles;
+export const userDashboardStyles = [...styles, userPortalTypographyStyles];
 export const userDashboardScripts = scripts;
 export const templateTitle = 'Overview';
 

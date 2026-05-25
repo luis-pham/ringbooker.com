@@ -741,7 +741,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     shop: Shop;
     providerCustomerId: string;
     providerSubscriptionId: string;
-    targetPlan: Extract<ShopPlan, 'professional'>;
+    targetPlan: Extract<ShopPlan, 'starter' | 'professional'>;
     billingInterval: BillingInterval;
     prorationBillingMode: 'prorated_next_billing_period';
   }) {
@@ -764,7 +764,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
 
     if (!response.ok) {
       const bodyText = await response.text().catch(() => '');
-      throw new Error(`paddle_upgrade_subscription_failed:${response.status}:${bodyText}`);
+      throw new Error(`paddle_plan_change_failed:${response.status}:${bodyText}`);
     }
 
     const json = (await response.json()) as {
@@ -774,10 +774,10 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       };
     };
     if (json.data?.id && json.data.id !== params.providerSubscriptionId) {
-      throw new Error('paddle_upgrade_subscription_id_mismatch');
+      throw new Error('paddle_plan_change_subscription_id_mismatch');
     }
     if (json.data?.customer_id && json.data.customer_id !== params.providerCustomerId) {
-      throw new Error('paddle_upgrade_customer_id_mismatch');
+      throw new Error('paddle_plan_change_customer_id_mismatch');
     }
 
     return {

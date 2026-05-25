@@ -796,7 +796,7 @@ const userBillingCheckoutSchema = z.object({
 const userBillingManageSchema = z.object({}).strict();
 
 const userBillingUpgradeSchema = z.object({
-  target_plan: z.literal('professional'),
+  target_plan: z.enum(['starter', 'professional']),
   billing_interval: z.enum(['monthly', 'annual']).optional(),
 }).strict();
 
@@ -6589,10 +6589,14 @@ export function createBackendApp(deps: {
     const call = recent.find((item) => item.requestId === id || item.providerCallId === id);
     if (!call) return c.json({ ok: false, error: 'call_not_found' }, 404);
     const canUseAdvancedCallAnalytics = isCapabilityAllowed(shop.plan, 'advanced_call_analytics');
+    const canPlayCallRecording = isCapabilityAllowed(shop.plan, 'call_recording_playback');
+    const detailedCall = toUserCallResponse(call);
     return c.json({
       ok: true,
       call: canUseAdvancedCallAnalytics
-        ? toUserCallResponse(call)
+        ? canPlayCallRecording
+          ? detailedCall
+          : { ...detailedCall, recordingAvailable: undefined, recordingStatus: undefined }
         : toBasicUserCallResponse(call, {}, { includeTranscriptText: true }),
       shop: { timezone: shop.timezone },
     });
@@ -6633,6 +6637,7 @@ export function createBackendApp(deps: {
     const filters = buildUserCallFilters(parsed.data);
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const canUseAdvancedCallAnalytics = isCapabilityAllowed(shop.plan, 'advanced_call_analytics');
+    const canPlayCallRecording = isCapabilityAllowed(shop.plan, 'call_recording_playback');
 
     const [calls, total, last7DaysCount, missed] = await Promise.all([
       repo.listByShop(shop.id, { ...filters, limit, offset }),
@@ -6662,7 +6667,11 @@ export function createBackendApp(deps: {
       ok: true,
       calls: calls.map((call) => {
         const extras = { missedFollowupSmsSent: missedSmsSentPhones.has(call.callerPhone ?? '') };
-        return canUseAdvancedCallAnalytics ? toUserCallResponse(call, extras) : toBasicUserCallResponse(call, extras);
+        if (!canUseAdvancedCallAnalytics) return toBasicUserCallResponse(call, extras);
+        const advancedCall = toUserCallResponse(call, extras);
+        return canPlayCallRecording
+          ? advancedCall
+          : { ...advancedCall, recordingAvailable: undefined, recordingStatus: undefined };
       }),
       shop: { timezone: shop.timezone },
       total,
@@ -7948,8 +7957,9 @@ export function createBackendApp(deps: {
       upgradeMetadata && typeof upgradeMetadata === 'object'
         ? {
             targetPlan:
-              (upgradeMetadata as Record<string, unknown>).targetPlan === 'professional'
-                ? 'professional'
+              (upgradeMetadata as Record<string, unknown>).targetPlan === 'professional' ||
+              (upgradeMetadata as Record<string, unknown>).targetPlan === 'starter'
+                ? ((upgradeMetadata as Record<string, unknown>).targetPlan as 'starter' | 'professional')
                 : null,
             billingInterval:
               (upgradeMetadata as Record<string, unknown>).billingInterval === 'year'
@@ -8052,8 +8062,8 @@ export function createBackendApp(deps: {
         canCancelViaPortal: manageBillingAvailable,
         selfServeUpgradeAvailable: Boolean(
           env.BILLING_CHECKOUT_ENABLED &&
-            shop.plan === 'starter' &&
-            subscription?.plan === 'starter' &&
+            isSelfServeTrialPlan(shop.plan) &&
+            subscription?.plan === shop.plan &&
             subscription.provider === 'paddle' &&
             ['active', 'trialing'].includes(subscription.status) &&
             subscription.providerCustomerId?.trim() &&
@@ -8064,18 +8074,18 @@ export function createBackendApp(deps: {
         upgradeDisabledReason:
           !env.BILLING_CHECKOUT_ENABLED
             ? 'billing_checkout_disabled'
-            : shop.plan !== 'starter' || subscription?.plan !== 'starter'
-            ? 'current_plan_not_starter'
+            : !isSelfServeTrialPlan(shop.plan) || subscription?.plan !== shop.plan
+            ? 'current_plan_not_self_serve'
             : subscription?.provider !== 'paddle'
               ? 'provider_not_supported'
               : !['active', 'trialing'].includes(subscription?.status ?? '')
-                ? 'subscription_not_upgradeable'
+                ? 'subscription_not_changeable'
                 : !subscription?.providerCustomerId?.trim()
                   ? 'missing_provider_customer_id'
                   : !subscription?.providerSubscriptionId?.trim()
                     ? 'missing_provider_subscription_id'
                     : deps.billingProvider?.provider !== 'paddle' || typeof deps.billingProvider.upgradeSubscriptionPlan !== 'function'
-                      ? 'billing_upgrade_unavailable'
+                      ? 'billing_plan_change_unavailable'
                       : null,
         pendingPlanUpgrade: pendingPlanUpgrade?.targetPlan ? pendingPlanUpgrade : null,
         billingHistoryLabel: 'Account billing activity',
@@ -8370,7 +8380,7 @@ export function createBackendApp(deps: {
         {
           ok: false,
           error: 'billing_checkout_disabled',
-          message: 'Plan upgrades are not enabled for this environment yet.',
+          message: 'Plan changes are not enabled for this environment yet.',
         },
         503,
       );
@@ -8378,31 +8388,31 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    if (shop.plan !== 'starter') {
-      return c.json({ ok: false, error: 'current_plan_not_starter', message: 'Only Starter accounts can upgrade to Professional in-app right now.' }, 409);
+    if (!isSelfServeTrialPlan(shop.plan)) {
+      return c.json({ ok: false, error: 'current_plan_not_self_serve', message: 'This plan cannot be changed in-app.' }, 409);
     }
-    if (parsed.data.target_plan !== 'professional') {
-      return c.json({ ok: false, error: 'invalid_target_plan' }, 400);
+    if (parsed.data.target_plan === shop.plan) {
+      return c.json({ ok: false, error: 'target_plan_is_current_plan', message: 'This is already your current plan.' }, 409);
     }
     if (deps.billingProvider.provider !== 'paddle' || typeof deps.billingProvider.upgradeSubscriptionPlan !== 'function') {
-      return c.json({ ok: false, error: 'billing_upgrade_unavailable', message: 'Plan upgrade is not available right now. Please contact support.' }, 503);
+      return c.json({ ok: false, error: 'billing_upgrade_unavailable', message: 'Plan change is not available right now. Please contact support.' }, 503);
     }
 
     const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
     if (!subscription || subscription.provider !== 'paddle') {
-      return c.json({ ok: false, error: 'provider_not_supported', message: 'This subscription cannot be upgraded in-app yet.' }, 409);
+      return c.json({ ok: false, error: 'provider_not_supported', message: 'This subscription cannot be changed in-app yet.' }, 409);
     }
-    if (subscription.plan !== 'starter') {
-      return c.json({ ok: false, error: 'current_plan_not_starter', message: 'This account is not on Starter.' }, 409);
+    if (subscription.plan !== shop.plan) {
+      return c.json({ ok: false, error: 'current_plan_mismatch', message: 'Billing is still synchronizing your current plan. Please try again shortly.' }, 409);
     }
     if (!['active', 'trialing'].includes(subscription.status)) {
-      return c.json({ ok: false, error: 'subscription_not_upgradeable', message: 'Resolve billing before upgrading your plan.' }, 409);
+      return c.json({ ok: false, error: 'subscription_not_upgradeable', message: 'Resolve billing before changing your plan.' }, 409);
     }
 
     const providerCustomerId = subscription.providerCustomerId?.trim();
     const providerSubscriptionId = subscription.providerSubscriptionId?.trim();
-    if (!providerCustomerId) return c.json({ ok: false, error: 'missing_provider_customer_id', message: 'Billing is not ready for plan upgrade yet.' }, 409);
-    if (!providerSubscriptionId) return c.json({ ok: false, error: 'missing_provider_subscription_id', message: 'Billing is not ready for plan upgrade yet.' }, 409);
+    if (!providerCustomerId) return c.json({ ok: false, error: 'missing_provider_customer_id', message: 'Billing is not ready for a plan change yet.' }, 409);
+    if (!providerSubscriptionId) return c.json({ ok: false, error: 'missing_provider_subscription_id', message: 'Billing is not ready for a plan change yet.' }, 409);
 
     const [customerByProvider, subscriptionByProvider] = await Promise.all([
       deps.billingCustomersRepository.findByProviderCustomerId('paddle', providerCustomerId),
@@ -8442,7 +8452,7 @@ export function createBackendApp(deps: {
         shop,
         providerCustomerId,
         providerSubscriptionId,
-        targetPlan: 'professional',
+        targetPlan: parsed.data.target_plan,
         billingInterval,
         prorationBillingMode,
       });
@@ -8460,10 +8470,13 @@ export function createBackendApp(deps: {
       }).catch((err) => {
         logger.warn({ err, shopId: shop.id, providerSubscriptionId }, 'user_billing_upgrade_pending_metadata_failed');
       });
+      const isDowngrade = upgrade.targetPlan === 'starter';
       return c.json({
         ok: true,
         status: 'pending',
-        message: 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.',
+        message: isDowngrade
+          ? 'Your change to Starter is being processed. Your plan will update after billing is confirmed.'
+          : 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.',
       });
     } catch (err) {
       logger.error(
@@ -8471,7 +8484,7 @@ export function createBackendApp(deps: {
           err,
           shopId: shop.id,
           providerSubscriptionId,
-          targetPlan: 'professional',
+          targetPlan: parsed.data.target_plan,
           billingInterval,
         },
         'user_billing_upgrade_failed',
@@ -8480,7 +8493,7 @@ export function createBackendApp(deps: {
         {
           ok: false,
           error: 'billing_upgrade_failed',
-          message: 'Plan upgrade could not start. Please try again or contact support.',
+          message: 'Plan change could not start. Please try again or contact support.',
         },
         502,
       );

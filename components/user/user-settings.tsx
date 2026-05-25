@@ -1,5 +1,6 @@
 import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardStyles } from '@/components/user/user-dashboard';
+import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
 
 const userSettingsSpecificStyles = String.raw`
 .settings-save-footer{
@@ -166,9 +167,7 @@ const userSettingsSpecificStyles = String.raw`
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .hint-row .option-title{flex:1;min-width:0}
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
-.subtle-link{color:var(--purple-dark);font-weight:500}
-button.subtle-link{font:inherit;border:none;background:none;padding:0;cursor:pointer;text-align:left}
-button.subtle-link:hover{text-decoration:underline}
+/* Link styles: user-portal-typography.ts (.user-link / .user-link--subtle / .subtle-link) */
 .integrations-path-picker{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
 .integrations-path-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 10px}
 .integrations-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;margin-top:4px}
@@ -515,7 +514,7 @@ button.subtle-link:hover{text-decoration:underline}
 .service-chip.active{border-color:rgba(139,92,246,.45);box-shadow:0 0 0 4px rgba(139,92,246,.08)}
 .service-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .small-field{margin-bottom:20px}
-.small-field label{display:block;font-size:11px;font-weight:600;color:#9ca3af;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+.small-field label{display:block;margin-bottom:5px}
 .small-field input,.small-field select{
   width:100%;height:40px;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font:inherit;font-size:14px;line-height:1.5;color:#111827;
 }
@@ -565,7 +564,7 @@ button.subtle-link:hover{text-decoration:underline}
 
 .sh-active-section{margin-top:22px;padding-top:22px;border-top:1px solid rgba(15,23,42,.08)}
 .sh-active-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.sh-active-label{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
+.sh-active-label{margin:0}
 .sh-active-hint{margin:0;font-size:13px;color:var(--text-gray);line-height:1.45}
 .sh-empty{
   padding:22px 18px;border-radius:14px;border:1px dashed #d1d5db;background:#fafafa;
@@ -593,12 +592,8 @@ button.subtle-link:hover{text-decoration:underline}
 .staff-card-main:focus-visible{box-shadow:0 0 0 3px rgba(139,92,246,.18)}
 .staff-avatar{
   width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:14px;font-weight:600;flex-shrink:0;
+  background:var(--bg-gray);color:var(--text-gray);font-size:14px;font-weight:600;flex-shrink:0;
 }
-.staff-avatar-1{background:#7c3aed}
-.staff-avatar-2{background:#0ea5e9}
-.staff-avatar-3{background:#10b981}
-.staff-avatar-4{background:#f59e0b}
 .staff-info{flex:1;min-width:0}
 .staff-name{font-size:15px;font-weight:500;color:var(--text-dark);letter-spacing:-.01em}
 .staff-name span{font-size:12px;font-weight:500;color:var(--text-gray)}
@@ -625,11 +620,30 @@ button.subtle-link:hover{text-decoration:underline}
 }
 .staff-card-detail .form-grid{margin:0}
 .staff-detail-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.handoff-phone-section{padding:20px 0 4px;border-top:1px solid var(--border);margin-top:14px}
+.handoff-transfer-phone{margin-bottom:20px}
+.field .handoff-section-label{
+  margin-bottom:8px;line-height:1.35;
+}
+.handoff-availability{margin:0;padding-top:20px;border-top:1px solid var(--border)}
+.handoff-availability--custom{margin-bottom:16px}
+.handoff-radio-group{display:grid;gap:14px;margin-top:12px}
+.field .handoff-radio-option{
+  display:flex;align-items:center;gap:10px;margin:0;color:var(--text-dark);cursor:pointer;
+  font-size:14px;font-weight:400;line-height:1.4;letter-spacing:0;text-transform:none;
+}
+.field .handoff-radio-option input[type="radio"]{
+  accent-color:var(--purple-dark);appearance:auto;width:18px;height:18px;min-height:0;flex:0 0 18px;
+  padding:0;margin:0;border:0;box-shadow:none;background:transparent;
+}
+.field .handoff-radio-option input[type="radio"]:focus{outline:2px solid rgba(124,58,237,.28);outline-offset:2px;box-shadow:none}
+.handoff-custom-hours{margin:0 0 16px}
+.handoff-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:4px}
 .sh-active-table{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff}
 .sh-active-thead{
   display:grid;grid-template-columns:minmax(0,1fr) 132px 112px;gap:14px;
   padding:11px 18px;background:#f9fafb;border-bottom:1px solid var(--border);
-  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
+  color:var(--text-gray);
 }
 .sh-active-row{
   display:grid;grid-template-columns:minmax(0,1fr) 132px 112px;gap:14px;
@@ -786,7 +800,7 @@ button.subtle-link:hover{text-decoration:underline}
 
 .sh-hours-intro{margin-bottom:18px}
 .sh-hours-presets{margin-bottom:18px}
-.sh-hours-presets-label{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
+.sh-hours-presets-label{margin:0 0 10px}
 .sh-hours-presets .preset-pills{margin-bottom:0}
 
 .sh-hours-wrap{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff}
@@ -794,7 +808,7 @@ button.subtle-link:hover{text-decoration:underline}
   display:grid;
   grid-template-columns:minmax(108px,1.1fr) minmax(92px,0.95fr) minmax(92px,0.95fr) minmax(120px,auto);
   gap:12px;padding:11px 16px;background:#f9fafb;border-bottom:1px solid var(--border);
-  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
+  color:var(--text-gray);
 }
 .sh-hours-wrap .hours-grid{border:none;border-radius:inherit}
 .sh-hours-wrap .hours-row{
@@ -1391,8 +1405,6 @@ html[data-user-theme="dark"] .calendar-int-card--plain.connected-active{
 html[data-user-theme="dark"] .calendar-int-logo-wrap{background:#0d1117;border-color:var(--border)}
 html[data-user-theme="dark"] .integrations-section-heading{color:var(--text-dark);border-top-color:var(--border)}
 html[data-user-theme="dark"] .calendar-int-actions{border-top-color:rgba(240,246,252,.08)}
-html[data-user-theme="dark"] button.subtle-link{color:#a371f7}
-html[data-user-theme="dark"] button.subtle-link:hover{color:#d2a8ff}
 html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
@@ -1814,7 +1826,7 @@ html[data-user-theme="dark"] .plan-chip{
 }
 `;
 
-const styles: string[] = [...userDashboardStyles, userSettingsSpecificStyles];
+const styles: string[] = [...userDashboardStyles, userSettingsSpecificStyles, userPortalTypographyStyles];
 
 const scripts: string[] = [
 

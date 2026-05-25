@@ -395,6 +395,47 @@ test('paddle upgrade subscription uses sandbox API, Professional price, and next
   }
 });
 
+test('paddle plan change can select Starter price for a downgrade', async () => {
+  applyRequiredTestEnv({
+    PADDLE_ENV: 'sandbox',
+    PADDLE_PRICE_STARTER_MONTHLY: 'pri_test_starter_monthly_downgrade',
+  });
+  resetEnvCacheForTests();
+  const { provider, shopsRepository } = buildProvider();
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+
+  let body: Record<string, unknown> | null = null;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({ data: { id: 'sub_demo_paddle', customer_id: 'ctm_demo_paddle' } }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+  try {
+    const result = await provider.upgradeSubscriptionPlan({
+      shop,
+      providerCustomerId: 'ctm_demo_paddle',
+      providerSubscriptionId: 'sub_demo_paddle',
+      targetPlan: 'starter',
+      billingInterval: 'month',
+      prorationBillingMode: 'prorated_next_billing_period',
+    });
+    assert.equal(result.targetPlan, 'starter');
+    assert.deepEqual(body, {
+      items: [{ price_id: 'pri_test_starter_monthly_downgrade', quantity: 1 }],
+      proration_billing_mode: 'prorated_next_billing_period',
+      on_payment_failure: 'prevent_change',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ PADDLE_PRICE_STARTER_MONTHLY: 'pri_test_starter_monthly' });
+    resetEnvCacheForTests();
+  }
+});
+
 test('paddle billing provider syncs webhook payload into normalized billing records', async () => {
   const shopsRepository = new InMemoryShopsRepository();
   const billingCustomersRepository = new InMemoryBillingCustomersRepository();

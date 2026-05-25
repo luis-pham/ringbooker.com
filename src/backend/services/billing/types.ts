@@ -60,13 +60,13 @@ export interface BillingProviderAdapter {
     shop: Shop;
     providerCustomerId: string;
     providerSubscriptionId: string;
-    targetPlan: Extract<Shop['plan'], 'professional'>;
+    targetPlan: Extract<Shop['plan'], 'starter' | 'professional'>;
     billingInterval: BillingInterval;
     prorationBillingMode: 'prorated_next_billing_period';
   }): Promise<{
     provider: BillingProvider;
     providerSubscriptionId: string;
-    targetPlan: Extract<Shop['plan'], 'professional'>;
+    targetPlan: Extract<Shop['plan'], 'starter' | 'professional'>;
     billingInterval: BillingInterval;
     prorationBillingMode: 'prorated_next_billing_period';
   }>;

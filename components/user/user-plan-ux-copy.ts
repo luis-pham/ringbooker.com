@@ -1,26 +1,41 @@
 import type { ShopPlan } from '@/src/backend/domain/types';
 import type { ShopPlanCapabilities } from '@/src/backend/domain/shop-plan-capabilities';
 
+/** Billing › Plans tab — feature bullets aligned with marketing pricing cards. */
 export const BILLING_PLAN_CARD_FEATURES: Record<ShopPlan, string[]> = {
   starter: [
-    'Up to 100 captured calls per billing period',
-    'Forwarded call answering',
-    'Booking request capture',
-    'Optional missed-call text back where enabled',
-    'Basic call logs and summaries',
+    'Up to 100 captured calls/month',
+    'Works with your current business number',
+    'After-hours and overflow call answering',
+    'Booking request capture — via your booking link',
+    'Basic reschedule and cancellation handling',
+    'Missed-call text back',
+    'Callback request capture for calls that need a human',
+    'Call summaries with next steps',
+    'Call transcripts',
+    'Guided setup and test call',
   ],
   professional: [
-    'Up to 200 captured calls per billing period',
-    'Reminder and review SMS where configured',
-    'Returning caller notes',
-    'Bilingual answering where configured',
-    'Owner transfer',
+    'Up to 200 captured calls/month',
+    'Everything in Starter',
+    'Reminder SMS and stronger follow-up',
+    'Booking platform sync — Square, Mindbody, and more coming soon',
+    'Returning caller notes and preferences',
+    'Preferred stylist or provider context',
+    'Owner call transfer with caller context',
+    'Bilingual workflows where configured',
+    'Call recovery insights',
+    'Call transcripts and audio recordings',
+    'Priority support',
   ],
   enterprise: [
+    'Multi-location setup',
+    'Custom call flows, routing, and escalation rules',
+    'Custom multilingual routing and workflows',
+    'Custom integration planning',
     'Custom captured call volume',
-    'Managed routing and integrations',
-    'Multi-location support',
-    'Implementation support',
+    'Concierge onboarding',
+    'Priority implementation support',
   ],
 };
 
