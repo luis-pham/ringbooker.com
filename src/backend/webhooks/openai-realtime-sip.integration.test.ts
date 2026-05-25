@@ -14,7 +14,7 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
-import { resolveOpenAiSipShopRoomContext } from '@/src/backend/webhooks/openai-realtime-sip';
+import { resolveOpenAiSipShopRoomContext, resolveSipCallerPhoneForTools } from '@/src/backend/webhooks/openai-realtime-sip';
 
 function whsecSecret(): { secret: string; raw: Buffer } {
   const raw = randomBytes(32);
@@ -397,6 +397,25 @@ test('openai SIP webhook routes Call Control shop leg by client_state before dem
   assert.equal(acceptCalls.length, 1);
   assert.ok(acceptCalls[0].body.includes('Willow Hair Lounge'));
   assert.ok(!acceptCalls[0].body.includes('ABC Nails Studio'));
+});
+
+test('shop SIP tools use original Call Control caller instead of the outbound OpenAI leg From number', () => {
+  assert.equal(
+    resolveSipCallerPhoneForTools({
+      routeKind: 'shop',
+      normalizedFrom: '+16187771064',
+      callControlState: { routeKind: 'shop', callerPhone: '+15559871234' },
+    }),
+    '+15559871234',
+  );
+  assert.equal(
+    resolveSipCallerPhoneForTools({
+      routeKind: 'shop',
+      normalizedFrom: '+15559871234',
+      callControlState: null,
+    }),
+    '+15559871234',
+  );
 });
 
 test('openai SIP shop context recovers request id from stored OpenAI leg when client_state header is missing', async () => {

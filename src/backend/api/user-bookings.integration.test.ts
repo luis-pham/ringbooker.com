@@ -86,7 +86,7 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
   const confirmed = await bookingsRepository.create({
     id: 'booking-confirmed',
     shopId: 'demo-shop',
-    customerPhone: '+15551230001',
+    customerPhone: '+16187771064',
     customerName: 'Alex Client',
     service: 'Haircut',
     techName: 'Maya',
@@ -118,7 +118,7 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
   const filtered = await app.request('/user/bookings?tab=confirmed', { headers: { cookie } });
   assert.equal(filtered.status, 200);
   const filteredBody = await filtered.json() as {
-    bookings: Array<{ id: string; status: string; callerName?: string; serviceRequested?: string }>;
+    bookings: Array<{ id: string; status: string; callerPhone?: string; callerName?: string; serviceRequested?: string }>;
     stats: { total: number; awaitingAction: number; confirmed: number };
     pagination: { page: number; limit: number; totalPages: number };
   };
@@ -126,6 +126,7 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
   assert.equal(filteredBody.bookings[0]?.id, 'booking-confirmed');
   assert.equal(filteredBody.bookings[0]?.callerName, 'Alex Client');
   assert.equal(filteredBody.bookings[0]?.serviceRequested, 'Haircut');
+  assert.equal(filteredBody.bookings[0]?.callerPhone, '+15551230001');
   assert.equal(filteredBody.stats.total, 2);
   assert.equal(filteredBody.stats.awaitingAction, 1);
   assert.equal(filteredBody.stats.confirmed, 1);
@@ -133,9 +134,11 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
 
   const detail = await app.request('/user/bookings/booking-confirmed', { headers: { cookie } });
   assert.equal(detail.status, 200);
-  const detailBody = await detail.json() as { booking: { smsLog: Array<{ type: string }>; parentCall?: { id: string; transcriptAvailable: boolean } } };
+  const detailBody = await detail.json() as { booking: { callerPhone: string; smsLog: Array<{ type: string }>; parentCall?: { id: string; callerPhone: string; transcriptAvailable: boolean } } };
   assert.equal(detailBody.booking.smsLog[0]?.type, 'confirmation');
+  assert.equal(detailBody.booking.callerPhone, '+15551230001');
   assert.equal(detailBody.booking.parentCall?.id, 'req-booking');
+  assert.equal(detailBody.booking.parentCall?.callerPhone, '+15551230001');
   assert.equal(detailBody.booking.parentCall?.transcriptAvailable, true);
 
   const patch = await app.request('/user/bookings/booking-confirmed', {

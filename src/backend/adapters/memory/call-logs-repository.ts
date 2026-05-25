@@ -445,6 +445,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     shopId: string;
     requestId: string;
   }): Promise<{
+    callerPhone?: string;
     transcriptText?: string;
     transcriptStatus?: string;
     startedAt?: string;
@@ -453,6 +454,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     for (const log of this.logsByCall.values()) {
       if (log.shopId === params.shopId && log.requestId === params.requestId) {
         return {
+          callerPhone: log.callerPhone,
           transcriptText: log.transcriptText,
           transcriptStatus: log.transcriptStatus,
           startedAt: log.startedAt?.toISOString(),
@@ -466,13 +468,14 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
   async listTranscriptMetaByShopAndRequestIds(params: {
     shopId: string;
     requestIds: string[];
-  }): Promise<Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>> {
-    const map = new Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>();
+  }): Promise<Map<string, { callerPhone?: string; transcriptStatus?: string; hasTranscriptText: boolean }>> {
+    const map = new Map<string, { callerPhone?: string; transcriptStatus?: string; hasTranscriptText: boolean }>();
     const want = new Set(params.requestIds);
     if (want.size === 0) return map;
     for (const log of this.logsByCall.values()) {
       if (log.shopId !== params.shopId || !log.requestId || !want.has(log.requestId)) continue;
       map.set(log.requestId, {
+        callerPhone: log.callerPhone,
         transcriptStatus: log.transcriptStatus,
         hasTranscriptText: Boolean(log.transcriptText?.trim().length),
       });

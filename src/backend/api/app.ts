@@ -6316,10 +6316,21 @@ export function createBackendApp(deps: {
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('cancelled') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('completed') }),
     ]);
+    const linkedCallMeta = deps.callLogsRepository
+      ? await deps.callLogsRepository.listTranscriptMetaByShopAndRequestIds({
+          shopId: shop.id,
+          requestIds: bookings.flatMap((booking) => (booking.callLogId ? [booking.callLogId] : [])),
+        }).catch(() => new Map())
+      : new Map<string, { callerPhone?: string }>();
     const totalPages = Math.max(1, Math.ceil(total / limit));
     return c.json({
       ok: true,
-      bookings: bookings.map((booking) => toUserBookingResponse(booking)),
+      bookings: bookings.map((booking) =>
+        toUserBookingResponse({
+          ...booking,
+          customerPhone: (booking.callLogId && linkedCallMeta.get(booking.callLogId)?.callerPhone) || booking.customerPhone,
+        }),
+      ),
       shop: { timezone: shop.timezone },
       total,
       stats: {
@@ -6355,12 +6366,14 @@ export function createBackendApp(deps: {
       ? await deps.outboundMessagesRepository.listByBookingId(booking.id).catch(() => [])
       : [];
     let parentCall: Record<string, unknown> | null = null;
+    let displayBooking = booking;
     if (booking.callLogId && deps.callLogsRepository) {
       const call = await deps.callLogsRepository.findTranscriptByShopAndRequestId({ shopId: shop.id, requestId: booking.callLogId }).catch(() => null);
       if (call) {
+        displayBooking = call.callerPhone ? { ...booking, customerPhone: call.callerPhone } : booking;
         parentCall = {
           id: booking.callLogId,
-          callerPhone: booking.customerPhone,
+          callerPhone: displayBooking.customerPhone,
           startedAt: call.startedAt,
           durationSeconds:
             call.startedAt && call.endedAt
@@ -6370,7 +6383,7 @@ export function createBackendApp(deps: {
         };
       }
     }
-    return c.json({ ok: true, booking: { ...toUserBookingResponse(booking, smsLog), parentCall } });
+    return c.json({ ok: true, booking: { ...toUserBookingResponse(displayBooking, smsLog), parentCall } });
   });
 
   app.patch(path('/user/bookings/:id'), async (c) => {

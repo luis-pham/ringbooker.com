@@ -1632,23 +1632,6 @@ export function UserBillingLive({
                           <p className="sub">{overageChargesState.message ?? 'No overage charges yet'}</p>
                         )}
                       </section>
-                      <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
-                        <div className="panel-head">
-                          <div>
-                            <h3>Usage and overage FAQ</h3>
-                          </div>
-                        </div>
-                        <div className="billing-faq-list">
-                          {BILLING_USAGE_FAQ.map((item) => (
-                            <details className="billing-faq-item" key={item.question}>
-                              <summary className="billing-faq-q">{item.question}</summary>
-                              <div className="billing-faq-a">
-                                <p className="sub">{item.answer}</p>
-                              </div>
-                            </details>
-                          ))}
-                        </div>
-                      </section>
                       {billingHistory.length > 0 ? (
                         <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
                           <div className="panel-head">
@@ -1699,6 +1682,23 @@ export function UserBillingLive({
                           </p>
                         </section>
                       )}
+                      <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                        <div className="panel-head">
+                          <div>
+                            <h3>Usage and overage FAQ</h3>
+                          </div>
+                        </div>
+                        <div className="billing-faq-list">
+                          {BILLING_USAGE_FAQ.map((item) => (
+                            <details className="billing-faq-item" key={item.question}>
+                              <summary className="billing-faq-q">{item.question}</summary>
+                              <div className="billing-faq-a">
+                                <p className="sub">{item.answer}</p>
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      </section>
                     </div>
                   ) : null}
                 </div>

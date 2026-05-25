@@ -15,9 +15,11 @@ applyRequiredTestEnv();
 test('create_booking tool persists pending manual booking without reminder/review jobs', async () => {
   const bookingsRepository = new InMemoryBookingsRepository();
   const jobsRepository = new InMemoryJobsRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  await shopsRepository.updateUserSettings('demo-shop', { booking_url: null });
   const session = await createInboundAgentSession(
     {
-      shopsRepository: new InMemoryShopsRepository(),
+      shopsRepository,
       jobsRepository,
       bookingsRepository,
       callbacksRepository: new InMemoryCallbacksRepository(),
@@ -47,6 +49,7 @@ test('create_booking tool persists pending manual booking without reminder/revie
   assert.ok(booking);
   assert.equal(booking.customerName, 'Test Customer');
   assert.equal(booking.status, 'pending');
+  assert.equal(booking.callLogId, 'test-create-booking');
 
   const leasedTypes = new Set<string>();
   const farFutureNow = new Date('2100-01-01T00:00:00.000Z');

@@ -575,7 +575,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                     id="account-panel-details"
                     aria-labelledby="account-tab-details"
                   >
-                    <p className="rb-account-panel-title">Profile &amp; workspace</p>
+                    <p className="rb-account-panel-title">Profile</p>
 
                     {!nav?.ok ? (
                       <AccountDetailsSkeleton />

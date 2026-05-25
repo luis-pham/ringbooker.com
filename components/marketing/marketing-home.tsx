@@ -272,12 +272,12 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 	.leak-divider{height:1px;background:#e5e7eb;margin:20px 0 16px}
 	.leak-item .pain-resolve{
 		margin-top:12px;
-		border-left:2px solid #7b5cf0;
+		border-left:2px solid #64748b;
 		padding:4px 0 4px 10px;
 		font-size:13px;
 		font-weight:400;
 		line-height:1.5;
-		color:#7b5cf0;
+		color:#64748b;
 	}
 	.leak-card.leak-revenue{background:#f2eee6;padding:32px 28px 28px;box-sizing:border-box;display:flex;flex-direction:column}
 	.leak-card.leak-revenue:hover{border-color:var(--border)}

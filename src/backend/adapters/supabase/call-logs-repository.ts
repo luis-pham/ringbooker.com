@@ -599,6 +599,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     shopId: string;
     requestId: string;
   }): Promise<{
+    callerPhone?: string;
     transcriptText?: string;
     transcriptStatus?: string;
     startedAt?: string;
@@ -606,10 +607,11 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
   } | null> {
     const { data, error } = await this.supabase
       .from('call_logs')
-      .select('transcript_text,transcript_status,started_at,ended_at')
+      .select('caller_phone,transcript_text,transcript_status,started_at,ended_at')
       .eq('shop_id', params.shopId)
       .eq('request_id', params.requestId)
       .maybeSingle<{
+        caller_phone: string | null;
         transcript_text: string | null;
         transcript_status: string | null;
         started_at: string | null;
@@ -619,6 +621,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     if (error) throw new Error(`call_logs_find_transcript_failed:${error.message}`);
     if (!data) return null;
     return {
+      callerPhone: (data.caller_phone as string | null) ?? undefined,
       transcriptText: (data.transcript_text as string | null) ?? undefined,
       transcriptStatus: (data.transcript_status as string | null) ?? undefined,
       startedAt: (data.started_at as string | null) ?? undefined,
@@ -629,12 +632,12 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
   async listTranscriptMetaByShopAndRequestIds(params: {
     shopId: string;
     requestIds: string[];
-  }): Promise<Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>> {
-    const map = new Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>();
+  }): Promise<Map<string, { callerPhone?: string; transcriptStatus?: string; hasTranscriptText: boolean }>> {
+    const map = new Map<string, { callerPhone?: string; transcriptStatus?: string; hasTranscriptText: boolean }>();
     if (params.requestIds.length === 0) return map;
     const { data, error } = await this.supabase
       .from('call_logs')
-      .select('request_id,transcript_status,transcript_text')
+      .select('request_id,caller_phone,transcript_status,transcript_text')
       .eq('shop_id', params.shopId)
       .in('request_id', params.requestIds);
 
@@ -644,6 +647,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       if (!rid) continue;
       const text = (row.transcript_text as string | null) ?? '';
       map.set(rid, {
+        callerPhone: (row.caller_phone as string | null) ?? undefined,
         transcriptStatus: (row.transcript_status as string | null) ?? undefined,
         hasTranscriptText: text.trim().length > 0,
       });

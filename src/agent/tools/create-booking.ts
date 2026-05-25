@@ -172,6 +172,7 @@ export async function createBookingTool(
       provider: getShopCalendarProviderMetadata(ctx.shop).id,
       providerStatus: result.providerStatus ?? (result.confirmed ? 'provider_confirmed' : 'request_only'),
       providerErrorReason: result.providerErrorReason,
+      callLogId: ctx.requestId,
     });
 
     await scheduleBookingFollowupJobs({

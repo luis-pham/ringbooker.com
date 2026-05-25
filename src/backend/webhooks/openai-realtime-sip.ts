@@ -67,7 +67,7 @@ import {
 } from '@/src/backend/webhooks/openai-sip-did';
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
 import { markSidebandReadyForAnswer } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
-import { decodeCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
+import { decodeCallControlClientState, type CallControlClientStatePayload } from '@/src/backend/webhooks/telnyx-call-control';
 import { callControlSpeak } from '@/src/backend/services/calls/call-control-client';
 import { evaluateOwnerHandoffDestination } from '@/src/backend/services/calls/destination-policy';
 import { isHandoffAvailable } from '@/src/agent/tools/request-human-handoff';
@@ -185,6 +185,18 @@ function liveAnsweringBillingBlockedLogFields(params: {
 }
 
 type OpenAiSipRoute = { kind: 'demo'; ctx: OpenAiSipDidContext } | { kind: 'shop'; shop: Shop; matchedRaw: string };
+
+export function resolveSipCallerPhoneForTools(params: {
+  routeKind: OpenAiSipRoute['kind'];
+  normalizedFrom: string | null;
+  callControlState: Pick<CallControlClientStatePayload, 'routeKind' | 'callerPhone'> | null;
+}): string {
+  if (params.routeKind === 'shop' && params.callControlState?.routeKind === 'shop') {
+    const originalCallerPhone = params.callControlState.callerPhone?.trim();
+    if (originalCallerPhone) return originalCallerPhone;
+  }
+  return params.normalizedFrom ?? '';
+}
 
 export async function resolveOpenAiSipShopRoomContext(params: {
   sipHeaders: Array<{ name: string; value: string }> | undefined;
@@ -905,9 +917,14 @@ export async function handleOpenAiRealtimeSipWebhook(
           shopAccessStatesRepository: deps.shopAccessStatesRepository,
           telephonyService: deps.telephonyService!,
         };
+        const callerPhone = resolveSipCallerPhoneForTools({
+          routeKind: route.kind,
+          normalizedFrom,
+          callControlState: ccDecoded,
+        });
         const toolCtx = createSipAgentToolContext({
           shop: route.shop,
-          callerPhone: normalizedFrom ?? '',
+          callerPhone,
           requestId: shopRoomContext.requestId,
           roomName: shopRoomContext.roomName,
           deps: executorDeps,
@@ -918,7 +935,6 @@ export async function handleOpenAiRealtimeSipWebhook(
         const shop = route.shop;
         const sidebandCtx = shopRoomContext;
         const parentCcId = sidebandCtx.parentTelnyxCallControlId;
-        const callerPhone = normalizedFrom ?? '';
         const telnyxKey = env.TELNYX_API_KEY ?? '';
 
         const softLimitMs = (shopCallLimits?.softWarningAfterSeconds ?? 480) * 1000;

@@ -110,6 +110,7 @@ function createContext(params?: {
           provider: params.provider ?? null,
           providerStatus: params.providerStatus ?? null,
           providerErrorReason: params.providerErrorReason ?? null,
+          callLogId: params.callLogId ?? null,
           reminder24hSent: false,
           reminder2hSent: false,
           reviewRequestSent: false,
@@ -375,6 +376,7 @@ test('manual provider without booking URL still creates pending request', async 
   assert.equal('confirmed' in result ? result.confirmed : true, false);
   const saved = harness.bookings.get('local-booking-123');
   assert.equal(saved?.status, 'pending');
+  assert.equal(saved?.callLogId, harness.ctx.requestId);
 });
 
 test('square getTeamMembers returns empty on error', async () => {

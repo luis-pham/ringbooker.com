@@ -402,6 +402,7 @@ export interface CallLogsRepository {
     shopId: string;
     requestId: string;
   }): Promise<{
+    callerPhone?: string;
     transcriptText?: string;
     transcriptStatus?: string;
     startedAt?: string;
@@ -410,7 +411,7 @@ export interface CallLogsRepository {
   listTranscriptMetaByShopAndRequestIds(params: {
     shopId: string;
     requestIds: string[];
-  }): Promise<Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>>;
+  }): Promise<Map<string, { callerPhone?: string; transcriptStatus?: string; hasTranscriptText: boolean }>>;
 }
 
 export interface MissedCallsRepository {
