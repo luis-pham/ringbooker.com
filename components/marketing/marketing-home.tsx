@@ -1932,13 +1932,14 @@ export function MarketingHomeTemplate() {
                 <div className="plan-price" id="ps">$79<span className="plan-price-period">/mo</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
-                  <li>Up to 100 captured calls per billing period</li>
+                  <li>Up to 100 captured calls/month</li>
                   <li>Works with your current business number</li>
                   <li>After-hours and overflow call answering</li>
                   <li>Booking request capture — via your booking link</li>
                   <li>Missed-call text back</li>
                   <li>Callback request capture for calls that need a human</li>
                   <li>Call summaries with next steps</li>
+                  <li>Call transcripts</li>
                   <li>Guided setup and test call</li>
                 </ul>
                 <a className="plan-btn pb-outline" href="/user/signup?plan=starter">
@@ -1952,7 +1953,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-price" id="pp">$149<span className="plan-price-period">/mo</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
-                  <li>Up to 300 captured calls per billing period</li>
+                  <li>Up to 200 captured calls/month</li>
                   <li>Everything in Starter</li>
                   <li>Reminder SMS and stronger follow-up</li>
                   <li>Booking platform sync — Square, Mindbody, and more coming soon</li>
@@ -1961,6 +1962,7 @@ export function MarketingHomeTemplate() {
                   <li>Owner call transfer with caller context</li>
                   <li>Bilingual workflows where configured</li>
                   <li>Call recovery insights</li>
+                  <li>Call transcripts and audio recordings</li>
                   <li>Priority support</li>
                 </ul>
                 <a className="plan-btn pb-dark" href="/user/signup?plan=professional">

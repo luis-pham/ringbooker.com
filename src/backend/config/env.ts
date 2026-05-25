@@ -130,6 +130,12 @@ function createValidatedEnv() {
       TELNYX_PROVISIONING_TIMEOUT_MS: optionalPositiveIntEnv,
       /** POST /v2/calls (outbound Calls API), not Call Control actions. */
       TELNYX_OUTBOUND_CALL_TIMEOUT_MS: optionalPositiveIntEnv,
+
+      /** Private Cloudflare R2 bucket used for durable Telnyx call recording playback. */
+      R2_CALL_RECORDINGS_ACCOUNT_ID: optionalNonEmptyStringEnv,
+      R2_CALL_RECORDINGS_ACCESS_KEY_ID: optionalNonEmptyStringEnv,
+      R2_CALL_RECORDINGS_SECRET_ACCESS_KEY: optionalNonEmptyStringEnv,
+      R2_CALL_RECORDINGS_BUCKET: optionalNonEmptyStringEnv,
       /**
        * Optional ISO-8601 instant for emergency grandfather only (prefer SQL backfill:
        * scripts/backfill-forwarding-verification-legacy-live.sql).

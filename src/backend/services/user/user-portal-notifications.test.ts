@@ -162,7 +162,7 @@ test('over-limit notification uses overage copy for active paid subscriptions', 
 
   const usage = notifications.find((item) => item.id === 'usage_captured_over');
   assert.equal(usage?.severity, 'warn');
-  assert.equal(usage?.body, "You've exceeded your caller limit. Additional callers are billed at $0.25 each.");
+  assert.equal(usage?.body, "You've exceeded your captured call limit. Additional captured calls are billed at $0.75 each.");
 });
 
 test('over-limit notification uses trial copy for trial subscriptions', () => {

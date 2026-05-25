@@ -277,7 +277,7 @@ export function buildDashboardOverviewRail(params: {
       label: 'Billing period allowance',
       state: usage.overCapturedCallerLimit ? 'warn' : 'neutral',
       detail: usage.overCapturedCallerLimit
-        ? 'Captured call overage applies at $0.25/call'
+        ? 'Captured call overage applies at $0.75/call'
         : 'Close to your captured call limit',
       href: '/user/billing',
     });

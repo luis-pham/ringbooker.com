@@ -30,6 +30,8 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/s3-request-presigner": "^3.1053.0",
     "@fontsource-variable/mona-sans": "^5.2.8",
     "@google/genai": "^1.48.0",
     "@hookform/resolvers": "^5.2.2",

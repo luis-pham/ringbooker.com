@@ -47,9 +47,9 @@ test('returning caller notes UX is locked for Starter and active for Professiona
 });
 
 test('billing plan card copy matches public usage limits and Custom managed volume', () => {
-  assert.ok(BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /100 captured callers\/month/i.test(feature)));
-  assert.ok(BILLING_PLAN_CARD_FEATURES.professional.some((feature) => /300 captured callers\/month/i.test(feature)));
-  assert.ok(BILLING_PLAN_CARD_FEATURES.enterprise.some((feature) => /Custom captured caller volume/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /100 captured calls per billing period/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.professional.some((feature) => /200 captured calls per billing period/i.test(feature)));
+  assert.ok(BILLING_PLAN_CARD_FEATURES.enterprise.some((feature) => /Custom captured call volume/i.test(feature)));
   assert.ok(!BILLING_PLAN_CARD_FEATURES.starter.some((feature) => /1 number included/i.test(feature)));
 });
 

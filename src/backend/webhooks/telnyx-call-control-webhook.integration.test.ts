@@ -14,6 +14,7 @@ import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import type { BillingSubscriptionStatus } from '@/src/backend/domain/types';
+import type { CallRecordingStorage } from '@/src/backend/services/calls/call-recording-storage';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 import { markSidebandReadyForAnswer } from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
@@ -45,6 +46,22 @@ function callInitiatedBody(params: { id: string; to: string; from: string; callC
         to: params.to,
         from: params.from,
         direction: 'incoming',
+      },
+    },
+  });
+}
+
+function recordingSavedBody(params: { id: string; callControlId: string; recordingId: string; url: string }) {
+  return JSON.stringify({
+    data: {
+      event_type: 'call.recording.saved',
+      id: params.id,
+      payload: {
+        call_control_id: params.callControlId,
+        recording_id: params.recordingId,
+        recording_urls: { mp3: params.url },
+        recording_started_at: '2026-05-25T02:00:00.000Z',
+        recording_ended_at: '2026-05-25T02:01:00.000Z',
       },
     },
   });
@@ -180,6 +197,140 @@ test('telnyx call-control webhook dry-run does not call Telnyx REST', async () =
   assert.equal(json.phase, 'initiated');
   assert.equal(json.decision, 'dry_run');
   assert.equal(fetchCalls, 0);
+});
+
+test('telnyx call recording saved webhook ingests recording into private storage and links it to the parent call log', async () => {
+  resetEnvCacheForTests();
+  applyRequiredTestEnv({
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+    TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+  });
+
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'cc_recorded_parent',
+    shopId: 'demo-shop',
+    callerPhone: '+14155550000',
+    requestId: 'req_recorded_parent',
+    startedAt: new Date('2026-05-25T02:00:00.000Z'),
+  });
+  const stored: Array<{ sourceUrl: string; objectKey: string; contentType: string }> = [];
+  const recordingStorage: CallRecordingStorage = {
+    storeFromUrl: async (params) => { stored.push(params); },
+    createPlaybackUrl: async () => 'https://recordings.example/signed',
+  };
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+    callLogsRepository,
+    recordingStorage,
+  });
+
+  const body = recordingSavedBody({
+    id: 'evt-recording-saved',
+    callControlId: 'cc_recorded_parent',
+    recordingId: 'rec_123',
+    url: 'https://api.telnyx.com/recordings/temporary.mp3',
+  });
+  const ts = `${Date.now()}`;
+  const response = await app.request('/webhooks/telnyx/call-control', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0]?.sourceUrl, 'https://api.telnyx.com/recordings/temporary.mp3');
+  assert.equal(stored[0]?.contentType, 'audio/mpeg');
+  assert.equal(stored[0]?.objectKey, 'call-recordings/demo-shop/req_recorded_parent/rec_123.mp3');
+  const recorded = await callLogsRepository.findByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'cc_recorded_parent',
+  });
+  assert.equal(recorded?.recordingStatus, 'available');
+  assert.equal(recorded?.recordingId, 'rec_123');
+  assert.equal(recorded?.recordingDurationMs, 60_000);
+});
+
+test('telnyx call recording is requested only when enabled on a Professional or Enterprise shop', async () => {
+  for (const entry of [
+    { plan: 'professional' as const, enabled: true, expectedStatus: 'pending', callControlId: 'cc_recording_professional' },
+    { plan: 'professional' as const, enabled: false, expectedStatus: 'not_requested', callControlId: 'cc_recording_professional_disabled' },
+    { plan: 'enterprise' as const, enabled: true, expectedStatus: 'pending', callControlId: 'cc_recording_enterprise' },
+    { plan: 'starter' as const, enabled: true, expectedStatus: 'not_requested', callControlId: 'cc_recording_starter' },
+  ]) {
+    resetEnvCacheForTests();
+    applyRequiredTestEnv({
+      ...TELNYX_INBOUND_CALL_CONTROL_STACK,
+      TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+      TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+      TELNYX_CALL_CONTROL_DRY_RUN: 'false',
+    });
+
+    const shopsRepository = new InMemoryShopsRepository();
+    const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+    const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+    const callLogsRepository = new InMemoryCallLogsRepository();
+    await configureLiveShop({
+      shopsRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      telnyxNumber: '+15551110049',
+      status: 'active',
+    });
+    await shopsRepository.updatePlanAndActivation('demo-shop', { plan: entry.plan });
+    await shopsRepository.updateDynamicConfig('demo-shop', { call_recording_enabled: entry.enabled });
+    if (entry.plan === 'enterprise') {
+      await shopAccessStatesRepository.upsert({
+        shopId: 'demo-shop',
+        commercialGoLiveApprovedAt: new Date().toISOString(),
+        commercialGoLiveApprovedBy: 'admin@ringbooker.local',
+      });
+    }
+    const recordingStorage: CallRecordingStorage = {
+      storeFromUrl: async () => undefined,
+      createPlaybackUrl: async () => 'https://recordings.example/signed',
+    };
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      shopsRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callLogsRepository,
+      recordingStorage,
+      testingTelnyxFetch: async () =>
+        new Response(JSON.stringify({ data: { call_control_id: `openai_${entry.callControlId}` } }), { status: 200 }),
+    });
+
+    const body = callInitiatedBody({
+      id: `evt-${entry.callControlId}`,
+      to: '+15551110049',
+      from: '+14155550000',
+      callControlId: entry.callControlId,
+    });
+    const ts = `${Date.now()}`;
+    const response = await app.request('/webhooks/telnyx/call-control', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'telnyx-timestamp': ts,
+        'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+      },
+      body,
+    });
+    assert.equal(response.status, 200);
+    const call = await callLogsRepository.findByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId: entry.callControlId,
+    });
+    assert.equal(call?.recordingStatus, entry.expectedStatus);
+  }
 });
 
 test('telnyx call-control prewarms OpenAI without answering inbound caller immediately', async () => {

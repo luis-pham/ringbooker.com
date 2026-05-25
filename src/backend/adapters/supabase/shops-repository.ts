@@ -69,6 +69,7 @@ type ShopsRow = {
   ai_welcome_message: string | null;
   ai_custom_instructions: string | null;
   allow_transfers: boolean | null;
+  call_recording_enabled: boolean | null;
   allow_callbacks: boolean | null;
   send_reminder_sms: boolean | null;
   send_review_request_sms: boolean | null;
@@ -139,6 +140,7 @@ const SHOP_SELECT_COLUMNS = [
   'ai_welcome_message',
   'ai_custom_instructions',
   'allow_transfers',
+  'call_recording_enabled',
   'allow_callbacks',
   'send_reminder_sms',
   'send_review_request_sms',
@@ -453,6 +455,7 @@ function toShop(row: ShopsRow): Shop {
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
     allow_transfers: row.allow_transfers ?? false,
+    call_recording_enabled: row.call_recording_enabled ?? false,
     allow_callbacks: row.allow_callbacks ?? true,
     sms_owner_opted_in: row.sms_owner_opted_in ?? false,
     send_reminder_sms: row.send_reminder_sms ?? false,
@@ -543,6 +546,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',
@@ -615,6 +619,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',
@@ -736,6 +741,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         active: params.active ?? true,
         ai_voice: 'Aoede',
         allow_transfers: enableProfessionalDefaults,
+        call_recording_enabled: false,
         allow_callbacks: true,
         send_reminder_sms: enableProfessionalDefaults,
         send_review_request_sms: enableProfessionalDefaults,
@@ -791,6 +797,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',
@@ -1224,6 +1231,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',
@@ -1256,6 +1264,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'ai_welcome_message'
         | 'ai_custom_instructions'
         | 'allow_transfers'
+        | 'call_recording_enabled'
         | 'allow_callbacks'
         | 'send_reminder_sms'
         | 'send_review_request_sms'
@@ -1278,6 +1287,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.ai_welcome_message !== undefined) payload.ai_welcome_message = patch.ai_welcome_message;
     if (patch.ai_custom_instructions !== undefined) payload.ai_custom_instructions = patch.ai_custom_instructions;
     if (patch.allow_transfers !== undefined) payload.allow_transfers = patch.allow_transfers;
+    if (patch.call_recording_enabled !== undefined) payload.call_recording_enabled = patch.call_recording_enabled;
     if (patch.allow_callbacks !== undefined) payload.allow_callbacks = patch.allow_callbacks;
     if (patch.send_reminder_sms !== undefined) payload.send_reminder_sms = patch.send_reminder_sms;
     if (patch.send_review_request_sms !== undefined) payload.send_review_request_sms = patch.send_review_request_sms;
@@ -1347,6 +1357,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',
@@ -1430,6 +1441,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',
@@ -1510,6 +1522,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'ai_welcome_message',
           'ai_custom_instructions',
           'allow_transfers',
+          'call_recording_enabled',
           'allow_callbacks',
           'send_reminder_sms',
           'send_review_request_sms',

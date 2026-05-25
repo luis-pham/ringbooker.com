@@ -56,7 +56,7 @@ function emailCategory(alertType: ShopUsageAlertType): EmailCategory {
 function nextPlanCopy(shop: Shop): { line: string | null; ctaLabel: string | null } {
   if (shop.plan !== 'starter') return { line: null, ctaLabel: null };
   return {
-    line: 'Need more capacity? Upgrade to Professional for 300 callers per month.',
+    line: 'Need more capacity? Upgrade to Professional for 200 captured calls per billing period.',
     ctaLabel: 'Upgrade to Professional',
   };
 }
@@ -73,7 +73,7 @@ function buildUsageAlertEmail(params: {
   const used = params.usage.capturedCallersUsed;
   const remaining = Math.max(0, limit - used);
   const overageCallers = Math.max(0, used - limit);
-  const estimatedCents = overageCallers * 25;
+  const estimatedCents = overageCallers * 75;
   const planName = getPlanCatalogEntry(params.shop.plan).label;
   const nextPlan = nextPlanCopy(params.shop);
   const dashboard = usageDashboardUrl();
@@ -85,7 +85,7 @@ function buildUsageAlertEmail(params: {
       `Hi ${params.shop.name},`,
       `You've used ${used} of ${limit} captured calls this billing period.`,
       `You have ${remaining} calls remaining before overage charges apply.`,
-      `Once you reach ${limit} calls, additional captured calls will be billed at $0.25 each at the end of your billing period.`,
+      `Once you reach ${limit} calls, additional captured calls will be billed at $0.75 each at the end of your billing period.`,
       `Current period ends: ${formatDate(params.periodEnd)}`,
       `View usage dashboard: ${dashboard}`,
       nextPlan.line,
@@ -104,7 +104,7 @@ function buildUsageAlertEmail(params: {
         bodyHtml: [
           `<p style="margin:0 0 12px 0">You've used ${used} of ${limit} captured calls this billing period.</p>`,
           `<p style="margin:0 0 12px 0">You have ${remaining} calls remaining before overage charges apply.</p>`,
-          `<p style="margin:0 0 12px 0">Once you reach ${limit} calls, additional captured calls will be billed at $0.25 each at the end of your billing period.</p>`,
+          `<p style="margin:0 0 12px 0">Once you reach ${limit} calls, additional captured calls will be billed at $0.75 each at the end of your billing period.</p>`,
           `<p style="margin:0">Current period ends: ${escapeHtmlText(formatDate(params.periodEnd))}</p>`,
           nextPlan.line ? `<p style="margin:12px 0 0 0">${escapeHtmlText(nextPlan.line)}</p>` : '',
           nextPlan.ctaLabel ? `<p style="margin:12px 0 0 0"><a href="${escapeHtmlText(upgrade)}">${escapeHtmlText(nextPlan.ctaLabel)}</a></p>` : '',
@@ -121,7 +121,7 @@ function buildUsageAlertEmail(params: {
     `Hi ${params.shop.name},`,
     `You've reached your ${planName} captured call limit of ${limit} calls this billing period.`,
     'Your AI receptionist is still answering calls.',
-    `Additional captured calls will be billed at $0.25 each at the end of your billing period on ${formatDate(params.periodEnd)}.`,
+    `Additional captured calls will be billed at $0.75 each at the end of your billing period on ${formatDate(params.periodEnd)}.`,
     `Current overage: ${overageCallers} calls = $${money(estimatedCents)} estimated`,
     `View usage dashboard: ${dashboard}`,
     params.shop.plan === 'starter' ? `To avoid overage charges, upgrade your plan: ${upgrade}` : null,
@@ -134,12 +134,12 @@ function buildUsageAlertEmail(params: {
       title: subject,
       previewText: `${planName} captured call limit reached; overage now applies.`,
       heroTitle: 'Caller limit reached',
-      heroSubtitleHtml: `<p style="margin:0">Additional captured calls are now billed at $0.25 each.</p>`,
+      heroSubtitleHtml: `<p style="margin:0">Additional captured calls are now billed at $0.75 each.</p>`,
       greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(params.shop.name)},</p>`,
       bodyHtml: [
         `<p style="margin:0 0 12px 0">You've reached your ${escapeHtmlText(planName)} captured call limit of ${limit} calls this billing period.</p>`,
         '<p style="margin:0 0 12px 0">Your AI receptionist is still answering calls.</p>',
-        `<p style="margin:0 0 12px 0">Additional captured calls will be billed at $0.25 each at the end of your billing period on ${escapeHtmlText(formatDate(params.periodEnd))}.</p>`,
+        `<p style="margin:0 0 12px 0">Additional captured calls will be billed at $0.75 each at the end of your billing period on ${escapeHtmlText(formatDate(params.periodEnd))}.</p>`,
         `<p style="margin:0">Current overage: ${overageCallers} calls = $${money(estimatedCents)} estimated</p>`,
         params.shop.plan === 'starter' ? `<p style="margin:12px 0 0 0">To avoid overage charges, <a href="${escapeHtmlText(upgrade)}">upgrade your plan</a>.</p>` : '',
       ].join(''),
@@ -169,7 +169,7 @@ export function buildOverageChargeReceiptEmail(params: {
     `Included calls:    ${params.includedCallers}`,
     `Calls used:        ${params.capturedCallers}`,
     `Overage calls:     ${params.overageCallers}`,
-    'Overage rate:      $0.25/call',
+    'Overage rate:      $0.75/call',
     `Overage charge:    $${money(params.amountCents)}`,
     'This charge has been applied to your payment method on file.',
     `View billing history: ${dashboard}`,
@@ -187,7 +187,7 @@ export function buildOverageChargeReceiptEmail(params: {
       bodyHtml: [
         `<p style="margin:0 0 12px 0">Your billing period ended on ${escapeHtmlText(formatDate(params.periodEnd))}.</p>`,
         '<p style="margin:0 0 12px 0">Here is a summary of your usage:</p>',
-        `<p style="margin:0">Plan: ${escapeHtmlText(planName)}<br />Included calls: ${params.includedCallers}<br />Calls used: ${params.capturedCallers}<br />Overage calls: ${params.overageCallers}<br />Overage rate: $0.25/call<br />Overage charge: $${money(params.amountCents)}</p>`,
+        `<p style="margin:0">Plan: ${escapeHtmlText(planName)}<br />Included calls: ${params.includedCallers}<br />Calls used: ${params.capturedCallers}<br />Overage calls: ${params.overageCallers}<br />Overage rate: $0.75/call<br />Overage charge: $${money(params.amountCents)}</p>`,
         '<p style="margin:12px 0 0 0">This charge has been applied to your payment method on file.</p>',
       ].join(''),
       ctaLabel: 'View billing history',

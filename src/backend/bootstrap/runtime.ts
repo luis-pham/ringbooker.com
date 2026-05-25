@@ -2,6 +2,7 @@ import { InMemoryVoiceCallLegsRepository } from '@/src/backend/adapters/memory/v
 import { InMemoryHandoffSessionsRepository } from '@/src/backend/adapters/memory/handoff-sessions-repository';
 import { SupabaseVoiceCallLegsRepository } from '@/src/backend/adapters/supabase/voice-call-legs-repository';
 import { SupabaseHandoffSessionsRepository } from '@/src/backend/adapters/supabase/handoff-sessions-repository';
+import { R2CallRecordingStorage } from '@/src/backend/adapters/cloudflare/r2-call-recording-storage';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
@@ -261,6 +262,22 @@ export function createBackendRuntime() {
           return new ResendEmailService(resendApiKey, getEnv().EMAIL_FROM_ADDRESS);
         })()
       : new NoopEmailService();
+  const recordingStorage = (() => {
+    const env = getEnv();
+    if (
+      !env.R2_CALL_RECORDINGS_ACCOUNT_ID ||
+      !env.R2_CALL_RECORDINGS_ACCESS_KEY_ID ||
+      !env.R2_CALL_RECORDINGS_SECRET_ACCESS_KEY ||
+      !env.R2_CALL_RECORDINGS_BUCKET
+    ) {
+      return undefined;
+    }
+    return new R2CallRecordingStorage(env.R2_CALL_RECORDINGS_BUCKET, {
+      accountId: env.R2_CALL_RECORDINGS_ACCOUNT_ID,
+      accessKeyId: env.R2_CALL_RECORDINGS_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_CALL_RECORDINGS_SECRET_ACCESS_KEY,
+    });
+  })();
   const realtimeAgentRuntime =
     agentRuntimeMode === 'livekit_realtime'
       ? (() => {
@@ -325,6 +342,7 @@ export function createBackendRuntime() {
     emailService,
     realtimeAgentRuntime,
     callLogsRepository: repositories.callLogsRepository,
+    recordingStorage,
     missedCallsRepository: repositories.missedCallsRepository,
     handoffSessionsRepository: repositories.handoffSessionsRepository,
     voiceCallLegsRepository: repositories.voiceCallLegsRepository,
@@ -371,6 +389,7 @@ export function createBackendRuntime() {
     callbacksRepository: repositories.callbacksRepository,
     outboundMessagesRepository: repositories.outboundMessagesRepository,
     callLogsRepository: repositories.callLogsRepository,
+    recordingStorage,
     missedCallsRepository: repositories.missedCallsRepository,
     handoffSessionsRepository: repositories.handoffSessionsRepository,
     voiceCallLegsRepository: repositories.voiceCallLegsRepository,

@@ -286,6 +286,7 @@ export interface Shop {
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;
   allow_transfers: boolean;
+  call_recording_enabled?: boolean;
   allow_callbacks: boolean;
   /** Explicit owner/staff consent for operational SMS alerts. */
   sms_owner_opted_in?: boolean;

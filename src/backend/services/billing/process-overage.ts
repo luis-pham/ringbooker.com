@@ -14,7 +14,8 @@ import { maybeSendOverageChargeReceipt } from '@/src/backend/services/usage/usag
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 
-export const CAPTURED_CALLER_OVERAGE_RATE_CENTS = 25;
+export const OVERAGE_RATE_PER_CALL = 0.75;
+const CAPTURED_CALL_OVERAGE_RATE_CENTS = Math.round(OVERAGE_RATE_PER_CALL * 100);
 
 type OverageBillingProvider = BillingProviderAdapter & {
   chargeOverage(params: {
@@ -69,7 +70,7 @@ export async function processOverageForPeriod(
   );
   const capturedCallers = usage.capturedCallersUsed;
   const overageCallers = Math.max(0, capturedCallers - includedCallers);
-  const amountCents = overageCallers * CAPTURED_CALLER_OVERAGE_RATE_CENTS;
+  const amountCents = overageCallers * CAPTURED_CALL_OVERAGE_RATE_CENTS;
 
   await deps.overageRepository.create({
     shopId: shop.id,
@@ -79,7 +80,7 @@ export async function processOverageForPeriod(
     includedCallers,
     capturedCallers,
     overageCallers,
-    rateCents: CAPTURED_CALLER_OVERAGE_RATE_CENTS,
+    rateCents: CAPTURED_CALL_OVERAGE_RATE_CENTS,
     amountCents,
     paddleSubscriptionId: subscription.providerSubscriptionId,
     status: overageCallers === 0 ? 'skipped' : 'pending',
@@ -91,7 +92,7 @@ export async function processOverageForPeriod(
   if (overageCallers === 0) return;
 
   try {
-    const description = `Captured call overage - ${overageCallers} calls x $0.25`;
+    const description = `Captured call overage - ${overageCallers} calls x $${OVERAGE_RATE_PER_CALL.toFixed(2)}`;
     const { providerTransactionId } = await deps.billingProvider.chargeOverage({
       providerSubscriptionId: subscription.providerSubscriptionId,
       amountCents,

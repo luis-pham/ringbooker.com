@@ -90,13 +90,14 @@ test('starter plan user settings expose capabilities and reject locked fields', 
   const getBody = (await getResponse.json()) as {
     ok: boolean;
     shop: { plan: string };
-    capabilities: { edit_ai_voice: boolean; edit_transfer_settings: boolean; edit_ai_custom_instructions: boolean };
+    capabilities: { edit_ai_voice: boolean; edit_transfer_settings: boolean; edit_ai_custom_instructions: boolean; configure_call_recording: boolean };
   };
   assert.equal(getBody.ok, true);
   assert.equal(getBody.shop.plan, 'starter');
   assert.equal(getBody.capabilities.edit_ai_voice, false);
   assert.equal(getBody.capabilities.edit_transfer_settings, false);
   assert.equal(getBody.capabilities.edit_ai_custom_instructions, false);
+  assert.equal(getBody.capabilities.configure_call_recording, false);
 
   const blockedResponse = await app.request('/user/settings', {
     method: 'PUT',
@@ -109,13 +110,14 @@ test('starter plan user settings expose capabilities and reject locked fields', 
     body: JSON.stringify({
       send_review_request_sms: true,
       ai_custom_instructions: 'Only offer premium routing.',
+      call_recording_enabled: true,
     }),
   });
   assert.equal(blockedResponse.status, 403);
   const blockedBody = (await blockedResponse.json()) as { ok: boolean; error: string; fields: string[] };
   assert.equal(blockedBody.ok, false);
   assert.equal(blockedBody.error, 'plan_feature_locked');
-  assert.deepEqual(blockedBody.fields.sort(), ['ai_custom_instructions']);
+  assert.deepEqual(blockedBody.fields.sort(), ['ai_custom_instructions', 'call_recording_enabled']);
 
   const allowedResponse = await app.request('/user/settings', {
     method: 'PUT',
@@ -157,6 +159,43 @@ test('starter plan user settings expose capabilities and reject locked fields', 
   );
   assert.equal(allowedBody.shop.service_catalog?.services[0]?.name, 'Basic Manicure');
   assert.deepEqual(allowedBody.shop.not_offered_services, ['Acrylic nails']);
+});
+
+test('professional shop owner can opt in to call recording', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'professional', active: true });
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ call_recording_enabled: true }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as {
+    shop: { call_recording_enabled?: boolean };
+    capabilities: { configure_call_recording: boolean };
+  };
+  assert.equal(body.capabilities.configure_call_recording, true);
+  assert.equal(body.shop.call_recording_enabled, true);
+  assert.equal((await shopsRepository.findById('demo-shop'))?.call_recording_enabled, true);
 });
 
 test('user can save business knowledge staff and FAQ fields', async () => {

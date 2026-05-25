@@ -178,7 +178,7 @@ export function buildUserPortalNotifications(params: {
         ? 'Your payment failed. Please update your payment method to continue receiving calls.'
         : trialOverLimit
           ? "You've reached your trial caller limit. Add a payment method to continue."
-          : "You've exceeded your caller limit. Additional callers are billed at $0.25 each.",
+          : "You've exceeded your captured call limit. Additional captured calls are billed at $0.75 each.",
       href: '/user/billing',
     });
   } else if (usage?.nearCapturedCallerLimit) {

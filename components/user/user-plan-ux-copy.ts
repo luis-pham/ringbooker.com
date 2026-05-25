@@ -10,7 +10,7 @@ export const BILLING_PLAN_CARD_FEATURES: Record<ShopPlan, string[]> = {
     'Basic call logs and summaries',
   ],
   professional: [
-    'Up to 300 captured calls per billing period',
+    'Up to 200 captured calls per billing period',
     'Reminder and review SMS where configured',
     'Returning caller notes',
     'Bilingual answering where configured',

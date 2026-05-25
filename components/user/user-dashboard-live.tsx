@@ -1018,7 +1018,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                         ? 'Trial limit reached.'
                         : usageOverLimitMode === 'payment_failed'
                           ? 'Payment failed - calls paused.'
-                          : 'Over limit - overage at $0.25/caller.'
+                          : 'Over limit - overage at $0.75/captured call.'
                       : 'You are close to your captured call limit for this billing period.'}
                     {data.usage.overCapturedCallerLimit ? (
                       <>

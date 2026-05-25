@@ -201,7 +201,7 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     description: 'Adds SMS, caller memory, bilingual & owner transfer.',
     badge: 'Popular',
     features: [
-      { text: '300 captured calls per billing period', included: true },
+      { text: '200 captured calls per billing period', included: true },
       { text: 'Everything in Starter', included: true },
       { text: 'Reminder & review SMS', included: true },
       { text: 'Returning caller notes', included: true },
@@ -226,6 +226,39 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     ctaVariant: 'ghost',
   },
 ];
+
+const BILLING_USAGE_FAQ = [
+  {
+    question: 'What counts as a captured call?',
+    answer:
+      'A captured call is any call where our AI successfully engaged with your caller — answering a question, capturing a booking request, handling a reschedule, or taking down their details for follow-up. Missed calls, wrong numbers, and calls that ended before the AI could respond do not count.',
+  },
+  {
+    question: 'What happens when I reach my plan limit?',
+    answer:
+      "You can continue receiving calls beyond your limit. Each additional captured call is billed at $0.75. You'll receive an email alert at 80% usage and again when you reach your limit so there are no surprises.",
+  },
+  {
+    question: 'When does my usage reset?',
+    answer:
+      'Your usage resets at the start of each billing period, not on the 1st of every calendar month. Your billing period start date is shown on this page.',
+  },
+  {
+    question: 'How is the overage charge applied?',
+    answer:
+      'Overage charges are calculated at the end of your billing period and applied as a one-time charge at $0.75 per captured call over your plan limit.',
+  },
+  {
+    question: 'Can I upgrade my plan to avoid overage charges?',
+    answer:
+      'Yes. Upgrading to a higher plan takes effect immediately and your quota resets to the new plan limit for the remainder of your billing period.',
+  },
+  {
+    question: 'What is the call duration limit?',
+    answer:
+      'To ensure fair usage, calls are limited to 6 minutes on the Starter plan and 8 minutes on the Professional plan. Most salon calls are completed well within this window. If a call reaches the limit, the AI will politely wrap up and offer to take the caller\'s information for follow-up.',
+  },
+] as const;
 
 function formatMoney(amount: number, currency: string) {
   return new Intl.NumberFormat('en-US', {
@@ -1286,13 +1319,13 @@ export function UserBillingLive({
                               }}
                             >
                               {usage.overCapturedCallerLimit
-                                ? `You have ${Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed))} overage callers this period - estimated charge: ${formatMoneyCents(Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed)) * 25)}.`
+                                ? `You have ${Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed))} overage captured calls this billing period - estimated charge: ${formatMoneyCents(Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed)) * 75)}.`
                                 : 'You are close to your captured call limit for this billing period.'}
                             </p>
                           ) : null}
                           {usage.capturedCallersLimit != null ? (
                             <p className="sub" style={{ marginTop: 8 }}>
-                              Additional captured calls billed at $0.25 each at end of billing period.
+                              Additional captured calls billed at $0.75 each at end of billing period.
                             </p>
                           ) : null}
                           <p className="sub" style={{ marginTop: 8 }}>
@@ -1583,7 +1616,7 @@ export function UserBillingLive({
                             <thead>
                               <tr>
                                 <th>Period</th>
-                                <th>Overage callers</th>
+                                <th>Overage calls</th>
                                 <th>Amount</th>
                                 <th>Status</th>
                               </tr>
@@ -1606,6 +1639,21 @@ export function UserBillingLive({
                         ) : (
                           <p className="sub">{overageChargesState.message ?? 'No overage charges yet'}</p>
                         )}
+                      </section>
+                      <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                        <div className="panel-head">
+                          <div>
+                            <h3>Usage and overage FAQ</h3>
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gap: 16 }}>
+                          {BILLING_USAGE_FAQ.map((item) => (
+                            <div key={item.question}>
+                              <h4 style={{ margin: '0 0 6px', fontSize: 14 }}>{item.question}</h4>
+                              <p className="sub" style={{ margin: 0 }}>{item.answer}</p>
+                            </div>
+                          ))}
+                        </div>
                       </section>
                       {billingHistory.length > 0 ? (
                         <section className="card billing-history-compact" style={{ marginBottom: 16 }}>

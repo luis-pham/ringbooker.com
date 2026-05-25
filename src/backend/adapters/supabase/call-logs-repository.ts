@@ -244,6 +244,101 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }
   }
 
+  async markRecordingPendingByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+  }): Promise<void> {
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update({ recording_status: 'pending', recording_provider: params.recordingProvider, recording_error: null })
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId);
+    if (error) throw new Error(`call_logs_recording_pending_failed:${error.message}`);
+  }
+
+  async markRecordingAvailableByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+    recordingId: string;
+    recordingStorageKey: string;
+    recordingFormat: string;
+    recordingDurationMs?: number | null;
+    recordingStartedAt?: Date | null;
+    recordingEndedAt?: Date | null;
+  }): Promise<void> {
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update({
+        recording_status: 'available',
+        recording_provider: params.recordingProvider,
+        recording_id: params.recordingId,
+        recording_storage_key: params.recordingStorageKey,
+        recording_format: params.recordingFormat,
+        recording_duration_ms: params.recordingDurationMs ?? null,
+        recording_started_at: params.recordingStartedAt?.toISOString() ?? null,
+        recording_ended_at: params.recordingEndedAt?.toISOString() ?? null,
+        recording_error: null,
+      })
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId);
+    if (error) throw new Error(`call_logs_recording_available_failed:${error.message}`);
+  }
+
+  async markRecordingFailedByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+    recordingId?: string | null;
+    error: string;
+  }): Promise<void> {
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update({
+        recording_status: 'failed',
+        recording_provider: params.recordingProvider,
+        recording_id: params.recordingId ?? null,
+        recording_error: params.error,
+      })
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId);
+    if (error) throw new Error(`call_logs_recording_failed_update_failed:${error.message}`);
+  }
+
+  async findByProviderCallId(params: { provider: string; providerCallId: string }): Promise<CallLogListItem | null> {
+    const { data, error } = await this.supabase
+      .from('call_logs')
+      .select(
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required,recording_status,recording_provider,recording_id,recording_storage_key,recording_format,recording_duration_ms,recording_started_at,recording_ended_at',
+      )
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId)
+      .maybeSingle<Record<string, unknown>>();
+    if (error) throw new Error(`call_logs_find_by_provider_call_id_failed:${error.message}`);
+    if (!data) return null;
+    return {
+      provider: data.provider as string,
+      providerCallId: data.provider_call_id as string,
+      shopId: data.shop_id as string,
+      requestId: (data.request_id as string | null) ?? undefined,
+      startedAt: (data.started_at as string | null) ?? undefined,
+      endedAt: (data.ended_at as string | null) ?? undefined,
+      agentJoined: Boolean(data.agent_joined),
+      humanAnswered: Boolean(data.human_answered),
+      transcriptStatus: (data.transcript_status as string | null) ?? undefined,
+      transcriptText: (data.transcript_text as string | null) ?? undefined,
+      recordingStatus: (data.recording_status as CallLogListItem['recordingStatus']) ?? 'not_requested',
+      recordingProvider: (data.recording_provider as string | null) ?? null,
+      recordingId: (data.recording_id as string | null) ?? null,
+      recordingStorageKey: (data.recording_storage_key as string | null) ?? null,
+      recordingFormat: (data.recording_format as string | null) ?? null,
+      recordingDurationMs: (data.recording_duration_ms as number | null) ?? null,
+      recordingStartedAt: (data.recording_started_at as string | null) ?? null,
+      recordingEndedAt: (data.recording_ended_at as string | null) ?? null,
+    };
+  }
+
   async countByShop(
     shopId: string,
     params?: CallLogsQueryParams,
@@ -276,7 +371,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     let q = this.supabase
       .from('call_logs')
       .select(
-        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required,recording_status,recording_provider,recording_id,recording_storage_key,recording_format,recording_duration_ms,recording_started_at,recording_ended_at',
       )
       .eq('shop_id', shopId);
     q = applyCallLogFilters(q, params);
@@ -314,6 +409,14 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       capturedCallerReason: (row.captured_caller_reason as string | null) ?? null,
       capturedAt: (row.captured_at as string | null) ?? null,
       durationSecs: Number(row.duration_secs ?? 0),
+      recordingStatus: (row.recording_status as CallLogListItem['recordingStatus']) ?? 'not_requested',
+      recordingProvider: (row.recording_provider as string | null) ?? null,
+      recordingId: (row.recording_id as string | null) ?? null,
+      recordingStorageKey: (row.recording_storage_key as string | null) ?? null,
+      recordingFormat: (row.recording_format as string | null) ?? null,
+      recordingDurationMs: (row.recording_duration_ms as number | null) ?? null,
+      recordingStartedAt: (row.recording_started_at as string | null) ?? null,
+      recordingEndedAt: (row.recording_ended_at as string | null) ?? null,
     }));
   }
 
@@ -323,7 +426,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     let q = this.supabase
       .from('call_logs')
       .select(
-        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required,recording_status,recording_provider,recording_id,recording_storage_key,recording_format,recording_duration_ms,recording_started_at,recording_ended_at',
       );
     q = applyCallLogFilters(q, params);
     const { data, error } = await q.order('started_at', { ascending: false }).range(offset, offset + limit - 1);
@@ -360,6 +463,14 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       capturedCallerReason: (row.captured_caller_reason as string | null) ?? null,
       capturedAt: (row.captured_at as string | null) ?? null,
       durationSecs: Number(row.duration_secs ?? 0),
+      recordingStatus: (row.recording_status as CallLogListItem['recordingStatus']) ?? 'not_requested',
+      recordingProvider: (row.recording_provider as string | null) ?? null,
+      recordingId: (row.recording_id as string | null) ?? null,
+      recordingStorageKey: (row.recording_storage_key as string | null) ?? null,
+      recordingFormat: (row.recording_format as string | null) ?? null,
+      recordingDurationMs: (row.recording_duration_ms as number | null) ?? null,
+      recordingStartedAt: (row.recording_started_at as string | null) ?? null,
+      recordingEndedAt: (row.recording_ended_at as string | null) ?? null,
       }));
   }
 

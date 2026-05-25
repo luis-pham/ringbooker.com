@@ -46,6 +46,8 @@ type Call = {
   transcriptAvailable: boolean;
   transcriptUrl?: string;
   recordingUrl?: string;
+  recordingAvailable?: boolean;
+  recordingStatus?: string;
   summary?: string;
   transcriptText?: string;
   followUpNeeded: boolean;
@@ -186,6 +188,9 @@ export function UserCallsLive({
   const [error, setError] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'unknown_error' : null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const [recordingLoading, setRecordingLoading] = useState(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(initialData?.ok ? initialData.shop : null));
 
   useEffect(() => {
@@ -245,12 +250,36 @@ export function UserCallsLive({
   async function openCall(call: Call) {
     setActiveCall(call);
     setShowTranscript(false);
+    setRecordingUrl(null);
+    setRecordingError(null);
     try {
       const res = await fetch(`/api/backend/user/calls/${encodeURIComponent(call.id)}`);
       const body = (await res.json()) as { ok: boolean; call?: Call };
       if (body.ok && body.call) setActiveCall(body.call);
     } catch {
       // Keep list data if detail fetch fails.
+    }
+  }
+
+  async function listenToCall(call: Call) {
+    setActiveCall(call);
+    setShowTranscript(false);
+    setRecordingUrl(null);
+    setRecordingError(null);
+    setRecordingLoading(true);
+    try {
+      const recordingCallId = call.providerCallId ?? call.id;
+      const res = await fetch(`/api/backend/user/calls/${encodeURIComponent(recordingCallId)}/recording-playback-url`);
+      const body = (await res.json()) as { ok: boolean; url?: string; error?: string };
+      if (!res.ok || !body.ok || !body.url) {
+        setRecordingError(body.error ?? 'recording_unavailable');
+        return;
+      }
+      setRecordingUrl(body.url);
+    } catch {
+      setRecordingError('network_error');
+    } finally {
+      setRecordingLoading(false);
     }
   }
 
@@ -362,11 +391,16 @@ export function UserCallsLive({
                                 {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
                               </td>
                               <td>
-                                {call.transcriptAvailable ? (
-                                  <button className="calls-transcript-view-btn" type="button" onClick={(event) => { event.stopPropagation(); void openCall(call); }}>View</button>
-                                ) : (
-                                  <span className="calls-transcript-pending">Pending</span>
-                                )}
+                                <div className="calls-row-actions">
+                                  {call.transcriptAvailable ? (
+                                    <button className="calls-transcript-view-btn" type="button" onClick={(event) => { event.stopPropagation(); void openCall(call); }}>View</button>
+                                  ) : (
+                                    <span className="calls-transcript-pending">Pending</span>
+                                  )}
+                                  {call.recordingAvailable ? (
+                                    <button className="calls-transcript-view-btn" type="button" onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}>Listen</button>
+                                  ) : null}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -398,6 +432,7 @@ export function UserCallsLive({
                                 <span className={outcome.className}>{outcome.label}</span>
                               )}
                               {call.transcriptAvailable ? <span className="calls-outcome">Transcript ready</span> : null}
+                              {call.recordingAvailable ? <span className="calls-outcome" role="button" tabIndex={0} onClick={(event) => { event.stopPropagation(); void listenToCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); void listenToCall(call); } }}>Listen</span> : null}
                             </div>
                           </button>
                         );
@@ -436,6 +471,17 @@ export function UserCallsLive({
                 <div className="meta-tile"><strong>Forwarded to</strong><span>{activeCall.forwardedTo ? formatPhone(activeCall.forwardedTo) : '—'}</span></div>
               </div>
               {activeCall.summary ? <div className="summary-panel">{activeCall.summary}</div> : null}
+              {activeCall.recordingAvailable ? (
+                <div className="recording-panel">
+                  <div className="recording-head">
+                    <strong>Call recording</strong>
+                    {!recordingUrl && !recordingLoading ? <button className="calls-pager-btn" type="button" onClick={() => void listenToCall(activeCall)}>Listen</button> : null}
+                  </div>
+                  {recordingLoading ? <p>Loading recording...</p> : null}
+                  {recordingError ? <p>Recording is unavailable right now.</p> : null}
+                  {recordingUrl ? <audio controls autoPlay preload="metadata" src={recordingUrl}>Your browser cannot play this recording.</audio> : null}
+                </div>
+              ) : null}
               <div className="transcript-toggle">
                 <button className="calls-pager-btn" type="button" onClick={() => setShowTranscript((value) => !value)}>
                   {showTranscript ? 'Hide transcript ↑' : 'Show transcript ↓'}

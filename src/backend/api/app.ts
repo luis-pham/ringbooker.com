@@ -119,6 +119,7 @@ import {
 } from '@/src/backend/services/user/user-portal-notifications';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
+import type { CallRecordingStorage } from '@/src/backend/services/calls/call-recording-storage';
 import { provisionShopNumber } from '@/src/backend/services/phone-provisioning/provision-shop-number';
 import type { EmailService } from '@/src/backend/services/email/types';
 import {
@@ -651,6 +652,7 @@ const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   ai_welcome_message: z.string().min(1).max(240).nullable().optional(),
   ai_custom_instructions: z.string().min(1).max(2000).nullable().optional(),
   allow_transfers: z.boolean().optional(),
+  call_recording_enabled: z.boolean().optional(),
   allow_callbacks: z.boolean().optional(),
   send_reminder_sms: z.boolean().optional(),
   send_review_request_sms: z.boolean().optional(),
@@ -1306,6 +1308,10 @@ function buildUserCallSummary(call: CallLogListItem): string | undefined {
   return parts.length ? parts.join('\n') : undefined;
 }
 
+function hasViewableTranscript(call: { transcriptText?: string | null }): boolean {
+  return Boolean(call.transcriptText?.trim());
+}
+
 function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSent?: boolean } = {}) {
   const status = deriveUserCallStatus(call);
   const outcome = deriveUserCallOutcome(call);
@@ -1323,9 +1329,11 @@ function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSe
     outcome,
     bookingCaptured: outcome === 'booking_captured',
     bookingRequestId: undefined,
-    transcriptAvailable: call.transcriptStatus === 'completed' && Boolean(call.transcriptText?.trim()),
+    transcriptAvailable: hasViewableTranscript(call),
     transcriptUrl: undefined,
     recordingUrl: undefined,
+    recordingAvailable: call.recordingStatus === 'available' && Boolean(call.recordingStorageKey),
+    recordingStatus: call.recordingStatus,
     summary: buildUserCallSummary(call),
     transcriptText: call.transcriptText,
     followUpNeeded: Boolean(call.summaryFollowUpRequired) || outcome === 'follow_up_needed',
@@ -1341,7 +1349,11 @@ function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSe
   };
 }
 
-function toBasicUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSent?: boolean } = {}) {
+function toBasicUserCallResponse(
+  call: CallLogListItem,
+  extras: { missedFollowupSmsSent?: boolean } = {},
+  options: { includeTranscriptText?: boolean } = {},
+) {
   const status = deriveUserCallStatus(call);
   return {
     id: call.requestId ?? call.providerCallId,
@@ -1351,6 +1363,9 @@ function toBasicUserCallResponse(call: CallLogListItem, extras: { missedFollowup
     endedAt: call.endedAt,
     durationSeconds: call.durationSecs ?? undefined,
     status,
+    transcriptAvailable: hasViewableTranscript(call),
+    transcriptStatus: call.transcriptStatus,
+    ...(options.includeTranscriptText ? { transcriptText: call.transcriptText } : {}),
     providerCallId: call.providerCallId,
     requestId: call.requestId,
     createdAt: call.startedAt,
@@ -1385,6 +1400,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   faqs: 'edit_business_profile',
   hours: 'edit_hours',
   allow_transfers: 'edit_transfer_settings',
+  call_recording_enabled: 'configure_call_recording',
   allow_callbacks: 'edit_callback_settings',
   send_missed_call_followup_sms: 'edit_missed_call_followup_sms',
   send_call_summary_sms: 'edit_callback_settings',
@@ -1460,6 +1476,7 @@ function splitUserSettingsPatchByPlan(
       | 'ai_welcome_message'
       | 'ai_custom_instructions'
       | 'allow_transfers'
+      | 'call_recording_enabled'
       | 'allow_callbacks'
       | 'send_reminder_sms'
       | 'send_review_request_sms'
@@ -1498,6 +1515,7 @@ function splitUserSettingsPatchByPlan(
       key === 'ai_welcome_message' ||
       key === 'ai_custom_instructions' ||
       key === 'allow_transfers' ||
+      key === 'call_recording_enabled' ||
       key === 'allow_callbacks' ||
       key === 'send_reminder_sms' ||
       key === 'send_review_request_sms' ||
@@ -1559,6 +1577,7 @@ function splitUserSettingsPatchByPlan(
         | 'ai_welcome_message'
         | 'ai_custom_instructions'
         | 'allow_transfers'
+        | 'call_recording_enabled'
         | 'allow_callbacks'
         | 'send_reminder_sms'
         | 'send_review_request_sms'
@@ -2534,6 +2553,7 @@ export function createBackendApp(deps: {
   phoneProvisioningService?: PhoneProvisioningService;
   emailService?: EmailService;
   callLogsRepository?: CallLogsRepository;
+  recordingStorage?: CallRecordingStorage;
   customersRepository?: CustomersRepository;
 	  missedCallsRepository?: MissedCallsRepository;
 	  outboundMessagesRepository?: OutboundMessagesRepository;
@@ -2604,6 +2624,7 @@ export function createBackendApp(deps: {
         "script-src 'self' 'unsafe-inline' https://cdn.paddle.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
+        "media-src 'self' https://*.r2.cloudflarestorage.com",
         "font-src 'self'",
         [
           "connect-src 'self'",
@@ -2823,6 +2844,7 @@ export function createBackendApp(deps: {
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
         callLogsRepository: deps.callLogsRepository,
+        recordingStorage: deps.recordingStorage,
         commercialAccountsRepository: deps.commercialAccountsRepository,
         shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
         jobsRepository: deps.jobsRepository,
@@ -6321,7 +6343,7 @@ export function createBackendApp(deps: {
             call.startedAt && call.endedAt
               ? Math.max(0, Math.round((new Date(call.endedAt).getTime() - new Date(call.startedAt).getTime()) / 1000))
               : undefined,
-          transcriptAvailable: call.transcriptStatus === 'completed' && Boolean(call.transcriptText?.trim()),
+          transcriptAvailable: hasViewableTranscript(call),
         };
       }
     }
@@ -6408,6 +6430,42 @@ export function createBackendApp(deps: {
     });
   });
 
+  app.get(path('/user/calls/:id/recording-playback-url'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_call_recording_playback');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'call_recording_playback')) {
+      return planFeatureLockedJson(c, 'call_recording_playback');
+    }
+    if (!deps.recordingStorage) {
+      return c.json({ ok: false, error: 'recording_storage_unavailable' }, 503);
+    }
+
+    const providerCallId = c.req.param('id') ?? '';
+    const call = await deps.callLogsRepository.findByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId,
+    });
+    if (!call || call.shopId !== shop.id) return c.json({ ok: false, error: 'call_not_found' }, 404);
+    if (call.recordingStatus !== 'available' || !call.recordingStorageKey) {
+      return c.json({ ok: false, error: 'recording_not_available' }, 404);
+    }
+
+    const expiresInSeconds = 300;
+    const url = await deps.recordingStorage.createPlaybackUrl({
+      objectKey: call.recordingStorageKey,
+      expiresInSeconds,
+    });
+    return c.json({ ok: true, url, expiresInSeconds });
+  });
+
   app.get(path('/user/calls/:id'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_detail');
     if (limited) return limited;
@@ -6419,16 +6477,20 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    if (!isCapabilityAllowed(shop.plan, 'advanced_call_analytics')) {
-      return planFeatureLockedJson(c, 'advanced_call_analytics');
-    }
 
     await deps.callLogsRepository.resolveStaleInProgressByShop(shop.id, new Date(Date.now() - 30 * 60 * 1000)).catch(() => 0);
     const id = c.req.param('id');
     const recent = await deps.callLogsRepository.listByShop(shop.id, { limit: 500 });
     const call = recent.find((item) => item.requestId === id || item.providerCallId === id);
     if (!call) return c.json({ ok: false, error: 'call_not_found' }, 404);
-    return c.json({ ok: true, call: toUserCallResponse(call), shop: { timezone: shop.timezone } });
+    const canUseAdvancedCallAnalytics = isCapabilityAllowed(shop.plan, 'advanced_call_analytics');
+    return c.json({
+      ok: true,
+      call: canUseAdvancedCallAnalytics
+        ? toUserCallResponse(call)
+        : toBasicUserCallResponse(call, {}, { includeTranscriptText: true }),
+      shop: { timezone: shop.timezone },
+    });
   });
 
   app.get(path('/user/calls'), async (c) => {

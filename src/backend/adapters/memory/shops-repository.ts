@@ -72,6 +72,7 @@ const defaultShop: Shop = {
   ai_welcome_message: 'Thanks for calling RingBooker Demo Salon. How can I help you today?',
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
   allow_transfers: true,
+  call_recording_enabled: false,
   allow_callbacks: true,
   sms_owner_opted_in: false,
   send_reminder_sms: true,
@@ -202,6 +203,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       test_call_count: 0,
       test_call_limit: 3,
       allow_transfers: enableProfessionalDefaults,
+      call_recording_enabled: false,
       allow_callbacks: true,
       sms_owner_opted_in: false,
       send_reminder_sms: enableProfessionalDefaults,
@@ -397,6 +399,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'ai_welcome_message'
         | 'ai_custom_instructions'
         | 'allow_transfers'
+        | 'call_recording_enabled'
         | 'allow_callbacks'
         | 'send_reminder_sms'
         | 'send_review_request_sms'

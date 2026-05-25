@@ -12,6 +12,7 @@ import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
+import type { CallRecordingStorage } from '@/src/backend/services/calls/call-recording-storage';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 applyRequiredTestEnv({
@@ -24,20 +25,22 @@ test.beforeEach(() => {
   __resetRateLimitMemoryStoreForTests();
 });
 
-function createCallsTestApp() {
+function createCallsTestApp(recordingStorage?: CallRecordingStorage) {
   const callLogsRepository = new InMemoryCallLogsRepository();
+  const shopsRepository = new InMemoryShopsRepository();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
     bookingsRepository: new InMemoryBookingsRepository(),
     callbacksRepository: new InMemoryCallbacksRepository(),
-    shopsRepository: new InMemoryShopsRepository(),
+    shopsRepository,
     telephonyService: new NoopTelephonyService(),
     callLogsRepository,
     authUsersRepository: new InMemoryAuthUsersRepository(),
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    recordingStorage,
   });
-  return { app, callLogsRepository };
+  return { app, callLogsRepository, shopsRepository };
 }
 
 async function loginUser(app: ReturnType<typeof createBackendApp>) {
@@ -143,4 +146,117 @@ test('user calls endpoint returns real tab-filtered calls, stats, and resolves s
   assert.equal(detailBody.call.id, 'req-stale');
   assert.equal(detailBody.call.transcriptAvailable, true);
   assert.match(detailBody.call.transcriptText ?? '', /haircut/);
+});
+
+test('Starter can view call transcripts without receiving advanced analytics fields', async () => {
+  const { app, callLogsRepository, shopsRepository } = createCallsTestApp();
+  await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'starter' });
+  const cookie = await loginUser(app);
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx',
+    providerCallId: 'starter-transcript-call',
+    shopId: 'demo-shop',
+    callerPhone: '+15551230004',
+    requestId: 'req-starter-transcript',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'demo-shop',
+    requestId: 'req-starter-transcript',
+    speaker: 'caller',
+    text: 'Can I book a manicure?',
+  });
+
+  const list = await app.request('/user/calls', { headers: { cookie } });
+  assert.equal(list.status, 200);
+  const listBody = await list.json() as { calls: Array<{ id: string; transcriptAvailable?: boolean; transcriptText?: string }> };
+  const listedCall = listBody.calls.find((call) => call.id === 'req-starter-transcript');
+  assert.equal(listedCall?.transcriptAvailable, true);
+  assert.equal(listedCall?.transcriptText, undefined);
+
+  const detail = await app.request('/user/calls/req-starter-transcript', { headers: { cookie } });
+  assert.equal(detail.status, 200);
+  const detailBody = await detail.json() as {
+    call: { transcriptAvailable: boolean; transcriptText?: string; highUrgency?: boolean; summary?: string };
+  };
+  assert.equal(detailBody.call.transcriptAvailable, true);
+  assert.match(detailBody.call.transcriptText ?? '', /manicure/);
+  assert.equal(detailBody.call.highUrgency, undefined);
+  assert.equal(detailBody.call.summary, undefined);
+});
+
+test('Professional can request a signed recording playback URL for its available call recording', async () => {
+  const recordingStorage: CallRecordingStorage = {
+    storeFromUrl: async () => undefined,
+    createPlaybackUrl: async ({ objectKey }) => `https://recordings.example/${objectKey}`,
+  };
+  const { app, callLogsRepository } = createCallsTestApp(recordingStorage);
+  const cookie = await loginUser(app);
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'professional-recording-call',
+    shopId: 'demo-shop',
+    callerPhone: '+15551230005',
+    requestId: 'req-professional-recording',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.markRecordingAvailableByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'professional-recording-call',
+    recordingProvider: 'telnyx',
+    recordingId: 'rec-professional',
+    recordingStorageKey: 'call-recordings/demo-shop/req-professional-recording/rec-professional.mp3',
+    recordingFormat: 'mp3',
+  });
+
+  const list = await app.request('/user/calls', { headers: { cookie } });
+  assert.equal(list.status, 200);
+  const listBody = await list.json() as { calls: Array<{ id: string; recordingAvailable?: boolean }> };
+  assert.equal(listBody.calls.find((call) => call.id === 'req-professional-recording')?.recordingAvailable, true);
+
+  const playback = await app.request('/user/calls/professional-recording-call/recording-playback-url', { headers: { cookie } });
+  assert.equal(playback.status, 200);
+  const playbackBody = await playback.json() as { ok: boolean; url: string; expiresInSeconds: number };
+  assert.equal(playbackBody.ok, true);
+  assert.match(playbackBody.url, /rec-professional\.mp3$/);
+  assert.equal(playbackBody.expiresInSeconds, 300);
+});
+
+test('Starter cannot request recording playback even when a stored recording exists', async () => {
+  const recordingStorage: CallRecordingStorage = {
+    storeFromUrl: async () => undefined,
+    createPlaybackUrl: async () => 'https://recordings.example/should-not-be-returned',
+  };
+  const { app, callLogsRepository, shopsRepository } = createCallsTestApp(recordingStorage);
+  await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'starter' });
+  const cookie = await loginUser(app);
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'starter-recording-call',
+    shopId: 'demo-shop',
+    callerPhone: '+15551230006',
+    requestId: 'req-starter-recording',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.markRecordingAvailableByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'starter-recording-call',
+    recordingProvider: 'telnyx',
+    recordingId: 'rec-starter',
+    recordingStorageKey: 'call-recordings/demo-shop/req-starter-recording/rec-starter.mp3',
+    recordingFormat: 'mp3',
+  });
+
+  const list = await app.request('/user/calls', { headers: { cookie } });
+  const listBody = await list.json() as { calls: Array<{ id: string; recordingAvailable?: boolean }> };
+  assert.equal(listBody.calls.find((call) => call.id === 'req-starter-recording')?.recordingAvailable, undefined);
+
+  const playback = await app.request('/user/calls/starter-recording-call/recording-playback-url', { headers: { cookie } });
+  assert.equal(playback.status, 403);
+  const playbackBody = await playback.json() as { error: string; requirements: { capability: string } };
+  assert.equal(playbackBody.error, 'plan_feature_locked');
+  assert.equal(playbackBody.requirements.capability, 'call_recording_playback');
 });

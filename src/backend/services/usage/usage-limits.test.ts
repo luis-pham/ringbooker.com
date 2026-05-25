@@ -79,13 +79,14 @@ test('getPlanUsageLimits returns Starter and Professional limits', () => {
     capturedCallersMonthlyLimit: 100,
     softVoiceMinutesMonthlyLimit: null,
     maxConcurrentLiveCalls: 1,
-    maxCallDurationSeconds: 480,
+    maxCallDurationSeconds: 360,
     softWarningAfterSeconds: 300,
     isCustom: false,
   });
-  assert.equal(getPlanUsageLimits('professional').capturedCallersMonthlyLimit, 300);
+  assert.equal(getPlanUsageLimits('professional').capturedCallersMonthlyLimit, 200);
   assert.equal(getPlanUsageLimits('professional').softVoiceMinutesMonthlyLimit, null);
   assert.equal(getPlanUsageLimits('professional').maxConcurrentLiveCalls, 2);
+  assert.equal(getPlanUsageLimits('professional').maxCallDurationSeconds, 480);
 });
 
 test('getPlanUsageLimits applies enterprise commercial overrides', () => {
@@ -563,11 +564,11 @@ test('captured caller usage reports Starter near and over limit states', async (
   assert.equal(usage.capturedCallersRemaining, 0);
 });
 
-test('captured caller usage reports Professional limit at 300', async () => {
+test('captured caller usage reports Professional limit at 200', async () => {
   const callLogsRepository = new InMemoryCallLogsRepository();
   const s = shop('professional');
   const now = new Date('2026-05-06T12:00:00.000Z');
-  for (let i = 0; i < 300; i += 1) {
+  for (let i = 0; i < 200; i += 1) {
     const requestId = `pro-req-${i}`;
     await callLogsRepository.createOrUpdateInboundCall({
       provider: 'telnyx_call_control',
@@ -580,7 +581,7 @@ test('captured caller usage reports Professional limit at 300', async () => {
     await callLogsRepository.updateStructuredSummary(s.id, requestId, { summaryNextAction: 'booking_created' });
   }
   const usage = await getShopUsageForPeriod({ callLogsRepository }, { shop: s, now });
-  assert.equal(usage.capturedCallersUsed, 300);
+  assert.equal(usage.capturedCallersUsed, 200);
   assert.equal(usage.overCapturedCallerLimit, true);
-  assert.equal(usage.capturedCallersLimit, 300);
+  assert.equal(usage.capturedCallersLimit, 200);
 });

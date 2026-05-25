@@ -147,6 +147,7 @@ type ShopSettings = {
   ai_custom_instructions?: string | null;
   languages?: string[] | null;
   allow_transfers: boolean;
+  call_recording_enabled?: boolean;
   allow_callbacks: boolean;
   send_reminder_sms: boolean;
   send_review_request_sms: boolean;
@@ -180,7 +181,9 @@ type ShopCapabilities = Record<
   | 'edit_ai_custom_instructions'
   | 'provider_context'
   | 'third_party_integrations'
-  | 'advanced_call_analytics',
+  | 'advanced_call_analytics'
+  | 'configure_call_recording'
+  | 'call_recording_playback',
   boolean
 >;
 type CapabilityMinPlans = Partial<Record<keyof ShopCapabilities, ShopPlan>>;
@@ -263,6 +266,7 @@ type SettingsState = {
   ai_custom_instructions: string;
   languages: string[];
   allow_transfers: boolean;
+  call_recording_enabled: boolean;
   allow_callbacks: boolean;
   send_reminder_sms: boolean;
   send_review_request_sms: boolean;
@@ -648,6 +652,7 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     ai_custom_instructions: shop.ai_custom_instructions ?? '',
     languages: normalizeUserLanguages(shop.languages),
     allow_transfers: shop.allow_transfers,
+    call_recording_enabled: shop.call_recording_enabled ?? false,
     allow_callbacks: shop.allow_callbacks,
     send_reminder_sms: shop.send_reminder_sms,
     send_review_request_sms: shop.send_review_request_sms,
@@ -691,6 +696,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   ai_custom_instructions: '',
   languages: ['en'],
   allow_transfers: false,
+  call_recording_enabled: false,
   allow_callbacks: true,
   send_reminder_sms: false,
   send_review_request_sms: false,
@@ -726,6 +732,8 @@ const DEFAULT_SETTINGS_CAPABILITIES: ShopCapabilities = {
   provider_context: false,
   third_party_integrations: false,
   advanced_call_analytics: false,
+  configure_call_recording: false,
+  call_recording_playback: false,
 };
 
 const DEFAULT_SETTINGS_STATE = buildInitialState(DEFAULT_SETTINGS_SHOP);
@@ -1146,6 +1154,7 @@ export function UserSettingsLive({
   const ownerTransferUx = getOwnerTransferPlanUx(effectiveShop.plan, {
     edit_transfer_settings: currentCapabilities.edit_transfer_settings,
   });
+  const callRecordingLocked = !currentCapabilities.configure_call_recording;
   const bilingualAnsweringUx = getBilingualAnsweringPlanUx(effectiveShop.plan);
   const returningCallerNotesUx = getReturningCallerNotesPlanUx(effectiveShop.plan);
 
@@ -3345,6 +3354,7 @@ export function UserSettingsLive({
                   event.preventDefault();
                   const patch: Record<string, unknown> = {};
                   if (!ownerTransferUx.locked) patch.allow_transfers = currentForm.allow_transfers;
+                  if (!callRecordingLocked) patch.call_recording_enabled = currentForm.call_recording_enabled;
                   void commitSettingsPatch('call-handling', patch);
                 }}
               >
@@ -3475,6 +3485,36 @@ export function UserSettingsLive({
                         </div>
                       </div>
                     ) : null}
+                    <div className={`switch-row ${callRecordingLocked ? 'locked' : ''}`}>
+                      <div className="switch-copy">
+                        <div className="switch-title-row">
+                          <h4>Call recording</h4>
+                          {callRecordingLocked ? (
+                            <span className="tag orange knowledge-plan-lock-badge">Available on Professional</span>
+                          ) : null}
+                        </div>
+                        <p>
+                          {callRecordingLocked
+                            ? 'Record and replay calls from your call log on Professional.'
+                            : 'Record calls for quality review and replay them from your call log. Make sure your recording notice meets local requirements.'}
+                        </p>
+                      </div>
+                      <div className="switch-stack">
+                        <button
+                          type="button"
+                          className={`switch ${currentForm.call_recording_enabled && !callRecordingLocked ? 'on' : ''} ${callRecordingLocked ? 'locked' : ''}`}
+                          disabled={callRecordingLocked}
+                          aria-disabled={callRecordingLocked}
+                          aria-pressed={currentForm.call_recording_enabled && !callRecordingLocked}
+                          onClick={() => {
+                            if (callRecordingLocked) return;
+                            patchState('call_recording_enabled', !currentForm.call_recording_enabled);
+                          }}
+                        >
+                          <span className="sr-only">{callRecordingLocked ? 'Call recording is locked' : 'Toggle call recording'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`}>
                     <div className="hint-row">

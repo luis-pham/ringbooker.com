@@ -151,10 +151,10 @@ test('processOverageForPeriod charges correct amount and is idempotent', async (
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.status, 'charged');
   assert.equal(rows[0]?.overageCallers, 5);
-  assert.equal(rows[0]?.amountCents, 125);
+  assert.equal(rows[0]?.amountCents, 375);
   assert.equal(rows[0]?.paddleTransactionId, 'txn_overage_123');
   assert.equal(provider.calls.length, 1);
-  assert.equal(provider.calls[0]?.amountCents, 125);
+  assert.equal(provider.calls[0]?.amountCents, 375);
 });
 
 test('processOverageForPeriod sends overage receipt after successful Paddle charge', async () => {
@@ -182,8 +182,8 @@ test('processOverageForPeriod sends overage receipt after successful Paddle char
 
   assert.equal(emailService.sent.length, 1);
   assert.equal(emailService.sent[0]?.category, 'usage_overage_charged');
-  assert.equal(emailService.sent[0]?.subject, 'Your RingBooker overage charge: $1.25');
-  assert.match(emailService.sent[0]?.text ?? '', /Overage callers:\s+5/);
+  assert.equal(emailService.sent[0]?.subject, 'Your RingBooker overage charge: $3.75');
+  assert.match(emailService.sent[0]?.text ?? '', /Overage calls:\s+5/);
 });
 
 test('processOverageForPeriod skips trial or past_due subscriptions', async () => {
@@ -233,6 +233,6 @@ test('processOverageForPeriod marks failed Paddle charge without throwing', asyn
   const rows = await overageRepository.listByShopId(s.id);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.status, 'failed');
-  assert.equal(rows[0]?.amountCents, 125);
+  assert.equal(rows[0]?.amountCents, 375);
   assert.equal(emailService.sent.length, 0);
 });

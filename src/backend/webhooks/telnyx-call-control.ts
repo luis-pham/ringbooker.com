@@ -296,6 +296,16 @@ export function isCallCostEvent(eventType: string): boolean {
   return t === 'call.cost' || t === 'call_cost';
 }
 
+export function isCallRecordingSavedEvent(eventType: string): boolean {
+  const t = eventType.toLowerCase();
+  return t === 'call.recording.saved' || t === 'recording_saved';
+}
+
+export function isCallRecordingErrorEvent(eventType: string): boolean {
+  const t = eventType.toLowerCase();
+  return t === 'call.recording.error' || t === 'recording_error';
+}
+
 /** Telnyx `call.bridged` — peer leg id field name varies by API version. */
 export function bridgedPeerCallControlIdFromPayload(payload: unknown): string | null {
   return firstStringFromPayload(payload, [

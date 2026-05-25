@@ -18,7 +18,9 @@ export type ShopSettingCapability =
   | 'edit_ai_custom_instructions'
   | 'provider_context'
   | 'third_party_integrations'
-  | 'advanced_call_analytics';
+  | 'advanced_call_analytics'
+  | 'configure_call_recording'
+  | 'call_recording_playback';
 
 export type ShopPlanCapabilities = Record<ShopSettingCapability, boolean>;
 
@@ -47,6 +49,8 @@ export const CAPABILITY_MIN_PLAN: Record<ShopSettingCapability, ShopPlan> = {
   provider_context: 'professional',
   third_party_integrations: 'professional',
   advanced_call_analytics: 'professional',
+  configure_call_recording: 'professional',
+  call_recording_playback: 'professional',
 };
 
 export const CAPABILITY_LABELS: Record<ShopSettingCapability, string> = {
@@ -68,6 +72,8 @@ export const CAPABILITY_LABELS: Record<ShopSettingCapability, string> = {
   provider_context: 'Provider context',
   third_party_integrations: 'Third-party integrations',
   advanced_call_analytics: 'Advanced call analytics',
+  configure_call_recording: 'Call recording',
+  call_recording_playback: 'Call recording playback',
 };
 
 export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
@@ -90,6 +96,8 @@ export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
     provider_context: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     third_party_integrations: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     advanced_call_analytics: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
+    configure_call_recording: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
+    call_recording_playback: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
   };
 }
 

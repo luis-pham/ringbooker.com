@@ -279,6 +279,14 @@ export type CallLogListItem = {
   summaryPreferredTech?: string | null;
   summaryPreferredDatetime?: string | null;
   summaryFollowUpRequired?: boolean;
+  recordingStatus?: 'not_requested' | 'pending' | 'available' | 'failed' | 'deleted';
+  recordingProvider?: string | null;
+  recordingId?: string | null;
+  recordingStorageKey?: string | null;
+  recordingFormat?: string | null;
+  recordingDurationMs?: number | null;
+  recordingStartedAt?: string | null;
+  recordingEndedAt?: string | null;
 };
 
 export interface CallLogsRepository {
@@ -339,6 +347,33 @@ export interface CallLogsRepository {
     costCurrency: string | null;
     recordedAt?: Date;
   }): Promise<void>;
+  markRecordingPendingByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+  }): Promise<void>;
+  markRecordingAvailableByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+    recordingId: string;
+    recordingStorageKey: string;
+    recordingFormat: string;
+    recordingDurationMs?: number | null;
+    recordingStartedAt?: Date | null;
+    recordingEndedAt?: Date | null;
+  }): Promise<void>;
+  markRecordingFailedByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+    recordingId?: string | null;
+    error: string;
+  }): Promise<void>;
+  findByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+  }): Promise<CallLogListItem | null>;
   listByShop(
     shopId: string,
     params?: CallLogsQueryParams,
@@ -470,6 +505,7 @@ export interface ShopsRepository {
         | 'ai_welcome_message'
         | 'ai_custom_instructions'
         | 'allow_transfers'
+        | 'call_recording_enabled'
         | 'allow_callbacks'
         | 'send_reminder_sms'
         | 'send_review_request_sms'

@@ -370,7 +370,7 @@ export function UserBillingTemplate() {
           </section>
           <section className="pricing-mini" style={{marginTop: 18}}>
             <div className="price-mini"><h4>Starter</h4><div className="amt">$79</div><ul><li>Up to 100 captured calls per billing period</li><li>Forwarded call answering</li><li>Booking request capture</li><li>Optional missed-call text back where enabled</li><li>Basic call logs and summaries</li></ul></div>
-            <div className="price-mini featured"><span className="tag purple">Current plan</span><h4 style={{marginTop: 10}}>Professional</h4><div className="amt">$149</div><ul><li>Up to 300 captured calls per billing period</li><li>Reminder and review SMS where configured</li><li>Returning caller notes</li><li>Bilingual answering where configured</li><li>Owner transfer</li></ul></div>
+            <div className="price-mini featured"><span className="tag purple">Current plan</span><h4 style={{marginTop: 10}}>Professional</h4><div className="amt">$149</div><ul><li>Up to 200 captured calls per billing period</li><li>Reminder and review SMS where configured</li><li>Returning caller notes</li><li>Bilingual answering where configured</li><li>Owner transfer</li></ul></div>
             <div className="price-mini"><h4>Custom</h4><div className="amt">Let’s talk</div><ul><li>Custom captured call volume</li><li>Managed routing and integrations</li><li>Multi-location support</li><li>Implementation support</li></ul></div>
           </section>
           <section className="grid grid-2" style={{marginTop: 18}}>

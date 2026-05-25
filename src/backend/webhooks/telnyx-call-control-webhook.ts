@@ -26,6 +26,8 @@ import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
 import { getClientIp } from '@/src/backend/security/rate-limit';
 import { maskPhone } from '@/src/backend/security/pii';
+import { isCapabilityAllowed } from '@/src/backend/domain/shop-plan-capabilities';
+import type { CallRecordingStorage } from '@/src/backend/services/calls/call-recording-storage';
 import {
   buildTelnyxCallRejectPayload,
   callControlAnswer,
@@ -57,6 +59,8 @@ import {
   isCallAnsweredEvent,
   isCallBridgedEvent,
   isCallCostEvent,
+  isCallRecordingErrorEvent,
+  isCallRecordingSavedEvent,
   isCallGatherEndedEvent,
   isCallHangupEvent,
   isCallInitiatedEvent,
@@ -547,6 +551,7 @@ export async function handleTelnyxCallControlWebhook(
     commercialAccountsRepository?: CommercialAccountsRepository;
     shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     callLogsRepository?: CallLogsRepository;
+    recordingStorage?: CallRecordingStorage;
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
@@ -649,6 +654,12 @@ export async function handleTelnyxCallControlWebhook(
   if (isCallCostEvent(event.event_type)) {
     return processCallCost(c, deps.providerEventsRepository, event, bodyText, log, deps.callLogsRepository);
   }
+  if (isCallRecordingSavedEvent(event.event_type)) {
+    return processCallRecordingSaved(c, deps, event, bodyText, log);
+  }
+  if (isCallRecordingErrorEvent(event.event_type)) {
+    return processCallRecordingError(c, deps, event, bodyText, log);
+  }
 
   return c.json({ ok: true, ignored: true }, 200);
 }
@@ -664,6 +675,7 @@ async function processCallInitiated(
     commercialAccountsRepository?: CommercialAccountsRepository;
     shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     callLogsRepository?: CallLogsRepository;
+    recordingStorage?: CallRecordingStorage;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
     voiceCallLegsRepository?: VoiceCallLegsRepository;
@@ -941,6 +953,25 @@ async function processCallInitiated(
               }
             }
             answerBody.max_duration_secs = usage.limits.maxCallDurationSeconds;
+            if (
+              result.routeKind !== 'demo' &&
+              shop.call_recording_enabled === true &&
+              isCapabilityAllowed(shop.plan, 'configure_call_recording')
+            ) {
+              if (deps.recordingStorage) {
+                answerBody.record = 'record-from-answer';
+                answerBody.record_format = 'mp3';
+                answerBody.record_channels = 'dual';
+                answerBody.record_track = 'both';
+                await deps.callLogsRepository.markRecordingPendingByProviderCallId({
+                  provider: 'telnyx_call_control',
+                  providerCallId: result.callControlId,
+                  recordingProvider: 'telnyx',
+                });
+              } else {
+                log.warn({ shopId: shop.id, plan: shop.plan }, 'call_recording_storage_not_configured');
+              }
+            }
           }
         }
         if (!answerBody.max_duration_secs && getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED) {
@@ -2020,6 +2051,171 @@ async function processCallCost(
     log.error({ err: error, eventId: event.id }, 'telnyx_call_control_cost_failed');
     return c.json({ ok: false }, 500);
   }
+}
+
+function recordingUrlFromPayload(payload: unknown): { url: string; format: string } | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const urls = (payload as Record<string, unknown>).recording_urls;
+  if (!urls || typeof urls !== 'object') return null;
+  const urlRecord = urls as Record<string, unknown>;
+  if (typeof urlRecord.mp3 === 'string' && urlRecord.mp3.trim()) return { url: urlRecord.mp3, format: 'mp3' };
+  if (typeof urlRecord.wav === 'string' && urlRecord.wav.trim()) return { url: urlRecord.wav, format: 'wav' };
+  return null;
+}
+
+function safeRecordingKeySegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function optionalDateFromPayload(payload: unknown, field: string): Date | null {
+  const raw = firstStringFromPayload(payload, [field]);
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+async function processCallRecordingSaved(
+  c: Context,
+  deps: {
+    providerEventsRepository: ProviderEventsRepository;
+    callLogsRepository?: CallLogsRepository;
+    recordingStorage?: CallRecordingStorage;
+  },
+  event: { event_type: string; id: string; payload?: unknown },
+  bodyText: string,
+  log: ReturnType<typeof withLogContext>,
+) {
+  if (await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id)) {
+    return c.json({ ok: true, duplicate: true }, 200);
+  }
+  const payload = event.payload;
+  const recordingId = firstStringFromPayload(payload, ['recording_id']);
+  const callControlId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+  const decoded = decodeCallControlClientState(firstStringFromPayload(payload, ['client_state']));
+  const parentCallControlId = decoded?.parentCallControlId ?? decoded?.telnyxCallControlId ?? callControlId;
+  const recordingUrl = recordingUrlFromPayload(payload);
+
+  if (!deps.callLogsRepository || !deps.recordingStorage || !parentCallControlId || !recordingId || !recordingUrl) {
+    log.warn(
+      {
+        callControlId,
+        parentCallControlId,
+        recordingId,
+        recordingUrlPresent: Boolean(recordingUrl),
+        storageConfigured: Boolean(deps.recordingStorage),
+      },
+      'telnyx_call_recording_saved_not_ingested',
+    );
+    return c.json({ ok: true, ignored: true }, 200);
+  }
+
+  const call =
+    (await deps.callLogsRepository.findByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId: parentCallControlId,
+    })) ??
+    (callControlId && callControlId !== parentCallControlId
+      ? await deps.callLogsRepository.findByProviderCallId({
+          provider: 'telnyx_call_control',
+          providerCallId: callControlId,
+        })
+      : null);
+  if (!call) {
+    log.warn({ recordingId, parentCallControlId }, 'telnyx_call_recording_call_log_not_found');
+    return c.json({ ok: true, ignored: true }, 200);
+  }
+  if (call.recordingStatus === 'available' && call.recordingId === recordingId) {
+    return c.json({ ok: true, duplicate: true }, 200);
+  }
+
+  const objectKey =
+    `call-recordings/${safeRecordingKeySegment(call.shopId)}/` +
+    `${safeRecordingKeySegment(call.requestId ?? call.providerCallId)}/` +
+    `${safeRecordingKeySegment(recordingId)}.${recordingUrl.format}`;
+  try {
+    await deps.recordingStorage.storeFromUrl({
+      sourceUrl: recordingUrl.url,
+      objectKey,
+      contentType: recordingUrl.format === 'mp3' ? 'audio/mpeg' : 'audio/wav',
+    });
+    const startedAt = optionalDateFromPayload(payload, 'recording_started_at');
+    const endedAt = optionalDateFromPayload(payload, 'recording_ended_at');
+    const durationMs =
+      startedAt && endedAt ? Math.max(0, endedAt.getTime() - startedAt.getTime()) : null;
+    await deps.callLogsRepository.markRecordingAvailableByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId: call.providerCallId,
+      recordingProvider: 'telnyx',
+      recordingId,
+      recordingStorageKey: objectKey,
+      recordingFormat: recordingUrl.format,
+      recordingDurationMs: durationMs,
+      recordingStartedAt: startedAt,
+      recordingEndedAt: endedAt,
+    });
+    const validatedRoot = telnyxCallControlEnvelopeSchema.parse(JSON.parse(bodyText));
+    await deps.providerEventsRepository.markProcessed({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: validatedRoot,
+    });
+    log.info({ recordingId, shopId: call.shopId, objectKey }, 'telnyx_call_recording_ingested');
+    return c.json({ ok: true, phase: 'call_recording_saved' }, 200);
+  } catch (error) {
+    await deps.callLogsRepository.markRecordingFailedByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId: call.providerCallId,
+      recordingProvider: 'telnyx',
+      recordingId,
+      error: error instanceof Error ? error.message : 'recording_ingest_failed',
+    }).catch(() => {});
+    log.error({ err: error, recordingId, shopId: call.shopId }, 'telnyx_call_recording_ingest_failed');
+    // No processed provider event is written here so a Telnyx redelivery can retry ingestion.
+    return c.json({ ok: false, error: 'recording_ingest_failed' }, 500);
+  }
+}
+
+async function processCallRecordingError(
+  c: Context,
+  deps: {
+    providerEventsRepository: ProviderEventsRepository;
+    callLogsRepository?: CallLogsRepository;
+  },
+  event: { event_type: string; id: string; payload?: unknown },
+  bodyText: string,
+  log: ReturnType<typeof withLogContext>,
+) {
+  const processing = await deps.providerEventsRepository.tryMarkProcessing({
+    provider: CALL_CONTROL_EVENTS_PROVIDER,
+    providerEventId: event.id,
+    eventType: event.event_type,
+    payload: { event_type: event.event_type, payload: event.payload },
+  });
+  if (!processing.acquired) return c.json({ ok: true, duplicate: true }, 200);
+  const payload = event.payload;
+  const decoded = decodeCallControlClientState(firstStringFromPayload(payload, ['client_state']));
+  const providerCallId =
+    decoded?.parentCallControlId ??
+    decoded?.telnyxCallControlId ??
+    firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+  if (deps.callLogsRepository && providerCallId) {
+    await deps.callLogsRepository.markRecordingFailedByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId,
+      recordingProvider: 'telnyx',
+      recordingId: firstStringFromPayload(payload, ['recording_id']),
+      error: firstStringFromPayload(payload, ['error', 'error_message']) ?? 'telnyx_recording_error',
+    });
+  }
+  await deps.providerEventsRepository.markProcessed({
+    provider: CALL_CONTROL_EVENTS_PROVIDER,
+    providerEventId: event.id,
+    eventType: event.event_type,
+    payload: telnyxCallControlEnvelopeSchema.parse(JSON.parse(bodyText)),
+  });
+  log.warn({ providerCallId }, 'telnyx_call_recording_error_received');
+  return c.json({ ok: true, phase: 'call_recording_error' }, 200);
 }
 
 async function processCallBridged(

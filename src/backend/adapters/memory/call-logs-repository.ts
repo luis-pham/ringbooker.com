@@ -39,6 +39,15 @@ type MemoryCallLog = {
   providerCostAmount?: number | null;
   providerCostCurrency?: string | null;
   providerCostRecordedAt?: Date | null;
+  recordingStatus?: 'not_requested' | 'pending' | 'available' | 'failed' | 'deleted';
+  recordingProvider?: string | null;
+  recordingId?: string | null;
+  recordingStorageKey?: string | null;
+  recordingFormat?: string | null;
+  recordingDurationMs?: number | null;
+  recordingStartedAt?: Date | null;
+  recordingEndedAt?: Date | null;
+  recordingError?: string | null;
 };
 
 function callKey(provider: string, providerCallId: string): string {
@@ -111,6 +120,15 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       capturedCallerReason: existing?.capturedCallerReason ?? null,
       capturedAt: existing?.capturedAt ?? null,
       durationSecs: existing?.durationSecs ?? 0,
+      recordingStatus: existing?.recordingStatus ?? 'not_requested',
+      recordingProvider: existing?.recordingProvider ?? null,
+      recordingId: existing?.recordingId ?? null,
+      recordingStorageKey: existing?.recordingStorageKey ?? null,
+      recordingFormat: existing?.recordingFormat ?? null,
+      recordingDurationMs: existing?.recordingDurationMs ?? null,
+      recordingStartedAt: existing?.recordingStartedAt ?? null,
+      recordingEndedAt: existing?.recordingEndedAt ?? null,
+      recordingError: existing?.recordingError ?? null,
     });
   }
 
@@ -241,6 +259,82 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     });
   }
 
+  async markRecordingPendingByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+  }): Promise<void> {
+    const key = callKey(params.provider, params.providerCallId);
+    const existing = this.logsByCall.get(key);
+    if (!existing) return;
+    this.logsByCall.set(key, {
+      ...existing,
+      recordingStatus: 'pending',
+      recordingProvider: params.recordingProvider,
+      recordingError: null,
+    });
+  }
+
+  async markRecordingAvailableByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+    recordingId: string;
+    recordingStorageKey: string;
+    recordingFormat: string;
+    recordingDurationMs?: number | null;
+    recordingStartedAt?: Date | null;
+    recordingEndedAt?: Date | null;
+  }): Promise<void> {
+    const key = callKey(params.provider, params.providerCallId);
+    const existing = this.logsByCall.get(key);
+    if (!existing) return;
+    this.logsByCall.set(key, {
+      ...existing,
+      recordingStatus: 'available',
+      recordingProvider: params.recordingProvider,
+      recordingId: params.recordingId,
+      recordingStorageKey: params.recordingStorageKey,
+      recordingFormat: params.recordingFormat,
+      recordingDurationMs: params.recordingDurationMs ?? null,
+      recordingStartedAt: params.recordingStartedAt ?? null,
+      recordingEndedAt: params.recordingEndedAt ?? null,
+      recordingError: null,
+    });
+  }
+
+  async markRecordingFailedByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    recordingProvider: string;
+    recordingId?: string | null;
+    error: string;
+  }): Promise<void> {
+    const key = callKey(params.provider, params.providerCallId);
+    const existing = this.logsByCall.get(key);
+    if (!existing) return;
+    this.logsByCall.set(key, {
+      ...existing,
+      recordingStatus: 'failed',
+      recordingProvider: params.recordingProvider,
+      recordingId: params.recordingId ?? existing.recordingId ?? null,
+      recordingError: params.error,
+    });
+  }
+
+  async findByProviderCallId(params: { provider: string; providerCallId: string }): Promise<CallLogListItem | null> {
+    const log = this.logsByCall.get(callKey(params.provider, params.providerCallId));
+    if (!log) return null;
+    return {
+      ...log,
+      startedAt: log.startedAt?.toISOString(),
+      endedAt: log.endedAt?.toISOString(),
+      capturedAt: log.capturedAt?.toISOString() ?? null,
+      recordingStartedAt: log.recordingStartedAt?.toISOString() ?? null,
+      recordingEndedAt: log.recordingEndedAt?.toISOString() ?? null,
+    };
+  }
+
   async countByShop(
     shopId: string,
     params?: CallLogsQueryParams,
@@ -266,6 +360,8 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         startedAt: log.startedAt?.toISOString(),
         endedAt: log.endedAt?.toISOString(),
         capturedAt: log.capturedAt?.toISOString() ?? null,
+        recordingStartedAt: log.recordingStartedAt?.toISOString() ?? null,
+        recordingEndedAt: log.recordingEndedAt?.toISOString() ?? null,
       }));
   }
 
@@ -281,6 +377,8 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         startedAt: log.startedAt?.toISOString(),
         endedAt: log.endedAt?.toISOString(),
         capturedAt: log.capturedAt?.toISOString() ?? null,
+        recordingStartedAt: log.recordingStartedAt?.toISOString() ?? null,
+        recordingEndedAt: log.recordingEndedAt?.toISOString() ?? null,
       }));
   }
 

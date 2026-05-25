@@ -275,7 +275,7 @@ const plans = [
     href: '/user/signup?plan=starter',
     featured: false,
     benefits: [
-      'Up to 100 captured calls per billing period',
+      'Up to 100 captured calls/month',
       'Works with your current business number',
       'After-hours and overflow call answering',
       'Booking request capture — via your booking link',
@@ -283,6 +283,7 @@ const plans = [
       'Missed-call text back',
       'Callback request capture for calls that need a human',
       'Call summaries with next steps',
+      'Call transcripts',
       'Guided setup and test call',
     ],
   },
@@ -298,7 +299,7 @@ const plans = [
     href: '/user/signup?plan=professional',
     featured: true,
     benefits: [
-      'Up to 300 captured calls per billing period',
+      'Up to 200 captured calls/month',
       'Everything in Starter',
       'Reminder SMS and stronger follow-up',
       'Booking platform sync — Square, Mindbody, and more coming soon',
@@ -307,6 +308,7 @@ const plans = [
       'Owner call transfer with caller context',
       'Bilingual workflows where configured',
       'Call recovery insights',
+      'Call transcripts and audio recordings',
       'Priority support',
     ],
   },
