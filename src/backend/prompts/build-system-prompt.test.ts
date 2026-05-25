@@ -62,6 +62,31 @@ test('Professional prompt injects returning caller context', () => {
   assert.match(prompt, /Sarah/);
 });
 
+test('Production prompt renders allowed conversational style separately from the audio voice code', () => {
+  const professionalShop = createShop('professional');
+  professionalShop.ai_voice = 'Puck';
+  const professionalPrompt = buildSystemPrompt({
+    shop: professionalShop,
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(professionalPrompt, /VOICE STYLE: Puck/);
+  assert.match(professionalPrompt, /CONVERSATIONAL STYLE: Fast and concise\./);
+
+  const downgradedStarter = createShop('starter');
+  downgradedStarter.ai_voice = 'Charon';
+  const starterPrompt = buildSystemPrompt({
+    shop: downgradedStarter,
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(starterPrompt, /VOICE STYLE: Aoede/);
+  assert.match(starterPrompt, /CONVERSATIONAL STYLE: Warm and polished\./);
+  assert.doesNotMatch(starterPrompt, /Confident and premium/);
+});
+
 test('Production prompt injects configured staff and FAQ answers', () => {
   const shop = createShop('professional');
   shop.staff = [
@@ -152,6 +177,21 @@ test('Professional nail salon with en/vi keeps bilingual vertical and runtime bi
 
   assert.match(prompt, /respond naturally in Vietnamese/i);
   assert.match(prompt, /BILINGUAL WORKFLOW/);
+});
+
+test('Production shop with stored nail vertical gets nail UX pack without a demo vertical override', () => {
+  const shop = createShop('professional', ['en']);
+  shop.vertical = 'nail_salon';
+  shop.services = [{ name: 'Gel Manicure', duration_min: 45, price: 40 }];
+
+  const prompt = buildSystemPrompt({
+    shop,
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /Caller psychology: quick, transactional, price-checking, walk-in oriented/i);
+  assert.doesNotMatch(prompt, /stylist loyalty/i);
 });
 
 test('Production prompt renders service catalog grouped by service group', () => {

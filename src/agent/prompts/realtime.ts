@@ -69,10 +69,12 @@ export function renderPublicDemoFallbackCustomInstructions(notes?: string | null
 
 export function renderProductionCustomInstructions(input: {
   voiceStyle?: string | null;
+  conversationalStyle?: string | null;
   shopCustomInstructions?: string | null;
 }): string {
   const rendered = renderTemplate(RUNTIME_PROMPT_TEMPLATES.productionCustomInstructions, {
     voiceStyle: input.voiceStyle?.trim() || 'Aoede',
+    conversationalStyle: input.conversationalStyle?.trim() || 'Warm and polished.',
     shopCustomInstructions: input.shopCustomInstructions?.trim() ?? '',
   });
   return rendered

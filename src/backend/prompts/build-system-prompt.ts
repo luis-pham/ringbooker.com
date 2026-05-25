@@ -190,6 +190,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     welcomeMessage: compactLine(effectiveRuntimeConfig.aiWelcomeMessage, 240),
     customInstructions: renderProductionCustomInstructions({
       voiceStyle: effectiveRuntimeConfig.aiVoice,
+      conversationalStyle: effectiveRuntimeConfig.aiConversationalStyle,
       shopCustomInstructions: [
         effectiveRuntimeConfig.aiCustomInstructions ? compactLine(effectiveRuntimeConfig.aiCustomInstructions, 700) : null,
         renderFaqs(shop),

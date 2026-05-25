@@ -174,6 +174,7 @@ export function inferVerticalFromBusinessConfig(config: RuntimeBusinessConfig): 
 
   if (/\b(med\s*spa|botox|dysport|injectable|filler|microneedling)\b/.test(haystack)) return 'med-spa';
   if (/\b(clinic|patient|acne|scar|laser session|pre-treatment|recovery)\b/.test(haystack)) return 'beauty-clinic';
+  if (/\b(nail\s*salon|nails?|manicure|pedicure|acrylic|dip\s*powder|gel\s*polish)\b/.test(haystack)) return 'nail-salon';
   if (/\b(hair|balayage|keratin|haircut|blowout|stylist|color)\b/.test(haystack)) return 'hair-salon';
   if (/\b(day\s*spa|massage|couples|facial|gift card|spa package)\b/.test(haystack)) return 'day-spa';
   console.warn('[inferVerticalFromBusinessConfig] vertical_inference_fallback_hair_salon');

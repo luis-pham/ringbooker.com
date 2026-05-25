@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 
 import type { Shop, ShopPlan } from '@/src/backend/domain/types';
 import {
+  DEFAULT_RUNTIME_CONVERSATIONAL_STYLE,
   DEFAULT_RUNTIME_AI_VOICE,
   buildDefaultRuntimeGreeting,
   buildProductionInitialGreetingInstructions,
   resolveEffectiveRuntimeConfig,
+  resolveRuntimeConversationalStyle,
 } from '@/src/backend/domain/resolve-effective-runtime-config';
 
 function createDowngradedShop(plan: ShopPlan): Shop {
@@ -46,6 +48,7 @@ test('Starter runtime config strips paid fields from a previously upgraded shop'
 
   assert.equal(config.aiWelcomeMessage, buildDefaultRuntimeGreeting('Runtime Config Salon'));
   assert.equal(config.aiVoice, DEFAULT_RUNTIME_AI_VOICE);
+  assert.equal(config.aiConversationalStyle, DEFAULT_RUNTIME_CONVERSATIONAL_STYLE);
   assert.equal(config.aiCustomInstructions, null);
   assert.deepEqual(config.staff, []);
 });
@@ -88,4 +91,16 @@ test('Production initial greeting instructions require the greeting exactly once
       'Then wait. Do not say anything else until the caller speaks.',
     ].join('\n'),
   );
+});
+
+test('Runtime conversation style maps UI choices without changing the technical voice value', () => {
+  assert.equal(resolveRuntimeConversationalStyle('Aoede'), 'Warm and polished.');
+  assert.equal(resolveRuntimeConversationalStyle('Puck'), 'Fast and concise.');
+  assert.equal(resolveRuntimeConversationalStyle('Charon'), 'Confident and premium.');
+
+  const shop = createDowngradedShop('professional');
+  shop.ai_voice = 'Puck';
+  const config = resolveEffectiveRuntimeConfig(shop);
+  assert.equal(config.aiVoice, 'Puck');
+  assert.equal(config.aiConversationalStyle, 'Fast and concise.');
 });

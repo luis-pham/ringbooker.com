@@ -135,6 +135,17 @@ describe('voice prompt composer', () => {
     );
   });
 
+  it('infers nail salon instead of falling back to hair salon', () => {
+    assert.equal(
+      inferVerticalFromBusinessConfig({
+        businessName: 'Polished Studio',
+        businessType: 'nail salon',
+        services: [{ name: 'Gel Manicure' }, { name: 'Dip Powder' }],
+      }),
+      'nail-salon',
+    );
+  });
+
   it('maps OpenAI Realtime demo voices by vertical with marin fallback', () => {
     assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('nail-salon'), 'coral');
     assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('hair-salon'), 'marin');
