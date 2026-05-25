@@ -9,10 +9,12 @@ import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/de
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
+import { InMemoryVoiceCallLegsRepository } from '@/src/backend/adapters/memory/voice-call-legs-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
+import { resolveOpenAiSipShopRoomContext } from '@/src/backend/webhooks/openai-realtime-sip';
 
 function whsecSecret(): { secret: string; raw: Buffer } {
   const raw = randomBytes(32);
@@ -395,6 +397,32 @@ test('openai SIP webhook routes Call Control shop leg by client_state before dem
   assert.equal(acceptCalls.length, 1);
   assert.ok(acceptCalls[0].body.includes('Willow Hair Lounge'));
   assert.ok(!acceptCalls[0].body.includes('ABC Nails Studio'));
+});
+
+test('openai SIP shop context recovers request id from stored OpenAI leg when client_state header is missing', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const voiceCallLegsRepository = new InMemoryVoiceCallLegsRepository();
+  await voiceCallLegsRepository.createOrUpdateCallLeg({
+    shopId: shop.id,
+    rbCallId: 'rb-production-call-1',
+    purpose: 'openai_sip_leg',
+    callControlId: 'cc-openai-leg-1',
+    parentCallControlId: 'cc-parent-leg-1',
+    status: 'openai_leg_created',
+  });
+
+  const result = await resolveOpenAiSipShopRoomContext({
+    shop,
+    callId: 'rtc_fallback_should_not_be_used',
+    sipHeaders: [{ name: 'X-Telnyx-Call-Control-Id', value: 'cc-openai-leg-1' }],
+    voiceCallLegsRepository,
+  });
+
+  assert.equal(result.requestId, 'rb-production-call-1');
+  assert.equal(result.rbCallId, 'rb-production-call-1');
+  assert.equal(result.parentTelnyxCallControlId, 'cc-parent-leg-1');
 });
 
 test('openai SIP demo route registers demo_noop when sideband enabled', async () => {

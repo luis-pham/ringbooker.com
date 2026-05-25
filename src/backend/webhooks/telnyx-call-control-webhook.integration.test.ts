@@ -948,6 +948,81 @@ test('telnyx call-control call.hangup missed enqueues follow-up SMS job', async 
   assert.equal(leased.type, 'missed_call_followup_sms');
 });
 
+test('telnyx call-control caller hangup completes SIP transcript lifecycle and enqueues summary by stored leg correlation', async () => {
+  resetEnvCacheForTests();
+  applyRequiredTestEnv({
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+    TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const voiceCallLegsRepository = new InMemoryVoiceCallLegsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'cc_parent_transcript',
+    shopId: 'demo-shop',
+    requestId: 'rb_transcript_call',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'demo-shop',
+    requestId: 'rb_transcript_call',
+    speaker: 'assistant',
+    text: 'Thanks for calling.',
+  });
+  await voiceCallLegsRepository.createOrUpdateCallLeg({
+    shopId: 'demo-shop',
+    rbCallId: 'rb_transcript_call',
+    purpose: 'parent_caller_leg',
+    callControlId: 'cc_parent_transcript',
+    status: 'parent_leg_answered',
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+    jobsRepository,
+    callLogsRepository,
+    voiceCallLegsRepository,
+  });
+  const body = JSON.stringify({
+    data: {
+      event_type: 'call.hangup',
+      id: 'evt-cc-transcript-complete',
+      payload: {
+        call_control_id: 'cc_parent_transcript',
+        call_direction: 'inbound',
+        hangup_cause: 'normal_clearing',
+        answered_at: new Date().toISOString(),
+      },
+    },
+  });
+  const ts = `${Date.now()}`;
+  const res = await app.request('/webhooks/telnyx/call-control', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+  assert.equal(res.status, 200);
+
+  const transcript = await callLogsRepository.findTranscriptByShopAndRequestId({
+    shopId: 'demo-shop',
+    requestId: 'rb_transcript_call',
+  });
+  assert.equal(transcript?.transcriptStatus, 'completed');
+  const leased = await jobsRepository.leaseNext({
+    now: new Date(),
+    leaseSeconds: 30,
+    workerId: 'test-worker',
+  });
+  assert.equal(leased?.type, 'post_call_summary');
+  assert.equal(leased?.payload.requestId, 'rb_transcript_call');
+});
+
 test('telnyx call-control call.hangup missed does not enqueue when billing gate deps are missing', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({

@@ -241,6 +241,124 @@ test('manual provider with booking URL rejects direct create_booking', async () 
   assert.equal(harness.bookings.size, 0);
 });
 
+test('rejects booking outside configured business hours before provider call', async () => {
+  const harness = createContext({
+    shop: {
+      hours: {
+        monday: { open: '09:00', close: '17:00' },
+      },
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-05',
+    time: '05:00',
+    service: 'Haircut',
+  });
+
+  assert.deepEqual(result, {
+    error:
+      'The requested appointment time is outside the shop business hours. Do not say it is booked, confirmed, scheduled, or available. Ask for a time during business hours or offer to record the request for the shop to confirm.',
+    code: 'OUTSIDE_BUSINESS_HOURS',
+    retryable: false,
+  });
+  assert.equal(harness.createdInputs.length, 0);
+  assert.equal(harness.bookings.size, 0);
+});
+
+test('uses canonical service from service catalog when creating booking', async () => {
+  const harness = createContext({
+    shop: {
+      service_catalog: {
+        categories: [
+          {
+            id: 'cat-hair',
+            shopId: 'shop-test',
+            name: 'Hair',
+            sortOrder: 0,
+            active: true,
+          },
+        ],
+        services: [
+          {
+            id: 'svc-balayage',
+            shopId: 'shop-test',
+            categoryId: 'cat-hair',
+            name: 'Balayage Color',
+            durationText: '120 min',
+            durationMinutes: 120,
+            priceAmount: 180,
+            priceCurrency: 'USD',
+            priceType: 'from',
+            bookable: true,
+            active: true,
+            sortOrder: 0,
+            aliases: ['balayage'],
+            variants: [],
+          },
+        ],
+      },
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-05',
+    time: '10:00',
+    service: 'balayage',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal(harness.createdInputs[0]?.service, 'Balayage Color');
+  assert.equal(harness.createdInputs[0]?.durationMin, 120);
+});
+
+test('rejects unknown service before provider call', async () => {
+  const harness = createContext({
+    shop: {
+      service_catalog: {
+        categories: [
+          {
+            id: 'cat-hair',
+            shopId: 'shop-test',
+            name: 'Hair',
+            sortOrder: 0,
+            active: true,
+          },
+        ],
+        services: [
+          {
+            id: 'svc-haircut',
+            shopId: 'shop-test',
+            categoryId: 'cat-hair',
+            name: 'Haircut',
+            durationText: '45 min',
+            durationMinutes: 45,
+            priceAmount: 45,
+            priceCurrency: 'USD',
+            priceType: 'fixed',
+            bookable: true,
+            active: true,
+            sortOrder: 0,
+            aliases: [],
+            variants: [],
+          },
+        ],
+      },
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-05',
+    time: '10:00',
+    service: 'Oil change',
+  });
+
+  assert.equal('error' in result, true);
+  assert.equal('code' in result ? result.code : undefined, 'UNKNOWN_SERVICE');
+  assert.equal(harness.createdInputs.length, 0);
+  assert.equal(harness.bookings.size, 0);
+});
+
 test('manual provider without booking URL still creates pending request', async () => {
   const harness = createContext({
     provider: 'manual',

@@ -2119,6 +2119,13 @@ async function processCallHangup(
     const decoded = decodeCallControlClientState(clientStateRaw);
 
     const callControlLegId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+    const storedCallLeg =
+      deps.voiceCallLegsRepository && callControlLegId
+        ? await deps.voiceCallLegsRepository.findCallLegByCallControlId(callControlLegId).catch((err) => {
+            log.warn({ err, callControlLegId }, 'voice_call_leg_hangup_correlation_lookup_failed');
+            return null;
+          })
+        : null;
     const parallelSession = findParallelCallSession(callControlLegId);
     if (parallelSession) {
       if (parallelSession.bridgeState !== 'bridged' && !parallelSession.cleanupInitiated) {
@@ -2192,6 +2199,44 @@ async function processCallHangup(
         outcome: missed ? 'missed' : undefined,
         humanAnswered: Boolean(answeredAt),
       });
+    }
+
+    const transcriptShopId = storedCallLeg?.shopId ?? decoded?.shopId ?? null;
+    const transcriptRequestId = storedCallLeg?.rbCallId ?? decoded?.rbCallId ?? decoded?.requestId ?? null;
+    const endedCallerLeg =
+      storedCallLeg?.purpose === 'parent_caller_leg' ||
+      (!storedCallLeg && decoded?.purpose !== 'openai_sip_leg' && Boolean(transcriptShopId && transcriptRequestId));
+    if (deps.callLogsRepository && endedCallerLeg && transcriptShopId && transcriptRequestId) {
+      await deps.callLogsRepository
+        .updateTranscriptStatusByRequestId({
+          shopId: transcriptShopId,
+          requestId: transcriptRequestId,
+          status: 'completed',
+        })
+        .catch((err: unknown) => {
+          log.warn({ err, shopId: transcriptShopId, rbCallId: transcriptRequestId }, 'sip_transcript_completion_update_failed');
+        });
+      if (deps.jobsRepository) {
+        await deps.jobsRepository
+          .enqueue({
+            shopId: transcriptShopId,
+            type: 'post_call_summary',
+            payload: {
+              requestId: transcriptRequestId,
+              status: 'completed',
+              occurredAt: new Date().toISOString(),
+            },
+            runAt: new Date(),
+            idempotencyKey: `post_call_summary:${transcriptRequestId}:completed`,
+          })
+          .catch((err: unknown) => {
+            log.warn({ err, shopId: transcriptShopId, rbCallId: transcriptRequestId }, 'sip_post_call_summary_enqueue_failed');
+          });
+      }
+      log.info(
+        { shopId: transcriptShopId, rbCallId: transcriptRequestId, callControlLegId },
+        'sip_transcript_lifecycle_completed',
+      );
     }
 
     if (

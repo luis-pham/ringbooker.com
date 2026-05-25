@@ -104,17 +104,24 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
 
     const transcriptText = current?.transcript_text?.trim();
     const nextTranscript = transcriptText ? `${transcriptText}\n${line}` : line;
-    const { error } = await this.supabase
+    const { data: updatedRows, error } = await this.supabase
       .from('call_logs')
       .update({
         transcript_status: 'pending',
         transcript_text: nextTranscript,
       })
       .eq('shop_id', params.shopId)
-      .eq('request_id', params.requestId);
+      .eq('request_id', params.requestId)
+      .select('id');
 
     if (error) {
       throw new Error(`call_logs_append_transcript_failed:${error.message}`);
+    }
+    if (!updatedRows?.length) {
+      console.warn('[call_logs_append_transcript] no row matched transcript correlation', {
+        shopId: params.shopId,
+        requestId: params.requestId,
+      });
     }
   }
 

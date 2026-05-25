@@ -2,6 +2,11 @@ import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 import type { Shop, ToolError } from '@/src/backend/domain/types';
+import {
+  matchServiceFromCallerText,
+  normalizeServiceText,
+} from '@/src/backend/domain/service-catalog';
+import { isWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
 import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
@@ -48,13 +53,116 @@ export function toToolError(error: string, options?: Partial<ToolError>): ToolEr
 }
 
 export function findServiceDuration(shop: Shop, serviceName: string): number {
+  const resolved = resolveRuntimeService(shop, serviceName);
+  if (resolved.ok) return resolved.durationMin;
+  return 60;
+}
+
+export function resolveRuntimeService(
+  shop: Shop,
+  serviceName: string,
+):
+  | { ok: true; serviceName: string; durationMin: number }
+  | { ok: false; reason: 'unknown_service' | 'service_needs_clarification' | 'service_not_bookable'; message: string } {
+  const requested = serviceName.trim();
+  if (!requested) {
+    return {
+      ok: false,
+      reason: 'unknown_service',
+      message: 'Ask which service the caller wants before checking availability or creating a booking.',
+    };
+  }
+  const requestedTokens = normalizeServiceText(requested);
+  const notOffered = (shop.not_offered_services ?? []).find((item) => {
+    const normalized = normalizeServiceText(item);
+    return normalized.length > 0 && (normalized === requestedTokens || requestedTokens.includes(normalized));
+  });
+  if (notOffered) {
+    return {
+      ok: false,
+      reason: 'unknown_service',
+      message: `The shop has marked "${notOffered}" as not offered. Tell the caller it is not offered and redirect to configured services.`,
+    };
+  }
+
+  if (shop.service_catalog?.services.length) {
+    const match = matchServiceFromCallerText({
+      shopServiceCatalog: shop.service_catalog,
+      callerText: requested,
+      vertical: shop.vertical ?? null,
+    });
+    if (match.requiresClarification) {
+      return {
+        ok: false,
+        reason: 'service_needs_clarification',
+        message: `The caller asked for ${requested}, which matches a service category. Ask which specific service they want before checking availability or creating a booking.`,
+      };
+    }
+    if (!match.matchedServiceId || !match.matchedName || match.confidence < 0.72) {
+      return {
+        ok: false,
+        reason: 'unknown_service',
+        message: `The requested service "${requested}" is not clearly listed in the shop's configured services. Do not say it is available. Ask a clarifying question or offer team follow-up.`,
+      };
+    }
+    if (match.bookable === false) {
+      return {
+        ok: false,
+        reason: 'service_not_bookable',
+        message: `The requested service "${match.matchedName}" is capture-request-only. Record the request and tell the caller the shop will follow up to confirm.`,
+      };
+    }
+    const service = shop.service_catalog.services.find((item) => item.id === match.matchedServiceId);
+    return {
+      ok: true,
+      serviceName: service?.name ?? match.matchedName,
+      durationMin: service?.durationMinutes ?? service?.variants?.find((variant) => typeof variant.durationMinutes === 'number')?.durationMinutes ?? 60,
+    };
+  }
+
   const normalized = serviceName.trim().toLowerCase();
-  const service = shop.services.find((item) => item.name.trim().toLowerCase().includes(normalized));
-  return service?.duration_min ?? 60;
+  const normalizedTokens = requestedTokens;
+  const service = shop.services.find((item) => {
+    const itemName = item.name.trim().toLowerCase();
+    const itemTokens = normalizeServiceText(item.name);
+    return (
+      itemName === normalized ||
+      itemName.includes(normalized) ||
+      normalized.includes(itemName) ||
+      itemTokens === normalizedTokens ||
+      (itemTokens.length > 0 && normalizedTokens.includes(itemTokens))
+    );
+  });
+  if (!service) {
+    return {
+      ok: false,
+      reason: 'unknown_service',
+      message: `The requested service "${requested}" is not clearly listed in the shop's configured services. Do not say it is available. Ask a clarifying question or offer team follow-up.`,
+    };
+  }
+  return {
+    ok: true,
+    serviceName: service.name,
+    durationMin: service.duration_min ?? 60,
+  };
 }
 
 export function shopLocalToUtcIso(params: { date: string; time: string; timezone: string }): string | null {
   const datetime = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
   if (!datetime.isValid) return null;
   return datetime.toUTC().toISO();
+}
+
+export function isRequestedAppointmentInsideBusinessHours(
+  shop: Pick<Shop, 'hours' | 'timezone'>,
+  params: { date: string; time: string },
+): boolean | null {
+  if (Object.keys(shop.hours ?? {}).length === 0) return null;
+  const utcIso = shopLocalToUtcIso({
+    date: params.date,
+    time: params.time,
+    timezone: shop.timezone,
+  });
+  if (!utcIso) return false;
+  return isWithinBusinessHours(shop, new Date(utcIso));
 }

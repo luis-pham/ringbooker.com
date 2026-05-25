@@ -38,6 +38,7 @@ import type {
   ShopRoutingRulesRepository,
   ShopsRepository,
   SipDemoSessionEnrichment,
+  VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyOpenAiStandardWebhookV1 } from '@/src/backend/security/openai-standard-webhook';
@@ -181,17 +182,18 @@ function liveAnsweringBillingBlockedLogFields(params: {
 
 type OpenAiSipRoute = { kind: 'demo'; ctx: OpenAiSipDidContext } | { kind: 'shop'; shop: Shop; matchedRaw: string };
 
-function resolveOpenAiSipShopRoomContext(params: {
+export async function resolveOpenAiSipShopRoomContext(params: {
   sipHeaders: Array<{ name: string; value: string }> | undefined;
   shop: Shop;
   callId: string;
-}): {
+  voiceCallLegsRepository?: VoiceCallLegsRepository;
+}): Promise<{
   requestId: string;
   roomName: string;
   parentTelnyxCallControlId: string | null;
   rbCallId: string;
   openAiLegCallControlId: string | null;
-} {
+}> {
   const openAiLegCallControlId =
     extractSipHeader(params.sipHeaders, 'X-Telnyx-Call-Control-Id') ??
     extractSipHeader(params.sipHeaders, 'X-Call-Control-Id') ??
@@ -210,6 +212,36 @@ function resolveOpenAiSipShopRoomContext(params: {
       rbCallId,
       openAiLegCallControlId,
     };
+  }
+  if (openAiLegCallControlId && params.voiceCallLegsRepository) {
+    try {
+      const leg = await params.voiceCallLegsRepository.findCallLegByCallControlId(openAiLegCallControlId);
+      if (leg?.purpose === 'openai_sip_leg' && leg.shopId === params.shop.id) {
+        const safeReq = leg.rbCallId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+        logger.info(
+          {
+            shopId: params.shop.id,
+            callId: params.callId,
+            rbCallId: leg.rbCallId,
+            openAiLegCallControlId,
+            parentTelnyxCallControlId: leg.parentCallControlId,
+          },
+          'openai_sip_correlation_recovered_from_voice_call_leg',
+        );
+        return {
+          requestId: leg.rbCallId,
+          roomName: `sip-${safeReq || 'session'}`,
+          parentTelnyxCallControlId: leg.parentCallControlId,
+          rbCallId: leg.rbCallId,
+          openAiLegCallControlId,
+        };
+      }
+    } catch (err) {
+      logger.warn(
+        { err, shopId: params.shop.id, callId: params.callId, openAiLegCallControlId },
+        'openai_sip_voice_call_leg_correlation_lookup_failed',
+      );
+    }
   }
   const safeCall = params.callId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48);
   const fallbackReq = `sip-${params.callId}`;
@@ -264,6 +296,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     callbacksRepository?: CallbacksRepository;
     telephonyService?: TelephonyService;
     callLogsRepository?: CallLogsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
     commercialAccountsRepository?: CommercialAccountsRepository;
     shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     fetchImpl?: typeof fetch;
@@ -696,10 +729,11 @@ export async function handleOpenAiRealtimeSipWebhook(
 
   const shopRoomContext =
     route.kind === 'shop'
-      ? resolveOpenAiSipShopRoomContext({
+      ? await resolveOpenAiSipShopRoomContext({
           sipHeaders: data.sip_headers,
           shop: route.shop,
           callId,
+          voiceCallLegsRepository: deps.voiceCallLegsRepository,
         })
       : null;
 

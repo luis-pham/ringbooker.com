@@ -6,12 +6,19 @@ import { scheduleBookingFollowupJobs } from '@/src/backend/services/bookings/rem
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import {
   dateSchema,
-  findServiceDuration,
+  isRequestedAppointmentInsideBusinessHours,
+  resolveRuntimeService,
   shopLocalToUtcIso,
   timeSchema,
   type AgentToolContext,
   toToolError,
 } from '@/src/agent/tools/types';
+
+const SERVICE_ERROR_CODE = {
+  unknown_service: 'UNKNOWN_SERVICE',
+  service_needs_clarification: 'SERVICE_NEEDS_CLARIFICATION',
+  service_not_bookable: 'SERVICE_NOT_BOOKABLE',
+} as const;
 
 const schema = z.object({
   date: dateSchema,
@@ -45,7 +52,21 @@ export async function createBookingTool(
   }
 
   try {
-    const durationMin = findServiceDuration(ctx.shop, parsed.data.service);
+    const requestedInsideHours = isRequestedAppointmentInsideBusinessHours(ctx.shop, parsed.data);
+    if (requestedInsideHours === false) {
+      return toToolError(
+        'The requested appointment time is outside the shop business hours. Do not say it is booked, confirmed, scheduled, or available. Ask for a time during business hours or offer to record the request for the shop to confirm.',
+        { code: 'OUTSIDE_BUSINESS_HOURS', retryable: false },
+      );
+    }
+
+    const service = resolveRuntimeService(ctx.shop, parsed.data.service);
+    if (!service.ok) {
+      return toToolError(service.message, { code: SERVICE_ERROR_CODE[service.reason], retryable: false });
+    }
+
+    const durationMin = service.durationMin;
+    const canonicalServiceName = service.serviceName;
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
     const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
 
@@ -111,7 +132,7 @@ export async function createBookingTool(
         customerPhone: ctx.callerPhone,
         customerName: parsed.data.customerName,
         customerEmail: parsed.data.customerEmail,
-        service: parsed.data.service,
+        service: canonicalServiceName,
         techName: parsed.data.techName,
         teamMemberId,
         datetimeIso: utcIso,
@@ -143,7 +164,7 @@ export async function createBookingTool(
       shopId: ctx.shop.id,
       customerPhone: ctx.callerPhone,
       customerName: parsed.data.customerName ?? null,
-      service: parsed.data.service,
+      service: canonicalServiceName,
       datetimeUtc: utcIso,
       timezone: ctx.shop.timezone,
       status: result.confirmed ? 'confirmed' : 'pending',
@@ -173,7 +194,7 @@ export async function createBookingTool(
             shopId: ctx.shop.id,
             toPhone: callerPhone,
             bookingId: booking.id,
-            serviceName: parsed.data.service,
+            serviceName: canonicalServiceName,
             appointmentDate: parsed.data.date,
             appointmentTime: parsed.data.time,
             techName: parsed.data.techName,
@@ -198,7 +219,7 @@ export async function createBookingTool(
             bookingId: booking.id,
             callerPhone: ctx.callerPhone,
             callerName: parsed.data.customerName,
-            serviceName: parsed.data.service,
+            serviceName: canonicalServiceName,
             appointmentDate: parsed.data.date,
             appointmentTime: parsed.data.time,
             techName: parsed.data.techName,

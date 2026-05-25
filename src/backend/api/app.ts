@@ -2893,6 +2893,7 @@ export function createBackendApp(deps: {
         callbacksRepository: deps.callbacksRepository,
         telephonyService: deps.telephonyService,
         callLogsRepository: deps.callLogsRepository,
+        voiceCallLegsRepository: deps.voiceCallLegsRepository,
         commercialAccountsRepository: deps.commercialAccountsRepository,
         shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
         fetchImpl: deps.testingOpenAiFetch,
