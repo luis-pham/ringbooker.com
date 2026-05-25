@@ -61,7 +61,7 @@ export function buildProductionLanguageRuntimeFields(
   if (!hasMultilingualLanguageConfiguration(languages)) {
     return {
       productionLanguageDirective:
-        'LANGUAGE POLICY (PAID PLAN): Keep spoken dialogue in English unless CUSTOM INSTRUCTIONS specify otherwise.',
+        'LANGUAGE POLICY (PAID PLAN): Keep spoken dialogue in English unless CUSTOM INSTRUCTIONS specify otherwise. This rule overrides any core instruction to automatically switch languages. If the caller speaks an unsupported language, stay in English, acknowledge politely, and offer human callback or written follow-up.',
     };
   }
 

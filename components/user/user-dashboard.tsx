@@ -85,6 +85,16 @@ button,input,select,textarea{font:inherit}
 }
 .sidebar-logout:hover{background:#fef2f2;color:var(--red-deep)}
 .sidebar-logout svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
+.sidebar-footer-controls{margin-bottom:10px}
+.sidebar-collapse-btn{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 10px;border-radius:10px;border:1px solid var(--border);
+  background:var(--bg-gray);color:#4a4455;font:inherit;font-size:13px;font-weight:500;
+  text-align:left;cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+.sidebar-collapse-btn:hover{background:#f3f4f6;border-color:#d1d5db;color:var(--text-dark)}
+.sidebar-collapse-btn svg{width:17px;height:17px;flex-shrink:0}
 .brand{
   display:flex;align-items:center;gap:12px;
   margin-bottom:22px;
@@ -1100,25 +1110,19 @@ html[data-user-theme="dark"] .rb-account-action:hover{background:#21262d}
 html[data-user-theme="dark"] .rb-account-callout{background:#21262d;border-color:var(--border)}
 html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.12);color:#79c0ff}
 html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.16)}
+html[data-user-theme="dark"] .sidebar-collapse-btn{background:#21262d;border-color:var(--border);color:#8b949e}
+html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;color:var(--text-dark)}
 
 @media (max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .kpi-row,.call-grid,.billing-banner,.pricing-mini{grid-template-columns:1fr}
-  .app-shell{grid-template-columns:96px minmax(0,1fr)}
-  .user-app-shell{--portal-sidebar-width:96px}
-  .sidebar{padding:18px 12px}
-  .sidebar-inner{min-height:calc(100vh - 36px)}
-  .brand-title,.brand-tagline,.nav-item span,.nav-label{display:none}
-  .nav-item .nav-attention-dot{display:inline-flex;position:absolute;right:12px;top:12px;margin-left:0}
-  .nav-item{position:relative}
-  .nav-item{justify-content:center;padding:10px;border-left:none !important;padding-left:10px !important}
-  .nav-icon{margin:0}
 }
 @media (min-width:861px){
   .user-app-shell{
     display:block;
     padding-left:var(--portal-sidebar-width,var(--sidebar-width));
     min-height:100vh;
+    transition:padding-left .2s ease;
   }
   .topbar-user-chip-meta{display:block}
   /* Desktop portal: only the sidebar stays fixed; topbar scrolls with page content. */
@@ -1132,7 +1136,29 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
     overflow-y:auto;
     overscroll-behavior-y:contain;
     -webkit-overflow-scrolling:touch;
+    transition:width .2s ease,padding .2s ease;
   }
+  html.user-sidebar-collapsed{
+    --portal-sidebar-width:88px;
+  }
+  html.user-sidebar-collapsed .user-app-shell .sidebar{padding:18px 12px}
+  html.user-sidebar-collapsed .brand-title,
+  html.user-sidebar-collapsed .brand-tagline,
+  html.user-sidebar-collapsed .nav-item-label,
+  html.user-sidebar-collapsed .nav-item-badge,
+  html.user-sidebar-collapsed .nav-label,
+  html.user-sidebar-collapsed .sidebar-logout span,
+  html.user-sidebar-collapsed .sidebar-collapse-label{display:none}
+  html.user-sidebar-collapsed .brand-text{display:none}
+  html.user-sidebar-collapsed .brand{justify-content:center;margin-bottom:18px}
+  html.user-sidebar-collapsed .nav-item{justify-content:center;padding:10px;position:relative}
+  html.user-sidebar-collapsed .nav-item .nav-attention-dot{
+    display:inline-flex;position:absolute;right:10px;top:10px;margin-left:0;
+  }
+  html.user-sidebar-collapsed .nav-icon{margin:0}
+  html.user-sidebar-collapsed .sidebar-collapse-btn,
+  html.user-sidebar-collapsed .sidebar-logout{justify-content:center;padding:10px}
+  html.user-sidebar-collapsed .nav-go-live-placeholder{padding:10px}
 }
 @media (max-width:860px){
   .user-app-shell{
@@ -1383,6 +1409,7 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
   .user-app-shell .sidebar-footer{display:none !important}
+  .user-app-shell .sidebar-footer-controls{display:none !important}
   .user-app-shell .sidebar-body{flex:none;min-height:0;overflow:visible}
   .brand{width:100%;margin-bottom:0}
   .brand-title,.brand-tagline{display:block}

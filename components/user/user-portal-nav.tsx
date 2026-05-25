@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { readCachedGoLiveNavVisible, writeCachedGoLiveNavVisible } from '@/components/user/user-portal-go-live-cache';
+import { useUserSidebarCollapsed } from '@/components/user/user-portal-sidebar-controls';
 
 export type UserPortalNavKey =
   | 'overview'
@@ -30,6 +31,7 @@ function navLink(
   active: UserPortalNavKey,
   badgeCount?: number,
   attentionDot?: boolean,
+  navTitle?: string,
 ) {
   const isActive = active === key;
   return (
@@ -38,12 +40,14 @@ function navLink(
       href={href}
       prefetch
       className={`nav-item${isActive ? ' active' : ''}`}
+      title={navTitle}
     >
       <div className="nav-icon">{icon}</div>
-      <span>{label}</span>
+      <span className="nav-item-label">{label}</span>
       {attentionDot ? <span className="nav-attention-dot" aria-label={`${label} needs attention`} /> : null}
       {badgeCount && badgeCount > 0 ? (
         <span
+          className="nav-item-badge"
           style={{
             background: '#dc2626',
             color: 'white',
@@ -162,6 +166,8 @@ function IconMore() {
 
 /** Shared left-rail links for authenticated `/user/*` pages. */
 export function UserPortalNav({ active }: UserPortalNavProps) {
+  const { collapsed } = useUserSidebarCollapsed();
+  const itemTitle = (label: string) => (collapsed ? label : undefined);
   const [followUpCount, setFollowUpCount] = useState(0);
   const [showGoLive, setShowGoLive] = useState(() => active === 'go-live');
   const [goLiveNavResolved, setGoLiveNavResolved] = useState(() => active === 'go-live');
@@ -212,7 +218,7 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
 
   const goLiveRow =
     showGoLive || active === 'go-live' ? (
-      navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active, undefined, true)
+      navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active, undefined, true, itemTitle('Go live'))
     ) : !goLiveNavResolved ? (
       <div className="nav-item nav-go-live-placeholder" aria-busy="true" aria-label="Loading navigation">
         <span className="nav-go-live-placeholder-track">
@@ -225,16 +231,16 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
     <div className="nav-section">
       <div className="nav-list">
         <div className="nav-label">Operate</div>
-        {navLink('overview', '/user', 'Overview', <IconOverview />, active)}
-        {navLink('calls', '/user/calls', 'Calls', <IconCalls />, active, followUpCount)}
-        {navLink('bookings', '/user/bookings', 'Bookings', <IconBookings />, active)}
+        {navLink('overview', '/user', 'Overview', <IconOverview />, active, undefined, undefined, itemTitle('Overview'))}
+        {navLink('calls', '/user/calls', 'Calls', <IconCalls />, active, followUpCount, undefined, itemTitle('Calls'))}
+        {navLink('bookings', '/user/bookings', 'Bookings', <IconBookings />, active, undefined, undefined, itemTitle('Bookings'))}
         <div className="nav-label">Setup</div>
         {goLiveRow}
-        {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active)}
-        {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active)}
+        {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active, undefined, undefined, itemTitle('Business Knowledge'))}
+        {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active, undefined, undefined, itemTitle('Integrations'))}
         <div className="nav-label">Account</div>
-        {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}
-        {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
+        {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active, undefined, undefined, itemTitle('Billing'))}
+        {navLink('account', '/user/account', 'Account', <IconAccount />, active, undefined, undefined, itemTitle('Account'))}
       </div>
     </div>
   );

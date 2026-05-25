@@ -183,10 +183,7 @@ export async function createBookingTool(
     });
 
     const callerPhone = ctx.callerPhone;
-    const smsConsented = callerPhone && ctx.customersRepository
-      ? await ctx.customersRepository.isSmsConsented(ctx.shop.id, callerPhone).catch(() => false)
-      : false;
-    if (smsConsented && callerPhone) {
+    if (callerPhone) {
       try {
         await ctx.jobsRepository.enqueue({
           shopId: ctx.shop.id,

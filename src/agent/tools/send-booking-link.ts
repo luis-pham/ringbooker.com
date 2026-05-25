@@ -16,7 +16,7 @@ export async function sendBookingLinkTool(
   | { success: true; message: string }
   | {
       success: false;
-      reason?: 'no_phone' | 'no_consent';
+      reason?: 'no_phone';
       fallback: 'url';
       bookingUrl: string | null;
       message: string;
@@ -44,19 +44,6 @@ export async function sendBookingLinkTool(
     return {
       success: false,
       reason: 'no_phone',
-      fallback: 'url',
-      bookingUrl,
-      message: `Unable to send booking link via SMS. Tell the caller they can book directly at: ${bookingUrl}`,
-    };
-  }
-
-  const smsConsented = ctx.customersRepository
-    ? await ctx.customersRepository.isSmsConsented(ctx.shop.id, toPhone).catch(() => false)
-    : false;
-  if (!smsConsented) {
-    return {
-      success: false,
-      reason: 'no_consent',
       fallback: 'url',
       bookingUrl,
       message: `Unable to send booking link via SMS. Tell the caller they can book directly at: ${bookingUrl}`,

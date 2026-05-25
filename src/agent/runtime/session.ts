@@ -13,7 +13,6 @@ import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
 import { scheduleCallbackTool } from '@/src/agent/tools/schedule-callback';
-import { recordSmsConsentTool } from '@/src/agent/tools/record-sms-consent';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
 
@@ -44,8 +43,7 @@ export type AgentToolName =
   | 'get_shop_info'
   | 'transfer_to_user'
   | 'schedule_callback'
-  | 'send_booking_link'
-  | 'record_sms_consent';
+  | 'send_booking_link';
 
 export class InboundAgentSession {
   readonly requestId: string;
@@ -133,8 +131,6 @@ export class InboundAgentSession {
         return scheduleCallbackTool(ctx, input);
       case 'send_booking_link':
         return sendBookingLinkTool(ctx, input);
-      case 'record_sms_consent':
-        return recordSmsConsentTool(ctx, input);
       default:
         return {
           error: 'Unknown tool.',

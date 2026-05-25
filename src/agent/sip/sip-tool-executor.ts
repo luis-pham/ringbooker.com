@@ -4,7 +4,6 @@ import { cancelBookingTool } from '@/src/agent/tools/cancel-booking';
 import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
-import { recordSmsConsentTool } from '@/src/agent/tools/record-sms-consent';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { requestHumanHandoffTool } from '@/src/agent/tools/request-human-handoff';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
@@ -108,9 +107,6 @@ export async function executeSipShopToolCall(
         break;
       case 'send_booking_link':
         result = await sendBookingLinkTool(ctx, toolInput);
-        break;
-      case 'record_sms_consent':
-        result = await recordSmsConsentTool(ctx, toolInput);
         break;
       case 'end_call':
         result = await endCallTool(ctx, toolInput);
