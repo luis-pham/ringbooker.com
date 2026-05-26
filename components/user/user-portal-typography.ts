@@ -29,8 +29,7 @@ a.link:not(.btn):not(.nav-item):not(.carrier-link),
 button.user-link,
 button.rb-account-link,
 .portal-notif-refresh,
-.gl-inline-link,
-.overview-status-action{
+.gl-inline-link{
   font:inherit;
   border:none;
   background:none;
