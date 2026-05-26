@@ -97,7 +97,7 @@ const styles: string[] = [
       display:inline-flex;
       align-items:center;
       gap:7px;
-      padding:7px 12px;
+      padding:6px;
       border-radius:999px;
       background:#F5F3FF;
       color:var(--purple-dark);

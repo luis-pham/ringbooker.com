@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { IconChartBar, IconFileDescription, IconLock, IconPlayerPlay } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconCalendarCheck,
+  IconChartBar,
+  IconFileDescription,
+  IconPhoneCall,
+  IconPhoneOff,
+  IconLock,
+  IconPlayerPlay,
+} from '@tabler/icons-react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
@@ -473,10 +482,22 @@ export function UserCallsLive({
 
               {activeFilter !== 'insights' ? (
                 <section className="calls-metric-grid" aria-label="Call activity summary">
-                  <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--blue">☎</span><div><p>This week</p><strong>{stats.last7Days}</strong></div></div>
-                  <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--purple">▣</span><div><p>Bookings captured</p><strong>{stats.bookings}</strong></div></div>
-                  <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--amber">⚠</span><div><p>Follow-up</p><strong>{stats.followUp}</strong></div></div>
-                  <div className="calls-metric-card"><span className="calls-stat-icon calls-stat-icon--red">▢</span><div><p>Missed</p><strong>{stats.missed}</strong></div></div>
+                  <div className="calls-metric-card">
+                    <span className="calls-stat-icon calls-stat-icon--blue" aria-hidden><IconPhoneCall size={22} stroke={1.9} /></span>
+                    <div><p>This week</p><strong>{stats.last7Days}</strong></div>
+                  </div>
+                  <div className="calls-metric-card">
+                    <span className="calls-stat-icon calls-stat-icon--purple" aria-hidden><IconCalendarCheck size={22} stroke={1.9} /></span>
+                    <div><p>Bookings captured</p><strong>{stats.bookings}</strong></div>
+                  </div>
+                  <div className="calls-metric-card">
+                    <span className="calls-stat-icon calls-stat-icon--amber" aria-hidden><IconAlertTriangle size={22} stroke={1.9} /></span>
+                    <div><p>Follow-up</p><strong>{stats.followUp}</strong></div>
+                  </div>
+                  <div className="calls-metric-card">
+                    <span className="calls-stat-icon calls-stat-icon--red" aria-hidden><IconPhoneOff size={22} stroke={1.9} /></span>
+                    <div><p>Missed</p><strong>{stats.missed}</strong></div>
+                  </div>
                 </section>
               ) : null}
 

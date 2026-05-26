@@ -87,7 +87,7 @@ body.app-body{overflow:hidden;height:100vh}
 .card h3{margin:0 0 6px;font-size:16px;letter-spacing:-.02em;font-weight:600}
 .sub{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
 .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
-.badge-right,.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;line-height:1.25;letter-spacing:.01em;white-space:nowrap}
+.badge-right,.tag{display:inline-flex;align-items:center;gap:6px;padding:6px;border-radius:6px;font-size:12px;font-weight:600;line-height:1.25;letter-spacing:.01em;white-space:nowrap}
 .tag.purple,.badge-right{background:var(--tag-purple-bg);color:var(--tag-purple-fg);border:1px solid var(--tag-purple-border)}
 .tag.green{background:var(--tag-green-bg);color:var(--tag-green-fg);border:1px solid var(--tag-green-border)}
 .tag.orange{background:var(--tag-orange-bg);color:var(--tag-orange-fg);border:1px solid var(--tag-orange-border)}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { IconCalendarCheck, IconClock, IconPhone, IconStack2 } from '@tabler/icons-react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
@@ -306,10 +307,22 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
 
               {hasAnyStats(stats) ? (
                 <section className="bookings-metric-grid" aria-label="Booking summary">
-                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--blue">▣</span><div><p>Total requests</p><strong>{stats.total}</strong></div></div>
-                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--amber">⏳</span><div><p>New</p><strong>{stats.awaitingAction}</strong></div></div>
-                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--purple">📞</span><div><p>Contacted</p><strong>{stats.contacted}</strong></div></div>
-                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--green">✓</span><div><p>Confirmed</p><strong>{stats.confirmed}</strong></div></div>
+                  <div className="bookings-metric-card">
+                    <span className="bookings-stat-icon bookings-stat-icon--blue" aria-hidden><IconStack2 size={22} stroke={1.9} /></span>
+                    <div><p>Total requests</p><strong>{stats.total}</strong></div>
+                  </div>
+                  <div className="bookings-metric-card">
+                    <span className="bookings-stat-icon bookings-stat-icon--amber" aria-hidden><IconClock size={22} stroke={1.9} /></span>
+                    <div><p>New</p><strong>{stats.awaitingAction}</strong></div>
+                  </div>
+                  <div className="bookings-metric-card">
+                    <span className="bookings-stat-icon bookings-stat-icon--purple" aria-hidden><IconPhone size={22} stroke={1.9} /></span>
+                    <div><p>Contacted</p><strong>{stats.contacted}</strong></div>
+                  </div>
+                  <div className="bookings-metric-card">
+                    <span className="bookings-stat-icon bookings-stat-icon--green" aria-hidden><IconCalendarCheck size={22} stroke={1.9} /></span>
+                    <div><p>Confirmed</p><strong>{stats.confirmed}</strong></div>
+                  </div>
                 </section>
               ) : null}
 

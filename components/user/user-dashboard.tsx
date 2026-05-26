@@ -463,7 +463,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .overview-status-label{font-size:13px;font-weight:500;color:var(--text-dark)}
 .overview-status-desc{font-size:12px;color:var(--text-gray);margin-top:2px;line-height:1.45}
 .overview-status-action{
-  flex-shrink:0;font-size:12px;font-weight:500;color:var(--purple-dark);
+  flex-shrink:0;font-size:14px;font-weight:500;color:var(--purple-dark);
   white-space:nowrap;padding:6px 0 6px 8px;
 }
 .overview-status-action:hover{text-decoration:underline}
@@ -667,7 +667,7 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 .stat-icon svg{width:22px;height:22px;stroke:var(--purple-dark);stroke-width:2;fill:none}
 .stat-value{font-size:32px;font-weight:600;letter-spacing:-1px}
 .stat-meta{font-size:13px;color:var(--text-gray);line-height:1.55}
-.tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 0;border-radius:999px;font-size:11px;font-weight:500}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:6px;border-radius:999px;font-size:11px;font-weight:500}
 .tag.green{background:#ecfdf5;color:#047857}
 .tag.purple{background:#f5f3ff;color:var(--purple-dark)}
 .tag.blue{background:#eff6ff;color:#1d4ed8}
