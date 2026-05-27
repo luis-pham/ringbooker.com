@@ -1238,7 +1238,7 @@ export function MarketingVerticalDemoTemplate({
       if (body.stage === 'dialing') setStatusText('Connecting your browser session to the demo room…');
       if (body.stage === 'live') setStatusText('You\'re connected — speak naturally or tap a prompt below.');
       if (body.stage === 'completed') {
-        setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
+        setStatusText('Session ended.');
         return;
       }
       if (body.stage === 'failed') {
@@ -1923,7 +1923,7 @@ export function MarketingVerticalDemoTemplate({
     resetTurnstile();
     setStage('completed');
     setRequestError(null);
-    setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
+    setStatusText('Session ended.');
     if (turns.length >= 2) {
       void extractCallData(turns);
       if (transcriptRequestId) persistDemoTranscript(transcriptRequestId, turns);
@@ -1943,7 +1943,7 @@ export function MarketingVerticalDemoTemplate({
     resetTurnstile();
     setStage('completed');
     setRequestError(null);
-    setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
+    setStatusText('Session ended.');
   }
 
   function resetDemo() {
@@ -2609,7 +2609,12 @@ export function MarketingVerticalDemoTemplate({
                      stage === 'live' ? 'Your AI receptionist demo is ready' :
                      stage === 'completed' ? `Your AI just answered as ${demoDisplayName}` : 'Something went wrong'}
                   </h2>
-                  <p className="vd-status-body">{statusText}</p>
+                  <p className="vd-status-body">
+                    {statusText}
+                    {stage === 'completed' && !callExtracting && callExtracted?.hasRealData && callExtracted.serviceRequested && callExtracted.requestedTime
+                      ? ' Here\'s what a follow-up SMS could look like.'
+                      : null}
+                  </p>
 
                   {stage === 'live' ? (
                     <>
