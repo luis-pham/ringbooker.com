@@ -1112,6 +1112,22 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
 html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.16)}
 html[data-user-theme="dark"] .sidebar-collapse-btn{background:#21262d;border-color:var(--border);color:#8b949e}
 html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;color:var(--text-dark)}
+html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::after,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::after,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::after,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::after,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::after,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::after{
+  background:#f0f6fc;color:#0d1117;
+}
+html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::before,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::before,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::before,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::before,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::before,
+html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::before{
+  border-right-color:#f0f6fc;
+}
 
 @media (max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1142,7 +1158,13 @@ html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;colo
     --portal-sidebar-width:88px;
   }
   html.user-sidebar-collapsed .user-app-shell .sidebar,
-  html.user-sidebar-collapsed .user-app-shell .sidebar .sidebar-body{overflow-x:visible}
+  html.user-sidebar-collapsed .user-app-shell .sidebar .sidebar-inner,
+  html.user-sidebar-collapsed .user-app-shell .sidebar .sidebar-body,
+  html.user-sidebar-collapsed .user-app-shell .sidebar .sidebar-footer{overflow:visible}
+  html.user-sidebar-collapsed .user-app-shell .sidebar .sidebar-body{
+    overflow-x:visible;
+    overflow-y:auto;
+  }
   html.user-sidebar-collapsed .user-app-shell .sidebar{padding:18px 12px}
   html.user-sidebar-collapsed .brand-title,
   html.user-sidebar-collapsed .brand-tagline,
@@ -1156,7 +1178,11 @@ html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;colo
     justify-content:center;padding:10px;position:relative;overflow:visible;
   }
   html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::after{
+  html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::after,
+  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::after,
+  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::after{
     content:attr(data-tooltip);
     position:absolute;
     left:calc(100% + 12px);
@@ -1175,7 +1201,11 @@ html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;colo
     pointer-events:none;
   }
   html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::before{
+  html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::before,
+  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::before,
+  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::before{
     content:'';
     position:absolute;
     left:calc(100% + 6px);
@@ -1201,7 +1231,9 @@ html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;colo
   }
   html.user-sidebar-collapsed .nav-icon{margin:0}
   html.user-sidebar-collapsed .sidebar-collapse-btn,
-  html.user-sidebar-collapsed .sidebar-logout{justify-content:center;padding:10px}
+  html.user-sidebar-collapsed .sidebar-logout{
+    justify-content:center;padding:10px;position:relative;overflow:visible;
+  }
   html.user-sidebar-collapsed .nav-go-live-placeholder{padding:10px}
 }
 @media (max-width:860px){

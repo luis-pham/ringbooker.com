@@ -5,6 +5,7 @@ import { UserPortalNav } from '@/components/user/user-portal-nav';
 import { UserPortalNotifications } from '@/components/user/user-portal-notifications';
 import {
   UserPortalSidebarCollapseToggle,
+  UserSidebarCollapsedProvider,
   useUserSidebarCollapsed,
 } from '@/components/user/user-portal-sidebar-controls';
 import { UserPortalThemeToggle } from '@/components/user/user-portal-theme-toggle';
@@ -23,7 +24,7 @@ type UserPortalSidebarProps = {
   active: UserPortalNavKey;
 };
 
-export function UserPortalSidebar({ active }: UserPortalSidebarProps) {
+function UserPortalSidebarInner({ active }: UserPortalSidebarProps) {
   const { collapsed } = useUserSidebarCollapsed();
 
   async function signOut() {
@@ -63,6 +64,7 @@ export function UserPortalSidebar({ active }: UserPortalSidebarProps) {
             type="button"
             className="sidebar-logout"
             title={collapsed ? 'Sign out' : undefined}
+            data-tooltip={collapsed ? 'Sign out' : undefined}
             onClick={() => void signOut()}
           >
             <IconLogout />
@@ -71,5 +73,13 @@ export function UserPortalSidebar({ active }: UserPortalSidebarProps) {
         </div>
       </div>
     </aside>
+  );
+}
+
+export function UserPortalSidebar({ active }: UserPortalSidebarProps) {
+  return (
+    <UserSidebarCollapsedProvider>
+      <UserPortalSidebarInner active={active} />
+    </UserSidebarCollapsedProvider>
   );
 }

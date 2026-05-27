@@ -41,8 +41,8 @@ function navLink(
       prefetch
       className={`nav-item${isActive ? ' active' : ''}`}
       title={navTitle}
-      data-tooltip={navTitle}
-      aria-label={navTitle ?? label}
+      data-tooltip={label}
+      aria-label={label}
     >
       <div className="nav-icon">{icon}</div>
       <span className="nav-item-label">{label}</span>

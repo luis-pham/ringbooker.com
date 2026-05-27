@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import {
   applyUserSidebarCollapsed,
@@ -8,7 +16,14 @@ import {
   readUserSidebarCollapsed,
 } from '@/lib/user-portal-sidebar-preference';
 
-export function useUserSidebarCollapsed(): { collapsed: boolean } {
+type UserSidebarCollapsedContextValue = {
+  collapsed: boolean;
+  toggleCollapsed: () => void;
+};
+
+const UserSidebarCollapsedContext = createContext<UserSidebarCollapsedContextValue | null>(null);
+
+export function UserSidebarCollapsedProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -17,24 +32,38 @@ export function useUserSidebarCollapsed(): { collapsed: boolean } {
     applyUserSidebarCollapsed(next);
   }, []);
 
-  return { collapsed };
-}
-
-export function UserPortalSidebarCollapseToggle() {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setCollapsed(readUserSidebarCollapsed());
-  }, []);
-
-  function toggleCollapsed() {
+  const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
       persistUserSidebarCollapsed(next);
       applyUserSidebarCollapsed(next);
       return next;
     });
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      collapsed,
+      toggleCollapsed,
+    }),
+    [collapsed, toggleCollapsed],
+  );
+
+  return (
+    <UserSidebarCollapsedContext.Provider value={value}>{children}</UserSidebarCollapsedContext.Provider>
+  );
+}
+
+export function useUserSidebarCollapsed(): UserSidebarCollapsedContextValue {
+  const ctx = useContext(UserSidebarCollapsedContext);
+  if (!ctx) {
+    throw new Error('useUserSidebarCollapsed must be used within UserSidebarCollapsedProvider');
   }
+  return ctx;
+}
+
+export function UserPortalSidebarCollapseToggle() {
+  const { collapsed, toggleCollapsed } = useUserSidebarCollapsed();
 
   return (
     <button
@@ -43,6 +72,7 @@ export function UserPortalSidebarCollapseToggle() {
       aria-pressed={collapsed}
       aria-label={collapsed ? 'Expand sidebar menu' : 'Collapse sidebar menu'}
       title={collapsed ? 'Expand menu' : 'Collapse menu'}
+      data-tooltip={collapsed ? 'Expand menu' : undefined}
       onClick={toggleCollapsed}
     >
       <svg viewBox="0 0 24 24" aria-hidden>
