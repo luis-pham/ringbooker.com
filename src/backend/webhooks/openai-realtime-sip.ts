@@ -6,6 +6,7 @@ import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definit
 import {
   createSipAgentToolContext,
   executeSipShopToolCall,
+  prePopulateFromTranscript,
   type SipToolExecutorDeps,
 } from '@/src/agent/sip/sip-tool-executor';
 import { getEnv } from '@/src/backend/config/env';
@@ -792,7 +793,9 @@ export async function handleOpenAiRealtimeSipWebhook(
     voice,
     includeDemoNoopTool,
     sipPilotSuppressVadCreateResponse: includeDemoNoopTool || shopBridgeGatedGreeting,
-    shopBusinessTools: shopToolsAndSideband ? getSipShopToolsForOpenAiAccept() : undefined,
+    shopBusinessTools: shopToolsAndSideband
+      ? getSipShopToolsForOpenAiAccept(route.kind === 'shop' ? route.shop : null)
+      : undefined,
     toolChoice: shopToolsAndSideband ? 'auto' : undefined,
   });
 
@@ -987,6 +990,9 @@ export async function handleOpenAiRealtimeSipWebhook(
             softLimitMs,
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,
+            onCallerTranscriptPrePopulate: (transcript: string) => {
+              void prePopulateFromTranscript(toolCtx, transcript);
+            },
             onEndCall: () => {
               if (hangupInitiated) return;
               hangupInitiated = true;

@@ -24,6 +24,23 @@ export type AppointmentTimeValidationResult = {
   messageForAi: string;
 };
 
+/**
+ * Derive the `messageForAi` field from a validation `reason`.
+ * Extracted so the cache-hit path in `sip-tool-executor` can reconstruct the full
+ * result without re-running the tool.
+ */
+export function buildValidationMessageForAi(
+  reason: AppointmentTimeValidationResult['reason'],
+): string {
+  if (reason === 'past_datetime') {
+    return 'That appointment time has already passed. Ask for another future appointment date and time. Do not ask for name or phone yet.';
+  }
+  if (reason === 'within_business_hours' || reason === 'business_hours_not_configured') {
+    return 'The requested time may be captured. Continue without saying you checked anything, without claiming availability, and without describing the date as too far in the future.';
+  }
+  return 'That time is outside our business hours. Say so now and ask for another time during our opening hours. Do not ask for name or phone yet.';
+}
+
 export function requiresAppointmentTimeValidation(ctx: AgentToolContext): boolean {
   return Boolean(ctx.appointmentTimeValidation);
 }
@@ -81,10 +98,6 @@ export async function validateAppointmentTimeTool(
     valid,
     reason,
     normalizedDatetimeUtc,
-    messageForAi: reason === 'past_datetime'
-      ? 'That appointment time has already passed. Ask for another future appointment date and time. Do not ask for name or phone yet.'
-      : valid
-      ? 'The requested time may be captured. Continue without saying you checked anything, without claiming availability, and without describing the date as too far in the future.'
-      : 'That time is outside our business hours. Say so now and ask for another time during our opening hours. Do not ask for name or phone yet.',
+    messageForAi: buildValidationMessageForAi(reason),
   };
 }

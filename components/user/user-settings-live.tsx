@@ -2197,7 +2197,6 @@ export function UserSettingsLive({
                     <div className="field">
                       <label>Additional services</label>
                       <input value={currentForm.vertical_detail} onChange={(event) => patchState('vertical_detail', event.target.value)} placeholder="also offers spa services" />
-                      <p className="sub">Describe your secondary services here (e.g. also offers spa services, specializes in balayage). This does not change your primary business type.</p>
                     </div>
 	                    <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
 	                    <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
@@ -2264,7 +2263,6 @@ export function UserSettingsLive({
                     <div className="field">
                       <label>Additional services</label>
                       <input value={currentForm.vertical_detail} onChange={(event) => patchState('vertical_detail', event.target.value)} placeholder="also offers spa services" />
-                      <p className="sub">Describe your secondary services here (e.g. also offers spa services, specializes in balayage). This does not change your primary business type.</p>
                     </div>
                     <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
                     <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>

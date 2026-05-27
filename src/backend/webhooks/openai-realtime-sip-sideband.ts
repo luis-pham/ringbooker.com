@@ -80,6 +80,15 @@ export type OpenAiRealtimeSipSidebandParams =
        * Caller is responsible for issuing the hangup command (after this fires, audio is done).
        */
       onEndCall?: () => void;
+      /**
+       * Called when a caller utterance contains a recognizable appointment time (explicit AM/PM)
+       * and the sideband is about to force `validate_appointment_time` via `tool_choice`.
+       *
+       * Fires the raw transcript so the server can pre-populate
+       * `ctx.appointmentTimeValidation.latest` before the model's ~7 s inference round-trip
+       * completes. Best-effort: never relied upon for correctness.
+       */
+      onCallerTranscriptPrePopulate?: (transcript: string) => void;
     };
 
 /**
@@ -289,6 +298,13 @@ export function startOpenAiRealtimeSipSideband(
     const inBookingFlow = shopBookingFlowActive || mentionsBookingFlow(transcript);
     const forceTimeValidation = inBookingFlow && includesSpecificTime(transcript);
     shopBookingFlowActive = inBookingFlow;
+
+    // Pre-populate appointment-time cache server-side before the model round-trip starts.
+    // This fires while OpenAI is still doing its ~7 s inference, so the cache is warm
+    // by the time the model calls validate_appointment_time.
+    if (forceTimeValidation) {
+      params.onCallerTranscriptPrePopulate?.(transcript);
+    }
 
     try {
       ws.send(

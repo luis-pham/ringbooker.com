@@ -684,18 +684,18 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 }
 .usage-progress-track{
   height:6px;border-radius:20px;margin-top:10px;overflow:hidden;
-  background-color:#f9fafb;
-  border:1px solid rgba(99,14,212,.14);
-  box-shadow:inset 0 1px 2px rgba(17,24,39,.07);
+  background-color:#dbeafe;
+  border:1px solid rgba(37,99,235,.2);
+  box-shadow:inset 0 1px 2px rgba(37,99,235,.08);
 }
 .usage-progress-fill{
   height:100%;min-width:0;border-radius:999px;
   transition:width .4s ease,filter .2s ease;
   box-shadow:inset 0 -1px 0 rgba(0,0,0,.06);
 }
-.usage-progress-fill--ok{background:linear-gradient(90deg,#6d28d9,#8b5cf6)}
-.usage-progress-fill--near{background:linear-gradient(90deg,#c2410c,#f59e0b)}
-.usage-progress-fill--over{background:linear-gradient(90deg,#991b1b,#dc2626)}
+.usage-progress-fill--ok{background:#9ca3af}
+.usage-progress-fill--near{background:#6b7280}
+.usage-progress-fill--over{background:#4b5563}
 .usage-captured-card--near{border-color:#fcd34d !important}
 .usage-captured-card--over{border-color:#fca5a5 !important}
 .badge-right{padding:6px 10px;border-radius:999px;background:#111827;color:#fff;font-size:11px;font-weight:500;white-space:nowrap}
@@ -973,12 +973,12 @@ html[data-user-theme="dark"] .card.enterprise-managed-card{
   background:rgba(56,139,253,.1);
 }
 html[data-user-theme="dark"] .usage-progress-track{
-  background:#21262d;border-color:#30363d;
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.35);
+  background:rgba(56,139,253,.22);border-color:rgba(56,139,253,.35);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.25);
 }
-html[data-user-theme="dark"] .usage-progress-fill--ok{background:linear-gradient(90deg,#8957e5,#a371f7)}
-html[data-user-theme="dark"] .usage-progress-fill--near{background:linear-gradient(90deg,#c24e00,#d29922)}
-html[data-user-theme="dark"] .usage-progress-fill--over{background:linear-gradient(90deg,#da3633,#f85149)}
+html[data-user-theme="dark"] .usage-progress-fill--ok{background:#9ca3af}
+html[data-user-theme="dark"] .usage-progress-fill--near{background:#6b7280}
+html[data-user-theme="dark"] .usage-progress-fill--over{background:#4b5563}
 html[data-user-theme="dark"] .usage-captured-card--near{border-color:rgba(210,153,34,.45) !important}
 html[data-user-theme="dark"] .usage-captured-card--over{border-color:rgba(248,81,73,.45) !important}
 html[data-user-theme="dark"] .overview-bk-nudge{background:var(--surface-card);border-color:var(--border)}

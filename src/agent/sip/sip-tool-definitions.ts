@@ -1,6 +1,8 @@
 import { REALTIME_TOOL_DEFINITIONS } from '@/src/agent/realtime/shared-tool-definitions';
 
 import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
+import type { Shop } from '@/src/backend/domain/types';
+import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 
 /**
  * Production SIP shop route — tools exposed on OpenAI SIP `accept` + sideband.
@@ -104,10 +106,23 @@ function toolFromShared(name: string): OpenAiSipFunctionTool | null {
 /**
  * Tools array for `POST .../realtime/calls/{id}/accept` when shop sideband is enabled.
  * Resolves at call time so tests can override `process.env.VOICE_TRANSPORT`.
+ *
+ * When `shop` is provided and its calendar provider is `manual` (no calendar integration),
+ * `check_availability` is excluded from the list. This avoids a redundant ~7s OpenAI round-trip:
+ * ManualCalendarProvider always returns `{available: true}` instantly, but the tool call itself
+ * costs a full model inference round-trip through OpenAI Realtime, causing ~14s of silence
+ * when paired with the mandatory `validate_appointment_time` call.
  */
-export function getSipShopToolsForOpenAiAccept(): OpenAiSipFunctionTool[] {
+export function getSipShopToolsForOpenAiAccept(shop?: Shop | null): OpenAiSipFunctionTool[] {
+  // Determine which tools to suppress for this shop
+  const isManualProvider = shop
+    ? getShopCalendarProviderMetadata(shop).id === 'manual'
+    : false;
+
   const core: OpenAiSipFunctionTool[] = [];
   for (const n of SIP_CORE_TOOL_NAMES) {
+    // Skip check_availability for manual shops — saves one full OpenAI round-trip (~7s)
+    if (n === 'check_availability' && isManualProvider) continue;
     const t = toolFromShared(n);
     if (t) core.push(t);
   }
@@ -121,8 +136,8 @@ export function getSipShopToolsForOpenAiAccept(): OpenAiSipFunctionTool[] {
   return transfer ? [...core, transfer, END_CALL_TOOL] : [...core, END_CALL_TOOL];
 }
 
-export function getSipShopToolNameSet(): Set<string> {
-  return new Set(getSipShopToolsForOpenAiAccept().map((t) => t.name));
+export function getSipShopToolNameSet(shop?: Shop | null): Set<string> {
+  return new Set(getSipShopToolsForOpenAiAccept(shop).map((t) => t.name));
 }
 
 /** @deprecated Use getSipShopToolsForOpenAiAccept() so voice transport is respected. */
