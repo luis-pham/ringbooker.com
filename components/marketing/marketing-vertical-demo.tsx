@@ -1387,6 +1387,35 @@ export function MarketingVerticalDemoTemplate({
     });
   }
 
+  /**
+   * Awaitable variant of the slot release — used at the start of a new demo so
+   * the concurrent-slot ledger on the server has time to free the previous slot
+   * before `POST /realtime-session` is issued. Without this, a fast End→Start
+   * sequence races with the sendBeacon release and hits `demo_concurrent_
+   * session_limit`. Any HTTP status (200, 404 already-expired, 429, 5xx) is
+   * treated as "proceed" — the new POST will surface the real state.
+   */
+  async function awaitDirectRealtimeSlotRelease(
+    requestId: string,
+    endReason: 'completed' | 'timeout' = 'completed',
+  ): Promise<void> {
+    const url = '/api/backend/public/demo/realtime-session/release';
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof window !== 'undefined' && window.location?.origin
+            ? { Origin: window.location.origin }
+            : {}),
+        },
+        body: JSON.stringify({ requestId, endReason }),
+      });
+    } catch {
+      /* network error — proceed; new POST will surface any state issue */
+    }
+  }
+
   function beginDirectDemoMaxDurationTimer() {
     if (directDurationTimerStartedRef.current) return;
     directDurationTimerStartedRef.current = true;
@@ -1428,9 +1457,25 @@ export function MarketingVerticalDemoTemplate({
   }
 
   async function startDirectOpenAiDemo(preauthorizedStream?: MediaStream) {
+    // Capture previous requestId BEFORE cleanup (cleanup will null the ref out).
+    // Used to await server-side slot release and avoid the End→Start race that
+    // hits `demo_concurrent_session_limit`.
+    const previousRequestId = directRealtimeRequestIdRef.current;
     cleanupDirectRealtime();
     directPeerFailureMutedRef.current = false;
     clearPollTimer();
+
+    // Race fix: cleanupDirectRealtime fires the slot release via sendBeacon
+    // (fire-and-forget). If the user just ended a demo and is starting another
+    // within ~500ms, the new POST /realtime-session may reach the server before
+    // sendBeacon is processed → server sees the old slot still occupied → 429
+    // `demo_concurrent_session_limit`. Awaiting the release here guarantees the
+    // slot is freed before the new POST goes out. Adds ~100-300ms only when
+    // there IS a previous demo; first-start path stays fast.
+    if (previousRequestId) {
+      await awaitDirectRealtimeSlotRelease(previousRequestId);
+    }
+
     setStatusText('Requesting microphone…');
 
     const stream = preauthorizedStream ?? await requestDemoMicrophone({ keepAlive: true });
