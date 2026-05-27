@@ -665,6 +665,8 @@ export interface ShopOverageChargesRepository {
     paddleTransactionId?: string | null,
   ): Promise<void>;
   listByShopId(shopId: string, params?: { limit?: number }): Promise<ShopOverageCharge[]>;
+  /** Return all charged overages across every shop (admin aggregate use only). */
+  listCharged(params?: { limit?: number }): Promise<ShopOverageCharge[]>;
 }
 
 export interface ShopUsageAlertsRepository {

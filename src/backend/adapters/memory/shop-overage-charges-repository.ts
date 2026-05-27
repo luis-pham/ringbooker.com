@@ -71,4 +71,9 @@ export class InMemoryShopOverageChargesRepository implements ShopOverageChargesR
     const limit = params?.limit && params.limit > 0 ? params.limit : 50;
     return sortByPeriodStartDescending([...this.records.values()].filter((record) => record.shopId === shopId)).slice(0, limit);
   }
+
+  async listCharged(params?: { limit?: number }): Promise<ShopOverageCharge[]> {
+    const limit = params?.limit && params.limit > 0 ? params.limit : 1000;
+    return sortByPeriodStartDescending([...this.records.values()].filter((record) => record.status === 'charged')).slice(0, limit);
+  }
 }

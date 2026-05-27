@@ -123,4 +123,17 @@ export class SupabaseShopOverageChargesRepository implements ShopOverageChargesR
     if (error) throw new Error(`shop_overage_charges_list_by_shop_id_failed:${error.message}`);
     return (data ?? []).map(toShopOverageCharge);
   }
+
+  async listCharged(params?: { limit?: number }): Promise<ShopOverageCharge[]> {
+    const limit = params?.limit && params.limit > 0 ? params.limit : 1000;
+    const { data, error } = await this.supabase
+      .from('shop_overage_charges')
+      .select('*')
+      .eq('status', 'charged')
+      .order('period_start', { ascending: false })
+      .limit(limit)
+      .returns<ShopOverageChargeRow[]>();
+    if (error) throw new Error(`shop_overage_charges_list_charged_failed:${error.message}`);
+    return (data ?? []).map(toShopOverageCharge);
+  }
 }

@@ -2585,6 +2585,86 @@ async function computeShowGoLiveSettingsTab(params: {
   return !access.liveCallsEnabled;
 }
 
+// ---------------------------------------------------------------------------
+// Admin billing — Paddle gross collected revenue cache
+// ---------------------------------------------------------------------------
+
+/** Simple in-process cache so we don't hammer the Paddle API on every admin page load. */
+let _paddleGrossCache: { value: number; fetchedAt: number } | null = null;
+const PADDLE_GROSS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Fetches ALL completed Paddle transactions (paginated) and sums their
+ * grand_total (in USD).  Results are cached in-process for 5 minutes.
+ * Returns null when Paddle is not configured or the fetch fails.
+ */
+async function fetchPaddleGrossCollected(): Promise<{ value: number; cachedAt: string } | null> {
+  if (_paddleGrossCache && Date.now() - _paddleGrossCache.fetchedAt < PADDLE_GROSS_CACHE_TTL_MS) {
+    return { value: _paddleGrossCache.value, cachedAt: new Date(_paddleGrossCache.fetchedAt).toISOString() };
+  }
+  const env = getEnv();
+  const apiKey = env.PADDLE_API_KEY?.trim();
+  if (!apiKey) return null;
+  const baseUrl = (env.PADDLE_ENV ?? env.PADDLE_ENVIRONMENT) === 'production'
+    ? 'https://api.paddle.com'
+    : 'https://sandbox-api.paddle.com';
+
+  let totalCents = 0;
+  let after: string | null = null;
+  let pages = 0;
+  const MAX_PAGES = 40; // cap at 2 000 transactions (40 × 50)
+
+  try {
+    do {
+      const url = new URL(`${baseUrl}/transactions`);
+      url.searchParams.set('status', 'completed');
+      url.searchParams.set('per_page', '50');
+      if (after) url.searchParams.set('after', after);
+
+      const response = await fetch(url.toString(), {
+        headers: { Accept: 'application/json', Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) break;
+
+      const json = (await response.json()) as {
+        data?: unknown[];
+        meta?: { pagination?: { has_more?: boolean; next?: string | null }; has_more?: boolean };
+      };
+
+      for (const tx of Array.isArray(json.data) ? json.data : []) {
+        if (!tx || typeof tx !== 'object') continue;
+        const t = tx as Record<string, unknown>;
+        // Paddle stores amounts as cent-string in details.adjusted_totals or details.totals
+        const details = (t.details && typeof t.details === 'object') ? t.details as Record<string, unknown> : {};
+        const adj = (details.adjusted_totals && typeof details.adjusted_totals === 'object')
+          ? details.adjusted_totals as Record<string, unknown> : {};
+        const tot = (details.totals && typeof details.totals === 'object')
+          ? details.totals as Record<string, unknown> : {};
+        const outerTot = (t.totals && typeof t.totals === 'object') ? t.totals as Record<string, unknown> : {};
+        const raw = adj.grand_total ?? adj.total ?? tot.grand_total ?? tot.total ?? outerTot.grand_total ?? outerTot.total ?? 0;
+        const cents = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : 0;
+        if (Number.isFinite(cents) && cents > 0) totalCents += cents;
+      }
+
+      const pagination = json.meta?.pagination;
+      const hasMore = pagination?.has_more ?? json.meta?.has_more ?? false;
+      after = hasMore ? (pagination?.next ?? null) : null;
+      pages++;
+    } while (after && pages < MAX_PAGES);
+  } catch {
+    // Network/timeout — return cached value if available, otherwise null
+    if (_paddleGrossCache) {
+      return { value: _paddleGrossCache.value, cachedAt: new Date(_paddleGrossCache.fetchedAt).toISOString() };
+    }
+    return null;
+  }
+
+  const value = Number((totalCents / 100).toFixed(2));
+  _paddleGrossCache = { value, fetchedAt: Date.now() };
+  return { value, cachedAt: new Date(_paddleGrossCache.fetchedAt).toISOString() };
+}
+
 export function createBackendApp(deps: {
   providerEventsRepository: ProviderEventsRepository;
   jobsRepository?: JobsRepository;
@@ -9985,26 +10065,55 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
     }
 
-    const [subscriptions, shops] = await Promise.all([
+    // FIX 1 — MRR: paying subscribers only (exclude trialing — $0 collected)
+    const payingStatus = new Set<BillingSubscriptionStatus>(['active']);
+
+    // Fetch subscriptions, shops, and charged overage records in parallel.
+    // Paddle gross is fetched separately (cached, may be slow on first load).
+    const [subscriptions, shops, chargedOverages] = await Promise.all([
       deps.billingSubscriptionsRepository.list({ limit: 500 }),
       deps.shopsRepository.list({ limit: 500 }),
+      // FIX 2 — Overage: sum status='charged' rows across all shops
+      deps.shopOverageChargesRepository
+        ? deps.shopOverageChargesRepository.listCharged({ limit: 2000 })
+        : Promise.resolve([]),
     ]);
+
     const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
-    const activeStatuses = new Set<BillingSubscriptionStatus>(['active', 'trialing']);
-    const monthlyRecurringRevenue = subscriptions
-      .filter((subscription) => activeStatuses.has(subscription.status))
-      .reduce((sum, subscription) => {
-        const normalized = subscription.interval === 'year' ? subscription.amount / 12 : subscription.amount;
-        return sum + normalized;
-      }, 0);
+
+    // FIX 1 — MRR: active-only (paying) subscriptions
+    const payingSubscriptions = subscriptions.filter((s) => payingStatus.has(s.status));
+    const trialingSubscriptions = subscriptions.filter((s) => s.status === 'trialing');
+    const mrr = Number(
+      payingSubscriptions
+        .reduce((sum, s) => sum + (s.interval === 'year' ? s.amount / 12 : s.amount), 0)
+        .toFixed(2),
+    );
+
+    // FIX 2 — Overage revenue: sum all charged overages (amount_cents / 100)
+    const overageRevenueCents = chargedOverages.reduce((sum, c) => sum + c.amountCents, 0);
+    const overageRevenue = Number((overageRevenueCents / 100).toFixed(2));
+
+    // FIX 3 — Gross collected from Paddle (paginated, 5-min cached)
+    const paddleGross = await fetchPaddleGrossCollected();
 
     return c.json({
       ok: true,
       metrics: {
         subscriptionCount: subscriptions.length,
-        activeSubscriptions: subscriptions.filter((subscription) => activeStatuses.has(subscription.status)).length,
-        pastDueSubscriptions: subscriptions.filter((subscription) => subscription.status === 'past_due').length,
-        mrr: Number(monthlyRecurringRevenue.toFixed(2)),
+        // FIX 4 — separate paying vs trialing counts
+        payingSubscriptions: payingSubscriptions.length,
+        trialingSubscriptions: trialingSubscriptions.length,
+        pastDueSubscriptions: subscriptions.filter((s) => s.status === 'past_due').length,
+        // FIX 1 — MRR: paying only
+        mrr,
+        // FIX 2 — Overage revenue: confirmed charged records from DB
+        overageRevenue,
+        // DB-based total: MRR (paying subscriptions) + confirmed overage charges
+        totalCollectedDb: Number((mrr + overageRevenue).toFixed(2)),
+        // FIX 3 — Gross collected from Paddle transactions API (null if not configured)
+        grossCollectedPaddle: paddleGross?.value ?? null,
+        grossCollectedPaddleCachedAt: paddleGross?.cachedAt ?? null,
       },
       subscriptions: subscriptions.map((subscription) => ({
         ...subscription,
