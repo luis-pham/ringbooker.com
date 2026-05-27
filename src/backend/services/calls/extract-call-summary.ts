@@ -81,11 +81,11 @@ Extract ONLY these fields as JSON. No other text.
 Fields:
 - service_request: string or null. What service did the caller want?
 - urgency: "low" | "medium" | "high". low = general info inquiry, no booking intent; medium = wants to book/general question; high = cancellation, complaint, urgent reschedule.
-- next_action: one of: "booking_created", "booking_link_sent", "callback_scheduled", "cancellation_requested", "reschedule_requested", "info_provided", "escalated", "no_action_needed".
+- next_action: one of: "booking_created", "booking_link_sent", "callback_scheduled", "cancellation_requested", "reschedule_requested", "info_provided", "escalated", "no_action_needed". Use "booking_created" or "booking_link_sent" only if the transcript explicitly contains a successful tool/system confirmation. Do not use either value when the assistant only promised to record a request or said the shop will follow up. If owner follow-up is still required, do not use "booking_created".
 - caller_question: string or null. Main question the caller asked.
 - caller_name: string or null. Name the caller mentioned.
 - preferred_tech: string or null. Stylist/technician preference mentioned.
-- preferred_datetime: string or null. When caller wants appointment.
+- preferred_datetime: string or null. Preserve the caller's requested local date/time wording. Never convert it to UTC or invent a timezone.
 - follow_up_required: boolean. True if owner needs to follow up.
 
 Transcript:

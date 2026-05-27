@@ -28,10 +28,11 @@ test.beforeEach(() => {
 function createCallsTestApp(recordingStorage?: CallRecordingStorage) {
   const callLogsRepository = new InMemoryCallLogsRepository();
   const shopsRepository = new InMemoryShopsRepository();
+  const bookingsRepository = new InMemoryBookingsRepository();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
-    bookingsRepository: new InMemoryBookingsRepository(),
+    bookingsRepository,
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository,
     telephonyService: new NoopTelephonyService(),
@@ -40,7 +41,7 @@ function createCallsTestApp(recordingStorage?: CallRecordingStorage) {
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
     recordingStorage,
   });
-  return { app, callLogsRepository, shopsRepository };
+  return { app, callLogsRepository, shopsRepository, bookingsRepository };
 }
 
 async function loginUser(app: ReturnType<typeof createBackendApp>) {
@@ -146,6 +147,140 @@ test('user calls endpoint returns real tab-filtered calls, stats, and resolves s
   assert.equal(detailBody.call.id, 'req-stale');
   assert.equal(detailBody.call.transcriptAvailable, true);
   assert.match(detailBody.call.transcriptText ?? '', /haircut/);
+});
+
+test('user calls shows a booking outcome only when a linked booking record exists', async () => {
+  const { app, callLogsRepository, bookingsRepository } = createCallsTestApp();
+  const cookie = await loginUser(app);
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'unconfirmed-request-call',
+    shopId: 'demo-shop',
+    callerPhone: '+15551230100',
+    requestId: 'req-unconfirmed-request',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.updateStructuredSummary('demo-shop', 'req-unconfirmed-request', {
+    summaryServiceRequest: 'Relaxing massage',
+    summaryNextAction: 'booking_created',
+    summaryFollowUpRequired: true,
+  });
+
+  const withoutBooking = await app.request('/user/calls', { headers: { cookie } });
+  const withoutBookingBody = await withoutBooking.json() as {
+    calls: Array<{ id: string; outcome: string; bookingCaptured: boolean; bookingRequestId?: string }>;
+    stats: { bookings: number };
+  };
+  const unlinked = withoutBookingBody.calls.find((call) => call.id === 'req-unconfirmed-request');
+  assert.equal(unlinked?.outcome, 'follow_up_needed');
+  assert.equal(unlinked?.bookingCaptured, false);
+  assert.equal(withoutBookingBody.stats.bookings, 0);
+
+  const booking = await bookingsRepository.create({
+    shopId: 'demo-shop',
+    customerPhone: '+15551230100',
+    service: 'Relaxing massage',
+    datetimeUtc: new Date().toISOString(),
+    timezone: 'America/Los_Angeles',
+    status: 'pending',
+    callLogId: 'req-unconfirmed-request',
+  });
+
+  const withBooking = await app.request('/user/calls', { headers: { cookie } });
+  const withBookingBody = await withBooking.json() as {
+    calls: Array<{ id: string; outcome: string; bookingCaptured: boolean; bookingRequestId?: string }>;
+    stats: { bookings: number };
+  };
+  const linked = withBookingBody.calls.find((call) => call.id === 'req-unconfirmed-request');
+  assert.equal(linked?.outcome, 'booking_request');
+  assert.equal(linked?.bookingCaptured, true);
+  assert.equal(linked?.bookingRequestId, booking.id);
+  assert.equal(withBookingBody.stats.bookings, 1);
+
+  await bookingsRepository.updateStatusByShop('demo-shop', booking.id, 'completed');
+  const afterCompleted = await app.request('/user/calls', { headers: { cookie } });
+  const afterCompletedBody = await afterCompleted.json() as { calls: Array<{ id: string; outcome: string }> };
+  assert.equal(afterCompletedBody.calls.find((call) => call.id === 'req-unconfirmed-request')?.outcome, 'booking_completed');
+
+  await callLogsRepository.updateStructuredSummary('demo-shop', 'req-unconfirmed-request', {
+    summaryNextAction: 'cancellation_requested',
+  });
+  const cancellationRequest = await app.request('/user/calls', { headers: { cookie } });
+  const cancellationRequestBody = await cancellationRequest.json() as { calls: Array<{ id: string; outcome: string }> };
+  assert.equal(cancellationRequestBody.calls.find((call) => call.id === 'req-unconfirmed-request')?.outcome, 'cancelled_request');
+});
+
+test('user calls labels an assistant-only greeting as no caller response and not a captured outcome', async () => {
+  const { app, callLogsRepository } = createCallsTestApp();
+  const cookie = await loginUser(app);
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'assistant-only-greeting-call',
+    shopId: 'demo-shop',
+    callerPhone: '+15551230101',
+    requestId: 'req-assistant-only-greeting',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'demo-shop',
+    requestId: 'req-assistant-only-greeting',
+    speaker: 'assistant',
+    text: 'Thank you for calling Avalon Salon and Spa. How can I help you today?',
+  });
+
+  const response = await app.request('/user/calls', { headers: { cookie } });
+  const body = await response.json() as { calls: Array<{ id: string; outcome: string; bookingCaptured: boolean }> };
+  const call = body.calls.find((item) => item.id === 'req-assistant-only-greeting');
+  assert.equal(call?.outcome, 'no_response');
+  assert.equal(call?.bookingCaptured, false);
+});
+
+test('follow-up filtering uses the resolvable follow-up flag and clearing it also removes high urgency', async () => {
+  const { app, callLogsRepository } = createCallsTestApp();
+  const cookie = await loginUser(app);
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx',
+    providerCallId: 'flagged-call',
+    shopId: 'demo-shop',
+    requestId: 'req-flagged-call',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.updateStructuredSummary('demo-shop', 'req-flagged-call', {
+    summaryFollowUpRequired: true,
+    summaryUrgency: 'high',
+  });
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx',
+    providerCallId: 'legacy-callback-call',
+    shopId: 'demo-shop',
+    requestId: 'req-legacy-callback',
+    startedAt: new Date(),
+  });
+  await callLogsRepository.updateStructuredSummary('demo-shop', 'req-legacy-callback', {
+    summaryNextAction: 'callback_scheduled',
+    summaryFollowUpRequired: false,
+  });
+
+  const before = await app.request('/user/calls?tab=follow_up', { headers: { cookie } });
+  const beforeBody = await before.json() as { calls: Array<{ id: string }>; stats: { followUp: number; highUrgency: number } };
+  assert.deepEqual(beforeBody.calls.map((call) => call.id), ['req-flagged-call']);
+  assert.equal(beforeBody.stats.followUp, 1);
+  assert.equal(beforeBody.stats.highUrgency, 1);
+
+  const resolved = await app.request('/user/calls/req-flagged-call/follow-up-done', {
+    method: 'PATCH',
+    headers: { cookie },
+  });
+  assert.equal(resolved.status, 200);
+
+  const after = await app.request('/user/calls?tab=follow_up', { headers: { cookie } });
+  const afterBody = await after.json() as { calls: Array<{ id: string }>; stats: { followUp: number; highUrgency: number } };
+  assert.equal(afterBody.calls.length, 0);
+  assert.equal(afterBody.stats.followUp, 0);
+  assert.equal(afterBody.stats.highUrgency, 0);
 });
 
 test('Starter can view call transcripts and advanced call analytics fields', async () => {
@@ -297,6 +432,19 @@ test('Professional call recovery insights aggregate calls in the current usage p
     requestId: 'req-insights-missed',
     startedAt,
   });
+  await callLogsRepository.markEndedByProviderCallId({
+    provider: 'telnyx',
+    providerCallId: 'insights-missed',
+    endedAt: new Date(),
+    outcome: 'missed',
+  });
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx',
+    providerCallId: 'insights-answered-not-captured',
+    shopId: 'demo-shop',
+    requestId: 'req-insights-answered-not-captured',
+    startedAt,
+  });
   for (const [index, service] of ['Haircut', 'Haircut', 'Color'].entries()) {
     const requestId = `req-insights-captured-${index}`;
     await callLogsRepository.createOrUpdateInboundCall({
@@ -316,8 +464,8 @@ test('Professional call recovery insights aggregate calls in the current usage p
     topServices: Array<{ service: string; count: number; percentage: number }>;
     peakCallTimes: Array<{ hour: number; count: number }>;
   };
-  assert.equal(body.missedOpportunities.percentage, 25);
+  assert.equal(body.missedOpportunities.percentage, 20);
   assert.equal(body.missedOpportunities.trend.reduce((sum, item) => sum + item.count, 0), 1);
   assert.deepEqual(body.topServices[0], { service: 'Haircut', count: 2, percentage: 67 });
-  assert.equal(body.peakCallTimes.reduce((sum, item) => sum + item.count, 0), 4);
+  assert.equal(body.peakCallTimes.reduce((sum, item) => sum + item.count, 0), 5);
 });

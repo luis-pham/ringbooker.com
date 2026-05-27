@@ -14,7 +14,13 @@ import {
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { knowledgePortalTabPageClass, UserPortalPageContent } from '@/components/user/user-portal-page-content';
+import { useUserPortalToast } from '@/components/user/user-portal-toast';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
+import {
+  bookingLinkSaveSuccessMessage,
+  formatSaveErrorMessage,
+  settingsSaveSuccessMessage,
+} from '@/lib/user-portal-save-messages';
 import { IntegrationsRedesign } from '@/components/user/integrations-redesign';
 import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
@@ -766,6 +772,7 @@ export function UserSettingsLive({
   initialData?: UserSettingsResponse | null;
 }) {
   const { setWorkspace } = useUserWorkspace();
+  const { showToast } = useUserPortalToast();
   const sidebarNav = userSettingsPortalNavKey(portal);
   const portalHead =
     portal === 'knowledge'
@@ -1092,15 +1099,21 @@ export function UserSettingsLive({
       if (!response.ok || !body.ok) {
         const message = body.error ?? 'booking_link_save_failed';
         setBookingLinkErrors((current) => ({ ...current, [providerId]: message }));
-        setCalendarStatus(message);
+        showToast({
+          type: 'error',
+          message: formatSaveErrorMessage(message, bookingLinkSaveSuccessMessage(providerId)),
+        });
         return;
       }
-      setCalendarStatus('Booking link saved.');
+      showToast({ type: 'success', message: bookingLinkSaveSuccessMessage(providerId) });
       setEditingBookingLinkProvider(null);
       await loadCalendarProviders();
     } catch {
       setBookingLinkErrors((current) => ({ ...current, [providerId]: 'booking_link_save_failed' }));
-      setCalendarStatus('booking_link_save_failed');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('network_error', bookingLinkSaveSuccessMessage(providerId)),
+      });
     } finally {
       setSavingBookingLinkProvider(null);
     }
@@ -1120,15 +1133,21 @@ export function UserSettingsLive({
       if (!response.ok || !body.ok) {
         const message = body.error ?? 'vagaro_booking_link_save_failed';
         setVagaroBookingUrlError(message);
-        setCalendarStatus(message);
+        showToast({
+          type: 'error',
+          message: formatSaveErrorMessage(message, bookingLinkSaveSuccessMessage('vagaro')),
+        });
         return;
       }
       if (body.bookingUrl) setVagaroBookingUrl(body.bookingUrl);
-      setCalendarStatus('Vagaro booking link saved.');
+      showToast({ type: 'success', message: bookingLinkSaveSuccessMessage('vagaro') });
       await loadCalendarProviders();
     } catch {
       setVagaroBookingUrlError('vagaro_booking_link_save_failed');
-      setCalendarStatus('vagaro_booking_link_save_failed');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('network_error', bookingLinkSaveSuccessMessage('vagaro')),
+      });
     } finally {
       setSavingVagaroBookingUrl(false);
     }
@@ -1715,7 +1734,10 @@ export function UserSettingsLive({
 
   async function commitSettingsPatch(sectionId: string, patch: Record<string, unknown>) {
     if (!settingsReady) {
-      setStatus('settings_still_loading');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('settings_still_loading', settingsSaveSuccessMessage(sectionId)),
+      });
       return;
     }
     setSavingSection(sectionId);
@@ -1729,10 +1751,14 @@ export function UserSettingsLive({
       const body = (await response.json()) as UserSettingsResponse;
       if (!response.ok || !body.ok || !body.shop || !body.capabilities) {
         if (body.error === 'plan_feature_locked' && body.fields?.length) {
-          setStatus(`Upgrade required for: ${body.fields.join(', ')}`);
+          const upgradeMsg = `Upgrade required for: ${body.fields.join(', ')}`;
+          showToast({ type: 'error', message: upgradeMsg });
           return;
         }
-        setStatus(body.error ?? 'save_failed');
+        showToast({
+          type: 'error',
+          message: formatSaveErrorMessage(body.error ?? 'save_failed', settingsSaveSuccessMessage(sectionId)),
+        });
         return;
       }
       const nextShop = body.shop;
@@ -1755,9 +1781,12 @@ export function UserSettingsLive({
         ),
       );
       setHourPreset(getHourPresetId(nextState.hours));
-      setStatus('saved');
+      showToast({ type: 'success', message: settingsSaveSuccessMessage(sectionId) });
     } catch {
-      setStatus('network_error');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('network_error', settingsSaveSuccessMessage(sectionId)),
+      });
     } finally {
       setSavingSection(null);
     }
@@ -1779,7 +1808,12 @@ export function UserSettingsLive({
       });
       const body = (await response.json()) as UserSettingsResponse;
       if (!response.ok || !body.ok || !body.shop) {
-        setHandoffPhoneStatus(body.error ?? 'save_failed');
+        const err = body.error ?? 'save_failed';
+        setHandoffPhoneStatus(err);
+        showToast({
+          type: 'error',
+          message: formatSaveErrorMessage(err, 'Call transfer settings'),
+        });
         return;
       }
       setShop(body.shop);
@@ -1787,10 +1821,14 @@ export function UserSettingsLive({
       setHandoffAvailabilityDraft((body.shop.handoff_availability ?? 'business_hours') as 'business_hours' | 'always' | 'custom');
       setHandoffCustomHoursDraft(cloneHours((body.shop.handoff_custom_hours as Record<string, BusinessHoursEntry> | null | undefined) ?? {}));
       setHandoffPhoneWarnings(body.warnings ?? []);
-      setHandoffPhoneStatus('saved');
-      setTimeout(() => setHandoffPhoneStatus('idle'), 2500);
+      setHandoffPhoneStatus('idle');
+      showToast({ type: 'success', message: settingsSaveSuccessMessage('call-transfer') });
     } catch {
       setHandoffPhoneStatus('network_error');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('network_error', 'Call transfer settings'),
+      });
     }
   }
 
@@ -1825,13 +1863,19 @@ export function UserSettingsLive({
       });
       const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (!response.ok || !body?.ok) {
-        setSuggestionStatus(body?.error ?? 'suggestion_apply_failed');
+        showToast({
+          type: 'error',
+          message: formatSaveErrorMessage(body?.error ?? 'suggestion_apply_failed', 'Website suggestions'),
+        });
         return;
       }
-      setSuggestionStatus('Suggestions applied.');
+      showToast({ type: 'success', message: 'Website suggestions applied' });
       await loadWebsiteSuggestions();
     } catch {
-      setSuggestionStatus('suggestion_apply_network_error');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('suggestion_apply_network_error', 'Website suggestions'),
+      });
     } finally {
       setSavingSuggestions(false);
     }
@@ -1852,13 +1896,19 @@ export function UserSettingsLive({
       });
       const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (!response.ok || !body?.ok) {
-        setSuggestionStatus(body?.error ?? 'suggestion_dismiss_failed');
+        showToast({
+          type: 'error',
+          message: formatSaveErrorMessage(body?.error ?? 'suggestion_dismiss_failed', 'Website suggestions'),
+        });
         return;
       }
-      setSuggestionStatus('Suggestions dismissed.');
+      showToast({ type: 'success', message: 'Suggestions dismissed' });
       await loadWebsiteSuggestions();
     } catch {
-      setSuggestionStatus('suggestion_dismiss_network_error');
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('suggestion_dismiss_network_error', 'Website suggestions'),
+      });
     } finally {
       setSavingSuggestions(false);
     }
@@ -3479,7 +3529,7 @@ export function UserSettingsLive({
                             disabled={handoffPhoneStatus === 'saving'}
                             onClick={() => { void saveTransferSettings(); }}
                           >
-                            {handoffPhoneStatus === 'saving' ? 'Saving...' : handoffPhoneStatus === 'saved' ? 'Saved' : 'Save transfer settings'}
+                            {handoffPhoneStatus === 'saving' ? 'Saving...' : 'Save transfer settings'}
                           </button>
                           {handoffPhoneStatus !== 'idle' && handoffPhoneStatus !== 'saving' && handoffPhoneStatus !== 'saved' ? (
                             <span style={{ color: '#dc2626', fontSize: 12 }}>{handoffPhoneStatus}</span>

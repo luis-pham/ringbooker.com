@@ -395,6 +395,7 @@ export interface TransferResult {
 
 export type ToolErrorCode =
   | 'VALIDATION_ERROR'
+  | 'APPOINTMENT_TIME_NOT_VALIDATED'
   | 'NOT_FOUND'
   | 'CALENDAR_TIMEOUT'
   | 'CALENDAR_CONFLICT'

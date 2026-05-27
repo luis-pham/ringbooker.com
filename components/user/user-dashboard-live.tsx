@@ -197,7 +197,7 @@ function HandoffSetupBanner({ onDismiss }: { onDismiss: () => void }) {
         <p style={{ margin: '2px 0 8px', fontSize: 13, color: '#6b7280' }}>
           When a caller asks to speak to you, RingBooker will call your direct mobile. Add your number to enable transfers.
         </p>
-        <a href="/settings#call-handling" style={{ fontSize: 13, fontWeight: 500, color: '#7c3aed' }}>Add my number →</a>
+        <a href="/user/settings#call-handling" style={{ fontSize: 13, fontWeight: 500, color: '#7c3aed' }}>Add my number →</a>
       </div>
       <button type="button" onClick={onDismiss} aria-label="Dismiss" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 18, lineHeight: 1 }}>×</button>
     </div>
@@ -213,7 +213,7 @@ function UpgradeToProModal({ onDismiss, shopName }: { onDismiss: () => void; sho
           With your Professional plan, RingBooker can transfer calls directly to you when a caller asks to speak to someone. Add your direct mobile to get started.
         </p>
         <div style={{ display: 'flex', gap: 10 }}>
-          <a href="/settings#call-handling" className="btn user-save" style={{ flex: 1, textAlign: 'center', fontSize: 14 }}>Set up transfers →</a>
+          <a href="/user/settings#call-handling" className="btn user-save" style={{ flex: 1, textAlign: 'center', fontSize: 14 }}>Set up transfers →</a>
           <button type="button" onClick={onDismiss} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 14, color: '#6b7280' }}>
             Maybe later
           </button>

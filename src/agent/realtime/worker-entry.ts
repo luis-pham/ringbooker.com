@@ -108,6 +108,7 @@ async function main() {
   }
 
   const toolNames: AgentToolName[] = [
+    'validate_appointment_time',
     'check_availability',
     'create_booking',
     'reschedule_booking',

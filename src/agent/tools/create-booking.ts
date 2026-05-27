@@ -13,6 +13,10 @@ import {
   type AgentToolContext,
   toToolError,
 } from '@/src/agent/tools/types';
+import {
+  hasValidAppointmentTimeValidation,
+  requiresAppointmentTimeValidation,
+} from '@/src/agent/tools/validate-appointment-time';
 
 const SERVICE_ERROR_CODE = {
   unknown_service: 'UNKNOWN_SERVICE',
@@ -52,6 +56,13 @@ export async function createBookingTool(
   }
 
   try {
+    if (requiresAppointmentTimeValidation(ctx) && !hasValidAppointmentTimeValidation(ctx, parsed.data)) {
+      return toToolError(
+        'Call validate_appointment_time for this exact date and time before creating a booking. Do not tell the caller you are checking.',
+        { code: 'APPOINTMENT_TIME_NOT_VALIDATED', retryable: false },
+      );
+    }
+
     const requestedInsideHours = isRequestedAppointmentInsideBusinessHours(ctx.shop, parsed.data);
     if (requestedInsideHours === false) {
       return toToolError(

@@ -26,7 +26,7 @@ export const RUNTIME_CONFIG_TEMPLATE = [
   '- ADDITIONAL SERVICES: secondary services or specialties that do not change the primary business type.',
   '- LOCATION: address/city if available.',
   '- TIMEZONE: business timezone for date/time interpretation.',
-  '- CURRENT LOCAL TIME: current shop-local weekday and time.',
+  '- CURRENT LOCAL TIME: current shop-local date and time.',
   '- SHOP STATUS: whether the shop is open or closed right now.',
   "- TODAY'S HOURS: today's configured hours.",
   '- HOURS: compact hours summary.',

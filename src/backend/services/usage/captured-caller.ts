@@ -24,6 +24,17 @@ const ACTIONS_THAT_CAPTURE: CallSummaryNextAction[] = [
   'escalated',
 ];
 
+const MIN_MEANINGFUL_CALLER_TRANSCRIPT_LENGTH = 20;
+
+function callerTranscriptText(transcriptText?: string | null): string {
+  return (transcriptText ?? '')
+    .split('\n')
+    .filter((line) => /\bCALLER:\s*/i.test(line))
+    .map((line) => line.replace(/^.*\bCALLER:\s*/i, '').trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
 export function isProductionLiveCall(call: CapturedCallLike): boolean {
   const provider = call.provider ?? '';
   if (provider.includes('demo')) return false;
@@ -42,8 +53,10 @@ export function getCapturedCallerReason(call: CapturedCallLike): string | null {
   if (call.summaryCallerQuestion?.trim()) return 'caller_question';
   if (call.summaryFollowUpRequired) return 'follow_up_required';
   if (call.summaryNextAction && ACTIONS_THAT_CAPTURE.includes(call.summaryNextAction)) return `next_action:${call.summaryNextAction}`;
-  const transcript = call.transcriptText?.trim() ?? '';
-  if (transcript.length >= 120 && call.callerPhone?.trim()) return 'meaningful_transcript';
+  const callerTranscript = callerTranscriptText(call.transcriptText);
+  if (callerTranscript.length >= MIN_MEANINGFUL_CALLER_TRANSCRIPT_LENGTH && call.callerPhone?.trim()) {
+    return 'meaningful_transcript';
+  }
   return null;
 }
 

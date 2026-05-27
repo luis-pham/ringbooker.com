@@ -12,6 +12,7 @@ import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport'
  * TeXML-only ingress (no Call Control) does not carry `telnyxCallControlId` → handoff tool returns a controlled failure.
  */
 export const SIP_CORE_TOOL_NAMES = [
+  'validate_appointment_time',
   'get_shop_info',
   'check_availability',
   'create_booking',

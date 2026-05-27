@@ -188,6 +188,7 @@ function extractTextFromChatContent(content: unknown[]): string {
 
 function buildToolStatusMessage(toolName: string): string {
   switch (toolName) {
+    case 'validate_appointment_time': return '';
     case 'check_availability': return 'Checking availability now.';
     case 'create_booking': return 'Finalizing your booking now.';
     case 'reschedule_booking': return 'Checking the new appointment time now.';

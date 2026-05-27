@@ -13,9 +13,11 @@ import {
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userSettingsStyles } from '@/components/user/user-settings';
+import { useUserPortalToast } from '@/components/user/user-portal-toast';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userDashboardScripts } from '@/components/user/user-dashboard';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
+import { formatSaveErrorMessage } from '@/lib/user-portal-save-messages';
 
 export type NavStateResponse = {
   ok: boolean;
@@ -125,6 +127,7 @@ function AccountDetailsSkeleton() {
 
 export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateResponse | null }) {
   const { workspace, setWorkspace } = useUserWorkspace();
+  const { showToast } = useUserPortalToast();
   const [nav, setNav] = useState<NavStateResponse | null>(initialNav?.ok ? initialNav : null);
   const [navError, setNavError] = useState<string | null>(initialNav && !initialNav.ok ? initialNav.error ?? 'unknown_error' : null);
   const [activeTab, setActiveTab] = useState<AccountTabId>('details');
@@ -455,18 +458,21 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                 ? 'Check password fields and try again.'
                 : apiUserVisibleMessage(body, 'Could not update password.');
         setPwMessage({ type: 'err', text: err });
+        showToast({ type: 'error', message: formatSaveErrorMessage(err, 'Password') });
         return;
       }
-      setPwMessage({ type: 'ok', text: 'Password updated. Use it next time you sign in.' });
+      setPwMessage(null);
+      showToast({ type: 'success', message: 'Password updated' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch {
       setPwMessage({ type: 'err', text: 'Network error. Try again.' });
+      showToast({ type: 'error', message: formatSaveErrorMessage('network_error', 'Password') });
     } finally {
       setPwLoading(false);
     }
-  }, [confirmPassword, currentPassword, newPassword]);
+  }, [confirmPassword, currentPassword, newPassword, showToast]);
 
   const submitAccountContact = useCallback(async () => {
     setAccountSaveMessage(null);
@@ -493,18 +499,21 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
             ? 'Your plan does not allow updating this field. Upgrade to continue.'
             : apiUserVisibleMessage(body, 'Could not save your name.');
         setAccountSaveMessage({ type: 'err', text: msg });
+        showToast({ type: 'error', message: formatSaveErrorMessage(body.error ?? 'save_failed', 'Profile name') });
         return;
       }
       const nextName = body.shop?.user_name?.trim() ?? trimmed;
       setNav((prev) => (prev?.ok ? { ...prev, userName: nextName } : prev));
-      setAccountSaveMessage({ type: 'ok', text: 'Your name was updated.' });
+      setAccountSaveMessage(null);
+      showToast({ type: 'success', message: 'Profile name updated' });
       setAccountEditOpen(false);
     } catch {
       setAccountSaveMessage({ type: 'err', text: 'Network error. Try again.' });
+      showToast({ type: 'error', message: formatSaveErrorMessage('network_error', 'Profile name') });
     } finally {
       setAccountSaveLoading(false);
     }
-  }, [contactNameDraft]);
+  }, [contactNameDraft, showToast]);
 
   const signOut = useCallback(async () => {
     setSignOutLoading(true);

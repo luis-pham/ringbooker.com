@@ -1,6 +1,7 @@
 import { UserOnboardingGate } from '@/components/user/user-onboarding-gate';
 import type { OnboardingStatusResponse } from '@/components/user/user-onboarding-gate';
 import { EmailVerificationBanner } from '@/components/user/email-verification-banner';
+import { UserPortalToastProvider } from '@/components/user/user-portal-toast';
 import { UserThemeProvider } from '@/components/user/user-theme-context';
 import { UserWorkspaceProvider } from '@/components/user/user-workspace-context';
 import { fetchUserBackendJsonMap } from '@/app/user/server-data';
@@ -38,9 +39,11 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   return (
     <UserWorkspaceProvider initialWorkspace={initialWorkspace}>
       <UserThemeProvider>
-        <UserOnboardingGate initialStatus={onboardingStatus} />
-        <EmailVerificationBanner initialEmailVerified={authState?.session?.emailVerified} />
-        {children}
+        <UserPortalToastProvider>
+          <UserOnboardingGate initialStatus={onboardingStatus} />
+          <EmailVerificationBanner initialEmailVerified={authState?.session?.emailVerified} />
+          {children}
+        </UserPortalToastProvider>
       </UserThemeProvider>
     </UserWorkspaceProvider>
   );

@@ -109,6 +109,16 @@ test('getPlanUsageLimits applies enterprise commercial overrides', () => {
 test('isCapturedCaller includes useful production calls and excludes demo/test/missed calls', () => {
   assert.equal(isCapturedCaller({ provider: 'telnyx_call_control', summaryServiceRequest: 'gel manicure' }), true);
   assert.equal(isCapturedCaller({ provider: 'telnyx_call_control', summaryNextAction: 'callback_scheduled' }), true);
+  assert.equal(isCapturedCaller({
+    provider: 'telnyx_call_control',
+    callerPhone: '+15550000002',
+    transcriptText: '[2026-05-27T02:14:43.917Z] ASSISTANT: Thanks for calling. How can I help?\nSYSTEM: [POST_CALL_SUMMARY] status=completed',
+  }), false);
+  assert.equal(isCapturedCaller({
+    provider: 'telnyx_call_control',
+    callerPhone: '+15550000002',
+    transcriptText: 'CALLER: I would like to ask about a haircut appointment tomorrow.',
+  }), true);
   assert.equal(isCapturedCaller({ provider: 'marketing_demo_web', summaryServiceRequest: 'gel manicure' }), false);
   assert.equal(isCapturedCaller({ provider: 'telnyx_call_control', outcome: 'missed', summaryServiceRequest: 'gel manicure' }), false);
 });

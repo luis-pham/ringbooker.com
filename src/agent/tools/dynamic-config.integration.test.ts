@@ -21,6 +21,7 @@ test('dynamic shop config gates tool behavior and reminder job enqueueing', asyn
     send_review_request_sms: false,
     ai_welcome_message: 'Thanks for calling the demo shop.',
   });
+  await shopsRepository.updateUserSettings('demo-shop', { booking_url: null });
 
   const bookingsRepository = new InMemoryBookingsRepository();
   const jobsRepository = new InMemoryJobsRepository();
@@ -54,6 +55,12 @@ test('dynamic shop config gates tool behavior and reminder job enqueueing', asyn
   })) as Record<string, unknown>;
   assert.equal('success' in callbackResult, false);
   assert.equal(callbackResult.code, 'RATE_LIMITED');
+
+  const validation = await session.runTool('validate_appointment_time', {
+    date: '2099-01-02',
+    time: '10:00',
+  });
+  assert.equal((validation as { valid?: boolean }).valid, true);
 
   const bookingResult = await session.runTool('create_booking', {
     date: '2099-01-02',

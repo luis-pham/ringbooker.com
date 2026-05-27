@@ -9,7 +9,7 @@ import { logger } from '@/src/backend/observability/logger';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { z } from 'zod';
 import { runReleaseAbandonedForwardingNumbersJob } from '@/src/backend/jobs/release-abandoned-forwarding-numbers';
-import { extractCallSummary } from '@/src/backend/services/calls/extract-call-summary';
+import { extractCallSummary, SAFE_CALL_SUMMARY_DEFAULTS } from '@/src/backend/services/calls/extract-call-summary';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { scheduleUsageAlertCheck } from '@/src/backend/services/usage/usage-alerts';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
@@ -1380,6 +1380,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const assistantTurns = transcriptLines.filter((line) => line.includes('ASSISTANT:'));
       const firstCaller = callerTurns[0]?.replace(/^.*CALLER:\s*/i, '') ?? '';
       const lastAssistant = assistantTurns.at(-1)?.replace(/^.*ASSISTANT:\s*/i, '') ?? '';
+      const hasCallerSpeech = callerTurns.some((line) => line.replace(/^.*CALLER:\s*/i, '').trim().length > 0);
       const summaryParts = [
         `[POST_CALL_SUMMARY] status=${status}`,
         `outcome=${call.outcome ?? 'unknown'}`,
@@ -1403,7 +1404,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       });
 
       try {
-        const extracted = await extractCallSummary(existingTranscript);
+        const extracted = hasCallerSpeech ? await extractCallSummary(existingTranscript) : SAFE_CALL_SUMMARY_DEFAULTS;
         await callLogsRepository.updateStructuredSummary(params.shopId, payload.data.requestId, {
           summaryServiceRequest: extracted.serviceRequest,
           summaryUrgency: extracted.urgency,

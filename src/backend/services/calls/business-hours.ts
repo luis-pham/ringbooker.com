@@ -38,11 +38,14 @@ export function resolveShopTimeContext(
     .toLowerCase();
   const currentLocalTime = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
     timeZone: shop.timezone,
-  }).format(ref).replace(',', '');
+  }).format(ref);
   const normalizedHours = normalizeBusinessHours(shop.hours);
   const entry = normalizedHours[day];
   const todayHours = entry ? ('closed' in entry ? 'Closed' : `${formatBusinessTime(entry.open)} - ${formatBusinessTime(entry.close)}`) : null;

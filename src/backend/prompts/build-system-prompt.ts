@@ -16,7 +16,7 @@ import {
 type PromptMode = 'inbound' | 'outbound_reminder' | 'callback';
 const MAX_LINE_CHARS = 260;
 const MANUAL_BOOKING_REQUEST_INSTRUCTION =
-  'When confirming appointment requests, do not tell the caller the time slot is available. Instead say you will record their request and the shop will confirm with them shortly.';
+  'Silently call validate_appointment_time when time is given. Do not claim availability. After valid time, capture service, name, and phone before noting a request. No booking window: accept approved future times and never call them too far in the future.';
 
 function compactLine(input: string, maxChars = MAX_LINE_CHARS): string {
   const normalized = input

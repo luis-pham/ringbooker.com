@@ -27,7 +27,15 @@ import { formatShopDate, formatShopDateTime, formatShopTime, getShopTimezone } f
 
 type CallStatus = 'in_progress' | 'completed' | 'missed' | 'voicemail';
 type CallOutcome =
-  | 'booking_captured'
+  | 'booking_request'
+  | 'booking_contacted'
+  | 'booking_confirmed'
+  | 'booking_cancel_pending'
+  | 'booking_declined'
+  | 'booking_cancelled'
+  | 'booking_rescheduled'
+  | 'booking_completed'
+  | 'captured_call'
   | 'pricing_inquiry'
   | 'hours_inquiry'
   | 'general_inquiry'
@@ -35,7 +43,7 @@ type CallOutcome =
   | 'cancelled_request'
   | 'reschedule_request'
   | 'complaint'
-  | 'wrong_number'
+  | 'no_response'
   | 'no_outcome';
 type CallFilter = 'all' | 'follow_up' | 'high_urgency' | 'missed' | 'insights';
 
@@ -152,7 +160,15 @@ function formatDuration(seconds?: number) {
 
 function outcomeMeta(outcome: CallOutcome) {
   const map: Record<CallOutcome, { label: string; className: string }> = {
-    booking_captured: { label: '📅 Booking captured', className: 'calls-outcome calls-outcome--booking' },
+    booking_request: { label: 'Appointment request', className: 'calls-outcome calls-outcome--booking' },
+    booking_contacted: { label: 'Client contacted', className: 'calls-outcome calls-outcome--booking' },
+    booking_confirmed: { label: 'Booking confirmed', className: 'calls-outcome calls-outcome--booking' },
+    booking_cancel_pending: { label: 'Cancellation pending', className: 'calls-outcome calls-outcome--followup' },
+    booking_declined: { label: 'Booking declined', className: 'calls-outcome calls-outcome--muted' },
+    booking_cancelled: { label: 'Booking cancelled', className: 'calls-outcome calls-outcome--muted' },
+    booking_rescheduled: { label: 'Booking rescheduled', className: 'calls-outcome calls-outcome--booking' },
+    booking_completed: { label: 'Booking completed', className: 'calls-outcome calls-outcome--booking' },
+    captured_call: { label: 'Captured call', className: 'calls-outcome' },
     pricing_inquiry: { label: 'Pricing inquiry', className: 'calls-outcome' },
     hours_inquiry: { label: 'Hours inquiry', className: 'calls-outcome' },
     general_inquiry: { label: 'General inquiry', className: 'calls-outcome' },
@@ -160,7 +176,7 @@ function outcomeMeta(outcome: CallOutcome) {
     cancelled_request: { label: 'Cancel request', className: 'calls-outcome' },
     reschedule_request: { label: 'Reschedule request', className: 'calls-outcome' },
     complaint: { label: '🔴 Complaint', className: 'calls-outcome calls-outcome--complaint' },
-    wrong_number: { label: 'Wrong number', className: 'calls-outcome calls-outcome--muted' },
+    no_response: { label: 'No caller response', className: 'calls-outcome calls-outcome--muted' },
     no_outcome: { label: '—', className: 'calls-outcome calls-outcome--muted' },
   };
   return map[outcome] ?? map.no_outcome;
@@ -446,8 +462,35 @@ export function UserCallsLive({
   }
 
   function openBookingForCall(call: Call) {
-    const id = call.bookingRequestId ?? call.id;
-    router.push(`/user/bookings?callId=${encodeURIComponent(id)}`);
+    router.push(`/user/bookings?callId=${encodeURIComponent(call.id)}`);
+  }
+
+  async function markAttentionResolved(call: Call) {
+    const res = await fetch(`/api/backend/user/calls/${encodeURIComponent(call.id)}/follow-up-done`, { method: 'PATCH' });
+    const body = (await res.json()) as { ok?: boolean; error?: string };
+    if (!res.ok || !body.ok) {
+      setError(body.error ?? 'Unable to mark follow-up complete');
+      return;
+    }
+    setActiveCall((current) => current?.id === call.id ? { ...current, followUpNeeded: false, highUrgency: false } : current);
+    setCalls((current) => current.map((item) => item.id === call.id ? { ...item, followUpNeeded: false, highUrgency: false } : item));
+    setStats((current) => ({
+      ...current,
+      followUp: call.followUpNeeded ? Math.max(0, current.followUp - 1) : current.followUp,
+      highUrgency: call.highUrgency ? Math.max(0, current.highUrgency - 1) : current.highUrgency,
+    }));
+    const query = new URLSearchParams();
+    query.set('page', String(page));
+    query.set('limit', String(USER_CALLS_PAGE_SIZE));
+    if (activeFilter !== 'all' && activeFilter !== 'insights') query.set('tab', activeFilter);
+    const refreshed = await fetch(`/api/backend/user/calls?${query.toString()}`);
+    const refreshedBody = (await refreshed.json()) as CallsResponse;
+    if (refreshed.ok && refreshedBody.ok) {
+      setCalls(refreshedBody.calls ?? []);
+      setStats(refreshedBody.stats ?? EMPTY_STATS);
+      setTotalCount(refreshedBody.pagination?.total ?? refreshedBody.total ?? 0);
+      setTotalPages(refreshedBody.pagination?.totalPages ?? 1);
+    }
   }
 
   const tabs = useMemo(
@@ -488,7 +531,7 @@ export function UserCallsLive({
                   </div>
                   <div className="calls-metric-card">
                     <span className="calls-stat-icon calls-stat-icon--purple" aria-hidden><IconCalendarCheck size={22} stroke={1.9} /></span>
-                    <div><p>Bookings captured</p><strong>{stats.bookings}</strong></div>
+                    <div><p>Booking requests</p><strong>{stats.bookings}</strong></div>
                   </div>
                   <div className="calls-metric-card">
                     <span className="calls-stat-icon calls-stat-icon--amber" aria-hidden><IconAlertTriangle size={22} stroke={1.9} /></span>
@@ -600,6 +643,7 @@ export function UserCallsLive({
                                         className="calls-log-icon-btn"
                                         type="button"
                                         disabled={!call.recordingAvailable}
+                                        title={call.recordingAvailable ? 'Play recording' : 'Recording not available'}
                                         aria-label={call.recordingAvailable ? 'Play recording' : 'Recording not available'}
                                         onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
                                       >
@@ -638,8 +682,28 @@ export function UserCallsLive({
                               ) : (
                                 <span className={outcome.className}>{outcome.label}</span>
                               )}
-                              {call.transcriptAvailable ? <span className="calls-outcome">Transcript ready</span> : null}
-                              {call.recordingAvailable ? <span className="calls-outcome" role="button" tabIndex={0} onClick={(event) => { event.stopPropagation(); void listenToCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); void listenToCall(call); } }}>Listen</span> : null}
+                              {call.transcriptAvailable ? (
+                                <button
+                                  className="calls-log-icon-btn"
+                                  type="button"
+                                  title="View transcript"
+                                  aria-label="View transcript"
+                                  onClick={(event) => { event.stopPropagation(); void openCall(call); }}
+                                >
+                                  <IconFileDescription size={18} stroke={1.7} />
+                                </button>
+                              ) : null}
+                              {call.recordingAvailable ? (
+                                <button
+                                  className="calls-log-icon-btn"
+                                  type="button"
+                                  title="Play recording"
+                                  aria-label="Play recording"
+                                  onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
+                                >
+                                  <IconPlayerPlay size={18} stroke={1.7} />
+                                </button>
+                              ) : null}
                             </div>
                           </button>
                         );
@@ -678,6 +742,12 @@ export function UserCallsLive({
                 <div className="meta-tile"><strong>Forwarded to</strong><span>{activeCall.forwardedTo ? formatPhone(activeCall.forwardedTo) : '—'}</span></div>
               </div>
               {activeCall.summary ? <div className="summary-panel">{activeCall.summary}</div> : null}
+              {activeCall.followUpNeeded || activeCall.highUrgency ? (
+                <div className="calls-attention-actions">
+                  <p>{activeCall.highUrgency ? 'High urgency follow-up required.' : 'Follow-up required.'}</p>
+                  <button className="btn user-save" type="button" onClick={() => void markAttentionResolved(activeCall)}>Mark resolved</button>
+                </div>
+              ) : null}
               {activeCall.recordingAvailable ? (
                 <div className="recording-panel">
                   <div className="recording-head">

@@ -27,7 +27,7 @@ type BookingStatus =
   | 'cancelled'
   | 'rescheduled'
   | 'completed';
-type BookingFilter = 'all' | 'awaiting_action' | 'contacted' | 'confirmed' | 'declined' | 'rescheduled' | 'cancelled' | 'completed';
+type BookingFilter = 'all' | 'awaiting_action' | 'contacted' | 'confirmed' | 'declined' | 'rescheduled' | 'cancellation_pending' | 'cancelled' | 'completed';
 type SmsType = 'booking_link' | 'confirmation' | 'reminder' | 'cancel_link' | 'reschedule_link' | 'owner_summary';
 
 type SmsLogEntry = {
@@ -75,6 +75,8 @@ type BookingsStats = {
   contacted: number;
   confirmed: number;
   declined: number;
+  rescheduled: number;
+  cancellationPending: number;
   cancelled: number;
   completed: number;
 };
@@ -91,7 +93,7 @@ export type BookingsResponse = {
 };
 
 const USER_BOOKINGS_PAGE_SIZE = 25;
-const EMPTY_STATS: BookingsStats = { total: 0, awaitingAction: 0, contacted: 0, confirmed: 0, declined: 0, cancelled: 0, completed: 0 };
+const EMPTY_STATS: BookingsStats = { total: 0, awaitingAction: 0, contacted: 0, confirmed: 0, declined: 0, rescheduled: 0, cancellationPending: 0, cancelled: 0, completed: 0 };
 
 function formatPhone(value?: string | null) {
   if (!value) return 'Unknown';
@@ -127,7 +129,7 @@ function statusMeta(statusValue?: string) {
     contacted: { label: '📞 Contacted', className: 'booking-status booking-status--contacted' },
     confirmed: { label: '✓ Confirmed', className: 'booking-status booking-status--confirmed' },
     reminder_sent: { label: '🔔 Reminder sent', className: 'booking-status booking-status--confirmed' },
-    cancel_link_sent: { label: 'Cancel link sent', className: 'booking-status booking-status--warning' },
+    cancel_link_sent: { label: 'Cancellation pending', className: 'booking-status booking-status--warning' },
     declined: { label: '✕ Declined', className: 'booking-status booking-status--declined' },
     cancelled: { label: '✕ Cancelled', className: 'booking-status booking-status--cancelled' },
     rescheduled: { label: '↻ Rescheduled', className: 'booking-status booking-status--rescheduled' },
@@ -149,7 +151,7 @@ function smsLabel(type: SmsType): string {
 }
 
 function tabFromSearch(value: string | null): BookingFilter {
-  if (value === 'awaiting_action' || value === 'contacted' || value === 'confirmed' || value === 'declined' || value === 'rescheduled' || value === 'cancelled' || value === 'completed') return value;
+  if (value === 'awaiting_action' || value === 'contacted' || value === 'confirmed' || value === 'declined' || value === 'rescheduled' || value === 'cancellation_pending' || value === 'cancelled' || value === 'completed') return value;
   return 'all';
 }
 
@@ -279,7 +281,8 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
       { value: 'contacted' as const, label: 'Contacted', count: stats.contacted },
       { value: 'confirmed' as const, label: 'Confirmed', count: stats.confirmed },
       { value: 'declined' as const, label: 'Declined', count: stats.declined },
-      { value: 'rescheduled' as const, label: 'Rescheduled', count: 0 },
+      { value: 'rescheduled' as const, label: 'Rescheduled', count: stats.rescheduled },
+      { value: 'cancellation_pending' as const, label: 'Cancellation pending', count: stats.cancellationPending },
       { value: 'cancelled' as const, label: 'Cancelled', count: stats.cancelled },
       { value: 'completed' as const, label: 'Completed', count: stats.completed },
     ],

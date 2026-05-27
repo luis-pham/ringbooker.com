@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
+import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { executeSingleJobsWorkerTickWithRuntime } from '@/src/backend/jobs/runner';
 import { extractCallSummary, SAFE_CALL_SUMMARY_DEFAULTS } from './extract-call-summary';
 
@@ -133,6 +134,7 @@ test('post_call_summary job saves structured fields', async () => {
   const result = await executeSingleJobsWorkerTickWithRuntime({
     jobsRepository,
     callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
   } as any);
 
   assert.equal(result.processed, true);
@@ -143,4 +145,49 @@ test('post_call_summary job saves structured fields', async () => {
   assert.equal(call.summaryCallerName, 'Mary');
   assert.equal(call.summaryPreferredTech, 'Sarah');
   assert.equal(call.summaryPreferredDatetime, 'Saturday morning');
+});
+
+test('post_call_summary job does not infer a captured outcome when only the assistant spoke', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  let called = false;
+  globalThis.fetch = (async () => {
+    called = true;
+    throw new Error('summary extraction should not run without caller speech');
+  }) as typeof fetch;
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'assistant-only-call',
+    shopId: 'shop-1',
+    requestId: 'req-assistant-only',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-assistant-only',
+    speaker: 'assistant',
+    text: 'Thank you for calling. How can I help you today?',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-assistant-only', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-assistant-only',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+  } as any);
+
+  assert.equal(result.processed, true);
+  assert.equal(called, false);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.equal(call.summaryNextAction, 'no_action_needed');
+  assert.equal(call.isCapturedCaller, false);
 });

@@ -567,6 +567,7 @@ test('openai SIP shop route registers business tools when sideband enabled and r
     tools?: { name: string }[];
     tool_choice?: string;
   };
+  assert.ok(acceptJson.tools?.some((t) => t.name === 'validate_appointment_time'));
   assert.ok(acceptJson.tools?.some((t) => t.name === 'check_availability'));
   assert.ok(acceptJson.tools?.some((t) => t.name === 'create_booking'));
   assert.ok(acceptJson.tools?.some((t) => t.name === 'request_human_handoff'));

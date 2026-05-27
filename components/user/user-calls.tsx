@@ -63,6 +63,7 @@ const callsPortalStyles = String.raw`
 .calls-outcome--followup{background:#fefce8;color:#ca8a04}
 .calls-outcome--complaint{background:#fef2f2;color:#dc2626}
 .calls-outcome--muted{background:#f9fafb;color:#9ca3af}
+.calls-attention-actions{margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}.calls-attention-actions p{font-size:13px;color:var(--text-gray);margin:0}.calls-attention-actions .btn{flex:0 0 auto}
 .calls-status{display:inline-flex;align-items:center;border-radius:20px;font-size:11px;font-weight:500;padding:3px 9px;white-space:nowrap}
 .calls-status--progress{background:#fef3c7;color:#92400e}
 .calls-status--completed{background:#f3f4f6;color:#6b7280}
@@ -116,6 +117,7 @@ html[data-user-theme="dark"] .calls-outcome--booking{background:rgba(35,134,54,.
 html[data-user-theme="dark"] .calls-outcome--followup{background:rgba(210,153,34,.2);color:#e3b341}
 html[data-user-theme="dark"] .calls-outcome--complaint{background:rgba(248,81,73,.14);color:#f85149}
 html[data-user-theme="dark"] .calls-outcome--muted{background:#21262d;color:var(--text-light)}
+html[data-user-theme="dark"] .calls-attention-actions{background:var(--surface-card)}
 html[data-user-theme="dark"] .calls-status--progress{background:rgba(210,153,34,.2);color:#e3b341}
 html[data-user-theme="dark"] .calls-status--completed{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .calls-status--missed{background:rgba(248,81,73,.14);color:#f85149}

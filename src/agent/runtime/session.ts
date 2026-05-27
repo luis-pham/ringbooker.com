@@ -15,6 +15,8 @@ import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
 import { scheduleCallbackTool } from '@/src/agent/tools/schedule-callback';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
+import { validateAppointmentTimeTool } from '@/src/agent/tools/validate-appointment-time';
+import type { AgentToolContext } from '@/src/agent/tools/types';
 
 export type InboundAgentSessionDeps = {
   shopsRepository: ShopsRepository;
@@ -36,6 +38,7 @@ export type InboundAgentSessionInput = {
 };
 
 export type AgentToolName =
+  | 'validate_appointment_time'
   | 'check_availability'
   | 'create_booking'
   | 'cancel_booking'
@@ -58,6 +61,7 @@ export class InboundAgentSession {
   private prefetchCompleted = 0;
   private checkAvailabilityCalls = 0;
   private checkAvailabilityPrefetchHits = 0;
+  private readonly appointmentTimeValidation: NonNullable<AgentToolContext['appointmentTimeValidation']> = { latest: null };
 
   constructor(
     private readonly deps: InboundAgentSessionDeps,
@@ -112,9 +116,12 @@ export class InboundAgentSession {
       shopsRepository: this.deps.shopsRepository,
       customersRepository: this.deps.customersRepository,
       telephonyService: this.deps.telephonyService,
+      appointmentTimeValidation: this.appointmentTimeValidation,
     };
 
     switch (name) {
+      case 'validate_appointment_time':
+        return validateAppointmentTimeTool(ctx, input);
       case 'check_availability':
         return checkAvailabilityTool(ctx, input);
       case 'create_booking':

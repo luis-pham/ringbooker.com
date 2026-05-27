@@ -9,9 +9,10 @@ test('SIP tools for openai_sip_direct use request_human_handoff (not transfer_to
   process.env.VOICE_TRANSPORT = 'openai_sip_direct';
 
   const tools = getSipShopToolsForOpenAiAccept();
+  assert.ok(tools.some((t) => t.name === 'validate_appointment_time'));
   assert.ok(tools.some((t) => t.name === 'request_human_handoff'));
   assert.ok(!tools.some((t) => t.name === 'transfer_to_user'));
-  assert.equal(tools.length, SIP_CORE_TOOL_NAMES.length + 1);
+  assert.equal(tools.length, SIP_CORE_TOOL_NAMES.length + 2);
   for (const tool of tools) {
     assert.equal(tool.type, 'function');
     assert.ok(typeof tool.name === 'string' && tool.name.length > 0);

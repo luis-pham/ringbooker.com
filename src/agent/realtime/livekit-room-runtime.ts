@@ -252,6 +252,8 @@ function toMonoPcm(frame: AudioFrame): Int16Array {
 
 function buildToolStatusMessage(toolName: string): string {
   switch (toolName) {
+    case 'validate_appointment_time':
+      return '';
     case 'check_availability':
       return 'Checking availability now.';
     case 'create_booking':

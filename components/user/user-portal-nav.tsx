@@ -41,6 +41,8 @@ function navLink(
       prefetch
       className={`nav-item${isActive ? ' active' : ''}`}
       title={navTitle}
+      data-tooltip={navTitle}
+      aria-label={navTitle ?? label}
     >
       <div className="nav-icon">{icon}</div>
       <span className="nav-item-label">{label}</span>
@@ -48,18 +50,20 @@ function navLink(
       {badgeCount && badgeCount > 0 ? (
         <span
           className="nav-item-badge"
+          aria-label={`${badgeCount > 9 ? '9+' : badgeCount} pending`}
           style={{
             background: '#dc2626',
             color: 'white',
             fontSize: 10,
             fontWeight: 600,
-            width: 16,
+            minWidth: 16,
             height: 16,
             borderRadius: '50%',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginLeft: 6,
+            padding: '0 4px',
           }}
         >
           {badgeCount > 9 ? '9+' : badgeCount}

@@ -137,6 +137,7 @@ test('buildOpenAiSipAcceptBody adds shop tools + tool_choice when provided', () 
         toolChoice: 'auto',
       });
       assert.ok(body.tools && body.tools.length >= 4);
+      assert.ok(body.tools?.some((t) => t.name === 'validate_appointment_time'));
       assert.ok(body.tools?.some((t) => t.name === 'check_availability'));
       assert.equal(body.tool_choice, 'auto');
     },

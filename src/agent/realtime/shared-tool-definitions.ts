@@ -6,8 +6,23 @@ export type RealtimeToolDefinition = {
 
 export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
   {
+    name: 'validate_appointment_time',
+    description:
+      'Silently validate a caller-requested appointment date and time against business hours. Use immediately whenever a caller gives or changes an appointment time, before commenting on whether it is acceptable or checking availability. Do not tell the caller this tool is being used.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        date: { type: 'string', description: 'Date in YYYY-MM-DD format.' },
+        time: { type: 'string', description: 'Time in HH:mm format.' },
+      },
+      required: ['date', 'time'],
+    },
+  },
+  {
     name: 'check_availability',
-    description: 'Check appointment availability for a service at a specific date and time.',
+    description:
+      'Check appointment availability for a service at a specific date and time only after validate_appointment_time accepted that exact date and time.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -26,7 +41,8 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
   },
   {
     name: 'create_booking',
-    description: 'Create a booking for a customer once date and time are confirmed.',
+    description:
+      'Create a booking for a customer only after validate_appointment_time accepted that exact date and time.',
     parameters: {
       type: 'object',
       additionalProperties: false,

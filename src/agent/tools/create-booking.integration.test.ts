@@ -36,6 +36,12 @@ test('create_booking tool persists pending manual booking without reminder/revie
 
   assert.ok(session);
 
+  const validation = await session.runTool('validate_appointment_time', {
+    date: '2099-01-02',
+    time: '10:00',
+  });
+  assert.equal((validation as { valid?: boolean }).valid, true);
+
   const result = await session.runTool('create_booking', {
     date: '2099-01-02',
     time: '10:00',

@@ -6,6 +6,8 @@ import { canUseBilingualWorkflow } from '@/src/backend/domain/shop-plan-capabili
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 import { UserLayout } from '@/components/user/user-layout';
+import { useUserPortalToast } from '@/components/user/user-portal-toast';
+import { contextualSaveSuccessMessage, formatSaveErrorMessage } from '@/lib/user-portal-save-messages';
 import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
@@ -1258,6 +1260,7 @@ export function toggleStep2Language(
 }
 
 export function UserOnboardingLive({ initialData = null }: { initialData?: OnboardingStatusResponse | null }) {
+  const { showToast } = useUserPortalToast();
   const initialShop = initialData?.ok ? initialData.shop : null;
   const initialRawPhone = (initialShop?.phone_number ?? initialShop?.user_phone ?? '').trim();
   const initialSyntheticPhone = isSignupSyntheticPlaceholderPhone(initialRawPhone);
@@ -1651,49 +1654,68 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     if (!silent) setLoading(false);
   }
 
-  async function saveSettings(patch: Record<string, unknown>) {
+  async function saveSettings(patch: Record<string, unknown>, options?: { successToastLabel?: string }) {
     setSaving(true);
     setStatus(null);
-    const response = await fetch('/api/backend/user/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string; fields?: string[] } | null;
-    setSaving(false);
-    if (!response.ok || !body?.ok) {
-      const message = friendlySaveError(
-        body?.error ?? body?.message ?? (response.status >= 500 ? 'user_dependencies_unavailable' : null),
-        body?.fields ?? [],
-      );
-      if (currentStep === 2) {
-        const responseFields =
-          body?.error === 'phone_number_already_exists'
-            ? Array.from(new Set([...(body.fields ?? []), 'phone_number']))
-            : (body?.fields ?? []);
-        if ((body?.error === 'invalid_payload' || body?.error === 'phone_number_already_exists') && responseFields.length > 0) {
-          const fieldMap: Record<string, ProfileReviewRequiredField> = {
-            name: 'name',
-            vertical: 'type',
-            vertical_detail: 'type',
-            timezone: 'timezone',
-            website_url: 'website',
-            hours: 'hours',
-            address: 'address',
-            phone_number: 'phone',
-            user_phone: 'phone',
-            telnyx_number: 'phone',
-          };
-          setProfileReviewInvalidFields([...new Set(responseFields.map((field) => fieldMap[field]).filter(Boolean))]);
+    try {
+      const response = await fetch('/api/backend/user/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string; fields?: string[] } | null;
+      if (!response.ok || !body?.ok) {
+        const message = friendlySaveError(
+          body?.error ?? body?.message ?? (response.status >= 500 ? 'user_dependencies_unavailable' : null),
+          body?.fields ?? [],
+        );
+        if (currentStep === 2) {
+          const responseFields =
+            body?.error === 'phone_number_already_exists'
+              ? Array.from(new Set([...(body.fields ?? []), 'phone_number']))
+              : (body?.fields ?? []);
+          if ((body?.error === 'invalid_payload' || body?.error === 'phone_number_already_exists') && responseFields.length > 0) {
+            const fieldMap: Record<string, ProfileReviewRequiredField> = {
+              name: 'name',
+              vertical: 'type',
+              vertical_detail: 'type',
+              timezone: 'timezone',
+              website_url: 'website',
+              hours: 'hours',
+              address: 'address',
+              phone_number: 'phone',
+              user_phone: 'phone',
+              telnyx_number: 'phone',
+            };
+            setProfileReviewInvalidFields([...new Set(responseFields.map((field) => fieldMap[field]).filter(Boolean))]);
+          }
+          setProfileReviewMessage(message);
+          setStatus(null);
+        } else {
+          setStatus(message);
+          showToast({
+            type: 'error',
+            message: formatSaveErrorMessage(body?.error ?? body?.message ?? 'save_failed', options?.successToastLabel),
+          });
         }
+        return false;
+      }
+      if (options?.successToastLabel) {
+        showToast({ type: 'success', message: contextualSaveSuccessMessage(options.successToastLabel) });
+      }
+      return true;
+    } catch {
+      const message = formatSaveErrorMessage('network_error', options?.successToastLabel);
+      if (currentStep === 2) {
         setProfileReviewMessage(message);
-        setStatus(null);
       } else {
         setStatus(message);
+        showToast({ type: 'error', message });
       }
       return false;
+    } finally {
+      setSaving(false);
     }
-    return true;
   }
 
   async function saveQuickContinue() {
@@ -1963,7 +1985,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       profilePatch.phone_number = normalizedPhone;
       profilePatch.user_phone = normalizedPhone;
     }
-    const ok = await saveSettings(profilePatch);
+    const ok = await saveSettings(profilePatch, { successToastLabel: 'Business profile' });
     if (ok) setCurrentStep(3);
   }
 
@@ -1985,7 +2007,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       }));
     }
     if (websiteUrl.trim()) patch.website_url = normalizeWebsiteUrl(websiteUrl);
-    const ok = await saveSettings(patch);
+    const ok = await saveSettings(patch, { successToastLabel: 'Services' });
     if (ok) {
       setStep4Phase('try');
       setCurrentStep(4);

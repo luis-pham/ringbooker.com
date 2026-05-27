@@ -279,7 +279,21 @@ test('Manual provider prompt tells AI to capture request without claiming availa
     mode: 'inbound',
   });
 
-  assert.match(prompt, /BOOKING REQUEST INSTRUCTION: When confirming appointment requests, do not tell the caller the time slot is available/);
+  assert.match(prompt, /BOOKING REQUEST INSTRUCTION: Silently call validate_appointment_time when time is given/);
+  assert.match(prompt, /No booking window: accept approved future times/);
+});
+
+test('Production prompt requires complete booking capture and accepts valid future dates without an explicit booking window', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional'),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /BOOKING REQUEST REQUIRED DETAILS: Before ending a booking-request flow/);
+  assert.match(prompt, /service, preferred date and time, caller name, and caller phone number/);
+  assert.match(prompt, /validate_appointment_time result is the only source of truth/);
+  assert.match(prompt, /accept a future date approved by validate_appointment_time for capture/);
 });
 
 test('Square and Mindbody prompts do not include manual booking request instruction', () => {

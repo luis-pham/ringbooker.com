@@ -119,7 +119,7 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
   assert.equal(filtered.status, 200);
   const filteredBody = await filtered.json() as {
     bookings: Array<{ id: string; status: string; callerPhone?: string; callerName?: string; serviceRequested?: string }>;
-    stats: { total: number; awaitingAction: number; confirmed: number };
+    stats: { total: number; awaitingAction: number; confirmed: number; rescheduled: number; cancellationPending: number };
     pagination: { page: number; limit: number; totalPages: number };
   };
   assert.equal(filteredBody.bookings.length, 1);
@@ -130,6 +130,8 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
   assert.equal(filteredBody.stats.total, 2);
   assert.equal(filteredBody.stats.awaitingAction, 1);
   assert.equal(filteredBody.stats.confirmed, 1);
+  assert.equal(filteredBody.stats.rescheduled, 0);
+  assert.equal(filteredBody.stats.cancellationPending, 0);
   assert.equal(filteredBody.pagination.limit, 25);
 
   const detail = await app.request('/user/bookings/booking-confirmed', { headers: { cookie } });
@@ -156,6 +158,43 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
     body: JSON.stringify({ status: 'completed' }),
   });
   assert.equal(invalid.status, 400);
+});
+
+test('booking workflow exposes operational statuses and keeps cancellation pending out of cancelled', async () => {
+  const { app, bookingsRepository } = createBookingsTestApp();
+  const cookie = await loginUser(app);
+
+  for (const [id, status] of [
+    ['booking-cancel-pending', 'cancel_link_sent'],
+    ['booking-cancelled', 'cancelled'],
+    ['booking-rescheduled', 'rescheduled'],
+  ] as const) {
+    await bookingsRepository.create({
+      id,
+      shopId: 'demo-shop',
+      customerPhone: '+15551230000',
+      service: 'Haircut',
+      datetimeUtc: '2026-05-15T19:00:00.000Z',
+      timezone: 'America/Chicago',
+      status,
+    });
+  }
+
+  const awaiting = await app.request('/user/bookings?tab=awaiting_action', { headers: { cookie } });
+  const awaitingBody = await awaiting.json() as { bookings: Array<{ id: string }>; stats: { rescheduled: number; cancellationPending: number; cancelled: number; awaitingAction: number } };
+  assert.equal(awaitingBody.bookings.length, 0);
+  assert.equal(awaitingBody.stats.awaitingAction, 0);
+  assert.equal(awaitingBody.stats.rescheduled, 1);
+  assert.equal(awaitingBody.stats.cancellationPending, 1);
+  assert.equal(awaitingBody.stats.cancelled, 1);
+
+  const pending = await app.request('/user/bookings?tab=cancellation_pending', { headers: { cookie } });
+  const pendingBody = await pending.json() as { bookings: Array<{ id: string }> };
+  assert.deepEqual(pendingBody.bookings.map((booking) => booking.id), ['booking-cancel-pending']);
+
+  const cancelled = await app.request('/user/bookings?tab=cancelled', { headers: { cookie } });
+  const cancelledBody = await cancelled.json() as { bookings: Array<{ id: string }> };
+  assert.deepEqual(cancelledBody.bookings.map((booking) => booking.id), ['booking-cancelled']);
 });
 
 test('confirming a booking schedules reminders when appointment time is verified and future', async () => {

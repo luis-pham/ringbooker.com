@@ -94,6 +94,21 @@ export type OpenAiRealtimeSipSidebandParams =
  */
 const SOFT_LIMIT_WRAP_UP_INSTRUCTION =
   "You must now wrap up the call politely. Say something like: 'Is there anything else I can help you with before we finish?'";
+const VALIDATE_APPOINTMENT_TIME_TOOL_NAME = 'validate_appointment_time';
+const FORCE_APPOINTMENT_TIME_VALIDATION_INSTRUCTION =
+  'Silently call validate_appointment_time now using the appointment date and time the caller just requested. Do not speak before calling the tool.';
+
+function mentionsBookingFlow(text: string): boolean {
+  return /\b(book(?:ing)?|appointment|schedul(?:e|ing)?|reschedul(?:e|ing)?|availability)\b/i.test(text)
+    || /\b(?:what|which)\s+(?:date|day|time)\b/i.test(text)
+    || /\b(?:date|day)\s+and\s+time\b/i.test(text);
+}
+
+function includesSpecificTime(text: string): boolean {
+  return /\b\d{1,2}(?::[0-5]\d)?\s*(?:a\.?\s*m\.?|p\.?\s*m\.?)\b/i.test(text)
+    || /\b(?:noon|midnight)\b/i.test(text)
+    || /\b(?:at|around|by)\s+\d{1,2}(?::[0-5]\d)?\b/i.test(text);
+}
 
 export function startOpenAiRealtimeSipSideband(
   params: OpenAiRealtimeSipSidebandParams,
@@ -123,6 +138,8 @@ export function startOpenAiRealtimeSipSideband(
   let initialResponseSent = false;
   let vadResumeAfterWelcomeSent = false;
   let shopVadResumeAfterWelcomeSent = false;
+  let shopManualTurnResponseEnabled = false;
+  let shopBookingFlowActive = false;
   let initialGreetingAudioStarted = false;
   let initialGreetingAudioStopped = false;
   let sawUserSpeechBeforeInitial = false;
@@ -249,16 +266,50 @@ export function startOpenAiRealtimeSipSideband(
             type: 'realtime',
             audio: {
               input: {
-                turn_detection: td,
+                // Sideband owns shop responses after greeting so it can force required
+                // appointment-time validation before any spoken scheduling decision.
+                turn_detection: { ...td, create_response: false },
               },
             },
           },
         }),
       );
+      shopManualTurnResponseEnabled = true;
       logger.info({ callId: params.callId, fromEvent }, 'openai_sip_shop_vad_resumed_after_greeting');
     } catch (err) {
       shopVadResumeAfterWelcomeSent = false;
       logger.warn({ err, callId: params.callId, fromEvent }, 'openai_sip_shop_vad_resume_failed');
+    }
+  }
+
+  function createShopResponseForCallerTurn(transcript: string): void {
+    if (params.variant !== 'shop' || !params.initialResponseBridgeGate || !shopManualTurnResponseEnabled) return;
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    const inBookingFlow = shopBookingFlowActive || mentionsBookingFlow(transcript);
+    const forceTimeValidation = inBookingFlow && includesSpecificTime(transcript);
+    shopBookingFlowActive = inBookingFlow;
+
+    try {
+      ws.send(
+        JSON.stringify({
+          type: 'response.create',
+          ...(forceTimeValidation
+            ? {
+                response: {
+                  instructions: FORCE_APPOINTMENT_TIME_VALIDATION_INSTRUCTION,
+                  tool_choice: { type: 'function', name: VALIDATE_APPOINTMENT_TIME_TOOL_NAME },
+                },
+              }
+            : {}),
+        }),
+      );
+      logger.info(
+        { callId: params.callId, forceAppointmentTimeValidation: forceTimeValidation },
+        'openai_sip_shop_caller_turn_response_created',
+      );
+    } catch (err) {
+      logger.warn({ err, callId: params.callId }, 'openai_sip_shop_caller_turn_response_failed');
     }
   }
 
@@ -391,7 +442,24 @@ export function startOpenAiRealtimeSipSideband(
       if (transcript && speaker) {
         // Both shop and demo calls persist the full transcript via the callback.
         params.onTranscript?.(speaker, transcript);
+        if (params.variant === 'shop' && params.initialResponseBridgeGate) {
+          if (speaker === 'assistant' && mentionsBookingFlow(transcript)) {
+            shopBookingFlowActive = true;
+          } else if (speaker === 'caller') {
+            createShopResponseForCallerTurn(transcript);
+          }
+        }
       }
+    }
+
+    if (
+      params.variant === 'shop' &&
+      params.initialResponseBridgeGate &&
+      shopManualTurnResponseEnabled &&
+      evt.type === 'conversation.item.input_audio_transcription.failed'
+    ) {
+      logger.warn({ callId: params.callId }, 'openai_sip_shop_caller_transcription_failed_using_unvalidated_response');
+      createShopResponseForCallerTurn('');
     }
 
     if (evt.type !== 'response.function_call_arguments.done') return;

@@ -39,6 +39,16 @@ export type AgentToolContext = {
   rbCallId?: string;
   /** Optional OpenAI SIP outbound Telnyx leg call_control_id, when available from SIP headers. */
   openAiLegCallControlId?: string | null;
+  /** Runtime-only state used to require deterministic time validation before booking decisions. */
+  appointmentTimeValidation?: {
+    latest: {
+      date: string;
+      time: string;
+      valid: boolean;
+      reason: 'within_business_hours' | 'outside_business_hours' | 'business_hours_not_configured' | 'past_datetime';
+      normalizedDatetimeUtc: string;
+    } | null;
+  };
 };
 
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

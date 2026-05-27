@@ -7,6 +7,7 @@ import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { requestHumanHandoffTool } from '@/src/agent/tools/request-human-handoff';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
+import { validateAppointmentTimeTool } from '@/src/agent/tools/validate-appointment-time';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
 import type {
@@ -79,6 +80,7 @@ export function createSipAgentToolContext(params: {
     parentTelnyxCallControlId: params.parentTelnyxCallControlId ?? null,
     rbCallId: params.rbCallId ?? params.requestId,
     openAiLegCallControlId: params.openAiLegCallControlId ?? null,
+    appointmentTimeValidation: { latest: null },
   };
 }
 
@@ -90,6 +92,9 @@ export async function executeSipShopToolCall(
   try {
     let result: unknown;
     switch (toolName) {
+      case 'validate_appointment_time':
+        result = await validateAppointmentTimeTool(ctx, toolInput);
+        break;
       case 'get_shop_info':
         result = await getShopInfoTool(ctx, toolInput);
         break;

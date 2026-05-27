@@ -260,6 +260,7 @@ const simulateInboundSchema = z.object({
   destinationPhone: z.string().min(1),
   callerPhone: z.string().min(1),
   tool: z.enum([
+    'validate_appointment_time',
     'check_availability',
     'create_booking',
     'reschedule_booking',
@@ -1108,7 +1109,7 @@ const userCallsListQuerySchema = z.object({
 });
 
 const USER_BOOKINGS_PAGE_SIZE = 25;
-const userBookingsTabSchema = z.enum(['all', 'awaiting_action', 'contacted', 'confirmed', 'declined', 'rescheduled', 'cancelled', 'completed']);
+const userBookingsTabSchema = z.enum(['all', 'awaiting_action', 'contacted', 'confirmed', 'declined', 'rescheduled', 'cancellation_pending', 'cancelled', 'completed']);
 const userBookingsListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -1167,8 +1168,10 @@ function buildUserBookingFilters(parsed: z.infer<typeof userBookingsListQuerySch
       return { ...base, statuses: ['declined'] };
     case 'rescheduled':
       return { ...base, statuses: ['rescheduled'] };
+    case 'cancellation_pending':
+      return { ...base, statuses: ['cancel_link_sent'] };
     case 'cancelled':
-      return { ...base, statuses: ['cancelled', 'cancel_link_sent'] };
+      return { ...base, statuses: ['cancelled'] };
     case 'completed':
       return { ...base, statuses: ['completed'] };
     default:
@@ -1250,18 +1253,28 @@ function toUserBookingResponse(booking: BookingRecord, smsLog: OutboundMessageRe
   };
 }
 
-function userBookingStatsStatuses(kind: 'awaitingAction' | 'contacted' | 'confirmed' | 'declined' | 'cancelled' | 'completed'): string[] {
+function userBookingStatsStatuses(kind: 'awaitingAction' | 'contacted' | 'confirmed' | 'declined' | 'rescheduled' | 'cancellationPending' | 'cancelled' | 'completed'): string[] {
   if (kind === 'awaitingAction') return ['captured', 'link_sent'];
   if (kind === 'contacted') return ['contacted'];
   if (kind === 'confirmed') return ['confirmed', 'reminder_sent'];
   if (kind === 'declined') return ['declined'];
-  if (kind === 'cancelled') return ['cancelled', 'cancel_link_sent'];
+  if (kind === 'rescheduled') return ['rescheduled'];
+  if (kind === 'cancellationPending') return ['cancel_link_sent'];
+  if (kind === 'cancelled') return ['cancelled'];
   return ['completed'];
 }
 
 type UserCallStatus = 'in_progress' | 'completed' | 'missed' | 'voicemail';
 type UserCallOutcome =
-  | 'booking_captured'
+  | 'booking_request'
+  | 'booking_contacted'
+  | 'booking_confirmed'
+  | 'booking_cancel_pending'
+  | 'booking_declined'
+  | 'booking_cancelled'
+  | 'booking_rescheduled'
+  | 'booking_completed'
+  | 'captured_call'
   | 'pricing_inquiry'
   | 'hours_inquiry'
   | 'general_inquiry'
@@ -1269,7 +1282,7 @@ type UserCallOutcome =
   | 'cancelled_request'
   | 'reschedule_request'
   | 'complaint'
-  | 'wrong_number'
+  | 'no_response'
   | 'no_outcome';
 
 function deriveUserCallStatus(call: CallLogListItem, now = new Date()): UserCallStatus {
@@ -1285,17 +1298,37 @@ function deriveUserCallStatus(call: CallLogListItem, now = new Date()): UserCall
   return 'completed';
 }
 
-function deriveUserCallOutcome(call: CallLogListItem): UserCallOutcome {
+function hasCallerUtterance(call: Pick<CallLogListItem, 'transcriptText'>): boolean {
+  return (call.transcriptText ?? '')
+    .split('\n')
+    .some((line) => /\bCALLER:\s*\S/i.test(line));
+}
+
+function needsUserFollowUp(call: Pick<CallLogListItem, 'summaryFollowUpRequired' | 'summaryNextAction' | 'outcome'>): boolean {
+  return Boolean(call.summaryFollowUpRequired);
+}
+
+function deriveUserCallOutcome(call: CallLogListItem, linkedBooking?: BookingRecord | null): UserCallOutcome {
   const question = `${call.summaryCallerQuestion ?? ''} ${call.summaryServiceRequest ?? ''} ${call.transcriptText ?? ''}`.toLowerCase();
-  if (call.isCapturedCaller || call.summaryNextAction === 'booking_created' || call.summaryNextAction === 'booking_link_sent' || call.outcome === 'booked') {
-    return 'booking_captured';
-  }
-  if (call.summaryFollowUpRequired || call.summaryNextAction === 'callback_scheduled' || call.outcome === 'error') return 'follow_up_needed';
+  if (call.transcriptText?.trim() && !hasCallerUtterance(call)) return 'no_response';
   if (call.summaryNextAction === 'cancellation_requested') return 'cancelled_request';
   if (call.summaryNextAction === 'reschedule_requested') return 'reschedule_request';
   if (call.summaryNextAction === 'escalated') return 'complaint';
+  if (linkedBooking) {
+    const status = normalizeUserBookingStatus(linkedBooking.status, linkedBooking.reminder24hSent, linkedBooking.reminder2hSent);
+    if (status === 'contacted') return 'booking_contacted';
+    if (status === 'confirmed' || status === 'reminder_sent') return 'booking_confirmed';
+    if (status === 'cancel_link_sent') return 'booking_cancel_pending';
+    if (status === 'declined') return 'booking_declined';
+    if (status === 'cancelled') return 'booking_cancelled';
+    if (status === 'rescheduled') return 'booking_rescheduled';
+    if (status === 'completed') return 'booking_completed';
+    return 'booking_request';
+  }
+  if (needsUserFollowUp(call)) return 'follow_up_needed';
   if (question.includes('price') || question.includes('pricing') || question.includes('cost') || question.includes('how much')) return 'pricing_inquiry';
   if (question.includes('hour') || question.includes('open') || question.includes('close')) return 'hours_inquiry';
+  if (call.isCapturedCaller) return 'captured_call';
   if (call.transcriptText?.trim() || call.summaryCallerQuestion || call.summaryServiceRequest) return 'general_inquiry';
   return 'no_outcome';
 }
@@ -1314,9 +1347,13 @@ function hasViewableTranscript(call: { transcriptText?: string | null }): boolea
   return Boolean(call.transcriptText?.trim());
 }
 
-function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSent?: boolean } = {}) {
+function toUserCallResponse(
+  call: CallLogListItem,
+  extras: { missedFollowupSmsSent?: boolean } = {},
+  linkedBooking?: BookingRecord | null,
+) {
   const status = deriveUserCallStatus(call);
-  const outcome = deriveUserCallOutcome(call);
+  const outcome = deriveUserCallOutcome(call, linkedBooking);
   return {
     id: call.requestId ?? call.providerCallId,
     shopId: call.shopId,
@@ -1329,8 +1366,8 @@ function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSe
     durationSeconds: call.durationSecs ?? undefined,
     status,
     outcome,
-    bookingCaptured: outcome === 'booking_captured',
-    bookingRequestId: undefined,
+    bookingCaptured: Boolean(linkedBooking),
+    bookingRequestId: linkedBooking?.id,
     transcriptAvailable: hasViewableTranscript(call),
     transcriptUrl: undefined,
     recordingUrl: undefined,
@@ -1338,7 +1375,7 @@ function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSe
     recordingStatus: call.recordingStatus,
     summary: buildUserCallSummary(call),
     transcriptText: call.transcriptText,
-    followUpNeeded: Boolean(call.summaryFollowUpRequired) || outcome === 'follow_up_needed',
+    followUpNeeded: needsUserFollowUp(call),
     highUrgency: call.summaryUrgency === 'high',
     urgencyReason: call.summaryUrgency === 'high' ? call.summaryCallerQuestion ?? call.summaryServiceRequest ?? 'Marked high urgency' : undefined,
     provider: call.provider,
@@ -6271,6 +6308,7 @@ export function createBackendApp(deps: {
 
     await deps.callLogsRepository.updateStructuredSummary(shop.id, requestId, {
       summaryFollowUpRequired: false,
+      summaryUrgency: null,
     });
 
     return c.json({ ok: true });
@@ -6305,7 +6343,7 @@ export function createBackendApp(deps: {
     const offset = (page - 1) * limit;
     const filters = buildUserBookingFilters(parsed.data);
     const repo = deps.bookingsRepository;
-    const [bookings, total, totalAll, awaitingAction, contacted, confirmed, declined, cancelled, completed] = await Promise.all([
+    const [bookings, total, totalAll, awaitingAction, contacted, confirmed, declined, rescheduled, cancellationPending, cancelled, completed] = await Promise.all([
       repo.listByShop(shop.id, { ...filters, limit, offset }),
       repo.countByShop(shop.id, filters),
       repo.countByShop(shop.id),
@@ -6313,6 +6351,8 @@ export function createBackendApp(deps: {
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('contacted') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('confirmed') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('declined') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('rescheduled') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('cancellationPending') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('cancelled') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('completed') }),
     ]);
@@ -6339,6 +6379,8 @@ export function createBackendApp(deps: {
         contacted,
         confirmed,
         declined,
+        rescheduled,
+        cancellationPending,
         cancelled,
         completed,
       },
@@ -6444,7 +6486,7 @@ export function createBackendApp(deps: {
     const commercialAccount = deps.commercialAccountsRepository ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : null;
     const [totalLast7Days, bookingsCount, followUpCount, missedCount, usage] = await Promise.all([
       repo.countByShop(shop.id, { startedAfter: last7Days }),
-      repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
+      deps.bookingsRepository ? deps.bookingsRepository.countByShop(shop.id) : Promise.resolve(0),
       repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
       repo.countByShop(shop.id, { startedAfter: last7Days, outcome: 'missed' }),
       getShopUsageForPeriod(
@@ -6496,7 +6538,7 @@ export function createBackendApp(deps: {
     }
 
     const timezone = normalizeShopTimezone(shop.timezone);
-    const missed = periodCalls.filter((call) => !call.isCapturedCaller);
+    const missed = periodCalls.filter((call) => call.outcome === 'missed');
     const missedByDate = new Map<string, number>();
     for (const call of missed) {
       if (!call.startedAt) continue;
@@ -6603,7 +6645,10 @@ export function createBackendApp(deps: {
     if (!call) return c.json({ ok: false, error: 'call_not_found' }, 404);
     const canUseAdvancedCallAnalytics = isCapabilityAllowed(shop.plan, 'advanced_call_analytics');
     const canPlayCallRecording = isCapabilityAllowed(shop.plan, 'call_recording_playback');
-    const detailedCall = toUserCallResponse(call);
+    const linkedBooking = deps.bookingsRepository && call.requestId
+      ? (await deps.bookingsRepository.listByShop(shop.id, { callLogId: call.requestId, limit: 1 }))[0] ?? null
+      : null;
+    const detailedCall = toUserCallResponse(call, {}, linkedBooking);
     return c.json({
       ok: true,
       call: canUseAdvancedCallAnalytics
@@ -6660,7 +6705,7 @@ export function createBackendApp(deps: {
     ]);
     const advancedStats = canUseAdvancedCallAnalytics
       ? await Promise.all([
-          repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
+          deps.bookingsRepository ? deps.bookingsRepository.countByShop(shop.id) : Promise.resolve(0),
           repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
           repo.countByShop(shop.id, { summaryUrgency: 'high' }),
           repo.countByShop(shop.id, { ...filters, transcriptStatus: 'completed' }),
@@ -6675,13 +6720,22 @@ export function createBackendApp(deps: {
     const missedSmsSentPhones = missedPhones.length > 0 && deps.outboundMessagesRepository?.listMissedCallSmsSentPhones
       ? await deps.outboundMessagesRepository.listMissedCallSmsSentPhones(shop.id, missedPhones)
       : new Set<string>();
+    const linkedBookingEntries = canUseAdvancedCallAnalytics && deps.bookingsRepository
+      ? await Promise.all(
+          calls.map(async (call) => [
+            call.requestId ?? '',
+            call.requestId ? (await deps.bookingsRepository!.listByShop(shop.id, { callLogId: call.requestId, limit: 1 }))[0] ?? null : null,
+          ] as const),
+        )
+      : [];
+    const linkedBookingsByRequestId = new Map(linkedBookingEntries);
 
     return c.json({
       ok: true,
       calls: calls.map((call) => {
         const extras = { missedFollowupSmsSent: missedSmsSentPhones.has(call.callerPhone ?? '') };
         if (!canUseAdvancedCallAnalytics) return toBasicUserCallResponse(call, extras);
-        const advancedCall = toUserCallResponse(call, extras);
+        const advancedCall = toUserCallResponse(call, extras, linkedBookingsByRequestId.get(call.requestId ?? '') ?? null);
         return canPlayCallRecording
           ? advancedCall
           : { ...advancedCall, recordingAvailable: undefined, recordingStatus: undefined };

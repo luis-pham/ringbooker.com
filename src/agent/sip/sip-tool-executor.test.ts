@@ -64,6 +64,11 @@ test('check_availability returns availability JSON', async () => {
     roomName: 'sip-room-exec-2',
     deps,
   });
+  const validation = await executeSipShopToolCall(ctx, 'validate_appointment_time', {
+    date: '2026-06-01',
+    time: '14:00',
+  });
+  assert.equal((JSON.parse(validation) as { valid?: boolean }).valid, true);
   const json = await executeSipShopToolCall(ctx, 'check_availability', {
     date: '2026-06-01',
     time: '14:00',
@@ -74,6 +79,7 @@ test('check_availability returns availability JSON', async () => {
 
 test('create_booking returns success for manual calendar shop', async () => {
   const deps = memoryDeps();
+  await deps.shopsRepository.updateUserSettings('demo-shop', { booking_url: null });
   const shop = await deps.shopsRepository.findById('demo-shop');
   assert.ok(shop);
   const ctx = createSipAgentToolContext({
@@ -83,6 +89,11 @@ test('create_booking returns success for manual calendar shop', async () => {
     roomName: 'sip-room-exec-3',
     deps,
   });
+  const validation = await executeSipShopToolCall(ctx, 'validate_appointment_time', {
+    date: '2026-06-01',
+    time: '14:00',
+  });
+  assert.equal((JSON.parse(validation) as { valid?: boolean }).valid, true);
   const json = await executeSipShopToolCall(ctx, 'create_booking', {
     date: '2026-06-01',
     time: '14:00',
@@ -90,6 +101,52 @@ test('create_booking returns success for manual calendar shop', async () => {
     customerName: 'Jane',
   });
   assert.ok(json.includes('"success":true'));
+});
+
+test('SIP booking decisions require validation for the exact appointment time', async () => {
+  const deps = memoryDeps();
+  const baseShop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(baseShop);
+  const shop: Shop = {
+    ...baseShop,
+    hours: { monday: { open: '09:00', close: '17:00' } },
+  };
+  const ctx = createSipAgentToolContext({
+    shop,
+    callerPhone: '+15550001111',
+    requestId: 'sip-exec-validated-time',
+    roomName: 'sip-room-validated-time',
+    deps,
+  });
+
+  const beforeValidation = JSON.parse(await executeSipShopToolCall(ctx, 'create_booking', {
+    date: '2099-01-05',
+    time: '14:00',
+    service: 'Manicure',
+    customerName: 'Jane',
+  })) as { code?: string };
+  assert.equal(beforeValidation.code, 'APPOINTMENT_TIME_NOT_VALIDATED');
+
+  const outsideHours = JSON.parse(await executeSipShopToolCall(ctx, 'validate_appointment_time', {
+    date: '2099-01-05',
+    time: '20:00',
+  })) as { valid?: boolean; messageForAi?: string };
+  assert.equal(outsideHours.valid, false);
+  assert.doesNotMatch(outsideHours.messageForAi ?? '', /\bcheck(?:ing)?\b/i);
+
+  const accepted = JSON.parse(await executeSipShopToolCall(ctx, 'validate_appointment_time', {
+    date: '2099-01-05',
+    time: '14:00',
+  })) as { valid?: boolean };
+  assert.equal(accepted.valid, true);
+
+  const changedTime = JSON.parse(await executeSipShopToolCall(ctx, 'create_booking', {
+    date: '2099-01-05',
+    time: '15:00',
+    service: 'Manicure',
+    customerName: 'Jane',
+  })) as { code?: string };
+  assert.equal(changedTime.code, 'APPOINTMENT_TIME_NOT_VALIDATED');
 });
 
 test('unknown tool returns error JSON', async () => {

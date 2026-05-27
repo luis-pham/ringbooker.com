@@ -230,9 +230,117 @@ test('bridge-ready production greeting sends immediately without fixed sideband 
   srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
   await flushIO(30);
   assert.ok(messages.some((message) => message.includes('session.update')));
-  assert.ok(messages.some((message) => message.includes('"create_response":true')));
+  assert.ok(messages.some((message) => message.includes('"create_response":false')));
   srv.close(1000, 'test complete');
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_no_delay');
+});
+
+test('bridge-gated shop forces appointment validation before responding to a requested time', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_time_validation',
+    openaiLegCallControlId: 'cc_openai_time_validation',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_time_validation',
+    openaiLegCallControlId: 'cc_openai_time_validation',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'time-validation-turn-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_time_validation',
+        openaiLegCallControlId: 'cc_openai_time_validation',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('time-validation-turn-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'What date and time would you like for your booking?',
+  }));
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'Tomorrow at 9 PM.',
+  }));
+  await flushIO(30);
+
+  const turnResponse = messages
+    .map((message) => JSON.parse(message) as { type?: string; response?: { tool_choice?: { name?: string } } })
+    .find((message) => message.response?.tool_choice?.name === 'validate_appointment_time');
+  assert.equal(turnResponse?.type, 'response.create');
+  assert.equal(turnResponse?.response?.tool_choice?.name, 'validate_appointment_time');
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_time_validation');
+});
+
+test('bridge-gated shop creates an ordinary response for a caller question without an appointment time', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_general_turn',
+    openaiLegCallControlId: 'cc_openai_general_turn',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_general_turn',
+    openaiLegCallControlId: 'cc_openai_general_turn',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'general-turn-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_general_turn',
+        openaiLegCallControlId: 'cc_openai_general_turn',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('general-turn-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'What are your hours?',
+  }));
+  await flushIO(30);
+
+  const responseMessages = messages
+    .map((message) => JSON.parse(message) as { type?: string; response?: { tool_choice?: unknown } })
+    .filter((message) => message.type === 'response.create');
+  const callerTurnResponse = responseMessages.at(-1);
+  assert.equal(responseMessages.length, 2);
+  assert.equal(callerTurnResponse?.response?.tool_choice, undefined);
+  srv.send(JSON.stringify({ type: 'conversation.item.input_audio_transcription.failed' }));
+  await flushIO(30);
+  const responseCountAfterFailedTranscript = messages
+    .map((message) => JSON.parse(message) as { type?: string })
+    .filter((message) => message.type === 'response.create').length;
+  assert.equal(responseCountAfterFailedTranscript, 3);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_general_turn');
 });
 
 // ---------------------------------------------------------------------------

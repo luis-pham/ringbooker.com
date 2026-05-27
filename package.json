@@ -21,6 +21,7 @@
     "check:readiness:openai": "node scripts/check-openai-realtime-readiness.mjs",
     "smoke:inbound": "node scripts/e2e-inbound-smoke.mjs",
     "smoke:openai-realtime": "node scripts/smoke-openai-realtime.mjs",
+    "eval:voice-ux": "tsx scripts/run-voice-ux-evals.ts",
     "e2e:staging:playbook": "node scripts/e2e-staging-playbook.mjs",
     "reconcile:provider-events": "node scripts/reconcile-provider-events.mjs",
     "reconcile:paddle-subscriptions": "node scripts/reconcile-paddle-subscriptions.mjs",
