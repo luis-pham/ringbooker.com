@@ -7,8 +7,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  type FocusEvent,
+  type MouseEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   applyUserSidebarCollapsed,
@@ -19,18 +22,29 @@ import {
 type UserSidebarCollapsedContextValue = {
   collapsed: boolean;
   toggleCollapsed: () => void;
+  showSidebarTooltip: (label: string, target: HTMLElement) => void;
+  hideSidebarTooltip: () => void;
 };
 
 const UserSidebarCollapsedContext = createContext<UserSidebarCollapsedContextValue | null>(null);
 
+function canUseDesktopSidebarTooltip(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(min-width: 861px)').matches;
+}
+
 export function UserSidebarCollapsedProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [tooltip, setTooltip] = useState<{ label: string; top: number; left: number } | null>(null);
 
   useEffect(() => {
     const next = readUserSidebarCollapsed();
     setCollapsed(next);
     applyUserSidebarCollapsed(next);
   }, []);
+
+  useEffect(() => {
+    if (!collapsed) setTooltip(null);
+  }, [collapsed]);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -39,18 +53,49 @@ export function UserSidebarCollapsedProvider({ children }: { children: ReactNode
       applyUserSidebarCollapsed(next);
       return next;
     });
+    setTooltip(null);
+  }, []);
+
+  const showSidebarTooltip = useCallback((label: string, target: HTMLElement) => {
+    if (!canUseDesktopSidebarTooltip()) return;
+    const rect = target.getBoundingClientRect();
+    setTooltip({
+      label,
+      top: rect.top + rect.height / 2,
+      left: rect.right + 12,
+    });
+  }, []);
+
+  const hideSidebarTooltip = useCallback(() => {
+    setTooltip(null);
   }, []);
 
   const value = useMemo(
     () => ({
       collapsed,
       toggleCollapsed,
+      showSidebarTooltip,
+      hideSidebarTooltip,
     }),
-    [collapsed, toggleCollapsed],
+    [collapsed, toggleCollapsed, showSidebarTooltip, hideSidebarTooltip],
   );
 
   return (
-    <UserSidebarCollapsedContext.Provider value={value}>{children}</UserSidebarCollapsedContext.Provider>
+    <UserSidebarCollapsedContext.Provider value={value}>
+      {children}
+      {typeof document !== 'undefined' && tooltip
+        ? createPortal(
+            <div
+              className="user-portal-sidebar-tooltip"
+              role="tooltip"
+              style={{ top: tooltip.top, left: tooltip.left }}
+            >
+              {tooltip.label}
+            </div>,
+            document.body,
+          )
+        : null}
+    </UserSidebarCollapsedContext.Provider>
   );
 }
 
@@ -62,8 +107,28 @@ export function useUserSidebarCollapsed(): UserSidebarCollapsedContextValue {
   return ctx;
 }
 
+export function useSidebarNavTooltipHandlers(label: string) {
+  const { collapsed, showSidebarTooltip, hideSidebarTooltip } = useUserSidebarCollapsed();
+
+  const showFromTarget = useCallback(
+    (target: HTMLElement) => {
+      if (!collapsed) return;
+      showSidebarTooltip(label, target);
+    },
+    [collapsed, label, showSidebarTooltip],
+  );
+
+  return {
+    onMouseEnter: (event: MouseEvent<HTMLElement>) => showFromTarget(event.currentTarget),
+    onMouseLeave: hideSidebarTooltip,
+    onFocus: (event: FocusEvent<HTMLElement>) => showFromTarget(event.currentTarget),
+    onBlur: hideSidebarTooltip,
+  };
+}
+
 export function UserPortalSidebarCollapseToggle() {
-  const { collapsed, toggleCollapsed } = useUserSidebarCollapsed();
+  const { collapsed, toggleCollapsed, showSidebarTooltip, hideSidebarTooltip } = useUserSidebarCollapsed();
+  const tooltipLabel = collapsed ? 'Expand menu' : 'Collapse menu';
 
   return (
     <button
@@ -71,9 +136,16 @@ export function UserPortalSidebarCollapseToggle() {
       className="sidebar-collapse-btn"
       aria-pressed={collapsed}
       aria-label={collapsed ? 'Expand sidebar menu' : 'Collapse sidebar menu'}
-      title={collapsed ? 'Expand menu' : 'Collapse menu'}
-      data-tooltip={collapsed ? 'Expand menu' : undefined}
+      title={collapsed ? tooltipLabel : undefined}
       onClick={toggleCollapsed}
+      onMouseEnter={(event) => {
+        if (collapsed) showSidebarTooltip(tooltipLabel, event.currentTarget);
+      }}
+      onMouseLeave={hideSidebarTooltip}
+      onFocus={(event) => {
+        if (collapsed) showSidebarTooltip(tooltipLabel, event.currentTarget);
+      }}
+      onBlur={hideSidebarTooltip}
     >
       <svg viewBox="0 0 24 24" aria-hidden>
         {collapsed ? (

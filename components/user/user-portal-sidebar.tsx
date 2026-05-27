@@ -25,7 +25,7 @@ type UserPortalSidebarProps = {
 };
 
 function UserPortalSidebarInner({ active }: UserPortalSidebarProps) {
-  const { collapsed } = useUserSidebarCollapsed();
+  const { collapsed, showSidebarTooltip, hideSidebarTooltip } = useUserSidebarCollapsed();
 
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
@@ -64,8 +64,15 @@ function UserPortalSidebarInner({ active }: UserPortalSidebarProps) {
             type="button"
             className="sidebar-logout"
             title={collapsed ? 'Sign out' : undefined}
-            data-tooltip={collapsed ? 'Sign out' : undefined}
             onClick={() => void signOut()}
+            onMouseEnter={(event) => {
+              if (collapsed) showSidebarTooltip('Sign out', event.currentTarget);
+            }}
+            onMouseLeave={hideSidebarTooltip}
+            onFocus={(event) => {
+              if (collapsed) showSidebarTooltip('Sign out', event.currentTarget);
+            }}
+            onBlur={hideSidebarTooltip}
           >
             <IconLogout />
             <span>Sign out</span>

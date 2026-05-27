@@ -1112,25 +1112,25 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
 html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.16)}
 html[data-user-theme="dark"] .sidebar-collapse-btn{background:#21262d;border-color:var(--border);color:#8b949e}
 html[data-user-theme="dark"] .sidebar-collapse-btn:hover{background:#30363d;color:var(--text-dark)}
-html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::after,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::after,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::after,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::after,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::after,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::after{
-  background:#f0f6fc;color:#0d1117;
+.user-portal-sidebar-tooltip{
+  position:fixed;
+  transform:translateY(-50%);
+  background:#111827;
+  color:#fff;
+  border-radius:8px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:500;
+  line-height:1.2;
+  white-space:nowrap;
+  z-index:220;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+  pointer-events:none;
 }
-html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::before,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::before,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::before,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::before,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::before,
-html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::before{
-  border-right-color:#f0f6fc;
-}
-html[data-user-theme="dark"] html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .user-app-shell .sidebar,
-html[data-user-theme="dark"] html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .user-app-shell .sidebar{
-  box-shadow:8px 0 32px rgba(0,0,0,.45);
+html[data-user-theme="dark"] .user-portal-sidebar-tooltip{
+  background:#f0f6fc;
+  color:#0d1117;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
 }
 
 @media (max-width:1200px){
@@ -1181,45 +1181,6 @@ html[data-user-theme="dark"] html.user-sidebar-collapsed:has(.user-app-shell .si
   html.user-sidebar-collapsed .nav-item{
     justify-content:center;padding:10px;position:relative;overflow:visible;
   }
-  html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::after,
-  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::after,
-  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::after{
-    content:attr(data-tooltip);
-    position:absolute;
-    left:calc(100% + 12px);
-    top:50%;
-    transform:translateY(-50%);
-    background:#111827;
-    color:#fff;
-    border-radius:8px;
-    padding:6px 10px;
-    font-size:12px;
-    font-weight:500;
-    line-height:1;
-    white-space:nowrap;
-    z-index:70;
-    box-shadow:0 8px 24px rgba(0,0,0,.2);
-    pointer-events:none;
-  }
-  html.user-sidebar-collapsed .nav-item[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed .nav-item[data-tooltip]:focus-visible::before,
-  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed .sidebar-collapse-btn[data-tooltip]:focus-visible::before,
-  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::before{
-    content:'';
-    position:absolute;
-    left:calc(100% + 6px);
-    top:50%;
-    transform:translateY(-50%);
-    border:6px solid transparent;
-    border-right-color:#111827;
-    z-index:69;
-    pointer-events:none;
-  }
   html.user-sidebar-collapsed .nav-item .nav-attention-dot,
   html.user-sidebar-collapsed .nav-item .nav-item-badge{
     position:absolute;top:6px;right:6px;margin-left:0;z-index:3;
@@ -1239,74 +1200,6 @@ html[data-user-theme="dark"] html.user-sidebar-collapsed:has(.user-app-shell .si
     justify-content:center;padding:10px;position:relative;overflow:visible;
   }
   html.user-sidebar-collapsed .nav-go-live-placeholder{padding:10px}
-  /* Collapsed rail: hover to peek full menu (desktop only; preference stays collapsed). */
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover),
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within){
-    --portal-sidebar-width:var(--sidebar-width);
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .user-app-shell .sidebar,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .user-app-shell .sidebar{
-    padding:24px 16px 22px;
-    box-shadow:8px 0 28px rgba(15,23,42,.12);
-    z-index:50;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand-title,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand-tagline,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item-label,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-label,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout span,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-label,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand-title,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand-tagline,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item-label,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-label,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout span,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-label{
-    display:revert;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand-text,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand-text{
-    display:flex;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand{
-    justify-content:flex-start;
-    margin-bottom:22px;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item{
-    justify-content:flex-start;
-    padding:10px 12px;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item .nav-attention-dot,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item .nav-item-badge,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item .nav-attention-dot,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item .nav-item-badge{
-    position:static;
-    margin-left:6px;
-    box-shadow:none;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-btn,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-btn,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout{
-    justify-content:flex-start;
-  }
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-btn[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-btn[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-btn[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-btn[data-tooltip]:hover::before,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout[data-tooltip]:hover::after,
-  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout[data-tooltip]:hover::before{
-    content:none;
-    display:none;
-  }
 }
 @media (max-width:860px){
   .user-app-shell{
