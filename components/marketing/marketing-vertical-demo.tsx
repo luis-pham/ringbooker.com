@@ -348,6 +348,14 @@ const DEMO_STATUS_TIMEOUT_MESSAGE = 'The web demo is taking longer than expected
 const LIVEKIT_CONNECT_ERROR_MESSAGE = 'Unable to connect to the voice room. Please check your network and try again, or call the demo number instead.';
 const DIRECT_OPENAI_CONNECT_TIMEOUT_MS = 45_000;
 const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
+/**
+ * Mic is muted while the AI delivers the opening greeting so speaker echo and
+ * room noise cannot trigger OpenAI's semantic_vad and truncate the greeting.
+ * Mic is re-enabled on `output_audio_buffer.stopped` for the first response.
+ * This fallback guarantees the mic is re-enabled even if that event never fires
+ * (greeting fails, OpenAI cancels mid-stream without a clean `stopped`, etc.).
+ */
+const DIRECT_OPENAI_GREETING_MIC_UNMUTE_FALLBACK_MS = 10_000;
 const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
 const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
 
@@ -1516,16 +1524,49 @@ export function MarketingVerticalDemoTemplate({
         }
       };
 
+      // Mute mic during greeting: prevents speaker echo / room noise from
+      // reaching OpenAI's semantic_vad and truncating the opening greeting.
+      // Tracks are re-enabled on `output_audio_buffer.stopped` for the first
+      // response (or via fallback timer if that event never arrives).
+      const micTracks: MediaStreamTrack[] = [];
       for (const track of stream.getAudioTracks()) {
+        track.enabled = false;
+        micTracks.push(track);
         logDemoRealtime('mic_track', {
           trackId: track.id,
           enabled: track.enabled,
           muted: track.muted,
           readyState: track.readyState,
           label: track.label,
+          mutedForGreeting: true,
         });
         pc.addTrack(track, stream);
       }
+      let micEnableFallbackTimer: number | null = window.setTimeout(() => {
+        micEnableFallbackTimer = null;
+        const needsEnable = micTracks.some((t) => !t.enabled && t.readyState === 'live');
+        if (needsEnable) {
+          for (const t of micTracks) {
+            if (t.readyState === 'live') t.enabled = true;
+          }
+          logDemoRealtime('mic_unmuted', { reason: 'greeting_fallback_timeout' });
+        }
+      }, DIRECT_OPENAI_GREETING_MIC_UNMUTE_FALLBACK_MS);
+      const enableMicTracks = (reason: string) => {
+        if (micEnableFallbackTimer !== null) {
+          window.clearTimeout(micEnableFallbackTimer);
+          micEnableFallbackTimer = null;
+        }
+        let anyChanged = false;
+        for (const t of micTracks) {
+          if (!t.enabled && t.readyState === 'live') {
+            t.enabled = true;
+            anyChanged = true;
+          }
+        }
+        if (anyChanged) logDemoRealtime('mic_unmuted', { reason });
+      };
+
       const dc = pc.createDataChannel('oai-events');
       directDataChannelRef.current = dc;
       let initialGreetingRequested = false;
@@ -1661,6 +1702,10 @@ export function MarketingVerticalDemoTemplate({
           }
           if (awaitingInitialGreetingAudioStop && data.type === 'output_audio_buffer.stopped') {
             awaitingInitialGreetingAudioStop = false;
+            // Unmute mic BEFORE re-enabling VAD: while VAD is still in greeting-safe
+            // mode (create_response:false, interrupt_response:false), any tail-echo
+            // of the greeting cannot produce a stray response.
+            enableMicTracks('output_audio_buffer.stopped');
             setStatusText('You\'re connected — speak naturally or tap a prompt below.');
             maybeResumeVadAfterWelcome('output_audio_buffer.stopped');
           }
