@@ -1128,6 +1128,10 @@ html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-to
 html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-tooltip]:focus-visible::before{
   border-right-color:#f0f6fc;
 }
+html[data-user-theme="dark"] html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .user-app-shell .sidebar,
+html[data-user-theme="dark"] html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .user-app-shell .sidebar{
+  box-shadow:8px 0 32px rgba(0,0,0,.45);
+}
 
 @media (max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1235,6 +1239,74 @@ html[data-user-theme="dark"] html.user-sidebar-collapsed .sidebar-logout[data-to
     justify-content:center;padding:10px;position:relative;overflow:visible;
   }
   html.user-sidebar-collapsed .nav-go-live-placeholder{padding:10px}
+  /* Collapsed rail: hover to peek full menu (desktop only; preference stays collapsed). */
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover),
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within){
+    --portal-sidebar-width:var(--sidebar-width);
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .user-app-shell .sidebar,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .user-app-shell .sidebar{
+    padding:24px 16px 22px;
+    box-shadow:8px 0 28px rgba(15,23,42,.12);
+    z-index:50;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand-title,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand-tagline,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item-label,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-label,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout span,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-label,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand-title,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand-tagline,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item-label,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-label,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout span,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-label{
+    display:revert;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand-text,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand-text{
+    display:flex;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .brand,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .brand{
+    justify-content:flex-start;
+    margin-bottom:22px;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item{
+    justify-content:flex-start;
+    padding:10px 12px;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item .nav-attention-dot,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item .nav-item-badge,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item .nav-attention-dot,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item .nav-item-badge{
+    position:static;
+    margin-left:6px;
+    box-shadow:none;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-btn,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-btn,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout{
+    justify-content:flex-start;
+  }
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .nav-item[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-btn[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-collapse-btn[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:hover) .sidebar-logout[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .nav-item[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-btn[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-collapse-btn[data-tooltip]:hover::before,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout[data-tooltip]:hover::after,
+  html.user-sidebar-collapsed:has(.user-app-shell .sidebar:focus-within) .sidebar-logout[data-tooltip]:hover::before{
+    content:none;
+    display:none;
+  }
 }
 @media (max-width:860px){
   .user-app-shell{
