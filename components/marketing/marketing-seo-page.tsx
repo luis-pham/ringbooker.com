@@ -157,7 +157,7 @@ export function MarketingSeoPage({
 .seo-breadcrumb{margin:0 0 10px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
 .seo-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
 .seo-breadcrumb a:hover{color:var(--mk-brand-purple-deep,#5b21b6)}
-.seo-article .hero-eyebrow{margin-bottom:12px}
+.seo-article .hero-eyebrow{margin-bottom:12px;color:var(--mk-hero-eyebrow,#64748b)}
 .seo-article h1{font-size:var(--mk-article-h1);line-height:var(--mk-article-h1-lh);letter-spacing:var(--mk-article-h1-track);color:var(--mk-text-strong,#111827);margin:0 0 12px}
 .seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:var(--mk-text-body,#334155);margin:0 0 22px}
 .seo-section{padding-top:18px}

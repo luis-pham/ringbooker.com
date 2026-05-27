@@ -72,6 +72,7 @@
 
   --mk-eyebrow: 12px;
   --mk-eyebrow-ls: 0.08em;
+  --mk-hero-eyebrow: #64748b;
 
   --mk-section-h2: clamp(28px, 3.35vw, 42px);
   --mk-section-h2-lh: 1.14;

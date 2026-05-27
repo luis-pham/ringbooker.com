@@ -21,13 +21,20 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   text-transform:uppercase;
   line-height:1.4;
   margin-bottom:16px;
-  color:var(--mk-text-strong,#111827);
+  color:var(--mk-hero-eyebrow,#64748b) !important;
   border:none;
   background:none;
   padding:0;
   border-radius:0;
   backdrop-filter:none;
   box-shadow:none;
+}
+
+/* Call forwarding hub hero (Tailwind page shell) */
+.cf-hero-eyebrow{
+  display:inline-flex;
+  margin-bottom:16px;
+  text-align:center;
 }
 
 /* Section eyebrows — vertical landings (hero uses .hero-eyebrow above) */

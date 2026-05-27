@@ -73,6 +73,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 a{text-decoration:none;color:inherit}
 .hiw-page{background:#fff}
 /* Desktop: same top padding as marketing-demo hero under fixed nav */
+.hiw-page .hero-eyebrow{color:var(--mk-hero-eyebrow,#64748b)}
 .hiw-hero{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%);overflow:hidden}
 .hiw-container{width:100%;max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .hiw-hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:42px;align-items:center}

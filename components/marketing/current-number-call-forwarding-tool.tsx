@@ -297,9 +297,7 @@ export function CurrentNumberCallForwardingTool() {
           <span aria-hidden>/</span>
           <span className="font-normal text-slate-500">Call Forwarding</span>
         </nav>
-        <p className="inline-flex rounded-full border border-violet-200/70 bg-white/85 px-3 py-1 text-[13px] font-semibold uppercase tracking-[0.12em] text-violet-700/90">
-          Current Number Setup
-        </p>
+        <p className="hero-eyebrow cf-hero-eyebrow">Current Number Setup</p>
         <h1 className="mx-auto mt-4 max-w-4xl text-[clamp(34px,5vw,56px)] font-semibold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>
         <p className="mx-auto mt-4 max-w-3xl text-[17px] leading-[1.72] text-[#64748B]">
           <Link href="/current-number/can-i-keep-my-current-salon-phone-number-with-an-ai-receptionist" className={cfBodyLink}>

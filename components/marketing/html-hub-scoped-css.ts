@@ -73,7 +73,7 @@ const HTML_HUB_SCOPED_CSS_BASE = `
   box-shadow:none;
 }
 .html-hub-page .hero-eyebrow,
-.html-hub-page .hero--landing .hero-eyebrow{color:var(--mk-text-strong,#111827)}
+.html-hub-page .hero--landing .hero-eyebrow{color:var(--mk-hero-eyebrow,#64748b) !important}
 .html-hub-page .pill-badge{color:var(--mk-brand-purple-dark,#7c3aed)}
 .html-hub-page .hero h1{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:20px;color:var(--gray-800)}
 .html-hub-page .hero h1 mark{border-radius:12px;padding:2px 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}

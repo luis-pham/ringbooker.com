@@ -426,7 +426,7 @@ const styles: string[] = [
     width:100%;
     text-align:center;
     margin:0 auto 16px;
-    color:var(--mk-text-strong,#111827);
+    color:var(--mk-hero-eyebrow,#64748b);
   }
   .vd-icon{width:22px;height:22px;border-radius:7px;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
   .vd-hero-h1{
