@@ -659,7 +659,7 @@ export function UserCallsLive({
                       </tbody>
                     </table>
 
-                    <div className="mobile-calls">
+                    <div className="mobile-calls" style={{ display: 'none' }}>
                       {calls.map((call) => {
                         const outcome = outcomeMeta(call.outcome);
                         const status = statusMeta(call.status);

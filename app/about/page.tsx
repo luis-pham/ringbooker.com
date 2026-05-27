@@ -12,7 +12,6 @@ export default function AboutPage() {
   return (
     <MarketingLegalPage
       breadcrumbLabel="About"
-      badge="About"
       title="About RingBooker"
       subtitle="RingBooker is an AI phone answering and call forwarding service built for beauty and aesthetic businesses across the United States — including nail salons, hair salons, day spas, med spas, and beauty clinics."
       intro={

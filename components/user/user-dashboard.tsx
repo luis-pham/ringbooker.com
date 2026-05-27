@@ -684,9 +684,9 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 }
 .usage-progress-track{
   height:6px;border-radius:20px;margin-top:10px;overflow:hidden;
-  background-color:#dbeafe;
-  border:1px solid rgba(37,99,235,.2);
-  box-shadow:inset 0 1px 2px rgba(37,99,235,.08);
+  background-color:#7feab8;
+  border:0;
+  box-shadow:none;
 }
 .usage-progress-fill{
   height:100%;min-width:0;border-radius:999px;
@@ -973,8 +973,8 @@ html[data-user-theme="dark"] .card.enterprise-managed-card{
   background:rgba(56,139,253,.1);
 }
 html[data-user-theme="dark"] .usage-progress-track{
-  background:rgba(56,139,253,.22);border-color:rgba(56,139,253,.35);
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.25);
+  background:#7feab8;border:0;
+  box-shadow:none;
 }
 html[data-user-theme="dark"] .usage-progress-fill--ok{background:#9ca3af}
 html[data-user-theme="dark"] .usage-progress-fill--near{background:#6b7280}

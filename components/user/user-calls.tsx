@@ -127,8 +127,8 @@ html[data-user-theme="dark"] .modal-backdrop{background:rgba(1,4,9,.78)}
 html[data-user-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.55)}
 @media (max-width:900px){
   .calls-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .calls-table-desktop{display:none}
-  .mobile-calls{display:flex;flex-direction:column;gap:10px;padding:10px}
+  .calls-table-desktop{display:none !important}
+  .mobile-calls{display:flex !important;flex-direction:column;gap:10px;padding:10px}
 }
 @media (max-width:640px){
   .calls-metric-grid{grid-template-columns:1fr}
