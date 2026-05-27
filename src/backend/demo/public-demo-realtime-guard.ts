@@ -187,6 +187,28 @@ export function clearDirectDemoActiveSlot(ip: string, requestId?: string): void 
   if (!requestId || cur.requestId === requestId) activeByIp.delete(ip);
 }
 
+/**
+ * Returns true when an active slot exists for `ip` and its stored value matches `requestId`.
+ * Does NOT modify the slot — safe to call from tool-execution endpoints during an active demo.
+ */
+export async function verifyDirectDemoActiveSlot(ip: string, requestId: string): Promise<boolean> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      if (redis.status === 'wait') await redis.connect();
+      const stored = await redis.get(demoSlotRedisKey(ip));
+      if (stored !== null) return stored === requestId;
+      // Redis returned null (key expired or missing) — don't fall through to memory; treat as inactive.
+      return false;
+    } catch {
+      // Redis error — fall through to memory fallback
+    }
+  }
+  // Memory fallback (single-node only)
+  const cur = activeByIp.get(ip);
+  return Boolean(cur && cur.requestId === requestId && cur.expiresAt > Date.now());
+}
+
 /** Removes the active slot only when `requestId` matches (used by client release beacon). */
 export async function releaseDirectDemoActiveSlot(ip: string, requestId: string): Promise<boolean> {
   const redisResult = await releaseSlotRedis(ip, requestId);

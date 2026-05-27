@@ -1792,7 +1792,7 @@ export function MarketingHomeTemplate() {
                 <article className="step-card rv d1">
                   <div className="step-marker">2</div>
                   <h3>Import your details</h3>
-                  <p>Paste your URL — RingBooker pulls your hours, services, and pricing. Review, adjust, and connect your tools.</p>
+                  <p>Paste your website URL to auto-fill your hours, services, and pricing — or enter your details manually. Review, adjust, and connect your tools.</p>
                 </article>
                 <article className="step-card rv d2">
                   <div className="step-marker">3</div>

@@ -1618,6 +1618,50 @@ export function MarketingVerticalDemoTemplate({
       let realtimeSessionReady = false;
       let vadResumeAfterWelcomeSent = false;
       let awaitingInitialGreetingAudioStop = false;
+      let toolsRegistered = false;
+
+      /** Register validate_appointment_time tool via session.update (once). */
+      const registerDemoTools = () => {
+        if (toolsRegistered || dc.readyState !== 'open') return;
+        toolsRegistered = true;
+        try {
+          dc.send(
+            JSON.stringify({
+              type: 'session.update',
+              session: {
+                tools: [
+                  {
+                    type: 'function',
+                    name: 'validate_appointment_time',
+                    description:
+                      'Validates whether a requested appointment date and time falls within business hours. ' +
+                      'Call this whenever the caller provides a specific date and time for a booking before confirming it.',
+                    parameters: {
+                      type: 'object',
+                      properties: {
+                        date: {
+                          type: 'string',
+                          description: 'Appointment date in YYYY-MM-DD format.',
+                        },
+                        time: {
+                          type: 'string',
+                          description: 'Appointment time in HH:MM 24-hour format.',
+                        },
+                      },
+                      required: ['date', 'time'],
+                    },
+                  },
+                ],
+                tool_choice: 'auto',
+              },
+            }),
+          );
+          logDemoRealtime('demo_tools_registered', { tool: 'validate_appointment_time' });
+        } catch (err) {
+          toolsRegistered = false;
+          logDemoRealtime('demo_tools_register_failed', { err: err instanceof Error ? err.message : String(err) });
+        }
+      };
 
       const maybeResumeVadAfterWelcome = (fromEvent: string) => {
         const td = sessionBody.turnDetectionAfterWelcome;
@@ -1710,6 +1754,10 @@ export function MarketingVerticalDemoTemplate({
             response?: { status?: string };
             type?: string;
             transcript?: string;
+            // Tool call fields (response.function_call_arguments.done)
+            call_id?: string;
+            name?: string;
+            arguments?: string;
           };
           const evType = data.type;
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
@@ -1719,6 +1767,9 @@ export function MarketingVerticalDemoTemplate({
             // Caller-speech transcription is enabled at client-secret mint time
             // (audio.input.transcription) — no session.update needed here.
             realtimeSessionReady = true;
+            // Register tools on session.created (once). The resulting session.updated
+            // will call requestInitialGreeting() again but the guard prevents duplicates.
+            if (data.type === 'session.created') registerDemoTools();
             requestInitialGreeting();
           }
           // Transcript capture (in-memory only, used for post-call extraction; never persisted).
@@ -1744,6 +1795,75 @@ export function MarketingVerticalDemoTemplate({
             if (!awaitingInitialGreetingAudioStop) {
               setStatusText('You\'re connected — speak naturally or tap a prompt below.');
             }
+          }
+          // Tool call dispatcher — executes validate_appointment_time on behalf of the model.
+          // The model emits this event when it needs to validate a date/time the caller gave.
+          if (data.type === 'response.function_call_arguments.done' && data.name === 'validate_appointment_time') {
+            const callId = data.call_id;
+            const rawArgs = data.arguments ?? '{}';
+            const currentRequestId = directRealtimeRequestIdRef.current;
+            logDemoRealtime('tool_call_start', { tool: 'validate_appointment_time', callId });
+            void (async () => {
+              let toolOutput: Record<string, unknown>;
+              try {
+                const args = JSON.parse(rawArgs) as { date?: string; time?: string };
+                const validateRes = await fetch('/api/backend/public/demo/realtime-session/validate-appointment-time', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(typeof window !== 'undefined' && window.location?.origin
+                      ? { Origin: window.location.origin }
+                      : {}),
+                  },
+                  body: JSON.stringify({
+                    requestId: currentRequestId,
+                    demoVertical: config.slug,
+                    date: args.date,
+                    time: args.time,
+                  }),
+                });
+                const validateBody = (await validateRes.json().catch(() => ({}))) as Record<string, unknown>;
+                if (validateRes.ok && validateBody.ok === true) {
+                  toolOutput = {
+                    valid: validateBody.valid,
+                    reason: validateBody.reason,
+                    normalizedDatetimeUtc: validateBody.normalizedDatetimeUtc,
+                    messageForAi: validateBody.messageForAi,
+                  };
+                  logDemoRealtime('tool_call_ok', { tool: 'validate_appointment_time', callId, reason: validateBody.reason });
+                } else {
+                  // Endpoint error — return not_configured so the model doesn't block the booking.
+                  toolOutput = {
+                    valid: true,
+                    reason: 'business_hours_not_configured',
+                    messageForAi: 'The requested time may be captured. Continue without saying you checked anything.',
+                  };
+                  logDemoRealtime('tool_call_fallback', { tool: 'validate_appointment_time', callId, status: validateRes.status });
+                }
+              } catch (err) {
+                toolOutput = {
+                  valid: true,
+                  reason: 'business_hours_not_configured',
+                  messageForAi: 'The requested time may be captured. Continue without saying you checked anything.',
+                };
+                logDemoRealtime('tool_call_error', { tool: 'validate_appointment_time', callId, err: err instanceof Error ? err.message : String(err) });
+              }
+              // Send result back to the model via the data channel.
+              if (dc.readyState === 'open') {
+                dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: callId,
+                    output: JSON.stringify(toolOutput),
+                  },
+                }));
+                dc.send(JSON.stringify({ type: 'response.create' }));
+                logDemoRealtime('tool_call_result_sent', { tool: 'validate_appointment_time', callId });
+              } else {
+                logDemoRealtime('tool_call_result_skip', { tool: 'validate_appointment_time', callId, reason: 'dc_closed' });
+              }
+            })();
           }
           if (awaitingInitialGreetingAudioStop && data.type === 'output_audio_buffer.stopped') {
             awaitingInitialGreetingAudioStop = false;

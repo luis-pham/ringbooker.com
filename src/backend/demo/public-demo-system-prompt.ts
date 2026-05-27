@@ -5,6 +5,8 @@ import {
   type VoicePromptVertical,
 } from '@/src/agent/prompts';
 import type { VoicePromptCallType } from '@/src/agent/prompts/types';
+import type { BusinessHours } from '@/src/backend/domain/types';
+import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
 
 export type DemoConfigInput = {
   city?: string;
@@ -20,21 +22,33 @@ export type DemoConfigInput = {
   }>;
 };
 
+type DemoVerticalDefaults = {
+  city: string;
+  timezone: string;
+  primaryHours: string;
+  secondaryHours: string;
+  /** Structured hours keyed by full weekday name (monday … sunday) — used for appointment validation. */
+  structuredHours: BusinessHours;
+  staffNames: string[];
+  services: Array<{ category: string; name: string; price: number; duration: string }>;
+};
+
 /** Default demo data per vertical — used when demoConfig fields are missing */
-const VERTICAL_DEMO_DEFAULTS: Record<
-  string,
-  {
-    city: string;
-    primaryHours: string;
-    secondaryHours: string;
-    staffNames: string[];
-    services: Array<{ category: string; name: string; price: number; duration: string }>;
-  }
-> = {
+const VERTICAL_DEMO_DEFAULTS: Record<string, DemoVerticalDefaults> = {
   'nail-salon': {
     city: 'Garden Grove, CA',
+    timezone: 'America/Los_Angeles',
     primaryHours: 'Mon–Sat 9am–7pm',
     secondaryHours: 'Sun 10am–5pm',
+    structuredHours: {
+      monday:    { open: '09:00', close: '19:00' },
+      tuesday:   { open: '09:00', close: '19:00' },
+      wednesday: { open: '09:00', close: '19:00' },
+      thursday:  { open: '09:00', close: '19:00' },
+      friday:    { open: '09:00', close: '19:00' },
+      saturday:  { open: '09:00', close: '19:00' },
+      sunday:    { open: '10:00', close: '17:00' },
+    },
     staffNames: ['Lan', 'Mai', 'Thu'],
     services: [
       { category: 'Manicure', name: 'Regular Manicure', price: 18, duration: '30 min' },
@@ -48,8 +62,18 @@ const VERTICAL_DEMO_DEFAULTS: Record<
   },
   'hair-salon': {
     city: 'Austin, TX',
+    timezone: 'America/Chicago',
     primaryHours: 'Tue–Sat 9am–6pm',
     secondaryHours: 'Sun–Mon closed',
+    structuredHours: {
+      monday:    { closed: true },
+      tuesday:   { open: '09:00', close: '18:00' },
+      wednesday: { open: '09:00', close: '18:00' },
+      thursday:  { open: '09:00', close: '18:00' },
+      friday:    { open: '09:00', close: '18:00' },
+      saturday:  { open: '09:00', close: '18:00' },
+      sunday:    { closed: true },
+    },
     staffNames: ['Mia', 'Jordan', 'Alex'],
     services: [
       { category: 'Cut & Style', name: "Women's Haircut", price: 65, duration: '60 min' },
@@ -62,8 +86,18 @@ const VERTICAL_DEMO_DEFAULTS: Record<
   },
   'day-spa': {
     city: 'Scottsdale, AZ',
+    timezone: 'America/Phoenix',
     primaryHours: 'Mon–Sat 10am–7pm',
     secondaryHours: 'Sun 10am–4pm',
+    structuredHours: {
+      monday:    { open: '10:00', close: '19:00' },
+      tuesday:   { open: '10:00', close: '19:00' },
+      wednesday: { open: '10:00', close: '19:00' },
+      thursday:  { open: '10:00', close: '19:00' },
+      friday:    { open: '10:00', close: '19:00' },
+      saturday:  { open: '10:00', close: '19:00' },
+      sunday:    { open: '10:00', close: '16:00' },
+    },
     staffNames: ['Avery', 'Naomi', 'Sam'],
     services: [
       { category: 'Massage', name: 'Signature Massage', price: 120, duration: '60 min' },
@@ -75,8 +109,18 @@ const VERTICAL_DEMO_DEFAULTS: Record<
   },
   'med-spa': {
     city: 'Newport Beach, CA',
+    timezone: 'America/Los_Angeles',
     primaryHours: 'Mon–Fri 9am–6pm',
     secondaryHours: 'Sat 10am–3pm',
+    structuredHours: {
+      monday:    { open: '09:00', close: '18:00' },
+      tuesday:   { open: '09:00', close: '18:00' },
+      wednesday: { open: '09:00', close: '18:00' },
+      thursday:  { open: '09:00', close: '18:00' },
+      friday:    { open: '09:00', close: '18:00' },
+      saturday:  { open: '10:00', close: '15:00' },
+      sunday:    { closed: true },
+    },
     staffNames: ['Dr. Lee', 'Nurse Ava', 'Morgan'],
     services: [
       { category: 'Consults', name: 'Injectables Consultation', price: 0, duration: '20 min' },
@@ -88,8 +132,18 @@ const VERTICAL_DEMO_DEFAULTS: Record<
   },
   'beauty-clinic': {
     city: 'Seattle, WA',
+    timezone: 'America/Los_Angeles',
     primaryHours: 'Mon–Fri 8:30am–5:30pm',
     secondaryHours: 'Sat by appointment',
+    structuredHours: {
+      monday:    { open: '08:30', close: '17:30' },
+      tuesday:   { open: '08:30', close: '17:30' },
+      wednesday: { open: '08:30', close: '17:30' },
+      thursday:  { open: '08:30', close: '17:30' },
+      friday:    { open: '08:30', close: '17:30' },
+      saturday:  { open: '09:00', close: '13:00' },
+      sunday:    { closed: true },
+    },
     staffNames: ['Dr. Patel', 'Erin', 'Sofia'],
     services: [
       { category: 'Appointments', name: 'New Patient Consultation', price: 75, duration: '30 min' },
@@ -98,6 +152,19 @@ const VERTICAL_DEMO_DEFAULTS: Record<
     ],
   },
 };
+
+/**
+ * Returns the timezone and structured BusinessHours for a demo vertical.
+ * Used by the validate-appointment-time endpoint to run server-side validation
+ * without the full production Shop record.
+ */
+export function getDemoVerticalShopContext(
+  vertical: string,
+): { timezone: string; hours: BusinessHours } | null {
+  const defaults = VERTICAL_DEMO_DEFAULTS[vertical];
+  if (!defaults) return null;
+  return { timezone: defaults.timezone, hours: defaults.structuredHours };
+}
 
 /** Sanitize a plain-text user input to prevent prompt injection via newlines/separators */
 export function sanitizeDemoTextField(value: string | undefined, maxLen = 280): string {
@@ -184,6 +251,14 @@ export function buildPublicDemoSystemPrompt(input: {
 
   const city = input.demoConfig?.city || defaults?.city;
 
+  // Compute real-time business context so the AI knows whether the shop is currently open
+  // and can correctly answer time-related questions. Uses vertical default timezone; falls
+  // back to graceful nulls when the vertical is unknown.
+  const demoTimezone = defaults?.timezone ?? null;
+  const demoTimeContext = demoTimezone
+    ? resolveShopTimeContext({ hours: defaults!.structuredHours, timezone: demoTimezone })
+    : null;
+
   const demoContext =
     input.demoChannel === 'inbound_sip'
       ? 'Inbound SIP pilot demo — isolated from production. No real bookings are written.'
@@ -195,6 +270,10 @@ export function buildPublicDemoSystemPrompt(input: {
     welcomeMessage,
     location: city ? sanitizeDemoTextField(city, 120) : undefined,
     hours: hoursRaw || undefined,
+    timezone: demoTimezone ?? undefined,
+    currentLocalTime: demoTimeContext?.currentLocalTime ?? undefined,
+    currentlyOpen: demoTimeContext?.currentlyOpen ?? undefined,
+    todayHours: demoTimeContext?.todayHours ?? undefined,
     providers: providers.length > 0 ? providers : [],
     languageOptions:
       resolvedVertical === 'nail-salon' || resolvedVertical === 'beauty-clinic'

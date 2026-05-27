@@ -9,7 +9,7 @@ import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/
 import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
 import { openAiRealtimeVoiceForDemoVerticalSlug } from '@/src/agent/prompts';
-import { buildPublicDemoScriptedWelcomeLine, buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
+import { buildPublicDemoScriptedWelcomeLine, buildPublicDemoSystemPrompt, getDemoVerticalShopContext } from '@/src/backend/demo/public-demo-system-prompt';
 import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   clearDirectDemoActiveSlot,
@@ -20,7 +20,11 @@ import {
   runDirectDemoSerialized,
   tryOccupyDirectDemoActiveSlot,
   releaseDirectDemoActiveSlot,
+  verifyDirectDemoActiveSlot,
 } from '@/src/backend/demo/public-demo-realtime-guard';
+import { shopLocalToUtcIso, isRequestedAppointmentInsideBusinessHours } from '@/src/agent/tools/types';
+import { buildValidationMessageForAi } from '@/src/agent/tools/validate-appointment-time';
+import { DateTime } from 'luxon';
 import { effectiveDemoClientCountry, resolveDemoClientCountryForPersistence } from '@/src/backend/lib/demo-client-country';
 import { parseDemoUserAgentHints } from '@/src/backend/lib/demo-user-agent-hints';
 import {
@@ -3809,6 +3813,108 @@ export function createBackendApp(deps: {
       }
     }
     return c.json({ ok: true });
+  });
+
+  // Validates a requested appointment date/time against the demo vertical's business hours.
+  // Called by the browser's client-side tool dispatcher when OpenAI emits
+  // `response.function_call_arguments.done` for the `validate_appointment_time` tool.
+  app.post(path('/public/demo/realtime-session/validate-appointment-time'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_realtime_validate, 'demo_realtime_validate');
+    if (limited) return limited;
+
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = z
+      .object({
+        requestId: z.string().min(1).max(200),
+        demoVertical: z.string().min(1).max(60),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        time: z.string().regex(/^\d{2}:\d{2}$/),
+      })
+      .safeParse(body);
+
+    if (!parsed.success) {
+      return c.json({ ok: false, code: 'invalid_demo_payload' }, 400);
+    }
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+
+    // Verify the requestId belongs to an active slot for this IP so the endpoint
+    // cannot be used as a free business-hours oracle by unrelated clients.
+    const isActive = await verifyDirectDemoActiveSlot(ip, parsed.data.requestId);
+    if (!isActive) {
+      return c.json(
+        {
+          ok: false,
+          code: 'demo_session_expired',
+          message: 'This demo session has ended. You can start a new demo when you are ready.',
+        },
+        404,
+      );
+    }
+
+    const shopCtx = getDemoVerticalShopContext(parsed.data.demoVertical);
+
+    // Unknown vertical — treat as unconfigured hours so the AI doesn't block the booking.
+    if (!shopCtx) {
+      const reason = 'business_hours_not_configured' as const;
+      return c.json({
+        ok: true,
+        valid: true,
+        reason,
+        normalizedDatetimeUtc: null,
+        messageForAi: buildValidationMessageForAi(reason),
+      });
+    }
+
+    const normalizedDatetimeUtc = shopLocalToUtcIso({
+      date: parsed.data.date,
+      time: parsed.data.time,
+      timezone: shopCtx.timezone,
+    });
+
+    if (!normalizedDatetimeUtc) {
+      return c.json({ ok: false, code: 'invalid_datetime' }, 400);
+    }
+
+    const requestedDatetime = DateTime.fromISO(normalizedDatetimeUtc, { zone: 'utc' });
+    const isPastDatetime = requestedDatetime < DateTime.utc();
+    const insideHours = isPastDatetime
+      ? null
+      : isRequestedAppointmentInsideBusinessHours(shopCtx, parsed.data);
+
+    const reason =
+      isPastDatetime
+        ? ('past_datetime' as const)
+        : insideHours === false
+          ? ('outside_business_hours' as const)
+          : insideHours === true
+            ? ('within_business_hours' as const)
+            : ('business_hours_not_configured' as const);
+
+    const valid = reason === 'within_business_hours' || reason === 'business_hours_not_configured';
+
+    logger.info(
+      {
+        requestId: parsed.data.requestId,
+        demoVertical: parsed.data.demoVertical,
+        date: parsed.data.date,
+        time: parsed.data.time,
+        reason,
+        valid,
+      },
+      'demo_validate_appointment_time',
+    );
+
+    return c.json({
+      ok: true,
+      valid,
+      reason,
+      normalizedDatetimeUtc,
+      messageForAi: buildValidationMessageForAi(reason),
+    });
   });
 
   app.post(path('/public/demo/web-session'), async (c) => {

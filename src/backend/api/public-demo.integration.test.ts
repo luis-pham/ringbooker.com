@@ -13,6 +13,8 @@ import {
   __clearDirectDemoActiveForTests,
   __expireDirectDemoActiveForTests,
   __resetPublicDemoRealtimeGuardForTests,
+  tryOccupyDirectDemoActiveSlot,
+  directDemoActiveTtlMs,
 } from '@/src/backend/demo/public-demo-realtime-guard';
 import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
@@ -763,6 +765,235 @@ test('public demo realtime-session invalid payload returns 400 with code', async
   } finally {
     restore();
   }
+});
+
+// ─── validate-appointment-time endpoint ──────────────────────────────────────
+
+function makeValidateApp() {
+  applyRequiredTestEnv({ PUBLIC_DEMO_SHOP_ID: 'demo-shop' });
+  return createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+    telephonyService: new FakeTelephonyService(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    runtimeInfo: {
+      mode: 'memory',
+      commProvider: 'noop',
+      agentRuntimeMode: 'mock',
+      agentTransportMode: 'mock',
+      agentVoiceProviderMode: 'none',
+    },
+  });
+}
+
+// In the test environment getClientIp resolves to "unknown" (no trusted-proxy config),
+// so we occupy slots under "unknown" and send requests without a forwarded-for header.
+const VALIDATE_TEST_HEADERS = {
+  'content-type': 'application/json',
+  origin: 'http://localhost:3000',
+  host: 'localhost:3000',
+};
+const VALIDATE_TEST_IP = 'unknown';
+
+test('validate-appointment-time returns within_business_hours for a future Monday slot during nail-salon hours', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  const requestId = 'demo-direct-validate-test-001';
+  await tryOccupyDirectDemoActiveSlot(VALIDATE_TEST_IP, requestId, directDemoActiveTtlMs());
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId,
+      demoVertical: 'nail-salon',
+      date: '2099-06-09', // Monday
+      time: '10:00',      // within Mon–Sat 9am–7pm
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; valid?: boolean; reason?: string; normalizedDatetimeUtc?: string; messageForAi?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.valid, true);
+  assert.equal(body.reason, 'within_business_hours');
+  assert.ok(typeof body.normalizedDatetimeUtc === 'string' && body.normalizedDatetimeUtc.length > 0);
+  assert.ok(typeof body.messageForAi === 'string' && body.messageForAi.length > 0);
+});
+
+test('validate-appointment-time returns outside_business_hours for a nail-salon slot after 7pm', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  const requestId = 'demo-direct-validate-test-002';
+  await tryOccupyDirectDemoActiveSlot(VALIDATE_TEST_IP, requestId, directDemoActiveTtlMs());
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId,
+      demoVertical: 'nail-salon',
+      date: '2099-06-09', // Monday
+      time: '21:00',      // after 7pm close
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; valid?: boolean; reason?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.valid, false);
+  assert.equal(body.reason, 'outside_business_hours');
+});
+
+test('validate-appointment-time returns outside_business_hours for hair-salon closed Sunday', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  const requestId = 'demo-direct-validate-test-003';
+  await tryOccupyDirectDemoActiveSlot(VALIDATE_TEST_IP, requestId, directDemoActiveTtlMs());
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId,
+      demoVertical: 'hair-salon',
+      date: '2099-06-08', // Sunday — hair-salon closed Sun+Mon
+      time: '11:00',
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; valid?: boolean; reason?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.valid, false);
+  assert.equal(body.reason, 'outside_business_hours');
+});
+
+test('validate-appointment-time returns past_datetime for a date in 2000', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  const requestId = 'demo-direct-validate-test-004';
+  await tryOccupyDirectDemoActiveSlot(VALIDATE_TEST_IP, requestId, directDemoActiveTtlMs());
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId,
+      demoVertical: 'nail-salon',
+      date: '2000-01-03',
+      time: '10:00',
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; valid?: boolean; reason?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.valid, false);
+  assert.equal(body.reason, 'past_datetime');
+});
+
+test('validate-appointment-time returns business_hours_not_configured for unknown vertical', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  const requestId = 'demo-direct-validate-test-005';
+  await tryOccupyDirectDemoActiveSlot(VALIDATE_TEST_IP, requestId, directDemoActiveTtlMs());
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId,
+      demoVertical: 'unknown-vertical-xyz',
+      date: '2099-06-09',
+      time: '10:00',
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; valid?: boolean; reason?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.valid, true);
+  assert.equal(body.reason, 'business_hours_not_configured');
+});
+
+test('validate-appointment-time returns 404 when no active slot exists', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  // No slot occupied — simulate expired / never-started session
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId: 'demo-direct-nonexistent-999',
+      demoVertical: 'nail-salon',
+      date: '2099-06-09',
+      time: '10:00',
+    }),
+  });
+
+  assert.equal(res.status, 404);
+  const body = (await res.json()) as { ok: boolean; code?: string };
+  assert.equal(body.ok, false);
+  assert.equal(body.code, 'demo_session_expired');
+});
+
+test('validate-appointment-time returns 404 when requestId does not match active slot', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  // Slot occupied by a different requestId (simulates a stolen/wrong requestId)
+  await tryOccupyDirectDemoActiveSlot(VALIDATE_TEST_IP, 'demo-direct-real-session-aaa', directDemoActiveTtlMs());
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({
+      requestId: 'demo-direct-wrong-session-bbb', // doesn't match stored slot
+      demoVertical: 'nail-salon',
+      date: '2099-06-09',
+      time: '10:00',
+    }),
+  });
+
+  assert.equal(res.status, 404);
+  const body = (await res.json()) as { ok: boolean; code?: string };
+  assert.equal(body.ok, false);
+  assert.equal(body.code, 'demo_session_expired');
+});
+
+test('validate-appointment-time returns 400 for missing required fields', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+
+  const app = makeValidateApp();
+  const res = await app.request('/public/demo/realtime-session/validate-appointment-time', {
+    method: 'POST',
+    headers: VALIDATE_TEST_HEADERS,
+    body: JSON.stringify({ requestId: 'demo-direct-x' }), // missing demoVertical, date, time
+  });
+
+  assert.equal(res.status, 400);
+  const body = (await res.json()) as { ok: boolean; code?: string };
+  assert.equal(body.ok, false);
+  assert.equal(body.code, 'invalid_demo_payload');
 });
 
 test('public demo realtime-session rejects missing origin with 403', async () => {
