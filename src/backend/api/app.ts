@@ -6626,6 +6626,88 @@ export function createBackendApp(deps: {
     return c.json({ ok: true, url, expiresInSeconds });
   });
 
+  /**
+   * Proxy endpoint for call recording audio.
+   *
+   * The <audio> element sets this as its src directly.  The request is
+   * same-origin (session cookie auth) so no CORS or CSP issues apply.
+   * Range requests from the browser are forwarded to R2 so seeking works.
+   *
+   * Background: presigned R2 URLs work fine when opened in a new tab
+   * (top-level navigation bypasses CORS/CSP), but <audio> elements trigger
+   * CORS preflight on range requests, which R2 rejects without a CORS
+   * policy configured.  Proxying through the server avoids this entirely.
+   */
+  app.get(path('/user/calls/:id/recording-audio'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_call_recording_playback');
+    if (limited) return new Response('Too Many Requests', { status: 429 });
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return new Response('Service unavailable', { status: 503 });
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return new Response('Not found', { status: 404 });
+    if (!isCapabilityAllowed(shop.plan, 'call_recording_playback')) {
+      return new Response('Plan feature locked', { status: 403 });
+    }
+    if (!deps.recordingStorage) {
+      return new Response('Recording storage unavailable', { status: 503 });
+    }
+
+    const providerCallId = c.req.param('id') ?? '';
+    const call = await deps.callLogsRepository.findByProviderCallId({
+      provider: 'telnyx_call_control',
+      providerCallId,
+    });
+    if (!call || call.shopId !== shop.id) return new Response('Not found', { status: 404 });
+    if (call.recordingStatus !== 'available' || !call.recordingStorageKey) {
+      return new Response('Recording not available', { status: 404 });
+    }
+
+    // Generate a short-lived presigned URL for the server-side fetch only.
+    const presignedUrl = await deps.recordingStorage.createPlaybackUrl({
+      objectKey: call.recordingStorageKey,
+      expiresInSeconds: 60,
+    });
+
+    // Forward Range header so the browser can seek inside the audio player.
+    const rangeHeader = c.req.header('Range');
+    const upstreamHeaders: Record<string, string> = {};
+    if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
+
+    let r2Response: Response;
+    try {
+      r2Response = await fetch(presignedUrl, {
+        headers: upstreamHeaders,
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch {
+      return new Response('Recording fetch failed', { status: 502 });
+    }
+
+    if (!r2Response.ok && r2Response.status !== 206) {
+      return new Response('Recording fetch failed', { status: 502 });
+    }
+
+    // Forward only the headers the browser needs for media playback.
+    const outHeaders = new Headers();
+    for (const name of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified']) {
+      const val = r2Response.headers.get(name);
+      if (val) outHeaders.set(name, val);
+    }
+    // Ensure the browser renders it as inline audio, never a download.
+    outHeaders.set('Content-Disposition', 'inline');
+    // Allow short-term browser caching so rapid seeks don't re-hit the server.
+    outHeaders.set('Cache-Control', 'private, max-age=60');
+
+    return new Response(r2Response.body, {
+      status: r2Response.status,
+      headers: outHeaders,
+    });
+  });
+
   app.get(path('/user/calls/:id'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_detail');
     if (limited) return limited;

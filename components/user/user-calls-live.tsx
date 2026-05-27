@@ -439,26 +439,16 @@ export function UserCallsLive({
     }
   }
 
-  async function listenToCall(call: Call) {
+  function listenToCall(call: Call) {
     setActiveCall(call);
     setShowTranscript(false);
-    setRecordingUrl(null);
     setRecordingError(null);
-    setRecordingLoading(true);
-    try {
-      const recordingCallId = call.providerCallId ?? call.id;
-      const res = await fetch(`/api/backend/user/calls/${encodeURIComponent(recordingCallId)}/recording-playback-url`);
-      const body = (await res.json()) as { ok: boolean; url?: string; error?: string };
-      if (!res.ok || !body.ok || !body.url) {
-        setRecordingError(body.error ?? 'recording_unavailable');
-        return;
-      }
-      setRecordingUrl(body.url);
-    } catch {
-      setRecordingError('network_error');
-    } finally {
-      setRecordingLoading(false);
-    }
+    setRecordingLoading(false);
+    // Use the server-side proxy endpoint as the audio src.
+    // This avoids cross-origin CORS/CSP issues that block <audio> when using
+    // presigned R2 URLs directly (range requests trigger CORS enforcement).
+    const recordingCallId = call.providerCallId ?? call.id;
+    setRecordingUrl(`/api/backend/user/calls/${encodeURIComponent(recordingCallId)}/recording-audio`);
   }
 
   function openBookingForCall(call: Call) {
@@ -756,7 +746,7 @@ export function UserCallsLive({
                   </div>
                   {recordingLoading ? <p>Loading recording...</p> : null}
                   {recordingError ? <p>Recording is unavailable right now.</p> : null}
-                  {recordingUrl ? <audio controls preload="metadata" src={recordingUrl}>Your browser cannot play this recording.</audio> : null}
+                  {recordingUrl ? <audio controls preload="metadata" src={recordingUrl} onError={() => setRecordingError('recording_unavailable')}>Your browser cannot play this recording.</audio> : null}
                 </div>
               ) : null}
               <div className="transcript-toggle">
