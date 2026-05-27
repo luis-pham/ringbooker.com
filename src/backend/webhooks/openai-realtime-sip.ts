@@ -86,6 +86,16 @@ const HARD_LIMIT_HANGUP_DELAY_MS = 5_000;
 const END_CALL_TOOL_HANGUP_DELAY_MS = 500;
 /** After playing the transfer announcement, wait this long before dialling the owner. */
 const FALLBACK_TRANSFER_ANNOUNCE_DELAY_MS = 2_000;
+/** Retry budget for callControlHangupWithRetry: max attempts. */
+const HANGUP_RETRY_ATTEMPTS = 3;
+/** Retry budget for callControlHangupWithRetry: delay between attempts. */
+const HANGUP_RETRY_DELAY_MS = 1_000;
+/**
+ * After end_call fires on a demo SIP call that has no Telnyx Call Control ID
+ * (can't issue a programmatic hangup), wait this long then force-persist the
+ * transcript so data isn't lost if the WS never closes cleanly.
+ */
+const DEMO_END_CALL_NO_CCID_FALLBACK_MS = 30_000;
 
 const PROD_CALL_HARD_LIMIT_MESSAGE =
   "I need to end our call now. Please call back if you need further assistance. Goodbye.";
@@ -99,6 +109,40 @@ const FALLBACK_ISSUE_MESSAGE =
 type DemoCallTimer = { timer: ReturnType<typeof setTimeout>; telnyxCallControlId: string };
 const demoCallTimers = new Map<string, DemoCallTimer>();
 
+/**
+ * Wraps callControlHangup with up to HANGUP_RETRY_ATTEMPTS retries spaced
+ * HANGUP_RETRY_DELAY_MS apart.
+ *
+ * Retry policy:
+ *   - Retries on network errors and timeouts (transient).
+ *   - Stops immediately on HTTP 4xx (call already ended / auth issue — no recovery value).
+ *   - Logs a warning on each failure and an error if all attempts are exhausted.
+ */
+async function callControlHangupWithRetry(
+  callControlId: string,
+  deps: { apiKey: string; fetchImpl: typeof fetch },
+  logCtx: Record<string, unknown>,
+): Promise<void> {
+  for (let attempt = 1; attempt <= HANGUP_RETRY_ATTEMPTS; attempt++) {
+    const result = await callControlHangup(callControlId, {}, deps);
+    if (result.ok) {
+      if (attempt > 1) logger.info({ ...logCtx, attempt }, 'openai_sip_hangup_retry_succeeded');
+      return;
+    }
+    // HTTP 4xx → call already terminated or auth mismatch; retrying won't help.
+    if (result.errorKind === 'http' && result.status >= 400 && result.status < 500) {
+      logger.warn({ ...logCtx, attempt, status: result.status }, 'openai_sip_hangup_http_error_no_retry');
+      return;
+    }
+    if (attempt < HANGUP_RETRY_ATTEMPTS) {
+      logger.warn({ ...logCtx, attempt, errorKind: result.errorKind }, 'openai_sip_hangup_failed_will_retry');
+      await new Promise<void>((resolve) => setTimeout(resolve, HANGUP_RETRY_DELAY_MS));
+    } else {
+      logger.error({ ...logCtx, attempt, errorKind: result.errorKind }, 'openai_sip_hangup_all_retries_exhausted');
+    }
+  }
+}
+
 function startDemoCallMaxDurationTimer(
   callId: string,
   telnyxCallControlId: string,
@@ -111,7 +155,7 @@ function startDemoCallMaxDurationTimer(
   const timer = setTimeout(() => {
     demoCallTimers.delete(callId);
     logger.warn({ callId }, 'openai_sip_demo_max_duration_hangup');
-    void callControlHangup(telnyxCallControlId, {}, { apiKey, fetchImpl });
+    void callControlHangupWithRetry(telnyxCallControlId, { apiKey, fetchImpl }, { callId });
   }, DEMO_SIP_MAX_DURATION_MS);
 
   demoCallTimers.set(callId, { timer, telnyxCallControlId });
@@ -877,9 +921,7 @@ export async function handleOpenAiRealtimeSipWebhook(
               if (demoHangupInitiated) return;
               demoHangupInitiated = true;
               logger.info({ callId }, 'openai_sip_demo_end_call_tool_hangup');
-              void callControlHangup(telnyxCcId, {}, { apiKey: demoTelnyxKey, fetchImpl }).catch((err: unknown) => {
-                logger.warn({ err, callId }, 'openai_sip_demo_end_call_hangup_failed');
-              });
+              void callControlHangupWithRetry(telnyxCcId, { apiKey: demoTelnyxKey, fetchImpl }, { callId });
             },
           });
         }
@@ -890,6 +932,19 @@ export async function handleOpenAiRealtimeSipWebhook(
         );
         if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
           const acceptedAtMs = Date.now();
+
+          // 30-second server-side cleanup timer: fired when end_call is invoked but
+          // there is no Telnyx CC ID to issue a programmatic hangup. Guarantees the
+          // transcript is persisted even if the WS never closes naturally.
+          let demoNoHangupEndCallFired = false;
+          let demoNoHangupFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+          const clearNoHangupFallbackTimer = () => {
+            if (demoNoHangupFallbackTimer) {
+              clearTimeout(demoNoHangupFallbackTimer);
+              demoNoHangupFallbackTimer = null;
+            }
+          };
+
           startOpenAiRealtimeSipSideband({
             variant: 'demo',
             callId,
@@ -898,8 +953,24 @@ export async function handleOpenAiRealtimeSipWebhook(
             acceptedAtMs,
             initialResponseInstructions: demoInitialResponseInstructions,
             onTranscript: demoOnTranscript,
-            onEnded: persistDemoTranscript,
-            // No onEndCall when there's no Telnyx CC ID — can't programmatically hang up.
+            onEnded: () => {
+              // Call ended normally — cancel the fallback timer and persist transcript.
+              clearNoHangupFallbackTimer();
+              persistDemoTranscript();
+            },
+            onEndCall: () => {
+              if (demoNoHangupEndCallFired) return;
+              demoNoHangupEndCallFired = true;
+              logger.info({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_started');
+              // No Telnyx CC ID — cannot issue a programmatic hangup. Start a 30-second
+              // timer so the transcript is persisted even if the caller never hangs up
+              // and the WS doesn't close within a reasonable window.
+              demoNoHangupFallbackTimer = setTimeout(() => {
+                demoNoHangupFallbackTimer = null;
+                logger.warn({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_fired');
+                persistDemoTranscript();
+              }, DEMO_END_CALL_NO_CCID_FALLBACK_MS);
+            },
           });
         }
       }
@@ -999,9 +1070,7 @@ export async function handleOpenAiRealtimeSipWebhook(
               logger.info({ callId, shopId: shop.id }, 'openai_sip_end_call_tool_hangup');
               setTimeout(() => {
                 if (parentCcId && telnyxKey) {
-                  void callControlHangup(parentCcId, {}, { apiKey: telnyxKey, fetchImpl }).catch((err: unknown) => {
-                    logger.warn({ err, callId, shopId: shop.id }, 'openai_sip_end_call_hangup_failed');
-                  });
+                  void callControlHangupWithRetry(parentCcId, { apiKey: telnyxKey, fetchImpl }, { callId, shopId: shop.id });
                 }
               }, END_CALL_TOOL_HANGUP_DELAY_MS);
             },
@@ -1043,10 +1112,10 @@ export async function handleOpenAiRealtimeSipWebhook(
                 callerPhone,
                 idempotencyKey: `fallback_handoff:${callId}`,
               }).catch(() => {
-                void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl });
+                void callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id });
               });
             } else {
-              void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl });
+              void callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id });
             }
           } else {
             if (shop.allow_transfers && handoffAvailability.available && !fallbackHandoffPhone) {
@@ -1071,7 +1140,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             }
             if (parentCcId && telnyxKey) {
               await new Promise((resolve) => setTimeout(resolve, HARD_LIMIT_HANGUP_DELAY_MS));
-              void callControlHangup(parentCcId, {}, { apiKey: telnyxKey, fetchImpl }).catch(() => {});
+              void callControlHangupWithRetry(parentCcId, { apiKey: telnyxKey, fetchImpl }, { callId, shopId: shop.id });
             }
           }
         }
@@ -1159,10 +1228,10 @@ export async function handleOpenAiRealtimeSipWebhook(
                 payload_type: 'text',
               }, { apiKey: telnyxKey, fetchImpl })
                 .then(() => new Promise((resolve) => setTimeout(resolve, HARD_LIMIT_HANGUP_DELAY_MS)))
-                .then(() => callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl }))
-                .catch(() => { void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl }); });
+                .then(() => callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id }))
+                .catch(() => { void callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id }); });
             } else {
-              void callControlHangup(shopRoomContext.openAiLegCallControlId ?? callId, {}, { apiKey: telnyxKey, fetchImpl });
+              void callControlHangupWithRetry(shopRoomContext.openAiLegCallControlId ?? callId, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id });
             }
           },
         });
