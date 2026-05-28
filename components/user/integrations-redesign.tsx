@@ -796,8 +796,6 @@ function StarterIntegrationsView({ initialBookingUrl }: {
     }
   }
 
-  const lockedApps = FULL_SYNC_APPS.filter((app) => app.key === 'square' || app.key === 'mindbody' || app.key === 'acuity');
-
   return (
     <div className="integrations-redesign starter-integrations-view">
       <style jsx global>{`
@@ -834,6 +832,12 @@ function StarterIntegrationsView({ initialBookingUrl }: {
           gap: 12px;
         }
         .starter-integrations-view .starter-booking-link-save {
+          width: 100%;
+        }
+        .starter-integrations-view .starter-booking-link-field {
+          width: 100%;
+        }
+        .starter-integrations-view .starter-booking-link-field input {
           width: 100%;
         }
         @media (min-width: 768px) {
@@ -874,7 +878,7 @@ function StarterIntegrationsView({ initialBookingUrl }: {
             <small>RingBooker texts this to callers who ask to book.</small>
           </div>
           <div className="starter-booking-link-row">
-            <div className="starter-booking-link-field">
+            <div className="field starter-booking-link-field">
               <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://yourbookingsite.com/book" />
             </div>
             <button
@@ -907,29 +911,6 @@ function StarterIntegrationsView({ initialBookingUrl }: {
               </p>
             </div>
             <a className="btn user-save integrations-primary-button" href="/user/billing">Upgrade to Pro</a>
-          </div>
-        </div>
-        <div className="integrations-app-section" style={{ padding: '18px 20px' }}>
-          <div>
-            <h4>Live availability sync <span className="integration-app-badge">🔒 Pro</span></h4>
-            <p className="sub">Requires Professional plan.</p>
-          </div>
-          <div className="integrations-app-grid integrations-app-grid--sync">
-            {lockedApps.map((app) => (
-              <button
-                key={app.key}
-                type="button"
-                className="integration-app-card"
-                disabled
-                style={{ opacity: 0.4, cursor: 'not-allowed' }}
-              >
-                <AppLogo app={app} />
-                <span className="integration-app-copy">
-                  <strong>{app.name}</strong>
-                  <small>Full sync</small>
-                </span>
-              </button>
-            ))}
           </div>
         </div>
       </section>
