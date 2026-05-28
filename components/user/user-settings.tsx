@@ -296,6 +296,11 @@ html[data-user-theme="dark"]{
 .integration-confirm-card strong{font-size:14px;font-weight:600;color:var(--text-dark)}
 .integration-confirm-card p{margin:0;font-size:13px;line-height:1.6;color:var(--text-gray)}
 .integration-confirm-actions{margin-top:8px}
+.integration-divider{
+  border:0;
+  border-top:1px solid var(--border);
+  margin:8px 0;
+}
 .integration-configured-card{
   border:1px solid var(--border);
   background:var(--surface-card);
@@ -355,7 +360,26 @@ html[data-user-theme="dark"]{
   background:var(--bg-gray);
   color:var(--text-gray);
 }
+.integration-upgrade-banner{
+  padding:0;
+  overflow:hidden;
+}
+.integration-upgrade-banner-inner{
+  background:var(--starter-upgrade-banner-bg);
+  padding:18px 20px;
+}
+.integration-upgrade-banner-row{
+  justify-content:space-between;
+  align-items:center;
+}
+.integration-upgrade-banner-copy{
+  flex:1;
+  min-width:0;
+}
 .integration-upgrade-banner strong{color:var(--text-dark)}
+.integration-upgrade-banner-sub{
+  margin:4px 0 0;
+}
 .tab-strip{
   display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;
 }
@@ -1512,7 +1536,7 @@ html[data-user-theme="dark"] .integration-configured-url-row{
   border-top-color:var(--border);
 }
 html[data-user-theme="dark"] .integration-app-logo--generic{
-  background:#21262d;
+  background:var(--surface-card);
   color:var(--text-gray);
 }
 html[data-user-theme="dark"] .integration-success-box,

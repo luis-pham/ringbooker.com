@@ -749,13 +749,13 @@ function SetupLaterConfirm({ onChange }: { onChange: () => void }) {
 
 function StarterUpgradeBanner() {
   return (
-    <section className="integration-config-panel integration-upgrade-banner" aria-disabled="true" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ background: 'var(--starter-upgrade-banner-bg)', padding: '18px 20px' }}>
-        <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+    <section className="integration-config-panel integration-upgrade-banner" aria-disabled="true">
+      <div className="integration-upgrade-banner-inner">
+        <div className="integrations-inline-actions integration-upgrade-banner-row">
           <span aria-hidden="true" className="integration-method-icon">⚡</span>
-          <div style={{ flex: 1 }}>
+          <div className="integration-upgrade-banner-copy">
             <strong>Live sync with Square, Mindbody & more</strong>
-            <p className="sub" style={{ margin: '4px 0 0' }}>
+            <p className="sub integration-upgrade-banner-sub">
               RingBooker checks real-time availability — Professional and above.
             </p>
           </div>
@@ -1077,22 +1077,9 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
       {message ? <div className="note">{message}</div> : null}
       {savingMethod ? <div className="note">Saving booking setup...</div> : null}
 
-      <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+      <hr className="integration-divider" />
 
-      <section className="integration-config-panel" aria-disabled="true" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ background: 'var(--starter-upgrade-banner-bg)', padding: '18px 20px' }}>
-          <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <span aria-hidden="true" className="integration-method-icon">⚡</span>
-            <div style={{ flex: 1 }}>
-              <strong>Live sync with Square, Mindbody & more</strong>
-              <p className="sub" style={{ margin: '4px 0 0' }}>
-                RingBooker checks real-time availability — Professional and above.
-              </p>
-            </div>
-            <a className="btn user-save integrations-primary-button" href="/user/billing">Upgrade to Pro</a>
-          </div>
-        </div>
-      </section>
+      <StarterUpgradeBanner />
 
       <button type="button" className="user-link--subtle integrations-later-link" onClick={() => void chooseMethod('later')}>
         I&apos;ll set this up later
