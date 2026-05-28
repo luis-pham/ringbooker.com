@@ -131,8 +131,11 @@ html[data-user-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.55)}
   .mobile-calls{display:flex !important;flex-direction:column;gap:10px;padding:10px}
 }
 @media (max-width:640px){
-  .calls-metric-grid{grid-template-columns:1fr}
-  .calls-metric-card{min-height:72px}
+  .calls-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .calls-metric-card{min-height:86px;padding:12px;gap:10px}
+  .calls-stat-icon{width:38px;height:38px;border-radius:11px;font-size:18px}
+  .calls-metric-card p{font-size:12px}
+  .calls-metric-card strong{font-size:26px}
   .modal-backdrop{padding:10px}
   .modal-card{padding:18px;border-radius:16px}
   .modal-meta{grid-template-columns:1fr}

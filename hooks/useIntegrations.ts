@@ -167,11 +167,15 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
   const setBookingMethod = useCallback(
     async (method: BookingMethod) => {
       setError(null);
-      setBookingMethodState(method);
-      setStep(inferStep(method));
-      if (method === 'app') return;
+      if (method === 'app') {
+        setBookingMethodState(method);
+        setStep('app-picker');
+        return;
+      }
       try {
         await patchPreferences({ bookingMethod: method });
+        setBookingMethodState(method);
+        setStep(method === 'direct' ? 'question' : inferStep(method));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'booking_method_save_failed');
       }

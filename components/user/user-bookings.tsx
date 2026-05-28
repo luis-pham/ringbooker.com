@@ -29,7 +29,7 @@ html[data-user-theme="dark"] .booking-status--rescheduled{background:rgba(210,15
 html[data-user-theme="dark"] .booking-detail-overlay{background:rgba(1,4,9,.72)}
 html[data-user-theme="dark"] .booking-detail-panel{box-shadow:-20px 0 48px rgba(0,0,0,.45)}
 @media (max-width:900px){.bookings-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bookings-table-desktop{display:none}.mobile-bookings{display:grid}.mobile-booking-card{appearance:none;border:0;border-bottom:1px solid var(--border);background:var(--surface-card);text-align:left;padding:14px 16px;display:grid;gap:10px;cursor:pointer}.mobile-booking-card:last-child{border-bottom:0}.mobile-booking-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mobile-booking-meta{display:flex;justify-content:space-between;gap:14px;font-size:12px;color:var(--text-gray)}.booking-detail-overlay{align-items:flex-end}.booking-detail-panel{width:100%;height:auto;max-height:88vh;border-radius:20px 20px 0 0;animation:bookingSheetIn .18s ease-out}@keyframes bookingSheetIn{from{transform:translateY(24px);opacity:.8}to{transform:translateY(0);opacity:1}}}
-@media (max-width:640px){.bookings-metric-grid{grid-template-columns:1fr}.booking-detail-section dl{grid-template-columns:1fr}.booking-detail-section dt{margin-top:4px}}
+@media (max-width:640px){.bookings-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bookings-metric-card{min-height:86px;padding:12px;gap:10px}.bookings-stat-icon{width:38px;height:38px;border-radius:11px;font-size:18px}.bookings-metric-card p{font-size:12px}.bookings-metric-card strong{font-size:26px}.booking-detail-section dl{grid-template-columns:1fr}.booking-detail-section dt{margin-top:4px}}
 `,
 ];
 

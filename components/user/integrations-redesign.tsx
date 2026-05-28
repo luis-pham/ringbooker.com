@@ -961,8 +961,10 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
   async function chooseMethod(method: BookingMethod) {
     if (savingMethod) return;
     setMessage(null);
-    setBookingMethodState(method);
-    if (method === 'app') return;
+    if (method === 'app') {
+      setBookingMethodState(method);
+      return;
+    }
     setSavingMethod(method);
     try {
       await saveSettings({ booking_method: method });
@@ -970,6 +972,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
         setSavedBookingMethod('direct');
         setSavedSelectedApp(null);
         setShowSetupFlow(false);
+        setBookingMethodState(null);
       }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Unable to save booking setup.');
