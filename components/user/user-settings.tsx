@@ -1422,6 +1422,43 @@ html[data-user-theme="dark"] .calendar-int-logo-wrap{background:#0d1117;border-c
 html[data-user-theme="dark"] .integrations-section-heading{color:var(--text-dark);border-top-color:var(--border)}
 html[data-user-theme="dark"] .calendar-int-actions{border-top-color:rgba(240,246,252,.08)}
 html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}
+html[data-user-theme="dark"] .knowledge-tab-panel-head h3{color:var(--text-dark)}
+html[data-user-theme="dark"] .knowledge-tab-panel-head .sub{color:var(--text-gray)}
+html[data-user-theme="dark"] .integrations-redesign-head h3,
+html[data-user-theme="dark"] .integrations-flow-title,
+html[data-user-theme="dark"] .integrations-app-section h4,
+html[data-user-theme="dark"] .integration-config-head h4,
+html[data-user-theme="dark"] .integration-app-copy strong,
+html[data-user-theme="dark"] .integration-method-card strong,
+html[data-user-theme="dark"] .integration-confirm-card strong{
+  color:var(--text-dark);
+}
+html[data-user-theme="dark"] .integrations-redesign-head .sub,
+html[data-user-theme="dark"] .integrations-flow-sub,
+html[data-user-theme="dark"] .integrations-app-section p.sub,
+html[data-user-theme="dark"] .integration-app-copy small,
+html[data-user-theme="dark"] .integration-method-card small,
+html[data-user-theme="dark"] .integration-confirm-card p{
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .integration-info-box,
+html[data-user-theme="dark"] .integration-confirm-card{
+  background:var(--bg-gray);
+  border-color:var(--border);
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .integration-success-box,
+html[data-user-theme="dark"] .integration-confirm-card.success,
+html[data-user-theme="dark"] .integration-app-badge.connected{
+  background:rgba(35,134,54,.16);
+  border-color:rgba(63,185,80,.38);
+  color:#3fb950;
+}
+html[data-user-theme="dark"] .integration-app-badge{
+  background:#21262d;
+  border-color:var(--border);
+  color:var(--text-gray);
+}
 html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-logo--image{background:#0d1117;border-color:var(--border)}

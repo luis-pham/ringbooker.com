@@ -812,6 +812,15 @@ html[data-user-theme="dark"] .user-app-shell{
   --warning-text:#e3b341;
   --danger-text:#f85149;
 }
+html[data-user-theme="dark"] .user-app-shell .page-title h1,
+html[data-user-theme="dark"] .user-app-shell .panel-head h3{
+  color:var(--text-dark);
+}
+html[data-user-theme="dark"] .user-app-shell .page-title p,
+html[data-user-theme="dark"] .user-app-shell .panel-head .sub,
+html[data-user-theme="dark"] .user-app-shell .panel-head p.sub{
+  color:var(--text-gray);
+}
 html[data-user-theme="dark"] .sidebar-body::-webkit-scrollbar-thumb{background:#484f58}
 html[data-user-theme="dark"] .nav-item{color:#8b949e}
 html[data-user-theme="dark"] .nav-item:hover{background:#21262d;color:#e6edf3}
