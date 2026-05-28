@@ -1193,7 +1193,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,
             onCallerTranscriptPrePopulate: (transcript: string) => {
-              void prePopulateFromTranscript(toolCtx, transcript);
+              return prePopulateFromTranscript(toolCtx, transcript);
             },
             onEndCall: () => {
               if (hangupInitiated) return;

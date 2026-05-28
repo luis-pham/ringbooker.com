@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 
 import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
+import type { AppointmentTimePrePopulateResult } from '@/src/agent/sip/sip-tool-executor';
 import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
@@ -88,7 +89,9 @@ export type OpenAiRealtimeSipSidebandParams =
        * `ctx.appointmentTimeValidation.latest` before the model's ~7 s inference round-trip
        * completes. Best-effort: never relied upon for correctness.
        */
-      onCallerTranscriptPrePopulate?: (transcript: string) => void;
+      onCallerTranscriptPrePopulate?: (
+        transcript: string,
+      ) => AppointmentTimePrePopulateResult | Promise<AppointmentTimePrePopulateResult | null> | null | void;
     };
 
 /**
@@ -303,7 +306,24 @@ export function startOpenAiRealtimeSipSideband(
     // This fires while OpenAI is still doing its ~7 s inference, so the cache is warm
     // by the time the model calls validate_appointment_time.
     if (forceTimeValidation) {
-      params.onCallerTranscriptPrePopulate?.(transcript);
+      const prePopulateResult = params.onCallerTranscriptPrePopulate?.(transcript);
+      void Promise.resolve(prePopulateResult)
+        .then((result) => {
+          if (!result) return;
+          logger.info(
+            {
+              callId: params.callId,
+              date: result.date,
+              time: result.time,
+              timestamp: result.timestamp,
+              status: result.status,
+            },
+            `prepopulate: appointmentTimeValidation set for ${result.date} ${result.time} at ${result.timestamp}`,
+          );
+        })
+        .catch((err: unknown) => {
+          logger.warn({ err, callId: params.callId }, 'prepopulate: appointmentTimeValidation failed');
+        });
     }
 
     try {

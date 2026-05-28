@@ -121,22 +121,33 @@ export function createSipAgentToolContext(params: {
  * - Best-effort: never throws. If extraction fails, the tool call proceeds normally.
  * - Idempotent: skips re-computation if the same date+time is already cached.
  */
+export type AppointmentTimePrePopulateResult = {
+  date: string;
+  time: string;
+  timestamp: string;
+  status: 'set' | 'already_cached';
+};
+
 export async function prePopulateFromTranscript(
   ctx: AgentToolContext,
   transcript: string,
-): Promise<void> {
-  if (!ctx.appointmentTimeValidation) return;
+): Promise<AppointmentTimePrePopulateResult | null> {
+  if (!ctx.appointmentTimeValidation) return null;
 
   const extracted = extractAppointmentDateTime(transcript, ctx.shop);
-  if (!extracted) return;
+  if (!extracted) return null;
 
   const existing = ctx.appointmentTimeValidation.latest;
-  if (existing && existing.date === extracted.date && existing.time === extracted.time) return;
+  if (existing && existing.date === extracted.date && existing.time === extracted.time) {
+    return { ...extracted, timestamp: new Date().toISOString(), status: 'already_cached' };
+  }
 
   try {
     await validateAppointmentTimeTool(ctx, extracted);
+    return { ...extracted, timestamp: new Date().toISOString(), status: 'set' };
   } catch {
     // Best-effort — never fail the call over a pre-population error
+    return null;
   }
 }
 
@@ -204,6 +215,7 @@ export async function executeSipShopToolCall(
     let result: unknown;
     switch (toolName) {
       case 'validate_appointment_time': {
+        const startedAt = Date.now();
         // Fast path: return pre-computed result when transcript monitoring has already
         // run the tool and cached the result for this exact date+time.
         const cached = ctx.appointmentTimeValidation?.latest ?? null;
@@ -215,6 +227,21 @@ export async function executeSipShopToolCall(
             inp.date === cached.date &&
             inp.time === cached.time
           ) {
+            const elapsedMs = Date.now() - startedAt;
+            logger.info(
+              {
+                callSessionId: ctx.rbCallId ?? ctx.requestId,
+                providerCallId: ctx.openAiLegCallControlId ?? null,
+                shopId: ctx.shop.id,
+                eventType: 'appointment_time_validation_cache_hit',
+                proposedTool: toolName,
+                backendDecision: 'cache_hit',
+                date: inp.date,
+                time: inp.time,
+                elapsedMs,
+              },
+              `validate_appointment_time: CACHE HIT — returning prepopulated result in ${elapsedMs}ms`,
+            );
             result = {
               success: true,
               valid: cached.valid,
@@ -225,6 +252,17 @@ export async function executeSipShopToolCall(
             break;
           }
         }
+        logger.info(
+          {
+            callSessionId: ctx.rbCallId ?? ctx.requestId,
+            providerCallId: ctx.openAiLegCallControlId ?? null,
+            shopId: ctx.shop.id,
+            eventType: 'appointment_time_validation_cache_miss',
+            proposedTool: toolName,
+            backendDecision: 'cache_miss',
+          },
+          'validate_appointment_time: CACHE MISS — executing tool',
+        );
         result = await validateAppointmentTimeTool(ctx, toolInput);
         break;
       }
