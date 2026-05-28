@@ -85,12 +85,26 @@ function parseMappings(value: string): Record<string, string> {
   return mapped;
 }
 
-function BookingMethodQuestion({ onChoose, showLater = true, title = 'How do your clients book appointments?', subtitle = 'This helps RingBooker give callers the right information when they ask to book.' }: {
+function BookingMethodQuestion({ onChoose, showLater = true, title = 'How do your clients book?', subtitle = null, selectedMethod = null }: {
   onChoose: (method: 'app' | 'direct' | 'later') => void;
   showLater?: boolean;
   title?: string;
   subtitle?: string | null;
+  selectedMethod?: BookingMethod;
 }) {
+  const methodCardStyle = (method: 'app' | 'direct') => selectedMethod === method
+    ? {
+        border: '1.5px solid #534AB7',
+        background: '#EEEDFE',
+      }
+    : {
+        border: '0.5px solid var(--color-border-tertiary, var(--border))',
+        background: 'var(--color-background-primary, var(--surface-card))',
+      };
+  const methodIconStyle = (method: 'app' | 'direct') => ({
+    color: selectedMethod === method ? '#534AB7' : 'var(--color-text-secondary, var(--text-gray))',
+  });
+
   return (
     <div className="integrations-flow-stack">
       <div>
@@ -98,15 +112,15 @@ function BookingMethodQuestion({ onChoose, showLater = true, title = 'How do you
         {subtitle ? <p className="sub integrations-flow-sub">{subtitle}</p> : null}
       </div>
       <div className="integrations-method-grid">
-        <button type="button" className="integration-method-card" onClick={() => onChoose('app')}>
-          <span className="integration-method-icon" aria-hidden="true">📱</span>
+        <button type="button" className="integration-method-card" style={methodCardStyle('app')} aria-pressed={selectedMethod === 'app'} onClick={() => onChoose('app')}>
+          <span className="integration-method-icon" style={methodIconStyle('app')} aria-hidden="true">📱</span>
           <span>
             <strong>I use a booking app</strong>
             <small>Square, Fresha, Boulevard, Calendly, Vagaro, or similar</small>
           </span>
         </button>
-        <button type="button" className="integration-method-card" onClick={() => onChoose('direct')}>
-          <span className="integration-method-icon" aria-hidden="true">📞</span>
+        <button type="button" className="integration-method-card" style={methodCardStyle('direct')} aria-pressed={selectedMethod === 'direct'} onClick={() => onChoose('direct')}>
+          <span className="integration-method-icon" style={methodIconStyle('direct')} aria-hidden="true">📞</span>
           <span>
             <strong>Clients call or message me directly</strong>
             <small>No booking app — I manage appointments myself</small>
@@ -776,7 +790,6 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
     setBookingMethodState(method);
     try {
       await saveSettings({ booking_method: method });
-      setMessage(method === 'app' ? 'Booking app selected.' : method === 'direct' ? 'Direct booking selected.' : 'Saved for later.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Unable to save booking setup.');
     } finally {
@@ -817,6 +830,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
         showLater={false}
         title="How do your clients book?"
         subtitle={null}
+        selectedMethod={bookingMethod}
       />
 
       {bookingMethod === 'app' ? (
