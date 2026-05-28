@@ -1172,7 +1172,11 @@ export function IntegrationsRedesign({
     navigateBack,
     goBack,
     refresh,
-  } = useIntegrations({ enabled: canUseThirdPartyIntegrations });
+  } = useIntegrations({
+    enabled: canUseThirdPartyIntegrations,
+    initialBookingMethod,
+    initialSelectedIntegration,
+  });
 
   const selectedApp = useMemo(() => findIntegrationApp(status.selectedApp), [status.selectedApp]);
   const [showSetupFlow, setShowSetupFlow] = useState(false);
@@ -1205,10 +1209,6 @@ export function IntegrationsRedesign({
     );
   }
 
-  if (status.isLoading) {
-    return <div className="note">Loading integrations...</div>;
-  }
-
   return (
     <div className="integrations-redesign">
       <div className="panel-head integrations-redesign-head">
@@ -1216,10 +1216,13 @@ export function IntegrationsRedesign({
           <h3>Integrations</h3>
           <p className="sub">Tell RingBooker how clients book so it gives callers the right next step.</p>
         </div>
-        <button type="button" className="btn" onClick={() => void refresh()}>Refresh</button>
+        <button type="button" className="btn" disabled={status.isLoading} onClick={() => void refresh()}>
+          {status.isLoading ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       {status.error ? <div className="note integration-error-note">{status.error}</div> : null}
+      {status.isLoading ? <div className="note">Refreshing integration status...</div> : null}
 
       {!showSetupFlow && hasConfiguredState && effectiveBookingMethod ? (
         <ConfiguredIntegrationView

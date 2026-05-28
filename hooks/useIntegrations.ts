@@ -58,6 +58,12 @@ type ProvidersResponse = {
 
 type Step = 'question' | 'app-picker' | 'direct' | 'later';
 
+type UseIntegrationsOptions = {
+  enabled?: boolean;
+  initialBookingMethod?: BookingMethod;
+  initialSelectedIntegration?: string | null;
+};
+
 export type IntegrationsState = {
   bookingMethod: BookingMethod;
   selectedApp: IntegrationAppKey | null;
@@ -90,13 +96,17 @@ export function integrationErrorMessage(error: string | undefined, fallback = GE
   return message.includes('_') ? GENERIC_INTEGRATION_ERROR : message;
 }
 
-export function useIntegrations(options: { enabled?: boolean } = {}) {
+export function useIntegrations(options: UseIntegrationsOptions = {}) {
   const enabled = options.enabled !== false;
-  const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(null);
-  const [selectedApp, setSelectedAppState] = useState<IntegrationAppKey | null>(null);
-  const [step, setStep] = useState<Step>('question');
+  const initialBookingMethod = options.initialBookingMethod ?? null;
+  const initialSelectedApp = fromBackendProviderKey(options.initialSelectedIntegration);
+  const hasInitialPreferences =
+    options.initialBookingMethod !== undefined || options.initialSelectedIntegration !== undefined;
+  const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(initialBookingMethod);
+  const [selectedApp, setSelectedAppState] = useState<IntegrationAppKey | null>(initialSelectedApp);
+  const [step, setStep] = useState<Step>(inferStep(initialBookingMethod));
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled && !hasInitialPreferences);
   const [error, setError] = useState<string | null>(null);
 
   const selectedBackendProvider = selectedApp ? toBackendProviderKey(selectedApp) : null;
@@ -110,6 +120,29 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
   const mindbodyProvider = providers.find((provider) => provider.id === 'mindbody') ?? null;
   const acuityProvider = providers.find((provider) => provider.id === 'acuity') ?? null;
   const bookingLinkProvider = selectedProvider?.details?.type === 'booking_link' ? selectedProvider : null;
+
+  const applyPreferences = useCallback((preferences: PreferencesResponse) => {
+    const method = preferences.bookingMethod ?? null;
+    const persistedApp = fromBackendProviderKey(preferences.selectedIntegration);
+    setBookingMethodState(method);
+    setSelectedAppState(persistedApp);
+    setStep(inferStep(method));
+  }, []);
+
+  const loadProviders = useCallback(async () => {
+    if (!enabled) {
+      setProviders([]);
+      return;
+    }
+
+    const response = await fetch('/api/backend/user/calendar/providers');
+    const body = (await response.json()) as ProvidersResponse;
+    if (!response.ok || !body.ok) {
+      if (body.error === 'plan_feature_locked') return;
+      throw new Error(integrationErrorMessage(body.error, 'integrations_providers_failed'));
+    }
+    setProviders(body.providers ?? []);
+  }, [enabled]);
 
   const load = useCallback(async () => {
     if (!enabled) {
@@ -136,18 +169,14 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
         throw new Error(integrationErrorMessage(providersBody.error, 'integrations_providers_failed'));
       }
 
-      const method = preferences.bookingMethod ?? null;
-      const persistedApp = fromBackendProviderKey(preferences.selectedIntegration);
-      setBookingMethodState(method);
-      setSelectedAppState(persistedApp);
-      setStep(inferStep(method));
+      applyPreferences(preferences);
       setProviders(providersBody.providers ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'integrations_load_failed');
     } finally {
       setIsLoading(false);
     }
-  }, [enabled]);
+  }, [applyPreferences, enabled]);
 
   useEffect(() => {
     void load();
@@ -211,8 +240,9 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
           setError(message);
           throw new Error(message);
         }
-        await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
-        await load();
+        const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
+        applyPreferences(preferences);
+        await loadProviders();
         return;
       }
       const response = await fetch(`/api/backend/user/calendar/providers/${provider}/connect`, {
@@ -226,10 +256,11 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
         setError(message);
         throw new Error(message);
       }
-      await patchPreferences({ bookingMethod: 'app', selectedIntegration: provider });
-      await load();
+      const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: provider });
+      applyPreferences(preferences);
+      await loadProviders();
     },
-    [load, patchPreferences],
+    [applyPreferences, loadProviders, patchPreferences],
   );
 
   const connectVagaro = useCallback(
@@ -252,10 +283,11 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
         setError(message);
         throw new Error(message);
       }
-      await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
-      await load();
+      const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
+      applyPreferences(preferences);
+      await loadProviders();
     },
-    [load, patchPreferences],
+    [applyPreferences, loadProviders, patchPreferences],
   );
 
   const connectMindbody = useCallback(
@@ -281,10 +313,11 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
         setError(message);
         throw new Error(message);
       }
-      await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'mindbody' });
-      await load();
+      const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'mindbody' });
+      applyPreferences(preferences);
+      await loadProviders();
     },
-    [load, patchPreferences],
+    [applyPreferences, loadProviders, patchPreferences],
   );
 
   const connectAcuity = useCallback(
@@ -313,10 +346,11 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
         setError(message);
         throw new Error(message);
       }
-      await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'acuity' });
-      await load();
+      const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'acuity' });
+      applyPreferences(preferences);
+      await loadProviders();
     },
-    [load, patchPreferences],
+    [applyPreferences, loadProviders, patchPreferences],
   );
 
   const disconnectProvider = useCallback(

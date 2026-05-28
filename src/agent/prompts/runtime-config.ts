@@ -125,6 +125,18 @@ function renderGroupedServices(config: RuntimeBusinessConfig): string[] {
   return lines;
 }
 
+function renderCallerPhoneStatus(callerPhone: string | null | undefined): string | null {
+  if (callerPhone === undefined) return null;
+  if (callerPhone === null) {
+    return 'CALLER PHONE STATUS: Caller ID is unavailable. If booking, follow-up, callback, or SMS requires contact, ask once for the best callback number.';
+  }
+  const digits = callerPhone.match(/\d/g)?.join('') ?? '';
+  if (digits.length >= 8) {
+    return `CALLER PHONE STATUS: Caller ID is available ending ${digits.slice(-4)}. Use ctx.callerPhone as the callback number. Do not ask the caller for a phone number unless they request a different callback number.`;
+  }
+  return 'CALLER PHONE STATUS: Caller ID is unavailable. If booking, follow-up, callback, or SMS requires contact, ask once for the best callback number.';
+}
+
 export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): string {
   const services = renderGroupedServices(config);
 
@@ -153,6 +165,7 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
       ? `LANGUAGE DIRECTIVE: ${compactPromptLine(config.productionLanguageDirective, 1200)}`
       : null,
     config.handoffPolicy ? `HANDOFF POLICY: ${compactPromptLine(config.handoffPolicy, 400)}` : null,
+    renderCallerPhoneStatus(config.callerPhone),
     config.callerContext ? `CALLER CONTEXT: ${compactPromptLine(config.callerContext, 900)}` : null,
     config.demoContext ? `DEMO CONTEXT: ${compactPromptLine(config.demoContext, 900)}` : null,
     config.customInstructions ? `CUSTOM INSTRUCTIONS: ${compactPromptLine(config.customInstructions, 900)}` : null,

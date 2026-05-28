@@ -1028,13 +1028,19 @@ export function UserSettingsLive({
   }
 
   useEffect(() => {
+    if (portal === 'integrations') {
+      setCalendarProviders([]);
+      setCalendarStatus(null);
+      setLoadingCalendarProviders(false);
+      return;
+    }
     if (!(capabilities ?? DEFAULT_SETTINGS_CAPABILITIES).third_party_integrations) {
       setCalendarProviders([]);
       setLoadingCalendarProviders(false);
       return;
     }
     void loadCalendarProviders();
-  }, [capabilities]);
+  }, [capabilities, portal]);
 
   async function loadSquareOptions() {
     setLoadingSquareOptions(true);

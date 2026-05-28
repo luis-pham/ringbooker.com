@@ -88,6 +88,15 @@ function derivePostCallOutcomeLabel(params: {
   return params.hasCallerSpeech ? 'no_action_needed' : 'unknown';
 }
 
+function latestPostCallSummaryOutcome(transcriptText: string): string | null {
+  const matches = transcriptText.matchAll(/\[POST_CALL_SUMMARY\][^\n]*\boutcome=([a-z_]+)/gi);
+  let latest: string | null = null;
+  for (const match of matches) {
+    latest = match[1]?.toLowerCase() ?? null;
+  }
+  return latest;
+}
+
 type LifecycleEmailKind = z.infer<typeof lifecycleEmailPayloadSchema>['kind'];
 
 const lifecycleNotificationTypeByKind: Record<LifecycleEmailKind, BillingNotificationType> = {
@@ -1388,7 +1397,8 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         });
       }
       const existingTranscript = call.transcriptText?.trim() ?? '';
-      if (existingTranscript.includes('[POST_CALL_SUMMARY]')) {
+      const existingSummaryOutcome = latestPostCallSummaryOutcome(existingTranscript);
+      if (existingSummaryOutcome && existingSummaryOutcome !== 'unknown') {
         return;
       }
       const status = payload.data.status ?? 'completed';
@@ -1426,6 +1436,13 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         summaryNextAction: extracted.nextAction,
         followUpRequired: extracted.followUpRequired,
       });
+      if (call.outcome?.trim() === 'unknown' && derivedOutcome !== 'unknown') {
+        await callLogsRepository.setOutcomeByProviderCallId({
+          provider: call.provider,
+          providerCallId: call.providerCallId,
+          outcome: derivedOutcome,
+        });
+      }
       const summaryParts = [
         `[POST_CALL_SUMMARY] status=${status}`,
         `outcome=${derivedOutcome}`,

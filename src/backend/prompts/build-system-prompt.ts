@@ -151,7 +151,12 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
   }));
 }
 
-function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, routingRules?: ShopRoutingRule[]): RuntimeBusinessConfig {
+function buildProductionBusinessConfig(
+  shop: Shop,
+  customer: Customer | null,
+  routingRules?: ShopRoutingRule[],
+  callerPhone?: string | null,
+): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
   const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
@@ -200,6 +205,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     ...(languageFields.languageOptions?.length ? { languageOptions: languageFields.languageOptions } : {}),
     productionLanguageDirective: languageFields.productionLanguageDirective,
     handoffPolicy: renderHandoffPolicy(shop),
+    ...(callerPhone !== undefined ? { callerPhone } : {}),
     callerContext: buildCustomerSection(promptCustomer),
   };
 }
@@ -210,8 +216,9 @@ export function buildSystemPrompt(input: {
   mode: PromptMode;
   vertical?: VoicePromptVertical;
   routingRules?: ShopRoutingRule[];
+  callerPhone?: string | null;
 }): string {
-  const business = buildProductionBusinessConfig(input.shop, input.customer, input.routingRules);
+  const business = buildProductionBusinessConfig(input.shop, input.customer, input.routingRules, input.callerPhone);
   return composeVoicePrompt({
     vertical: input.vertical ?? inferVerticalFromBusinessConfig(business),
     callType: mapPromptModeToCallType(input.mode),

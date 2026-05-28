@@ -112,6 +112,36 @@ test('extractCallSummary protects partial booking intent from no_action_needed',
   assert.equal(result.preferredDatetime, 'tomorrow');
 });
 
+test('extractCallSummary protects latest booking transcript from unknown outcome', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: null,
+    urgency: 'low',
+    next_action: 'no_action_needed',
+    caller_question: null,
+    caller_name: null,
+    preferred_tech: null,
+    preferred_datetime: null,
+    follow_up_required: false,
+  });
+
+  const result = await extractCallSummary(
+    [
+      '[2026-05-28T14:03:33.593Z] CALLER: I want book service.',
+      '[2026-05-28T14:03:34.797Z] ASSISTANT: Sure, what service would you like to book?',
+      '[2026-05-28T14:04:00.664Z] CALLER: 10 AM tomorrow.',
+      '[2026-05-28T14:04:08.451Z] ASSISTANT: Thanks for confirming. Could I have your full name for the booking?',
+      '[2026-05-28T14:04:19.704Z] CALLER: My name is Huy.',
+      '[2026-05-28T14:04:31.364Z] ASSISTANT: What’s the best phone number to reach you, just in case?',
+    ].join('\n'),
+    { callerPhone: '+84978613802' },
+  );
+
+  assert.equal(result.nextAction, 'booking_request_incomplete');
+  assert.equal(result.followUpRequired, true);
+  assert.equal(result.preferredDatetime, '10 AM');
+});
+
 test('extractCallSummary prompt treats phone as missing only when caller ID is unavailable', async () => {
   process.env.OPENAI_API_KEY = 'test-key';
   let prompt = '';
@@ -248,6 +278,74 @@ test('post_call_summary job labels partial booking as incomplete instead of unkn
   const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
   assert.equal(call.summaryNextAction, 'booking_request_incomplete');
   assert.equal(call.summaryFollowUpRequired, true);
+  assert.match(call.transcriptText ?? '', /outcome=booking_request_incomplete/);
+});
+
+test('post_call_summary job upgrades an existing unknown summary for partial booking intent', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: null,
+    urgency: 'low',
+    next_action: 'no_action_needed',
+    caller_question: null,
+    caller_name: null,
+    preferred_tech: null,
+    preferred_datetime: null,
+    follow_up_required: false,
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'partial-booking-call-with-old-summary',
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking-old-summary',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.markEndedByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'partial-booking-call-with-old-summary',
+    endedAt: new Date('2026-05-01T00:00:30.000Z'),
+    outcome: 'unknown',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking-old-summary',
+    speaker: 'caller',
+    text: 'I want book service.',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking-old-summary',
+    speaker: 'caller',
+    text: '10 AM tomorrow.',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking-old-summary',
+    speaker: 'system',
+    text: '[POST_CALL_SUMMARY] status=completed | outcome=unknown',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-partial-booking-old-summary', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-upgrade-unknown',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+  } as any);
+
+  assert.equal(result.processed, true);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.equal(call.outcome, 'booking_request_incomplete');
+  assert.equal(call.summaryNextAction, 'booking_request_incomplete');
   assert.match(call.transcriptText ?? '', /outcome=booking_request_incomplete/);
 });
 

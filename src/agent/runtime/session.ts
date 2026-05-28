@@ -92,6 +92,7 @@ export class InboundAgentSession {
       customer: params.customer,
       mode: 'inbound',
       routingRules: params.routingRules,
+      callerPhone: params.callerPhone || null,
     });
   }
 

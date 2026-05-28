@@ -723,6 +723,14 @@ export async function handleOpenAiRealtimeSipWebhook(
   let instructions: string;
   let demoVertical: VoicePromptVertical | undefined;
   let demoInitialResponseInstructions: string | null = null;
+  const callerPhoneForPrompt =
+    route.kind === 'shop'
+      ? resolveSipCallerPhoneForTools({
+          routeKind: route.kind,
+          normalizedFrom,
+          callControlState: ccDecoded,
+        }) || null
+      : null;
 
   if (route.kind === 'demo') {
     let enrichment: SipDemoSessionEnrichment | null = null;
@@ -770,6 +778,7 @@ export async function handleOpenAiRealtimeSipWebhook(
       mode: 'inbound',
       vertical: demoVertical,
       routingRules,
+      callerPhone: callerPhoneForPrompt,
     });
   }
 

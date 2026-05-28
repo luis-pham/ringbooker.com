@@ -84,7 +84,8 @@ const callsPortalStyles = String.raw`
 .calls-pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;color:var(--text-gray);font-size:13px}
 .calls-pager-btn{appearance:none;background:var(--surface-card);border:1px solid var(--border);border-radius:8px;color:var(--text-dark);cursor:pointer;font:inherit;font-size:12px;font-weight:500;padding:8px 12px}
 .calls-pager-btn:disabled{opacity:.45;cursor:not-allowed}
-.mobile-calls{display:none}
+.calls-table-desktop{display:table}
+.mobile-calls{display:none!important}
 .mobile-call-card{appearance:none;text-align:left;background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;color:inherit}
 .mobile-call-card.is-high-urgency{border-left:3px solid #dc2626}
 .mobile-call-card.is-follow-up:not(.is-high-urgency){border-left:3px solid #f59e0b}
@@ -129,6 +130,10 @@ html[data-user-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.55)}
   .calls-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .calls-table-desktop{display:none !important}
   .mobile-calls{display:flex !important;flex-direction:column;gap:10px;padding:10px}
+}
+@media (min-width:901px){
+  .calls-table-desktop{display:table !important}
+  .mobile-calls{display:none !important}
 }
 @media (max-width:640px){
   .calls-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}

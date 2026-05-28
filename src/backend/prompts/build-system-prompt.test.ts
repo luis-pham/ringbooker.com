@@ -290,15 +290,30 @@ test('Production prompt treats caller ID as default phone source and accepts val
     shop: createShop('professional'),
     customer: null,
     mode: 'inbound',
+    callerPhone: '+15551233802',
   });
 
   assert.match(prompt, /BOOKING REQUEST REQUIRED DETAILS: Before ending a booking-request flow/);
   assert.match(prompt, /service, preferred date and time, and caller name/);
   assert.match(prompt, /Phone is satisfied by caller ID/);
   assert.match(prompt, /Only collect phone if ctx\.callerPhone is null, empty, or caller explicitly requests a different number/);
+  assert.match(prompt, /CALLER PHONE STATUS: Caller ID is available ending 3802/);
+  assert.match(prompt, /Use ctx\.callerPhone as the callback number/);
   assert.doesNotMatch(prompt, /caller name, and caller phone number/);
   assert.match(prompt, /validate_appointment_time result is the only source of truth/);
   assert.match(prompt, /accept a future date approved by validate_appointment_time for capture/);
+});
+
+test('Production prompt explicitly allows phone collection when caller ID is unavailable', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional'),
+    customer: null,
+    mode: 'inbound',
+    callerPhone: null,
+  });
+
+  assert.match(prompt, /CALLER PHONE STATUS: Caller ID is unavailable/);
+  assert.match(prompt, /ask once for the best callback number/);
 });
 
 test('Square and Mindbody prompts do not include manual booking request instruction', () => {

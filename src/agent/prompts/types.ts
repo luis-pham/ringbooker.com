@@ -56,6 +56,11 @@ export type RuntimeBusinessConfig = {
   /** Production-only; Starter plan uses English-only policy + setup metadata */
   productionLanguageDirective?: string | null;
   handoffPolicy?: string | null;
+  /**
+   * Runtime caller ID status. Undefined means this prompt path does not know;
+   * null/empty means caller ID is unavailable and phone may need collection.
+   */
+  callerPhone?: string | null;
   callerContext?: string | null;
   demoContext?: string | null;
 };
