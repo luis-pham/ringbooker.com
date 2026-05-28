@@ -1629,6 +1629,7 @@ export function MarketingVerticalDemoTemplate({
             JSON.stringify({
               type: 'session.update',
               session: {
+                type: 'realtime',
                 tools: [
                   {
                     type: 'function',

@@ -89,17 +89,22 @@ export function AdminBillingLive() {
 
   useEffect(() => {
     let active = true;
-    void fetch('/api/backend/admin/billing')
-      .then(async (response) => (await response.json()) as AdminBillingResponse)
-      .then((body) => {
+    void (async () => {
+      try {
+        const response = await fetch('/api/backend/admin/billing');
+        let body: AdminBillingResponse;
+        try {
+          body = (await response.json()) as AdminBillingResponse;
+        } catch {
+          body = { ok: false, error: `server_error_${response.status}` };
+        }
         if (active) setData(body);
-      })
-      .catch(() => {
+      } catch {
         if (active) setData({ ok: false, error: 'network_error' });
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       active = false;

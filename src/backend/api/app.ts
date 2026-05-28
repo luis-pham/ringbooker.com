@@ -10171,61 +10171,69 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
     }
 
-    // FIX 1 — MRR: paying subscribers only (exclude trialing — $0 collected)
-    const payingStatus = new Set<BillingSubscriptionStatus>(['active']);
+    try {
+      // FIX 1 — MRR: paying subscribers only (exclude trialing — $0 collected)
+      const payingStatus = new Set<BillingSubscriptionStatus>(['active']);
 
-    // Fetch subscriptions, shops, and charged overage records in parallel.
-    // Paddle gross is fetched separately (cached, may be slow on first load).
-    const [subscriptions, shops, chargedOverages] = await Promise.all([
-      deps.billingSubscriptionsRepository.list({ limit: 500 }),
-      deps.shopsRepository.list({ limit: 500 }),
-      // FIX 2 — Overage: sum status='charged' rows across all shops
-      deps.shopOverageChargesRepository
-        ? deps.shopOverageChargesRepository.listCharged({ limit: 2000 })
-        : Promise.resolve([]),
-    ]);
+      // Fetch subscriptions, shops, and charged overage records in parallel.
+      // Paddle gross is fetched separately (cached, may be slow on first load).
+      const [subscriptions, shops, chargedOverages] = await Promise.all([
+        deps.billingSubscriptionsRepository.list({ limit: 500 }),
+        deps.shopsRepository.list({ limit: 500 }),
+        // FIX 2 — Overage: sum status='charged' rows across all shops
+        deps.shopOverageChargesRepository
+          ? deps.shopOverageChargesRepository.listCharged({ limit: 2000 }).catch((err: unknown) => {
+              logger.warn({ err }, 'admin_billing_overage_charges_fetch_failed');
+              return [];
+            })
+          : Promise.resolve([]),
+      ]);
 
-    const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
+      const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
 
-    // FIX 1 — MRR: active-only (paying) subscriptions
-    const payingSubscriptions = subscriptions.filter((s) => payingStatus.has(s.status));
-    const trialingSubscriptions = subscriptions.filter((s) => s.status === 'trialing');
-    const mrr = Number(
-      payingSubscriptions
-        .reduce((sum, s) => sum + (s.interval === 'year' ? s.amount / 12 : s.amount), 0)
-        .toFixed(2),
-    );
+      // FIX 1 — MRR: active-only (paying) subscriptions
+      const payingSubscriptions = subscriptions.filter((s) => payingStatus.has(s.status));
+      const trialingSubscriptions = subscriptions.filter((s) => s.status === 'trialing');
+      const mrr = Number(
+        payingSubscriptions
+          .reduce((sum, s) => sum + (s.interval === 'year' ? s.amount / 12 : s.amount), 0)
+          .toFixed(2),
+      );
 
-    // FIX 2 — Overage revenue: sum all charged overages (amount_cents / 100)
-    const overageRevenueCents = chargedOverages.reduce((sum, c) => sum + c.amountCents, 0);
-    const overageRevenue = Number((overageRevenueCents / 100).toFixed(2));
+      // FIX 2 — Overage revenue: sum all charged overages (amount_cents / 100)
+      const overageRevenueCents = chargedOverages.reduce((sum, c) => sum + c.amountCents, 0);
+      const overageRevenue = Number((overageRevenueCents / 100).toFixed(2));
 
-    // FIX 3 — Gross collected from Paddle (paginated, 5-min cached)
-    const paddleGross = await fetchPaddleGrossCollected();
+      // FIX 3 — Gross collected from Paddle (paginated, 5-min cached)
+      const paddleGross = await fetchPaddleGrossCollected();
 
-    return c.json({
-      ok: true,
-      metrics: {
-        subscriptionCount: subscriptions.length,
-        // FIX 4 — separate paying vs trialing counts
-        payingSubscriptions: payingSubscriptions.length,
-        trialingSubscriptions: trialingSubscriptions.length,
-        pastDueSubscriptions: subscriptions.filter((s) => s.status === 'past_due').length,
-        // FIX 1 — MRR: paying only
-        mrr,
-        // FIX 2 — Overage revenue: confirmed charged records from DB
-        overageRevenue,
-        // DB-based total: MRR (paying subscriptions) + confirmed overage charges
-        totalCollectedDb: Number((mrr + overageRevenue).toFixed(2)),
-        // FIX 3 — Gross collected from Paddle transactions API (null if not configured)
-        grossCollectedPaddle: paddleGross?.value ?? null,
-        grossCollectedPaddleCachedAt: paddleGross?.cachedAt ?? null,
-      },
-      subscriptions: subscriptions.map((subscription) => ({
-        ...subscription,
-        shopName: shopNameById.get(subscription.shopId) ?? 'Unknown shop',
-      })),
-    });
+      return c.json({
+        ok: true,
+        metrics: {
+          subscriptionCount: subscriptions.length,
+          // FIX 4 — separate paying vs trialing counts
+          payingSubscriptions: payingSubscriptions.length,
+          trialingSubscriptions: trialingSubscriptions.length,
+          pastDueSubscriptions: subscriptions.filter((s) => s.status === 'past_due').length,
+          // FIX 1 — MRR: paying only
+          mrr,
+          // FIX 2 — Overage revenue: confirmed charged records from DB
+          overageRevenue,
+          // DB-based total: MRR (paying subscriptions) + confirmed overage charges
+          totalCollectedDb: Number((mrr + overageRevenue).toFixed(2)),
+          // FIX 3 — Gross collected from Paddle transactions API (null if not configured)
+          grossCollectedPaddle: paddleGross?.value ?? null,
+          grossCollectedPaddleCachedAt: paddleGross?.cachedAt ?? null,
+        },
+        subscriptions: subscriptions.map((subscription) => ({
+          ...subscription,
+          shopName: shopNameById.get(subscription.shopId) ?? 'Unknown shop',
+        })),
+      });
+    } catch (err) {
+      logger.error({ err }, 'admin_billing_fetch_failed');
+      return c.json({ ok: false, error: 'billing_fetch_failed' }, 500);
+    }
   });
 
   app.post(path('/admin/shops'), async (c) => {
