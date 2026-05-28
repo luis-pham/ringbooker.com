@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   BOOKING_LINK_APPS,
+  type BookingMethod,
   FULL_SYNC_APPS,
   findIntegrationApp,
   toBackendProviderKey,
@@ -58,7 +59,10 @@ function parseMappings(value: string): Record<string, string> {
   return mapped;
 }
 
-function BookingMethodQuestion({ onChoose }: { onChoose: (method: 'app' | 'direct' | 'later') => void }) {
+function BookingMethodQuestion({ onChoose, showLater = true }: {
+  onChoose: (method: 'app' | 'direct' | 'later') => void;
+  showLater?: boolean;
+}) {
   return (
     <div className="integrations-flow-stack">
       <div>
@@ -83,9 +87,11 @@ function BookingMethodQuestion({ onChoose }: { onChoose: (method: 'app' | 'direc
           </span>
         </button>
       </div>
-      <button type="button" className="user-link--subtle integrations-later-link" onClick={() => onChoose('later')}>
-        I&apos;ll set this up later
-      </button>
+      {showLater ? (
+        <button type="button" className="user-link--subtle integrations-later-link" onClick={() => onChoose('later')}>
+          I&apos;ll set this up later
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -669,7 +675,156 @@ function SetupLaterConfirm({ onChange }: { onChange: () => void }) {
   );
 }
 
-export function IntegrationsRedesign() {
+type IntegrationsRedesignProps = {
+  canUseThirdPartyIntegrations: boolean;
+  initialBookingMethod?: BookingMethod;
+  initialBookingUrl?: string | null;
+};
+
+function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
+  initialBookingMethod?: BookingMethod;
+  initialBookingUrl?: string | null;
+}) {
+  const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(initialBookingMethod ?? null);
+  const [bookingUrl, setBookingUrl] = useState(initialBookingUrl ?? '');
+  const [savingMethod, setSavingMethod] = useState<BookingMethod | null>(null);
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBookingMethodState(initialBookingMethod ?? null);
+  }, [initialBookingMethod]);
+
+  useEffect(() => {
+    setBookingUrl(initialBookingUrl ?? '');
+  }, [initialBookingUrl]);
+
+  async function saveSettings(patch: Record<string, unknown>) {
+    const response = await fetch('/api/backend/user/settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const body = (await response.json()) as { ok: boolean; error?: string };
+    if (!response.ok || !body.ok) {
+      throw new Error(body.error === 'plan_feature_locked' ? 'This feature requires Professional.' : 'Unable to save changes.');
+    }
+  }
+
+  async function chooseMethod(method: BookingMethod) {
+    setSavingMethod(method);
+    setMessage(null);
+    setBookingMethodState(method);
+    try {
+      await saveSettings({ booking_method: method });
+      setMessage(method === 'app' ? 'Booking app selected.' : method === 'direct' ? 'Direct booking selected.' : 'Saved for later.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Unable to save booking setup.');
+    } finally {
+      setSavingMethod(null);
+    }
+  }
+
+  async function saveBookingUrl() {
+    setSavingUrl(true);
+    setMessage(null);
+    try {
+      await saveSettings({
+        booking_method: 'app',
+        booking_url: bookingUrl.trim() || null,
+      });
+      setBookingMethodState('app');
+      setMessage('Booking link saved.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Unable to save booking link.');
+    } finally {
+      setSavingUrl(false);
+    }
+  }
+
+  const lockedApps = FULL_SYNC_APPS.filter((app) => app.key === 'square' || app.key === 'mindbody' || app.key === 'acuity');
+
+  return (
+    <div className="integrations-redesign">
+      <div className="panel-head integrations-redesign-head">
+        <div>
+          <h3>Integrations</h3>
+          <p className="sub">Connect how clients book so RingBooker gives callers the right next step.</p>
+        </div>
+      </div>
+
+      <div className="integration-info-box">
+        <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <span aria-hidden="true" className="integration-method-icon">⚡</span>
+          <div style={{ flex: 1 }}>
+            <strong>Live sync with Square, Mindbody & more</strong>
+            <p className="sub" style={{ margin: '4px 0 0' }}>
+              RingBooker checks real-time availability when callers ask to book — Professional plan and above.
+            </p>
+          </div>
+          <a className="btn user-save integrations-primary-button" href="/user/billing">Upgrade to Pro</a>
+        </div>
+      </div>
+
+      <BookingMethodQuestion onChoose={(method) => void chooseMethod(method)} showLater={false} />
+
+      {bookingMethod === 'app' ? (
+        <div className="integration-config-panel">
+          <div className="field integration-config-field">
+            <label>Booking link</label>
+            <small>RingBooker texts this link to callers who ask to book.</small>
+            <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://yourbookingsite.com/book" />
+          </div>
+          <button
+            type="button"
+            className="btn user-save integrations-primary-button"
+            disabled={savingUrl || !bookingUrl.trim()}
+            onClick={() => void saveBookingUrl()}
+          >
+            {savingUrl ? 'Saving...' : 'Save booking link'}
+          </button>
+        </div>
+      ) : null}
+
+      {message ? <div className="note">{message}</div> : null}
+      {savingMethod ? <div className="note">Saving booking setup...</div> : null}
+
+      <section className="integrations-app-section" aria-disabled="true">
+        <div>
+          <h4>Live availability sync <span className="integration-app-badge">Pro</span></h4>
+          <p className="sub">Requires Professional plan.</p>
+        </div>
+        <div className="integrations-app-grid integrations-app-grid--sync">
+          {lockedApps.map((app) => (
+            <button
+              key={app.key}
+              type="button"
+              className="integration-app-card"
+              disabled
+              style={{ opacity: 0.4, cursor: 'not-allowed' }}
+            >
+              <AppLogo app={app} />
+              <span className="integration-app-copy">
+                <strong>{app.name}</strong>
+                <small>Full sync</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <button type="button" className="user-link--subtle integrations-later-link" onClick={() => void chooseMethod('later')}>
+        I&apos;ll set this up later
+      </button>
+    </div>
+  );
+}
+
+export function IntegrationsRedesign({
+  canUseThirdPartyIntegrations,
+  initialBookingMethod = null,
+  initialBookingUrl = null,
+}: IntegrationsRedesignProps) {
   const {
     status,
     selectedProvider,
@@ -683,9 +838,13 @@ export function IntegrationsRedesign() {
     disconnectSquare,
     goBack,
     refresh,
-  } = useIntegrations();
+  } = useIntegrations({ enabled: canUseThirdPartyIntegrations });
 
   const selectedApp = useMemo(() => findIntegrationApp(status.selectedApp), [status.selectedApp]);
+
+  if (!canUseThirdPartyIntegrations) {
+    return <StarterIntegrationsView initialBookingMethod={initialBookingMethod} initialBookingUrl={initialBookingUrl} />;
+  }
 
   if (status.isLoading) {
     return <div className="note">Loading integrations...</div>;

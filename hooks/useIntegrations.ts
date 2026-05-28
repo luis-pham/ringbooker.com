@@ -80,7 +80,14 @@ function inferStep(method: BookingMethod): Step {
   return 'question';
 }
 
-export function useIntegrations() {
+function integrationErrorMessage(error: string | undefined, fallback: string): string {
+  if (error === 'plan_feature_locked') return 'This feature requires Professional.';
+  const message = error ?? fallback;
+  return message.includes('_') ? 'Unable to complete that action. Please try again.' : message;
+}
+
+export function useIntegrations(options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled !== false;
   const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(null);
   const [selectedApp, setSelectedAppState] = useState<IntegrationAppKey | null>(null);
   const [step, setStep] = useState<Step>('question');
@@ -101,6 +108,12 @@ export function useIntegrations() {
   const bookingLinkProvider = selectedProvider?.details?.type === 'booking_link' ? selectedProvider : null;
 
   const load = useCallback(async () => {
+    if (!enabled) {
+      setIsLoading(false);
+      setError(null);
+      setProviders([]);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -110,8 +123,14 @@ export function useIntegrations() {
       ]);
       const preferences = (await preferencesResponse.json()) as PreferencesResponse;
       const providersBody = (await providersResponse.json()) as ProvidersResponse;
-      if (!preferencesResponse.ok || !preferences.ok) throw new Error(preferences.error ?? 'integrations_preferences_failed');
-      if (!providersResponse.ok || !providersBody.ok) throw new Error(providersBody.error ?? 'integrations_providers_failed');
+      if (!preferencesResponse.ok || !preferences.ok) {
+        if (preferences.error === 'plan_feature_locked') return;
+        throw new Error(integrationErrorMessage(preferences.error, 'integrations_preferences_failed'));
+      }
+      if (!providersResponse.ok || !providersBody.ok) {
+        if (providersBody.error === 'plan_feature_locked') return;
+        throw new Error(integrationErrorMessage(providersBody.error, 'integrations_providers_failed'));
+      }
 
       const method = preferences.bookingMethod ?? null;
       const persistedApp = fromBackendProviderKey(preferences.selectedIntegration);
@@ -124,7 +143,7 @@ export function useIntegrations() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     void load();
@@ -137,7 +156,7 @@ export function useIntegrations() {
       body: JSON.stringify(body),
     });
     const payload = (await response.json()) as PreferencesResponse;
-    if (!response.ok || !payload.ok) throw new Error(payload.error ?? 'integrations_preferences_save_failed');
+    if (!response.ok || !payload.ok) throw new Error(integrationErrorMessage(payload.error, 'integrations_preferences_save_failed'));
     return payload;
   }, []);
 
@@ -184,7 +203,7 @@ export function useIntegrations() {
         });
         const payload = (await response.json()) as { ok: boolean; error?: string };
         if (!response.ok || !payload.ok) {
-          const message = payload.error ?? 'booking_link_save_failed';
+          const message = integrationErrorMessage(payload.error, 'booking_link_save_failed');
           setError(message);
           throw new Error(message);
         }
@@ -199,7 +218,7 @@ export function useIntegrations() {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = payload.error ?? 'booking_link_save_failed';
+        const message = integrationErrorMessage(payload.error, 'booking_link_save_failed');
         setError(message);
         throw new Error(message);
       }
@@ -225,7 +244,7 @@ export function useIntegrations() {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = payload.error ?? 'vagaro_connect_failed';
+        const message = integrationErrorMessage(payload.error, 'vagaro_connect_failed');
         setError(message);
         throw new Error(message);
       }
@@ -254,7 +273,7 @@ export function useIntegrations() {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = payload.error ?? 'mindbody_connect_failed';
+        const message = integrationErrorMessage(payload.error, 'mindbody_connect_failed');
         setError(message);
         throw new Error(message);
       }
@@ -286,7 +305,7 @@ export function useIntegrations() {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = payload.error ?? 'acuity_connect_failed';
+        const message = integrationErrorMessage(payload.error, 'acuity_connect_failed');
         setError(message);
         throw new Error(message);
       }
@@ -302,7 +321,7 @@ export function useIntegrations() {
       const response = await fetch(`/api/backend/user/calendar/providers/${provider}/disconnect`, { method: 'POST' });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = payload.error ?? 'disconnect_failed';
+        const message = integrationErrorMessage(payload.error, 'disconnect_failed');
         setError(message);
         throw new Error(message);
       }

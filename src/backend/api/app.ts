@@ -569,6 +569,7 @@ const userSettingsBaseSchema = z.object({
   cancel_policy: z.string().min(1).optional(),
   promotions: z.string().min(1).nullable().optional(),
   booking_url: z.string().url().nullable().optional(),
+  booking_method: z.enum(['app', 'direct', 'later']).nullable().optional(),
   website_url: z.string().url().optional().or(z.literal('')),
   languages: z.array(z.string()).optional(),
   not_offered_services: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
@@ -1453,6 +1454,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   address: 'edit_business_profile',
   timezone: 'edit_business_profile',
   booking_url: 'edit_booking_url',
+  booking_method: 'edit_booking_url',
   website_url: 'edit_business_profile',
   languages: 'edit_business_profile',
   cancel_policy: 'edit_cancel_policy',
@@ -1523,6 +1525,7 @@ function splitUserSettingsPatchByPlan(
       | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'booking_method'
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
@@ -1624,6 +1627,7 @@ function splitUserSettingsPatchByPlan(
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'booking_method'
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
@@ -7512,6 +7516,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
 
     const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
     if (parsed.data.bookingUrl && !bookingUrl) {

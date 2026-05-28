@@ -984,11 +984,21 @@ export function UserSettingsLive({
   }, [portal]);
 
   async function loadCalendarProviders() {
+    if (!(capabilities ?? DEFAULT_SETTINGS_CAPABILITIES).third_party_integrations) {
+      setCalendarProviders([]);
+      setCalendarStatus(null);
+      setLoadingCalendarProviders(false);
+      return;
+    }
     setLoadingCalendarProviders(true);
     try {
       const response = await fetch('/api/backend/user/calendar/providers');
       const body = (await response.json()) as CalendarProvidersResponse;
       if (!response.ok || !body.ok || !body.providers) {
+        if (body.error === 'plan_feature_locked') {
+          setCalendarStatus(null);
+          return;
+        }
         setCalendarStatus(body.error ?? 'unable_to_load_calendar_providers');
         return;
       }
@@ -1018,8 +1028,13 @@ export function UserSettingsLive({
   }
 
   useEffect(() => {
+    if (!(capabilities ?? DEFAULT_SETTINGS_CAPABILITIES).third_party_integrations) {
+      setCalendarProviders([]);
+      setLoadingCalendarProviders(false);
+      return;
+    }
     void loadCalendarProviders();
-  }, []);
+  }, [capabilities]);
 
   async function loadSquareOptions() {
     setLoadingSquareOptions(true);
@@ -1090,6 +1105,26 @@ export function UserSettingsLive({
     setBookingLinkErrors((current) => ({ ...current, [providerId]: '' }));
     setSavingBookingLinkProvider(providerId);
     try {
+      if (!(capabilities ?? DEFAULT_SETTINGS_CAPABILITIES).third_party_integrations) {
+        const response = await fetch('/api/backend/user/settings', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ booking_method: 'app', booking_url: bookingUrl || null }),
+        });
+        const body = (await response.json()) as { ok: boolean; error?: string };
+        if (!response.ok || !body.ok) {
+          const message = body.error === 'plan_feature_locked' ? 'This feature requires Professional.' : body.error ?? 'booking_link_save_failed';
+          setBookingLinkErrors((current) => ({ ...current, [providerId]: message }));
+          showToast({
+            type: 'error',
+            message: formatSaveErrorMessage(message, bookingLinkSaveSuccessMessage(providerId)),
+          });
+          return;
+        }
+        showToast({ type: 'success', message: bookingLinkSaveSuccessMessage(providerId) });
+        setEditingBookingLinkProvider(null);
+        return;
+      }
       const response = await fetch(`/api/backend/user/calendar/providers/${providerId}/connect`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -1124,6 +1159,25 @@ export function UserSettingsLive({
     setVagaroBookingUrlError(null);
     setSavingVagaroBookingUrl(true);
     try {
+      if (!(capabilities ?? DEFAULT_SETTINGS_CAPABILITIES).third_party_integrations) {
+        const response = await fetch('/api/backend/user/settings', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ booking_method: 'app', booking_url: bookingUrl || null }),
+        });
+        const body = (await response.json()) as { ok: boolean; error?: string };
+        if (!response.ok || !body.ok) {
+          const message = body.error === 'plan_feature_locked' ? 'This feature requires Professional.' : body.error ?? 'vagaro_booking_link_save_failed';
+          setVagaroBookingUrlError(message);
+          showToast({
+            type: 'error',
+            message: formatSaveErrorMessage(message, bookingLinkSaveSuccessMessage('vagaro')),
+          });
+          return;
+        }
+        showToast({ type: 'success', message: bookingLinkSaveSuccessMessage('vagaro') });
+        return;
+      }
       const response = await fetch('/api/backend/user/calendar/providers/vagaro/booking-url', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
@@ -2150,7 +2204,11 @@ export function UserSettingsLive({
           <div className="section-stack">
             {activeTab === 'integrations' ? (
             <section className="card integrations-main-frame">
-              <IntegrationsRedesign />
+              <IntegrationsRedesign
+                canUseThirdPartyIntegrations={currentCapabilities.third_party_integrations}
+                initialBookingMethod={effectiveShop.booking_method ?? null}
+                initialBookingUrl={effectiveShop.booking_url ?? null}
+              />
             </section>
             ) : null}
 

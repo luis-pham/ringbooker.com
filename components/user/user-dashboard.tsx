@@ -1242,6 +1242,9 @@ html[data-user-theme="dark"] .user-portal-sidebar-tooltip{
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:10px;
   }
+  .grid.grid-3.calls-insights-grid{
+    grid-template-columns:1fr;
+  }
   .grid.grid-3 > .stat-card,.grid.grid-4 > .stat-card{
     padding:11px 11px 12px;
     border-radius:16px;

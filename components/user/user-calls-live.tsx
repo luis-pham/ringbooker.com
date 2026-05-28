@@ -232,7 +232,7 @@ function CallRecoveryInsightsPanel({ insights }: { insights: CallRecoveryInsight
   );
   const visiblePeakIndex = peak ? visibleHours.findIndex(({ hour }) => hour === peak.hour) : -1;
   return (
-    <section className="grid grid-3" aria-label="Call recovery insights">
+    <section className="grid grid-3 calls-insights-grid" aria-label="Call recovery insights">
       <div className="card">
         <div className="panel-head">
           <div><h3>Missed opportunities</h3><p className="sub">Calls not captured</p></div>
