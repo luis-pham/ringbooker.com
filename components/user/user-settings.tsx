@@ -296,6 +296,66 @@ html[data-user-theme="dark"]{
 .integration-confirm-card strong{font-size:14px;font-weight:600;color:var(--text-dark)}
 .integration-confirm-card p{margin:0;font-size:13px;line-height:1.6;color:var(--text-gray)}
 .integration-confirm-actions{margin-top:8px}
+.integration-configured-card{
+  border:1px solid var(--border);
+  background:var(--surface-card);
+  border-radius:12px;
+  overflow:hidden;
+}
+.integration-configured-main{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:16px;
+}
+.integration-configured-copy{
+  display:grid;
+  gap:4px;
+  min-width:0;
+  flex:1;
+}
+.integration-configured-title-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.integration-configured-title-row strong{
+  font-size:14px;
+  font-weight:600;
+  color:var(--text-dark);
+}
+.integration-configured-url-row{
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  color:var(--text-gray);
+}
+.integration-configured-url-text{
+  flex:1;
+  min-width:0;
+  overflow-wrap:anywhere;
+  color:var(--text-dark);
+  font-size:13px;
+}
+.integration-configured-url-edit{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:1;
+  min-width:0;
+}
+.integration-configured-url-edit input{
+  flex:1;
+  min-width:0;
+}
+.integration-app-logo--generic{
+  background:var(--bg-gray);
+  color:var(--text-gray);
+}
+.integration-upgrade-banner strong{color:var(--text-dark)}
 .tab-strip{
   display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;
 }
@@ -1442,9 +1502,17 @@ html[data-user-theme="dark"] .integration-confirm-card p{
   color:var(--text-gray);
 }
 html[data-user-theme="dark"] .integration-info-box,
-html[data-user-theme="dark"] .integration-confirm-card{
+html[data-user-theme="dark"] .integration-confirm-card,
+html[data-user-theme="dark"] .integration-configured-card{
   background:var(--bg-gray);
   border-color:var(--border);
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .integration-configured-url-row{
+  border-top-color:var(--border);
+}
+html[data-user-theme="dark"] .integration-app-logo--generic{
+  background:#21262d;
   color:var(--text-gray);
 }
 html[data-user-theme="dark"] .integration-success-box,
@@ -1828,6 +1896,18 @@ html[data-user-theme="dark"] .plan-chip{
   .integration-app-logo--image img{padding:4px}
   .integration-config-head{align-items:flex-start;flex-wrap:wrap}
   .integration-config-head .btn{margin-left:0}
+  .integration-configured-main,
+  .integration-configured-url-row,
+  .integration-configured-url-edit{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .integration-configured-main .btn,
+  .integration-configured-url-row .btn,
+  .integration-configured-url-edit .btn{
+    width:100%;
+    justify-content:center;
+  }
   .card-section-form{padding:0}
   .sh-catalog-grid{grid-template-columns:1fr}
   .sh-active-thead{display:none}

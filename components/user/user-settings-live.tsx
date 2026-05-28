@@ -2207,6 +2207,7 @@ export function UserSettingsLive({
               <IntegrationsRedesign
                 canUseThirdPartyIntegrations={currentCapabilities.third_party_integrations}
                 initialBookingMethod={effectiveShop.booking_method ?? null}
+                initialSelectedIntegration={effectiveShop.selected_integration ?? null}
                 initialBookingUrl={effectiveShop.booking_url ?? null}
               />
             </section>

@@ -8,6 +8,7 @@ import {
   type BookingMethod,
   FULL_SYNC_APPS,
   findIntegrationApp,
+  fromBackendProviderKey,
   toBackendProviderKey,
   type IntegrationApp,
   type IntegrationAppKey,
@@ -30,6 +31,14 @@ function AppLogo({ app }: { app: IntegrationApp }) {
       aria-hidden="true"
     >
       {app.logoText}
+    </span>
+  );
+}
+
+function GenericLinkLogo() {
+  return (
+    <span className="integration-app-logo integration-app-logo--generic" aria-hidden="true">
+      <IconLink size={20} stroke={2} />
     </span>
   );
 }
@@ -707,11 +716,14 @@ function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, 
   );
 }
 
-function DirectBookingConfirm({ onChange }: { onChange: () => void }) {
+function DirectBookingConfirm({ onChange, configured = false }: { onChange: () => void; configured?: boolean }) {
   return (
     <div className="integration-confirm-card success">
       <strong>✓ No integration needed</strong>
-      <p>When callers ask to book, RingBooker captures their request and alerts you. You follow up and schedule directly. If you ever add a booking app, come back to connect it.</p>
+      <p>
+        When callers ask to book, RingBooker captures their request and alerts you. You follow up and schedule directly.
+        {configured ? null : ' If you ever add a booking app, come back to connect it.'}
+      </p>
       <div className="integrations-inline-actions integration-confirm-actions">
         <button type="button" className="btn" onClick={onChange}>
           Change booking setup
@@ -735,15 +747,145 @@ function SetupLaterConfirm({ onChange }: { onChange: () => void }) {
   );
 }
 
+function StarterUpgradeBanner() {
+  return (
+    <section className="integration-config-panel integration-upgrade-banner" aria-disabled="true" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--starter-upgrade-banner-bg)', padding: '18px 20px' }}>
+        <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <span aria-hidden="true" className="integration-method-icon">⚡</span>
+          <div style={{ flex: 1 }}>
+            <strong>Live sync with Square, Mindbody & more</strong>
+            <p className="sub" style={{ margin: '4px 0 0' }}>
+              RingBooker checks real-time availability — Professional and above.
+            </p>
+          </div>
+          <a className="btn user-save integrations-primary-button" href="/user/billing">Upgrade to Pro</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ConfiguredIntegrationView({
+  bookingMethod,
+  selectedAppKey,
+  bookingUrl,
+  fullSyncConnected,
+  canUseThirdPartyIntegrations,
+  onChange,
+  onSaveBookingUrl,
+}: {
+  bookingMethod: BookingMethod;
+  selectedAppKey: IntegrationAppKey | null;
+  bookingUrl: string | null;
+  fullSyncConnected: boolean;
+  canUseThirdPartyIntegrations: boolean;
+  onChange: () => void;
+  onSaveBookingUrl: (url: string) => Promise<void>;
+}) {
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [urlDraft, setUrlDraft] = useState(bookingUrl ?? '');
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const app = findIntegrationApp(selectedAppKey);
+  const isFullSync = Boolean(app && app.category === 'full-sync' && fullSyncConnected);
+  const displayName = app?.key === 'custom' ? 'Any booking link' : app?.name ?? 'Booking link';
+
+  useEffect(() => {
+    setUrlDraft(bookingUrl ?? '');
+    setEditingUrl(false);
+    setMessage(null);
+  }, [bookingUrl, selectedAppKey, bookingMethod]);
+
+  if (bookingMethod === 'direct') {
+    return (
+      <>
+        <DirectBookingConfirm onChange={onChange} configured />
+        {!canUseThirdPartyIntegrations ? <StarterUpgradeBanner /> : null}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <section className="integration-configured-card">
+        <div className="integration-configured-main">
+          {app ? <AppLogo app={app} /> : <GenericLinkLogo />}
+          <div className="integration-configured-copy">
+            <div className="integration-configured-title-row">
+              <strong>{displayName}</strong>
+              {isFullSync ? (
+                <SectionBadge icon="refresh" label="Live sync" variant="teal" />
+              ) : (
+                <SectionBadge icon="link" label="Booking link" variant="gray" />
+              )}
+            </div>
+            <span className="integration-status-line">
+              <StatusDot connected />
+              {isFullSync ? 'Connected — checking availability in real time' : 'Link saved — RingBooker will text this to callers'}
+            </span>
+          </div>
+          <button type="button" className="btn" onClick={onChange}>Change</button>
+        </div>
+        {!isFullSync ? (
+          <div className="integration-configured-url-row">
+            <IconLink size={18} stroke={2} aria-hidden="true" />
+            {editingUrl ? (
+              <div className="integration-configured-url-edit">
+                <input value={urlDraft} onChange={(event) => setUrlDraft(event.target.value)} placeholder="https://yourbookingsite.com/book" />
+                <button
+                  type="button"
+                  className="btn user-save integrations-primary-button"
+                  disabled={savingUrl || !urlDraft.trim()}
+                  onClick={async () => {
+                    setSavingUrl(true);
+                    setMessage(null);
+                    try {
+                      await onSaveBookingUrl(urlDraft.trim());
+                      setEditingUrl(false);
+                      setMessage('Booking link saved.');
+                    } catch (err) {
+                      setMessage(err instanceof Error ? err.message : 'Unable to save booking link.');
+                    } finally {
+                      setSavingUrl(false);
+                    }
+                  }}
+                >
+                  {savingUrl ? 'Saving...' : 'Save'}
+                </button>
+                <button type="button" className="btn" disabled={savingUrl} onClick={() => { setUrlDraft(bookingUrl ?? ''); setEditingUrl(false); }}>Cancel</button>
+              </div>
+            ) : (
+              <>
+                <span className="integration-configured-url-text">{bookingUrl || 'No booking link saved'}</span>
+                <button type="button" className="user-link--subtle" onClick={() => setEditingUrl(true)}>Edit link</button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </section>
+      {message ? <div className="note">{message}</div> : null}
+      {!canUseThirdPartyIntegrations ? <StarterUpgradeBanner /> : null}
+    </>
+  );
+}
+
 type IntegrationsRedesignProps = {
   canUseThirdPartyIntegrations: boolean;
   initialBookingMethod?: BookingMethod;
+  initialSelectedIntegration?: string | null;
   initialBookingUrl?: string | null;
 };
 
-function StarterIntegrationsView({ initialBookingUrl }: {
+function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegration, initialBookingUrl }: {
+  initialBookingMethod?: BookingMethod;
+  initialSelectedIntegration?: string | null;
   initialBookingUrl?: string | null;
 }) {
+  const [savedBookingMethod, setSavedBookingMethod] = useState<BookingMethod>(initialBookingMethod ?? null);
+  const [savedSelectedApp, setSavedSelectedApp] = useState<IntegrationAppKey | null>(fromBackendProviderKey(initialSelectedIntegration));
+  const [savedBookingUrl, setSavedBookingUrl] = useState(initialBookingUrl ?? '');
+  const [showSetupFlow, setShowSetupFlow] = useState(false);
   const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(null);
   const [bookingUrl, setBookingUrl] = useState(initialBookingUrl ?? '');
   const [savingMethod, setSavingMethod] = useState<BookingMethod | null>(null);
@@ -751,7 +893,14 @@ function StarterIntegrationsView({ initialBookingUrl }: {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setBookingUrl(initialBookingUrl ?? '');
+    setSavedBookingMethod(initialBookingMethod ?? null);
+    setSavedSelectedApp(fromBackendProviderKey(initialSelectedIntegration));
+  }, [initialBookingMethod, initialSelectedIntegration]);
+
+  useEffect(() => {
+    const nextUrl = initialBookingUrl ?? '';
+    setSavedBookingUrl(nextUrl);
+    setBookingUrl(nextUrl);
   }, [initialBookingUrl]);
 
   async function saveSettings(patch: Record<string, unknown>) {
@@ -772,6 +921,11 @@ function StarterIntegrationsView({ initialBookingUrl }: {
     setBookingMethodState(method);
     try {
       await saveSettings({ booking_method: method });
+      if (method === 'direct') {
+        setSavedBookingMethod('direct');
+        setSavedSelectedApp(null);
+        setShowSetupFlow(false);
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Unable to save booking setup.');
     } finally {
@@ -788,6 +942,9 @@ function StarterIntegrationsView({ initialBookingUrl }: {
         booking_url: bookingUrl.trim() || null,
       });
       setBookingMethodState('app');
+      setSavedBookingMethod('app');
+      setSavedBookingUrl(bookingUrl.trim());
+      setShowSetupFlow(false);
       setMessage('Booking link saved.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Unable to save booking link.');
@@ -795,6 +952,8 @@ function StarterIntegrationsView({ initialBookingUrl }: {
       setSavingUrl(false);
     }
   }
+
+  const hasConfiguredState = savedBookingMethod === 'direct' || (savedBookingMethod === 'app' && (Boolean(savedBookingUrl.trim()) || Boolean(savedSelectedApp)));
 
   return (
     <div className="integrations-redesign starter-integrations-view">
@@ -863,6 +1022,26 @@ function StarterIntegrationsView({ initialBookingUrl }: {
         </div>
       </div>
 
+      {!showSetupFlow && hasConfiguredState ? (
+        <ConfiguredIntegrationView
+          bookingMethod={savedBookingMethod}
+          selectedAppKey={savedSelectedApp}
+          bookingUrl={savedBookingUrl.trim() || null}
+          fullSyncConnected={false}
+          canUseThirdPartyIntegrations={false}
+          onChange={() => {
+            setShowSetupFlow(true);
+            setBookingMethodState(null);
+            setMessage(null);
+          }}
+          onSaveBookingUrl={async (url) => {
+            await saveSettings({ booking_url: url || null });
+            setSavedBookingUrl(url);
+          }}
+        />
+      ) : (
+        <>
+
       <BookingMethodQuestion
         onChoose={(method) => void chooseMethod(method)}
         showLater={false}
@@ -918,12 +1097,16 @@ function StarterIntegrationsView({ initialBookingUrl }: {
       <button type="button" className="user-link--subtle integrations-later-link" onClick={() => void chooseMethod('later')}>
         I&apos;ll set this up later
       </button>
+        </>
+      )}
     </div>
   );
 }
 
 export function IntegrationsRedesign({
   canUseThirdPartyIntegrations,
+  initialBookingMethod = null,
+  initialSelectedIntegration = null,
   initialBookingUrl = null,
 }: IntegrationsRedesignProps) {
   const {
@@ -942,9 +1125,26 @@ export function IntegrationsRedesign({
   } = useIntegrations({ enabled: canUseThirdPartyIntegrations });
 
   const selectedApp = useMemo(() => findIntegrationApp(status.selectedApp), [status.selectedApp]);
+  const [showSetupFlow, setShowSetupFlow] = useState(false);
+  const [forceMethodQuestion, setForceMethodQuestion] = useState(false);
+  const [bookingUrlOverride, setBookingUrlOverride] = useState<string | null>(null);
+  const configuredBookingUrl = bookingUrlOverride ?? status.bookingLinkUrl ?? initialBookingUrl ?? null;
+  const selectedProviderConnected = selectedApp
+    ? status.providers.some((provider) => provider.id === toBackendProviderKey(selectedApp.key) && provider.connected)
+    : false;
+  const hasConfiguredState = status.bookingMethod === 'direct' || (
+    status.bookingMethod === 'app' && (Boolean(configuredBookingUrl?.trim()) || Boolean(status.selectedApp))
+  );
+  const showMethodQuestion = status.step === 'question' || forceMethodQuestion;
 
   if (!canUseThirdPartyIntegrations) {
-    return <StarterIntegrationsView initialBookingUrl={initialBookingUrl} />;
+    return (
+      <StarterIntegrationsView
+        initialBookingMethod={initialBookingMethod}
+        initialSelectedIntegration={initialSelectedIntegration}
+        initialBookingUrl={initialBookingUrl}
+      />
+    );
   }
 
   if (status.isLoading) {
@@ -963,11 +1163,44 @@ export function IntegrationsRedesign({
 
       {status.error ? <div className="note integration-error-note">{status.error}</div> : null}
 
-      {status.step === 'question' ? (
-        <BookingMethodQuestion onChoose={(method) => void setBookingMethod(method)} />
+      {!showSetupFlow && hasConfiguredState ? (
+        <ConfiguredIntegrationView
+          bookingMethod={status.bookingMethod}
+          selectedAppKey={status.selectedApp}
+          bookingUrl={configuredBookingUrl?.trim() || null}
+          fullSyncConnected={Boolean(selectedApp && selectedApp.category === 'full-sync' && selectedProviderConnected)}
+          canUseThirdPartyIntegrations
+          onChange={() => {
+            setShowSetupFlow(true);
+            setForceMethodQuestion(true);
+          }}
+          onSaveBookingUrl={async (url) => {
+            const response = await fetch('/api/backend/user/settings', {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ booking_url: url || null }),
+            });
+            const body = (await response.json()) as { ok: boolean; error?: string };
+            if (!response.ok || !body.ok) throw new Error(body.error ?? 'Unable to save booking link.');
+            setBookingUrlOverride(url);
+            await refresh();
+          }}
+        />
+      ) : (
+        <>
+      {showMethodQuestion ? (
+        <BookingMethodQuestion
+          onChoose={(method) => {
+            void (async () => {
+              setForceMethodQuestion(false);
+              await setBookingMethod(method);
+              if (method === 'direct') setShowSetupFlow(false);
+            })();
+          }}
+        />
       ) : null}
 
-      {status.step === 'app-picker' ? (
+      {!forceMethodQuestion && status.step === 'app-picker' ? (
         <>
           <AppPicker
             selectedApp={status.selectedApp}
@@ -979,9 +1212,22 @@ export function IntegrationsRedesign({
             appKey={selectedApp?.key ?? null}
             providers={status.providers}
             selectedProvider={selectedProvider}
-            saveBookingLink={saveBookingLink}
-            connectMindbody={connectMindbody}
-            connectAcuity={connectAcuity}
+            saveBookingLink={async (url, appKey) => {
+              await saveBookingLink(url, appKey);
+              setBookingUrlOverride(url);
+              setForceMethodQuestion(false);
+              setShowSetupFlow(false);
+            }}
+            connectMindbody={async (credentials) => {
+              await connectMindbody(credentials);
+              setForceMethodQuestion(false);
+              setShowSetupFlow(false);
+            }}
+            connectAcuity={async (credentials) => {
+              await connectAcuity(credentials);
+              setForceMethodQuestion(false);
+              setShowSetupFlow(false);
+            }}
             disconnectMindbody={disconnectMindbody}
             disconnectAcuity={disconnectAcuity}
             disconnectSquare={disconnectSquare}
@@ -990,8 +1236,10 @@ export function IntegrationsRedesign({
         </>
       ) : null}
 
-      {status.step === 'direct' ? <DirectBookingConfirm onChange={() => void goBack()} /> : null}
-      {status.step === 'later' ? <SetupLaterConfirm onChange={() => void goBack()} /> : null}
+      {!forceMethodQuestion && status.step === 'direct' ? <DirectBookingConfirm onChange={() => void goBack()} /> : null}
+      {!forceMethodQuestion && status.step === 'later' ? <SetupLaterConfirm onChange={() => void goBack()} /> : null}
+        </>
+      )}
     </div>
   );
 }
