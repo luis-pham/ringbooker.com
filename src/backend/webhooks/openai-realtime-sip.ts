@@ -7,6 +7,7 @@ import {
   createSipAgentToolContext,
   executeSipShopToolCall,
   prePopulateFromTranscript,
+  previewAppointmentTimeFromTranscript,
   updateSipBookingDraftFromTranscript,
   type SipToolExecutorDeps,
 } from '@/src/agent/sip/sip-tool-executor';
@@ -1193,7 +1194,10 @@ export async function handleOpenAiRealtimeSipWebhook(
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,
             onCallerTranscriptPrePopulate: (transcript: string) => {
-              return prePopulateFromTranscript(toolCtx, transcript);
+              return {
+                preview: previewAppointmentTimeFromTranscript(toolCtx, transcript),
+                result: prePopulateFromTranscript(toolCtx, transcript),
+              };
             },
             onEndCall: () => {
               if (hangupInitiated) return;

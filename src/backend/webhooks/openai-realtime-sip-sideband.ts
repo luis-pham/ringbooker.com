@@ -1,7 +1,10 @@
 import WebSocket from 'ws';
 
 import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
-import type { AppointmentTimePrePopulateResult } from '@/src/agent/sip/sip-tool-executor';
+import type {
+  AppointmentTimePrePopulateAttempt,
+  AppointmentTimePrePopulateResult,
+} from '@/src/agent/sip/sip-tool-executor';
 import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
@@ -91,7 +94,12 @@ export type OpenAiRealtimeSipSidebandParams =
        */
       onCallerTranscriptPrePopulate?: (
         transcript: string,
-      ) => AppointmentTimePrePopulateResult | Promise<AppointmentTimePrePopulateResult | null> | null | void;
+      ) =>
+        | AppointmentTimePrePopulateAttempt
+        | AppointmentTimePrePopulateResult
+        | Promise<AppointmentTimePrePopulateResult | null>
+        | null
+        | void;
     };
 
 /**
@@ -120,6 +128,15 @@ function includesSpecificTime(text: string): boolean {
   return /\b\d{1,2}(?::[0-5]\d)?\s*(?:a\.?\s*m\.?|p\.?\s*m\.?)\b/i.test(text)
     || /\b(?:noon|midnight)\b/i.test(text)
     || /\b(?:at|around|by)\s+\d{1,2}(?::[0-5]\d)?\b/i.test(text);
+}
+
+function isPrePopulateAttempt(value: unknown): value is AppointmentTimePrePopulateAttempt {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    'result' in value &&
+    (value as { result?: unknown }).result instanceof Promise
+  );
 }
 
 export function startOpenAiRealtimeSipSideband(
@@ -156,6 +173,13 @@ export function startOpenAiRealtimeSipSideband(
   let initialGreetingAudioStopped = false;
   let sawUserSpeechBeforeInitial = false;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastSpeechStoppedAtMs: number | null = null;
+  let lastTranscriptionCompleteAtMs: number | null = null;
+  let lastResponseCreateSentAtMs: number | null = null;
+  let lastToolCallReceivedAtMs: number | null = null;
+  let lastToolResultSentAtMs: number | null = null;
+  let lastAudioResponseStartAtMs: number | null = null;
+  let waitingForAudioResponseStart = false;
 
   /** Set when AI calls end_call; next output_audio_buffer.stopped triggers onEndCall. */
   let pendingHangupAfterAudio = false;
@@ -170,6 +194,29 @@ export function startOpenAiRealtimeSipSideband(
 
   const needsDemoVadResumeAfterWelcome =
     params.variant === 'demo' && params.enableToolLoop;
+
+  function timingSessionId(): string {
+    return params.variant === 'shop'
+      ? params.initialResponseBridgeGate?.rbCallId ?? params.callId
+      : params.callId;
+  }
+
+  function elapsedSince(markMs: number | null, nowMs: number): number | null {
+    return markMs === null ? null : nowMs - markMs;
+  }
+
+  function logTiming(label: string, fields: Record<string, unknown> = {}, nowMs = Date.now()): void {
+    const timestamp = new Date(nowMs).toISOString();
+    logger.info(
+      {
+        callSessionId: timingSessionId(),
+        providerCallId: params.callId,
+        timestamp,
+        ...fields,
+      },
+      `[TIMING] ${label} at ${timestamp}`,
+    );
+  }
 
   function cancelInitialTimer(): void {
     if (initialTimer) {
@@ -306,10 +353,37 @@ export function startOpenAiRealtimeSipSideband(
     // This fires while OpenAI is still doing its ~7 s inference, so the cache is warm
     // by the time the model calls validate_appointment_time.
     if (forceTimeValidation) {
-      const prePopulateResult = params.onCallerTranscriptPrePopulate?.(transcript);
+      const prePopulateStartedAtMs = Date.now();
+      const prePopulateAttempt = params.onCallerTranscriptPrePopulate?.(transcript);
+      const prePopulatePreview = isPrePopulateAttempt(prePopulateAttempt) ? prePopulateAttempt.preview : null;
+      logTiming(
+        'prepopulate_start',
+        {
+          transcript,
+          date: prePopulatePreview?.date ?? null,
+          time: prePopulatePreview?.time ?? null,
+          elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, prePopulateStartedAtMs),
+          elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, prePopulateStartedAtMs),
+        },
+        prePopulateStartedAtMs,
+      );
+      const prePopulateResult = isPrePopulateAttempt(prePopulateAttempt)
+        ? prePopulateAttempt.result
+        : prePopulateAttempt;
       void Promise.resolve(prePopulateResult)
         .then((result) => {
-          if (!result) return;
+          const completedAtMs = Date.now();
+          if (!result) {
+            logTiming(
+              'prepopulate_complete',
+              {
+                elapsedMs: completedAtMs - prePopulateStartedAtMs,
+                result: 'error',
+              },
+              completedAtMs,
+            );
+            return;
+          }
           logger.info(
             {
               callId: params.callId,
@@ -317,11 +391,32 @@ export function startOpenAiRealtimeSipSideband(
               time: result.time,
               timestamp: result.timestamp,
               status: result.status,
+              valid: result.valid,
             },
             `prepopulate: appointmentTimeValidation set for ${result.date} ${result.time} at ${result.timestamp}`,
           );
+          logTiming(
+            'prepopulate_complete',
+            {
+              date: result.date,
+              time: result.time,
+              cacheStatus: result.status,
+              elapsedMs: completedAtMs - prePopulateStartedAtMs,
+              result: result.valid ? 'valid' : 'invalid',
+            },
+            completedAtMs,
+          );
         })
         .catch((err: unknown) => {
+          const completedAtMs = Date.now();
+          logTiming(
+            'prepopulate_complete',
+            {
+              elapsedMs: completedAtMs - prePopulateStartedAtMs,
+              result: 'error',
+            },
+            completedAtMs,
+          );
           logger.warn({ err, callId: params.callId }, 'prepopulate: appointmentTimeValidation failed');
         });
     }
@@ -339,6 +434,17 @@ export function startOpenAiRealtimeSipSideband(
               }
             : {}),
         }),
+      );
+      lastResponseCreateSentAtMs = Date.now();
+      waitingForAudioResponseStart = true;
+      logTiming(
+        'response_create_sent',
+        {
+          forceAppointmentTimeValidation: forceTimeValidation,
+          elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, lastResponseCreateSentAtMs),
+          elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastResponseCreateSentAtMs),
+        },
+        lastResponseCreateSentAtMs,
       );
       logger.info(
         { callId: params.callId, forceAppointmentTimeValidation: forceTimeValidation },
@@ -440,6 +546,25 @@ export function startOpenAiRealtimeSipSideband(
       incrementMetric('initial_response_create_total', { outcome: 'skipped_speaking' });
     }
 
+    if (evt.type === 'input_audio_buffer.speech_stopped') {
+      lastSpeechStoppedAtMs = Date.now();
+      logTiming('VAD speech_stopped', {}, lastSpeechStoppedAtMs);
+    }
+
+    if (evt.type === 'response.audio.delta' && waitingForAudioResponseStart) {
+      lastAudioResponseStartAtMs = Date.now();
+      waitingForAudioResponseStart = false;
+      logTiming(
+        'audio_response_start',
+        {
+          elapsedSinceToolResultMs: elapsedSince(lastToolResultSentAtMs, lastAudioResponseStartAtMs),
+          elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastAudioResponseStartAtMs),
+          totalLatencyMs: elapsedSince(lastSpeechStoppedAtMs, lastAudioResponseStartAtMs),
+        },
+        lastAudioResponseStartAtMs,
+      );
+    }
+
     if (
       needsDemoVadResumeAfterWelcome &&
       (evt.type === 'response.done' || evt.type === 'output_audio_buffer.stopped')
@@ -451,6 +576,17 @@ export function startOpenAiRealtimeSipSideband(
       if (evt.type === 'output_audio_buffer.started' && !initialGreetingAudioStarted) {
         initialGreetingAudioStarted = true;
         logger.info({ callId: params.callId }, 'openai_sip_initial_greeting_audio_started');
+      }
+      if (evt.type === 'output_audio_buffer.started' && lastSpeechStoppedAtMs !== null) {
+        const audioSentAtMs = Date.now();
+        logTiming(
+          'audio_sent_to_caller',
+          {
+            elapsedSinceAudioStartMs: elapsedSince(lastAudioResponseStartAtMs, audioSentAtMs),
+            elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, audioSentAtMs),
+          },
+          audioSentAtMs,
+        );
       }
       if (evt.type === 'output_audio_buffer.stopped' && !initialGreetingAudioStopped) {
         initialGreetingAudioStopped = true;
@@ -476,6 +612,17 @@ export function startOpenAiRealtimeSipSideband(
             ? 'caller'
             : null;
       if (transcript && speaker) {
+        if (speaker === 'caller') {
+          lastTranscriptionCompleteAtMs = Date.now();
+          logTiming(
+            'transcription_complete',
+            {
+              transcript,
+              elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastTranscriptionCompleteAtMs),
+            },
+            lastTranscriptionCompleteAtMs,
+          );
+        }
         // Both shop and demo calls persist the full transcript via the callback.
         params.onTranscript?.(speaker, transcript);
         logger.info(
@@ -602,6 +749,15 @@ export function startOpenAiRealtimeSipSideband(
     }
 
     const argsJson = typeof evt.arguments === 'string' ? evt.arguments : '{}';
+    lastToolCallReceivedAtMs = Date.now();
+    logTiming(
+      'tool_call_received',
+      {
+        tool: toolName,
+        elapsedSinceResponseCreateMs: elapsedSince(lastResponseCreateSentAtMs, lastToolCallReceivedAtMs),
+      },
+      lastToolCallReceivedAtMs,
+    );
     logger.info(
       {
         callSessionId: params.callId,
@@ -643,6 +799,17 @@ export function startOpenAiRealtimeSipSideband(
       try {
         ws.send(JSON.stringify(payload));
         ws.send(JSON.stringify({ type: 'response.create' }));
+        lastToolResultSentAtMs = Date.now();
+        lastResponseCreateSentAtMs = lastToolResultSentAtMs;
+        waitingForAudioResponseStart = true;
+        logTiming(
+          'tool_result_sent',
+          {
+            tool: toolName,
+            elapsedSinceToolCallMs: elapsedSince(lastToolCallReceivedAtMs, lastToolResultSentAtMs),
+          },
+          lastToolResultSentAtMs,
+        );
       } catch (err) {
         logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_shop_tool_reply_failed');
       }
