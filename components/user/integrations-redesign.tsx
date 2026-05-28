@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { IconLink, IconRefresh } from '@tabler/icons-react';
 
 import {
   BOOKING_LINK_APPS,
@@ -37,6 +38,31 @@ function StatusDot({ connected }: { connected: boolean }) {
   return <span className={`integration-status-dot ${connected ? 'connected' : ''}`} aria-hidden="true" />;
 }
 
+function SectionBadge({ icon, label, variant }: { icon: 'refresh' | 'link'; label: string; variant: 'teal' | 'gray' }) {
+  const Icon = icon === 'refresh' ? IconRefresh : IconLink;
+  const colors = variant === 'teal'
+    ? { background: '#9FE1CB', color: '#085041' }
+    : { background: '#D3D1C7', color: '#444441' };
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        borderRadius: 999,
+        padding: '4px 8px',
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1,
+        ...colors,
+      }}
+    >
+      <Icon size={12} stroke={2.2} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
 function stringifyMappings(value: unknown): string {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
   return Object.entries(value as Record<string, unknown>)
@@ -59,17 +85,17 @@ function parseMappings(value: string): Record<string, string> {
   return mapped;
 }
 
-function BookingMethodQuestion({ onChoose, showLater = true }: {
+function BookingMethodQuestion({ onChoose, showLater = true, title = 'How do your clients book appointments?', subtitle = 'This helps RingBooker give callers the right information when they ask to book.' }: {
   onChoose: (method: 'app' | 'direct' | 'later') => void;
   showLater?: boolean;
+  title?: string;
+  subtitle?: string | null;
 }) {
   return (
     <div className="integrations-flow-stack">
       <div>
-        <h4 className="integrations-flow-title">How do your clients book appointments?</h4>
-        <p className="sub integrations-flow-sub">
-          This helps RingBooker give callers the right information when they ask to book.
-        </p>
+        <h4 className="integrations-flow-title">{title}</h4>
+        {subtitle ? <p className="sub integrations-flow-sub">{subtitle}</p> : null}
       </div>
       <div className="integrations-method-grid">
         <button type="button" className="integration-method-card" onClick={() => onChoose('app')}>
@@ -96,17 +122,31 @@ function BookingMethodQuestion({ onChoose, showLater = true }: {
   );
 }
 
-function AppCard({ app, selected, connected, onSelect }: { app: IntegrationApp; selected: boolean; connected: boolean; onSelect: () => void }) {
+function AppCard({ app, selected, connected, onSelect, displayName, displayTag, dashed = false, useLinkIcon = false }: {
+  app: IntegrationApp;
+  selected: boolean;
+  connected: boolean;
+  onSelect: () => void;
+  displayName?: string;
+  displayTag?: string;
+  dashed?: boolean;
+  useLinkIcon?: boolean;
+}) {
   return (
     <button
       type="button"
       className={`integration-app-card ${selected ? 'selected' : ''} ${app.comingSoon ? 'soon' : ''}`}
       onClick={onSelect}
+      style={dashed ? { borderStyle: 'dashed' } : undefined}
     >
-      <AppLogo app={app} />
+      {useLinkIcon ? (
+        <span className="integration-app-logo" style={{ background: '#f3f4f6', color: '#444441' }} aria-hidden="true">
+          <IconLink size={20} stroke={2} />
+        </span>
+      ) : <AppLogo app={app} />}
       <span className="integration-app-copy">
-        <strong>{app.name}</strong>
-        <small>{app.category === 'full-sync' ? 'Full sync' : 'Link only'}</small>
+        <strong>{displayName ?? app.name}</strong>
+        <small>{displayTag ?? (app.category === 'full-sync' ? 'Full sync' : 'Link only')}</small>
       </span>
       {connected ? <span className="integration-app-badge connected">Connected</span> : null}
       {app.comingSoon ? <span className="integration-app-badge">Coming soon</span> : null}
@@ -121,14 +161,22 @@ function AppPicker({ selectedApp, providers, onBack, onSelect }: {
   onSelect: (key: IntegrationAppKey) => void;
 }) {
   const isConnected = (app: IntegrationApp) => providers.some((provider) => provider.id === toBackendProviderKey(app.key) && provider.connected);
+  const visibleBookingLinkApps = BOOKING_LINK_APPS.filter((app) => (
+    app.key === 'vagaro'
+    || app.key === 'fresha'
+    || app.key === 'boulevard'
+    || app.key === 'booksy'
+    || app.key === 'custom'
+  ));
 
   return (
     <div className="integrations-flow-stack">
       <button type="button" className="user-link--subtle integrations-back-link" onClick={onBack}>← Back</button>
       <section className="integrations-app-section">
         <div>
-          <h4>Full sync — live availability</h4>
-          <p className="sub">RingBooker checks your calendar in real time.</p>
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            Full sync <SectionBadge icon="refresh" label="Live availability" variant="teal" />
+          </h4>
         </div>
         <div className="integrations-app-grid integrations-app-grid--sync">
           {FULL_SYNC_APPS.map((app) => (
@@ -138,12 +186,23 @@ function AppPicker({ selectedApp, providers, onBack, onSelect }: {
       </section>
       <section className="integrations-app-section">
         <div>
-          <h4>Booking link — SMS to caller</h4>
-          <p className="sub">RingBooker texts your URL to callers who ask to book.</p>
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            Booking link <SectionBadge icon="link" label="SMS to caller" variant="gray" />
+          </h4>
         </div>
-        <div className="integrations-app-grid integrations-app-grid--link">
-          {BOOKING_LINK_APPS.map((app) => (
-            <AppCard key={app.key} app={app} selected={selectedApp === app.key} connected={isConnected(app)} onSelect={() => onSelect(app.key)} />
+        <div className="integrations-app-grid integrations-app-grid--link" style={{ gridTemplateColumns: 'repeat(5,minmax(0,1fr))' }}>
+          {visibleBookingLinkApps.map((app) => (
+            <AppCard
+              key={app.key}
+              app={app}
+              selected={selectedApp === app.key}
+              connected={isConnected(app)}
+              onSelect={() => onSelect(app.key)}
+              displayName={app.key === 'custom' ? 'Any booking link' : undefined}
+              displayTag={app.key === 'custom' ? 'Works with any URL' : undefined}
+              dashed={app.key === 'custom'}
+              useLinkIcon={app.key === 'custom'}
+            />
           ))}
         </div>
       </section>
@@ -749,30 +808,22 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
       <div className="panel-head integrations-redesign-head">
         <div>
           <h3>Integrations</h3>
-          <p className="sub">Connect how clients book so RingBooker gives callers the right next step.</p>
+          <p className="sub">Tell RingBooker how clients book so it gives callers the right next step.</p>
         </div>
       </div>
 
-      <div className="integration-info-box">
-        <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <span aria-hidden="true" className="integration-method-icon">⚡</span>
-          <div style={{ flex: 1 }}>
-            <strong>Live sync with Square, Mindbody & more</strong>
-            <p className="sub" style={{ margin: '4px 0 0' }}>
-              RingBooker checks real-time availability when callers ask to book — Professional plan and above.
-            </p>
-          </div>
-          <a className="btn user-save integrations-primary-button" href="/user/billing">Upgrade to Pro</a>
-        </div>
-      </div>
-
-      <BookingMethodQuestion onChoose={(method) => void chooseMethod(method)} showLater={false} />
+      <BookingMethodQuestion
+        onChoose={(method) => void chooseMethod(method)}
+        showLater={false}
+        title="How do your clients book?"
+        subtitle={null}
+      />
 
       {bookingMethod === 'app' ? (
         <div className="integration-config-panel">
           <div className="field integration-config-field">
-            <label>Booking link</label>
-            <small>RingBooker texts this link to callers who ask to book.</small>
+            <label>Your booking link</label>
+            <small>RingBooker texts this to callers who ask to book.</small>
             <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://yourbookingsite.com/book" />
           </div>
           <button
@@ -781,7 +832,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
             disabled={savingUrl || !bookingUrl.trim()}
             onClick={() => void saveBookingUrl()}
           >
-            {savingUrl ? 'Saving...' : 'Save booking link'}
+            {savingUrl ? 'Saving...' : 'Save link'}
           </button>
         </div>
       ) : null}
@@ -789,27 +840,43 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
       {message ? <div className="note">{message}</div> : null}
       {savingMethod ? <div className="note">Saving booking setup...</div> : null}
 
-      <section className="integrations-app-section" aria-disabled="true">
-        <div>
-          <h4>Live availability sync <span className="integration-app-badge">Pro</span></h4>
-          <p className="sub">Requires Professional plan.</p>
+      <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+
+      <section className="integration-config-panel" aria-disabled="true" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ background: '#EEEDFE', padding: '18px 20px' }}>
+          <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <span aria-hidden="true" className="integration-method-icon">⚡</span>
+            <div style={{ flex: 1 }}>
+              <strong>Live sync with Square, Mindbody & more</strong>
+              <p className="sub" style={{ margin: '4px 0 0' }}>
+                RingBooker checks real-time availability — Professional and above.
+              </p>
+            </div>
+            <a className="btn user-save integrations-primary-button" href="/user/billing">Upgrade to Pro</a>
+          </div>
         </div>
-        <div className="integrations-app-grid integrations-app-grid--sync">
-          {lockedApps.map((app) => (
-            <button
-              key={app.key}
-              type="button"
-              className="integration-app-card"
-              disabled
-              style={{ opacity: 0.4, cursor: 'not-allowed' }}
-            >
-              <AppLogo app={app} />
-              <span className="integration-app-copy">
-                <strong>{app.name}</strong>
-                <small>Full sync</small>
-              </span>
-            </button>
-          ))}
+        <div className="integrations-app-section" style={{ padding: '18px 20px' }}>
+          <div>
+            <h4>Live availability sync <span className="integration-app-badge">🔒 Pro</span></h4>
+            <p className="sub">Requires Professional plan.</p>
+          </div>
+          <div className="integrations-app-grid integrations-app-grid--sync">
+            {lockedApps.map((app) => (
+              <button
+                key={app.key}
+                type="button"
+                className="integration-app-card"
+                disabled
+                style={{ opacity: 0.4, cursor: 'not-allowed' }}
+              >
+                <AppLogo app={app} />
+                <span className="integration-app-copy">
+                  <strong>{app.name}</strong>
+                  <small>Full sync</small>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -855,7 +922,7 @@ export function IntegrationsRedesign({
       <div className="panel-head integrations-redesign-head">
         <div>
           <h3>Integrations</h3>
-          <p className="sub">Connect how clients book so RingBooker gives callers the right next step.</p>
+          <p className="sub">Tell RingBooker how clients book so it gives callers the right next step.</p>
         </div>
         <button type="button" className="btn" onClick={() => void refresh()}>Refresh</button>
       </div>
