@@ -169,6 +169,7 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
       setError(null);
       setBookingMethodState(method);
       setStep(inferStep(method));
+      if (method === 'app') return;
       try {
         await patchPreferences({ bookingMethod: method });
       } catch (err) {
@@ -186,13 +187,8 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
         setBookingMethodState('app');
         setStep('app-picker');
       }
-      try {
-        await patchPreferences({ bookingMethod: key ? 'app' : bookingMethod, selectedIntegration: key ? toBackendProviderKey(key) : null });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'selected_integration_save_failed');
-      }
     },
-    [bookingMethod, patchPreferences],
+    [],
   );
 
   const saveBookingLink = useCallback(

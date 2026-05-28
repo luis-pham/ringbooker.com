@@ -960,9 +960,10 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
 
   async function chooseMethod(method: BookingMethod) {
     if (savingMethod) return;
-    setSavingMethod(method);
     setMessage(null);
     setBookingMethodState(method);
+    if (method === 'app') return;
+    setSavingMethod(method);
     try {
       await saveSettings({ booking_method: method });
       if (method === 'direct') {
@@ -1134,7 +1135,6 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
       {bookingMethod === 'direct' ? <DirectBookingConfirm onChange={() => setBookingMethodState(null)} /> : null}
 
       {message ? <div className="note">{message}</div> : null}
-      {savingMethod ? <div className="note">Saving booking setup...</div> : null}
 
       <hr className="integration-divider" />
 
