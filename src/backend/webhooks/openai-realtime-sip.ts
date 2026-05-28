@@ -243,7 +243,59 @@ export function resolveSipCallerPhoneForTools(params: {
     const originalCallerPhone = params.callControlState.callerPhone?.trim();
     if (originalCallerPhone) return originalCallerPhone;
   }
+  if (params.routeKind === 'shop') {
+    if (params.normalizedFrom) {
+      logger.warn(
+        { normalizedFrom: params.normalizedFrom },
+        'Warning: callControlState.callerPhone missing for shop call - callerPhone set to empty. Use call log recovery if available.',
+      );
+    }
+    return '';
+  }
   return params.normalizedFrom ?? '';
+}
+
+export async function resolveSipCallerPhoneForShopContext(params: {
+  routeKind: OpenAiSipRoute['kind'];
+  normalizedFrom: string | null;
+  callControlState: Pick<CallControlClientStatePayload, 'routeKind' | 'callerPhone'> | null;
+  shopId: string;
+  rbCallId?: string | null;
+  requestId?: string | null;
+  callLogsRepository?: CallLogsRepository;
+}): Promise<string> {
+  const callerPhone = resolveSipCallerPhoneForTools({
+    routeKind: params.routeKind,
+    normalizedFrom: params.normalizedFrom,
+    callControlState: params.callControlState,
+  });
+  if (callerPhone || params.routeKind !== 'shop' || !params.callLogsRepository) return callerPhone;
+
+  const requestIds = Array.from(
+    new Set(
+      [params.rbCallId?.trim(), params.requestId?.trim()].filter((value): value is string => Boolean(value)),
+    ),
+  );
+  for (const requestId of requestIds) {
+    try {
+      const callLog = await params.callLogsRepository.findTranscriptByShopAndRequestId({
+        shopId: params.shopId,
+        requestId,
+      });
+      const recoveredPhone = callLog?.callerPhone?.trim();
+      if (recoveredPhone) {
+        logger.info({ shopId: params.shopId, requestId }, 'recovered caller phone from call_log');
+        return recoveredPhone;
+      }
+    } catch (err) {
+      logger.warn(
+        { err, shopId: params.shopId, requestId },
+        'openai_sip_call_log_caller_phone_recovery_failed',
+      );
+    }
+  }
+
+  return '';
 }
 
 export async function resolveOpenAiSipShopRoomContext(params: {
@@ -723,13 +775,26 @@ export async function handleOpenAiRealtimeSipWebhook(
   let instructions: string;
   let demoVertical: VoicePromptVertical | undefined;
   let demoInitialResponseInstructions: string | null = null;
+  const shopRoomContext =
+    route.kind === 'shop'
+      ? await resolveOpenAiSipShopRoomContext({
+          sipHeaders: data.sip_headers,
+          shop: route.shop,
+          callId,
+          voiceCallLegsRepository: deps.voiceCallLegsRepository,
+        })
+      : null;
   const callerPhoneForPrompt =
     route.kind === 'shop'
-      ? resolveSipCallerPhoneForTools({
+      ? (await resolveSipCallerPhoneForShopContext({
           routeKind: route.kind,
           normalizedFrom,
           callControlState: ccDecoded,
-        }) || null
+          shopId: route.shop.id,
+          rbCallId: shopRoomContext?.rbCallId,
+          requestId: shopRoomContext?.requestId,
+          callLogsRepository: deps.callLogsRepository,
+        })) || null
       : null;
 
   if (route.kind === 'demo') {
@@ -799,16 +864,6 @@ export async function handleOpenAiRealtimeSipWebhook(
   const model = env.OPENAI_REALTIME_MODEL?.trim() || env.AGENT_VOICE_MODEL?.trim() || 'gpt-realtime';
   const voiceOverride = env.OPENAI_REALTIME_SIP_VOICE?.trim();
   const voice = voiceOverride || openAiRealtimeVoiceForVertical(demoVertical, 'alloy');
-
-  const shopRoomContext =
-    route.kind === 'shop'
-      ? await resolveOpenAiSipShopRoomContext({
-          sipHeaders: data.sip_headers,
-          shop: route.shop,
-          callId,
-          voiceCallLegsRepository: deps.voiceCallLegsRepository,
-        })
-      : null;
 
   if (route.kind === 'shop' && shopRoomContext) {
     logger.info(
@@ -1033,11 +1088,7 @@ export async function handleOpenAiRealtimeSipWebhook(
           shopAccessStatesRepository: deps.shopAccessStatesRepository,
           telephonyService: deps.telephonyService!,
         };
-        const callerPhone = resolveSipCallerPhoneForTools({
-          routeKind: route.kind,
-          normalizedFrom,
-          callControlState: ccDecoded,
-        });
+        const callerPhone = callerPhoneForPrompt ?? '';
         const toolCtx = createSipAgentToolContext({
           shop: route.shop,
           callerPhone,

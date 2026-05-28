@@ -37,6 +37,7 @@ import { sendGuardedSms } from '@/src/backend/services/sms/guarded-sms';
 import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backend/services/sms/types';
 import { formatShopDate, formatShopTime } from '@/src/shared/timezone';
 import { isWithinBusinessHours as checkWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
+import type { BookingRecord } from '@/src/backend/ports/repositories';
 
 type WorkerControls = {
   stop: () => void;
@@ -76,9 +77,14 @@ function derivePostCallOutcomeLabel(params: {
   followUpRequired?: boolean | null;
 }): string {
   const storedOutcome = params.storedOutcome?.trim();
+  const unknownUpgradeActions = new Set([
+    'booking_created',
+    'booking_link_sent',
+    'booking_request_incomplete',
+    'low_confidence_booking_intent',
+  ]);
   const summaryBookingOutcome =
-    params.summaryNextAction === 'booking_request_incomplete' ||
-    params.summaryNextAction === 'low_confidence_booking_intent'
+    params.summaryNextAction && unknownUpgradeActions.has(params.summaryNextAction)
       ? params.summaryNextAction
       : null;
   if (storedOutcome && !(storedOutcome === 'unknown' && summaryBookingOutcome)) return storedOutcome;
@@ -86,6 +92,10 @@ function derivePostCallOutcomeLabel(params: {
   if (params.followUpRequired) return 'needs_follow_up';
   if (params.summaryNextAction && params.summaryNextAction !== 'no_action_needed') return params.summaryNextAction;
   return params.hasCallerSpeech ? 'no_action_needed' : 'unknown';
+}
+
+function outcomeFromLinkedBooking(booking: BookingRecord): string {
+  return booking.status.trim().toLowerCase() === 'confirmed' ? 'booking_confirmed' : 'captured_call';
 }
 
 function latestPostCallSummaryOutcome(transcriptText: string): string | null {
@@ -1436,16 +1446,35 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         summaryNextAction: extracted.nextAction,
         followUpRequired: extracted.followUpRequired,
       });
-      if (call.outcome?.trim() === 'unknown' && derivedOutcome !== 'unknown') {
+      let finalOutcome = derivedOutcome;
+      const linkedBooking =
+        runtime.bookingsRepository && call.requestId
+          ? (await runtime.bookingsRepository.listByShop(params.shopId, { callLogId: call.requestId, limit: 1 }))[0] ?? null
+          : null;
+      if (finalOutcome === 'unknown' && linkedBooking) {
+        finalOutcome = outcomeFromLinkedBooking(linkedBooking);
+        logger.info(
+          {
+            shopId: params.shopId,
+            requestId: payload.data.requestId,
+            bookingId: linkedBooking.id,
+            previousOutcome: 'unknown',
+            outcome: finalOutcome,
+            bookingStatus: linkedBooking.status,
+          },
+          `Outcome upgraded from unknown to ${finalOutcome} because linked booking ${linkedBooking.id} exists.`,
+        );
+      }
+      if (call.outcome?.trim() === 'unknown' && finalOutcome !== 'unknown') {
         await callLogsRepository.setOutcomeByProviderCallId({
           provider: call.provider,
           providerCallId: call.providerCallId,
-          outcome: derivedOutcome,
+          outcome: finalOutcome,
         });
       }
       const summaryParts = [
         `[POST_CALL_SUMMARY] status=${status}`,
-        `outcome=${derivedOutcome}`,
+        `outcome=${finalOutcome}`,
         `agentJoined=${call.agentJoined ? 'yes' : 'no'}`,
         `humanAnswered=${call.humanAnswered ? 'yes' : 'no'}`,
         `summaryNextAction=${extracted.nextAction}`,
@@ -1471,12 +1500,14 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           shopId: params.shopId,
           requestId: payload.data.requestId,
           eventType: 'post_call_summary',
-          outcome: derivedOutcome,
+          outcome: finalOutcome,
           reason:
-            derivedOutcome === 'booking_request_incomplete'
+            finalOutcome === 'booking_request_incomplete'
               ? 'booking_intent_detected'
-              : derivedOutcome === 'low_confidence_booking_intent'
+              : finalOutcome === 'low_confidence_booking_intent'
                 ? 'low_confidence_booking_intent'
+                : linkedBooking && finalOutcome !== derivedOutcome
+                  ? 'linked_booking_found'
                 : extracted.followUpRequired
                   ? 'incomplete_follow_up_created'
                   : 'summary_extracted',

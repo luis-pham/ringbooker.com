@@ -99,6 +99,27 @@ test('returns booking URL fallback when caller phone is unavailable', async () =
   assert.equal(enqueuedJobs.length, 0);
 });
 
+test('returns booking URL fallback instead of texting forwarding number when SIP caller phone is empty', async () => {
+  const { ctx, enqueuedJobs } = createContext({
+    callerPhone: '',
+    shop: createShop({ booking_url: 'https://glossgenius.com/test' }),
+  });
+
+  const result = await sendBookingLinkTool(ctx, {
+    callerName: 'Huy',
+    serviceInterest: 'color',
+  });
+
+  assert.deepEqual(result, {
+    success: false,
+    reason: 'no_phone',
+    fallback: 'url',
+    bookingUrl: 'https://glossgenius.com/test',
+    message: 'Unable to send booking link via SMS. Tell the caller they can book directly at: https://glossgenius.com/test',
+  });
+  assert.equal(enqueuedJobs.length, 0);
+});
+
 test('enqueues booking link SMS without requiring explicit SMS consent', async () => {
   const { ctx, enqueuedJobs } = createContext({
     smsConsented: false,

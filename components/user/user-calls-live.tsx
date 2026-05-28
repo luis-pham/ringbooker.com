@@ -335,11 +335,20 @@ export function UserCallsLive({
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [recordingLoading, setRecordingLoading] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
+  const [useMobileCallsList, setUseMobileCallsList] = useState(false);
   const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(initialData?.ok ? initialData.shop : null));
   const [canViewRecoveryInsights, setCanViewRecoveryInsights] = useState(Boolean(initialData?.capabilities?.call_recovery_insights));
   const [insights, setInsights] = useState<CallRecoveryInsights | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const update = () => setUseMobileCallsList(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const next = tabFromSearch(searchParams.get('tab'));
@@ -565,7 +574,7 @@ export function UserCallsLive({
                 {loading && calls.length === 0 ? <div className="calls-empty"><p>Loading calls…</p></div> : null}
                 {calls.length > 0 ? (
                   <>
-                    <table className="calls-table calls-table-desktop">
+                    {!useMobileCallsList ? <table className="calls-table calls-table-desktop">
                       <thead>
                         <tr>
                           <th>Caller</th>
@@ -647,9 +656,9 @@ export function UserCallsLive({
                           );
                         })}
                       </tbody>
-                    </table>
+                    </table> : null}
 
-                    <div className="mobile-calls">
+                    {useMobileCallsList ? <div className="mobile-calls">
                       {calls.map((call) => {
                         const outcome = outcomeMeta(call.outcome);
                         const status = statusMeta(call.status);
@@ -698,7 +707,7 @@ export function UserCallsLive({
                           </button>
                         );
                       })}
-                    </div>
+                    </div> : null}
                   </>
                 ) : null}
               </div>}

@@ -5,6 +5,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
+import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
@@ -14,7 +15,11 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
-import { resolveOpenAiSipShopRoomContext, resolveSipCallerPhoneForTools } from '@/src/backend/webhooks/openai-realtime-sip';
+import {
+  resolveOpenAiSipShopRoomContext,
+  resolveSipCallerPhoneForShopContext,
+  resolveSipCallerPhoneForTools,
+} from '@/src/backend/webhooks/openai-realtime-sip';
 
 function whsecSecret(): { secret: string; raw: Buffer } {
   const raw = randomBytes(32);
@@ -25,6 +30,23 @@ function signV1(params: { raw: Buffer; webhookId: string; webhookTimestamp: stri
   const signedContent = `${params.webhookId}.${params.webhookTimestamp}.${params.rawBody}`;
   const mac = createHmac('sha256', params.raw).update(signedContent, 'utf8').digest('base64');
   return `v1,${mac}`;
+}
+
+class CalendarIntegratedShopsRepository extends InMemoryShopsRepository {
+  override async findByDestinationPhone(destinationPhone: string) {
+    const shop = await super.findByDestinationPhone(destinationPhone);
+    return shop ? { ...shop, google_cal_id: 'primary-calendar' } : shop;
+  }
+
+  override async findByTelnyxNumber(e164: string) {
+    const shop = await super.findByTelnyxNumber(e164);
+    return shop ? { ...shop, google_cal_id: 'primary-calendar' } : shop;
+  }
+
+  override async findById(shopId: string) {
+    const shop = await super.findById(shopId);
+    return shop ? { ...shop, google_cal_id: 'primary-calendar' } : shop;
+  }
 }
 
 test('openai SIP webhook rejects invalid signature', async () => {
@@ -411,11 +433,49 @@ test('shop SIP tools use original Call Control caller instead of the outbound Op
   assert.equal(
     resolveSipCallerPhoneForTools({
       routeKind: 'shop',
-      normalizedFrom: '+15559871234',
+      normalizedFrom: '+16187771064',
       callControlState: null,
     }),
-    '+15559871234',
+    '',
   );
+});
+
+test('shop SIP caller phone recovers from call log when client state is missing', async () => {
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'cc-parent-leg-1',
+    shopId: 'demo-shop',
+    callerPhone: '+84978613802',
+    destinationPhone: '+16187771064',
+    requestId: 'rb-production-call-1',
+  });
+
+  const callerPhone = await resolveSipCallerPhoneForShopContext({
+    routeKind: 'shop',
+    normalizedFrom: '+16187771064',
+    callControlState: null,
+    shopId: 'demo-shop',
+    rbCallId: 'rb-production-call-1',
+    requestId: 'rb-production-call-1',
+    callLogsRepository,
+  });
+
+  assert.equal(callerPhone, '+84978613802');
+});
+
+test('shop SIP caller phone stays empty when client state and call log are missing', async () => {
+  const callerPhone = await resolveSipCallerPhoneForShopContext({
+    routeKind: 'shop',
+    normalizedFrom: '+16187771064',
+    callControlState: null,
+    shopId: 'demo-shop',
+    rbCallId: 'rb-production-call-1',
+    requestId: 'rb-production-call-1',
+    callLogsRepository: new InMemoryCallLogsRepository(),
+  });
+
+  assert.equal(callerPhone, '');
 });
 
 test('openai SIP shop context recovers request id from stored OpenAI leg when client_state header is missing', async () => {
@@ -562,6 +622,77 @@ test('openai SIP shop route registers business tools when sideband enabled and r
   assert.equal(res.status, 200);
 
   const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_tools_1/accept'));
+  assert.equal(acceptCalls.length, 1);
+  const acceptJson = JSON.parse(acceptCalls[0].body) as {
+    tools?: { name: string }[];
+    tool_choice?: string;
+  };
+  assert.ok(acceptJson.tools?.some((t) => t.name === 'validate_appointment_time'));
+  assert.ok(!acceptJson.tools?.some((t) => t.name === 'check_availability'));
+  assert.ok(acceptJson.tools?.some((t) => t.name === 'create_booking'));
+  assert.ok(acceptJson.tools?.some((t) => t.name === 'request_human_handoff'));
+  assert.ok(!acceptJson.tools?.some((t) => t.name === 'transfer_to_user'));
+  assert.equal(acceptJson.tool_choice, 'auto');
+});
+
+test('openai SIP calendar-integrated shop route includes check_availability when sideband enabled', async () => {
+  const { secret, raw } = whsecSecret();
+  applyRequiredTestEnv({
+    OPENAI_SIP_WEBHOOK_ENABLED: 'true',
+    OPENAI_WEBHOOK_SECRET: secret,
+    OPENAI_SIP_ACCEPT_ENABLED: 'true',
+    OPENAI_API_KEY: 'sk-test-openai',
+    OPENAI_SIP_SIDEBAND_ENABLED: 'true',
+  });
+  delete process.env.OPENAI_SIP_DEMO_DID_MAP_JSON;
+  resetEnvCacheForTests();
+
+  const calls: Array<{ url: string; body: string }> = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    calls.push({ url, body: typeof init?.body === 'string' ? init.body : '' });
+    return new Response('{}', { status: 200 });
+  };
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+    shopsRepository: new CalendarIntegratedShopsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    telephonyService: new NoopTelephonyService(),
+    testingOpenAiFetch: fetchImpl,
+  });
+
+  const did = '+17145550123';
+  const webhookId = 'wh_evt_shop_calendar_tools';
+  const ts = `${Math.floor(Date.now() / 1000)}`;
+  const rawBody = JSON.stringify({
+    type: 'realtime.call.incoming',
+    data: {
+      call_id: 'call_shop_calendar_tools_1',
+      sip_headers: [
+        { name: 'To', value: `sip:${did.replace('+', '')}@pstn.twilio.com` },
+        { name: 'From', value: 'sip:+15559876543@sip.example.com' },
+      ],
+    },
+  });
+  const sig = signV1({ raw, webhookId, webhookTimestamp: ts, rawBody });
+
+  const res = await app.request('/webhooks/openai', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'webhook-id': webhookId,
+      'webhook-timestamp': ts,
+      'webhook-signature': sig,
+    },
+    body: rawBody,
+  });
+  assert.equal(res.status, 200);
+
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_calendar_tools_1/accept'));
   assert.equal(acceptCalls.length, 1);
   const acceptJson = JSON.parse(acceptCalls[0].body) as {
     tools?: { name: string }[];

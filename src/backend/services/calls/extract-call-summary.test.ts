@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
@@ -347,6 +348,258 @@ test('post_call_summary job upgrades an existing unknown summary for partial boo
   assert.equal(call.outcome, 'booking_request_incomplete');
   assert.equal(call.summaryNextAction, 'booking_request_incomplete');
   assert.match(call.transcriptText ?? '', /outcome=booking_request_incomplete/);
+});
+
+test('post_call_summary job upgrades unknown outcome when booking link was sent', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: 'highlights',
+    urgency: 'medium',
+    next_action: 'booking_link_sent',
+    caller_question: null,
+    caller_name: 'Huy',
+    preferred_tech: null,
+    preferred_datetime: 'tomorrow at 9 AM',
+    follow_up_required: false,
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'booking-link-sent-call',
+    shopId: 'shop-1',
+    requestId: 'req-booking-link-sent',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.markEndedByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'booking-link-sent-call',
+    endedAt: new Date('2026-05-01T00:00:30.000Z'),
+    outcome: 'unknown',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-booking-link-sent',
+    speaker: 'caller',
+    text: 'I want to book highlights tomorrow at 9 AM. My name is Huy.',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-booking-link-sent',
+    speaker: 'assistant',
+    text: 'The booking link has been sent.',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-booking-link-sent', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-booking-link-sent',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+  } as any);
+
+  assert.equal(result.processed, true);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.notEqual(call.outcome, 'unknown');
+  assert.equal(call.outcome, 'booking_link_sent');
+  assert.equal(call.summaryNextAction, 'booking_link_sent');
+  assert.match(call.transcriptText ?? '', /outcome=booking_link_sent/);
+});
+
+test('post_call_summary job upgrades unknown outcome when booking was created', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: 'highlights',
+    urgency: 'medium',
+    next_action: 'booking_created',
+    caller_question: null,
+    caller_name: 'Huy',
+    preferred_tech: null,
+    preferred_datetime: 'tomorrow at 9 AM',
+    follow_up_required: false,
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'booking-created-call',
+    shopId: 'shop-1',
+    requestId: 'req-booking-created',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.markEndedByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'booking-created-call',
+    endedAt: new Date('2026-05-01T00:00:30.000Z'),
+    outcome: 'unknown',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-booking-created',
+    speaker: 'caller',
+    text: 'I want to book highlights tomorrow at 9 AM. My name is Huy.',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-booking-created',
+    speaker: 'assistant',
+    text: 'Your booking has been created.',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-booking-created', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-booking-created',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+  } as any);
+
+  assert.equal(result.processed, true);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.notEqual(call.outcome, 'unknown');
+  assert.equal(call.outcome, 'booking_created');
+  assert.equal(call.summaryNextAction, 'booking_created');
+  assert.match(call.transcriptText ?? '', /outcome=booking_created/);
+});
+
+test('post_call_summary job upgrades unknown outcome when linked booking exists', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: null,
+    urgency: 'low',
+    next_action: 'no_action_needed',
+    caller_question: null,
+    caller_name: null,
+    preferred_tech: null,
+    preferred_datetime: null,
+    follow_up_required: false,
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const bookingsRepository = new InMemoryBookingsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'linked-booking-call',
+    shopId: 'shop-1',
+    requestId: 'req-linked-booking',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.markEndedByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'linked-booking-call',
+    endedAt: new Date('2026-05-01T00:00:30.000Z'),
+    outcome: 'unknown',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-linked-booking',
+    speaker: 'caller',
+    text: 'Thanks.',
+  });
+  await bookingsRepository.create({
+    id: 'booking-linked-1',
+    shopId: 'shop-1',
+    customerPhone: '+15550001111',
+    customerName: 'Huy',
+    service: 'highlights',
+    datetimeUtc: '2026-05-02T16:00:00.000Z',
+    timezone: 'America/Los_Angeles',
+    status: 'new',
+    callLogId: 'req-linked-booking',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-linked-booking', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-linked-booking',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+    bookingsRepository,
+  } as any);
+
+  assert.equal(result.processed, true);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.equal(call.outcome, 'captured_call');
+  assert.match(call.transcriptText ?? '', /outcome=captured_call/);
+});
+
+test('post_call_summary job keeps unknown outcome when there is no booking evidence', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: null,
+    urgency: 'low',
+    next_action: 'no_action_needed',
+    caller_question: null,
+    caller_name: null,
+    preferred_tech: null,
+    preferred_datetime: null,
+    follow_up_required: false,
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'unknown-no-evidence-call',
+    shopId: 'shop-1',
+    requestId: 'req-unknown-no-evidence',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.markEndedByProviderCallId({
+    provider: 'telnyx_call_control',
+    providerCallId: 'unknown-no-evidence-call',
+    endedAt: new Date('2026-05-01T00:00:30.000Z'),
+    outcome: 'unknown',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-unknown-no-evidence',
+    speaker: 'caller',
+    text: 'Thank you.',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-unknown-no-evidence', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-unknown-no-evidence',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+  } as any);
+
+  assert.equal(result.processed, true);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.equal(call.outcome, 'unknown');
+  assert.match(call.transcriptText ?? '', /outcome=unknown/);
 });
 
 test('post_call_summary job does not infer a captured outcome when only the assistant spoke', async () => {
