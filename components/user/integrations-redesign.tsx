@@ -834,20 +834,47 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
       />
 
       {bookingMethod === 'app' ? (
-        <div className="integration-config-panel">
-          <div className="field integration-config-field">
-            <label>Your booking link</label>
-            <small>RingBooker texts this to callers who ask to book.</small>
-            <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://yourbookingsite.com/book" />
+        <div className="integration-config-panel starter-booking-link-panel">
+          <div className="starter-booking-link-row">
+            <div className="field integration-config-field starter-booking-link-field">
+              <label>Your booking link</label>
+              <small>RingBooker texts this to callers who ask to book.</small>
+              <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://yourbookingsite.com/book" />
+            </div>
+            <button
+              type="button"
+              className="btn user-save integrations-primary-button starter-booking-link-save"
+              disabled={savingUrl || !bookingUrl.trim()}
+              onClick={() => void saveBookingUrl()}
+            >
+              {savingUrl ? 'Saving...' : 'Save link'}
+            </button>
           </div>
-          <button
-            type="button"
-            className="btn user-save integrations-primary-button"
-            disabled={savingUrl || !bookingUrl.trim()}
-            onClick={() => void saveBookingUrl()}
-          >
-            {savingUrl ? 'Saving...' : 'Save link'}
-          </button>
+          <style jsx>{`
+            .starter-booking-link-row {
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            }
+            .starter-booking-link-save {
+              width: 100%;
+            }
+            @media (min-width: 768px) {
+              .starter-booking-link-row {
+                flex-direction: row;
+                align-items: flex-end;
+              }
+              .starter-booking-link-field {
+                flex: 1;
+                min-width: 0;
+              }
+              .starter-booking-link-save {
+                width: auto;
+                flex: 0 0 auto;
+                white-space: nowrap;
+              }
+            }
+          `}</style>
         </div>
       ) : null}
 

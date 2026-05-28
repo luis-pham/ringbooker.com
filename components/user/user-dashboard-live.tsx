@@ -46,12 +46,9 @@ export type UserDashboardResponse = {
     capturedCallersUsed: number;
     capturedCallersLimit: number | null;
     capturedCallerUsagePercent: number | null;
-    voiceMinutesUsed: number;
     voiceMinutesSoftLimit: number | null;
     nearCapturedCallerLimit: boolean;
     overCapturedCallerLimit: boolean;
-    activeLiveCalls: number;
-    maxConcurrentLiveCalls: number;
   };
   goLive?: {
     liveCallsEnabled: boolean;
@@ -1003,10 +1000,6 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                   />
                 </div>
                 <div className="usage-captured-footer">
-                  <span className="usage-captured-footer-main">
-                    Voice usage: {data.usage.voiceMinutesUsed} min used this period · Active calls:{' '}
-                    {data.usage.activeLiveCalls}/{data.usage.maxConcurrentLiveCalls}
-                  </span>
                   <span className="usage-captured-reset">Resets {usageResetLabel}</span>
                 </div>
                 {data.usage.nearCapturedCallerLimit || data.usage.overCapturedCallerLimit ? (

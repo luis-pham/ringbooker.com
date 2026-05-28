@@ -102,12 +102,9 @@ export type UserBillingResponse = {
       capturedCallersUsed: number;
       capturedCallersLimit: number | null;
       capturedCallerUsagePercent: number | null;
-      voiceMinutesUsed: number;
       voiceMinutesSoftLimit: number | null;
       nearCapturedCallerLimit: boolean;
       overCapturedCallerLimit: boolean;
-      activeLiveCalls?: number;
-      maxConcurrentLiveCalls?: number;
     } | null;
   };
   error?: string;
@@ -1313,10 +1310,6 @@ export function UserBillingLive({
                               Additional captured calls billed at $0.75 each at end of billing period.
                             </p>
                           ) : null}
-                          <p className="sub" style={{ marginTop: 8 }}>
-                            Voice usage: {usage.voiceMinutesUsed} min used this period{' '}
-                            · Active calls: {usage.activeLiveCalls ?? 0}/{usage.maxConcurrentLiveCalls ?? 0}
-                          </p>
                         </section>
                       ) : null}
 
