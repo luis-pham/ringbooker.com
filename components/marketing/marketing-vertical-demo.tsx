@@ -12,6 +12,7 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalConfig, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
+import { assistantTranscriptEndsDemo } from '@/lib/marketing/demo-end-call';
 import { DIRECT_REALTIME_DEMO_DURATION_MESSAGE, userMessageForDirectDemoRealtimeJson } from '@/lib/marketing-vertical-demo-errors';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 import {
@@ -356,6 +357,7 @@ const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
  * (greeting fails, OpenAI cancels mid-stream without a clean `stopped`, etc.).
  */
 const DIRECT_OPENAI_GREETING_MIC_UNMUTE_FALLBACK_MS = 10_000;
+const DIRECT_OPENAI_END_CALL_AUDIO_STOP_FALLBACK_MS = 6_000;
 const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
 const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
 
@@ -1619,8 +1621,35 @@ export function MarketingVerticalDemoTemplate({
       let vadResumeAfterWelcomeSent = false;
       let awaitingInitialGreetingAudioStop = false;
       let toolsRegistered = false;
+      let assistantAudioPlaying = false;
+      let endCallPending = false;
+      let endCallFallbackTimer: number | null = null;
+      let latestResponseDone = false;
 
-      /** Register validate_appointment_time tool via session.update (once). */
+      const clearEndCallFallbackTimer = () => {
+        if (endCallFallbackTimer !== null) {
+          window.clearTimeout(endCallFallbackTimer);
+          endCallFallbackTimer = null;
+        }
+      };
+
+      const completeDirectDemoAfterEndCall = (reason: string) => {
+        if (!endCallPending) return;
+        endCallPending = false;
+        clearEndCallFallbackTimer();
+        logDemoRealtime('end_call_complete', { reason });
+        endDirectDemo();
+      };
+
+      const armEndCallCompletion = () => {
+        if (endCallFallbackTimer !== null) return;
+        endCallFallbackTimer = window.setTimeout(() => {
+          endCallFallbackTimer = null;
+          completeDirectDemoAfterEndCall('fallback_timeout');
+        }, DIRECT_OPENAI_END_CALL_AUDIO_STOP_FALLBACK_MS);
+      };
+
+      /** Register demo tools via session.update (once). */
       const registerDemoTools = () => {
         if (toolsRegistered || dc.readyState !== 'open') return;
         toolsRegistered = true;
@@ -1652,12 +1681,36 @@ export function MarketingVerticalDemoTemplate({
                       required: ['date', 'time'],
                     },
                   },
+                  {
+                    type: 'function',
+                    name: 'end_call',
+                    description:
+                      'End the browser demo session after the caller request is fully complete. ' +
+                      'Say a brief warm goodbye before calling this tool.',
+                    parameters: {
+                      type: 'object',
+                      properties: {
+                        reason: {
+                          type: 'string',
+                          enum: [
+                            'booking_completed',
+                            'link_sent',
+                            'question_answered',
+                            'callback_scheduled',
+                            'handoff_initiated',
+                            'other',
+                          ],
+                        },
+                      },
+                      required: ['reason'],
+                    },
+                  },
                 ],
                 tool_choice: 'auto',
               },
             }),
           );
-          logDemoRealtime('demo_tools_registered', { tool: 'validate_appointment_time' });
+          logDemoRealtime('demo_tools_registered', { tools: ['validate_appointment_time', 'end_call'] });
         } catch (err) {
           toolsRegistered = false;
           logDemoRealtime('demo_tools_register_failed', { err: err instanceof Error ? err.message : String(err) });
@@ -1764,6 +1817,9 @@ export function MarketingVerticalDemoTemplate({
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
             logDemoRealtime('oai_event', { type: evType, status: data.response?.status });
           }
+          if (data.type === 'output_audio_buffer.started') {
+            assistantAudioPlaying = true;
+          }
           if (data.type === 'session.created' || data.type === 'session.updated') {
             // Caller-speech transcription is enabled at client-secret mint time
             // (audio.input.transcription) — no session.update needed here.
@@ -1783,17 +1839,35 @@ export function MarketingVerticalDemoTemplate({
           ) {
             const text = data.transcript.trim();
             if (text) transcriptTurnsRef.current.push({ role: 'assistant', text: text.slice(0, 1000) });
+            if (text && !awaitingInitialGreetingAudioStop && assistantTranscriptEndsDemo(text)) {
+              endCallPending = true;
+              setStatusText('Wrapping up the demo…');
+              armEndCallCompletion();
+              logDemoRealtime('demo_goodbye_without_end_call_detected', {
+                assistantAudioPlaying,
+                latestResponseDone,
+              });
+              if (!assistantAudioPlaying && latestResponseDone) {
+                completeDirectDemoAfterEndCall('goodbye_transcript_after_response_done');
+              }
+            }
           }
           if (data.type === 'conversation.item.input_audio_transcription.completed' && typeof data.transcript === 'string') {
             const text = data.transcript.trim();
             if (text) transcriptTurnsRef.current.push({ role: 'user', text: text.slice(0, 1000) });
           }
-          if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
+          if (data.type === 'response.created') {
+            latestResponseDone = false;
+            if (!endCallPending) setStatusText('AI receptionist is responding…');
+          }
           if (data.type === 'response.done') {
             // data.response.status is 'completed' | 'cancelled' | 'failed' | 'incomplete'.
             const responseDoneStatus = data.response?.status;
+            latestResponseDone = true;
             logDemoRealtime('response_done', { status: responseDoneStatus });
-            if (!awaitingInitialGreetingAudioStop) {
+            if (endCallPending && !assistantAudioPlaying) {
+              completeDirectDemoAfterEndCall('response.done_without_active_audio');
+            } else if (!awaitingInitialGreetingAudioStop && !endCallPending) {
               setStatusText('You\'re connected — speak naturally or tap a prompt below.');
             }
           }
@@ -1866,6 +1940,28 @@ export function MarketingVerticalDemoTemplate({
               }
             })();
           }
+          if (data.type === 'response.function_call_arguments.done' && data.name === 'end_call') {
+            const callId = data.call_id;
+            endCallPending = true;
+            setStatusText('Wrapping up the demo…');
+            armEndCallCompletion();
+            logDemoRealtime('end_call_tool_called', { callId, assistantAudioPlaying });
+            if (dc.readyState === 'open') {
+              try {
+                dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: callId,
+                    output: JSON.stringify({ ok: true, message: 'Demo session will end after the goodbye audio finishes.' }),
+                  },
+                }));
+                logDemoRealtime('end_call_tool_ack_sent', { callId });
+              } catch (err) {
+                logDemoRealtime('end_call_tool_ack_failed', { callId, err: err instanceof Error ? err.message : String(err) });
+              }
+            }
+          }
           if (awaitingInitialGreetingAudioStop && data.type === 'output_audio_buffer.stopped') {
             awaitingInitialGreetingAudioStop = false;
             // Unmute mic BEFORE re-enabling VAD: while VAD is still in greeting-safe
@@ -1875,7 +1971,13 @@ export function MarketingVerticalDemoTemplate({
             setStatusText('You\'re connected — speak naturally or tap a prompt below.');
             maybeResumeVadAfterWelcome('output_audio_buffer.stopped');
           }
-          if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
+          if (data.type === 'output_audio_buffer.stopped') {
+            assistantAudioPlaying = false;
+            if (endCallPending) {
+              completeDirectDemoAfterEndCall('output_audio_buffer.stopped');
+            }
+          }
+          if (data.type === 'input_audio_buffer.speech_started' && !endCallPending) setStatusText('Listening…');
           if (data.type === 'error') {
             console.warn('OpenAI Realtime web demo event error', data);
             logDemoRealtime('oai_error', {

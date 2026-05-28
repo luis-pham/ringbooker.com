@@ -829,6 +829,16 @@ export async function handleOpenAiRealtimeSipWebhook(
   if (route.kind === 'shop' && env.OPENAI_SIP_SIDEBAND_ENABLED && !shopSidebandDepsReady) {
     logger.warn({ callId }, 'openai_sip_shop_tools_missing_dependencies');
   }
+  if (route.kind === 'shop' && !shopToolsAndSideband) {
+    logger.warn(
+      {
+        callId,
+        sidebandEnabled: Boolean(env.OPENAI_SIP_SIDEBAND_ENABLED),
+        shopSidebandDepsReady,
+      },
+      'openai_sip_end_call_tool_missing_for_shop_prompt',
+    );
+  }
 
   const includeDemoNoopTool = Boolean(env.OPENAI_SIP_SIDEBAND_ENABLED) && route.kind === 'demo';
   const acceptBody = buildOpenAiSipAcceptBody({
@@ -961,6 +971,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             onEndCall: () => {
               if (demoNoHangupEndCallFired) return;
               demoNoHangupEndCallFired = true;
+              logger.warn({ callId }, 'openai_sip_demo_end_call_no_call_control_id_no_hangup');
               logger.info({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_started');
               // No Telnyx CC ID — cannot issue a programmatic hangup. Start a 30-second
               // timer so the transcript is persisted even if the caller never hangs up
@@ -1071,6 +1082,16 @@ export async function handleOpenAiRealtimeSipWebhook(
               setTimeout(() => {
                 if (parentCcId && telnyxKey) {
                   void callControlHangupWithRetry(parentCcId, { apiKey: telnyxKey, fetchImpl }, { callId, shopId: shop.id });
+                } else {
+                  logger.warn(
+                    {
+                      callId,
+                      shopId: shop.id,
+                      hasParentCallControlId: Boolean(parentCcId),
+                      hasTelnyxKey: Boolean(telnyxKey),
+                    },
+                    'openai_sip_end_call_hangup_skipped_missing_call_control',
+                  );
                 }
               }, END_CALL_TOOL_HANGUP_DELAY_MS);
             },

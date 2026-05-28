@@ -10,6 +10,7 @@ test('SIP tools for openai_sip_direct use request_human_handoff (not transfer_to
 
   const tools = getSipShopToolsForOpenAiAccept();
   assert.ok(tools.some((t) => t.name === 'validate_appointment_time'));
+  assert.ok(tools.some((t) => t.name === 'end_call'));
   assert.ok(tools.some((t) => t.name === 'request_human_handoff'));
   assert.ok(!tools.some((t) => t.name === 'transfer_to_user'));
   assert.equal(tools.length, SIP_CORE_TOOL_NAMES.length + 2);
@@ -30,6 +31,7 @@ test('SIP tools for livekit_media include transfer_to_user', () => {
   process.env.VOICE_TRANSPORT = 'livekit_media';
 
   const tools = getSipShopToolsForOpenAiAccept();
+  assert.ok(tools.some((t) => t.name === 'end_call'));
   assert.ok(tools.some((t) => t.name === 'transfer_to_user'));
   assert.ok(!tools.some((t) => t.name === 'request_human_handoff'));
 

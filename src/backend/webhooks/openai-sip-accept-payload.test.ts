@@ -69,6 +69,8 @@ test('buildOpenAiSipAcceptBody can suppress VAD create_response for SIP demo pil
       });
       assert.equal(body.audio?.input?.turn_detection?.create_response, false);
       assert.equal(body.audio?.input?.turn_detection?.interrupt_response, false);
+      assert.ok(body.tools?.some((t) => t.name === 'demo_noop'));
+      assert.ok(body.tools?.some((t) => t.name === 'end_call'));
     },
   );
 });
@@ -138,6 +140,7 @@ test('buildOpenAiSipAcceptBody adds shop tools + tool_choice when provided', () 
       });
       assert.ok(body.tools && body.tools.length >= 4);
       assert.ok(body.tools?.some((t) => t.name === 'validate_appointment_time'));
+      assert.ok(body.tools?.some((t) => t.name === 'end_call'));
       assert.ok(body.tools?.some((t) => t.name === 'check_availability'));
       assert.equal(body.tool_choice, 'auto');
     },
