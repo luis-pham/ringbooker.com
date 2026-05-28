@@ -741,19 +741,14 @@ type IntegrationsRedesignProps = {
   initialBookingUrl?: string | null;
 };
 
-function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
-  initialBookingMethod?: BookingMethod;
+function StarterIntegrationsView({ initialBookingUrl }: {
   initialBookingUrl?: string | null;
 }) {
-  const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(initialBookingMethod ?? null);
+  const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(null);
   const [bookingUrl, setBookingUrl] = useState(initialBookingUrl ?? '');
   const [savingMethod, setSavingMethod] = useState<BookingMethod | null>(null);
   const [savingUrl, setSavingUrl] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setBookingMethodState(initialBookingMethod ?? null);
-  }, [initialBookingMethod]);
 
   useEffect(() => {
     setBookingUrl(initialBookingUrl ?? '');
@@ -844,7 +839,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
         @media (min-width: 768px) {
           .starter-integrations-view .starter-booking-link-row {
             flex-direction: row;
-            align-items: flex-end;
+            align-items: center;
           }
           .starter-integrations-view .starter-booking-link-field {
             flex: 1;
@@ -874,10 +869,12 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
 
       {bookingMethod === 'app' ? (
         <div className="integration-config-panel starter-booking-link-panel">
+          <div className="field integration-config-field">
+            <label>Your booking link</label>
+            <small>RingBooker texts this to callers who ask to book.</small>
+          </div>
           <div className="starter-booking-link-row">
-            <div className="field integration-config-field starter-booking-link-field">
-              <label>Your booking link</label>
-              <small>RingBooker texts this to callers who ask to book.</small>
+            <div className="starter-booking-link-field">
               <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://yourbookingsite.com/book" />
             </div>
             <button
@@ -891,6 +888,8 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
           </div>
         </div>
       ) : null}
+
+      {bookingMethod === 'direct' ? <DirectBookingConfirm onChange={() => setBookingMethodState(null)} /> : null}
 
       {message ? <div className="note">{message}</div> : null}
       {savingMethod ? <div className="note">Saving booking setup...</div> : null}
@@ -944,7 +943,6 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
 
 export function IntegrationsRedesign({
   canUseThirdPartyIntegrations,
-  initialBookingMethod = null,
   initialBookingUrl = null,
 }: IntegrationsRedesignProps) {
   const {
@@ -965,7 +963,7 @@ export function IntegrationsRedesign({
   const selectedApp = useMemo(() => findIntegrationApp(status.selectedApp), [status.selectedApp]);
 
   if (!canUseThirdPartyIntegrations) {
-    return <StarterIntegrationsView initialBookingMethod={initialBookingMethod} initialBookingUrl={initialBookingUrl} />;
+    return <StarterIntegrationsView initialBookingUrl={initialBookingUrl} />;
   }
 
   if (status.isLoading) {

@@ -225,7 +225,7 @@ html[data-user-theme="dark"]{
 }
 .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 .integration-method-icon{
-  width:36px;height:36px;border-radius:10px;background:var(--purple-ultra);display:inline-flex;
+  width:36px;height:36px;border-radius:10px;background:#dcfce7;display:inline-flex;
   align-items:center;justify-content:center;flex-shrink:0;
 }
 .integration-method-card strong{display:block;font-size:14px;font-weight:600;letter-spacing:-.02em}
