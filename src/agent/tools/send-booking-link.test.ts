@@ -99,7 +99,7 @@ test('returns booking URL fallback when caller phone is unavailable', async () =
   assert.equal(enqueuedJobs.length, 0);
 });
 
-test('returns booking URL fallback when SMS consent is missing', async () => {
+test('enqueues booking link SMS without requiring explicit SMS consent', async () => {
   const { ctx, enqueuedJobs } = createContext({
     smsConsented: false,
     shop: createShop({ booking_url: 'https://glossgenius.com/test' }),
@@ -110,14 +110,48 @@ test('returns booking URL fallback when SMS consent is missing', async () => {
     serviceInterest: 'haircut',
   });
 
-  assert.deepEqual(result, {
-    success: false,
-    reason: 'no_consent',
-    fallback: 'url',
-    bookingUrl: 'https://glossgenius.com/test',
-    message: 'Unable to send booking link via SMS. Tell the caller they can book directly at: https://glossgenius.com/test',
+  if (!('success' in result)) {
+    assert.fail('Expected success response, got tool error');
+  }
+  assert.equal(result.success, true);
+  assert.equal(enqueuedJobs.length, 1);
+
+  const job = enqueuedJobs[0] as {
+    type: string;
+    payload: { toPhone: string; bookingUrl: string; message: string };
+  };
+  assert.equal(job.type, 'booking_link_sms');
+  assert.equal(job.payload.toPhone, ctx.callerPhone);
+  assert.equal(job.payload.bookingUrl, 'https://glossgenius.com/test');
+  assert.match(job.payload.message, /Jane/);
+  assert.match(job.payload.message, /haircut/);
+});
+
+test('enqueues booking link SMS from caller ID without collected phone input', async () => {
+  const { ctx, enqueuedJobs } = createContext({
+    callerPhone: '+15551230001',
+    shop: createShop({ booking_url: 'https://glossgenius.com/test' }),
   });
-  assert.equal(enqueuedJobs.length, 0);
+
+  const result = await sendBookingLinkTool(ctx, {
+    callerName: 'Maya',
+    serviceInterest: 'color',
+  });
+
+  if (!('success' in result)) {
+    assert.fail('Expected success response, got tool error');
+  }
+  assert.equal(result.success, true);
+  assert.equal(enqueuedJobs.length, 1);
+
+  const job = enqueuedJobs[0] as {
+    type: string;
+    payload: { toPhone: string; bookingUrl: string; message: string };
+  };
+  assert.equal(job.type, 'booking_link_sms');
+  assert.equal(job.payload.toPhone, '+15551230001');
+  assert.match(job.payload.message, /Maya/);
+  assert.match(job.payload.message, /color/);
 });
 
 test('enqueues job when booking URL exists', async () => {

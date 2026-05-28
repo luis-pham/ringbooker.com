@@ -129,7 +129,7 @@ export async function requestHumanHandoffTool(
       handoff_possible: false,
       fallback: 'send_summary',
       message_for_ai:
-        "Transfer is not available right now. Capture the caller's name, phone number, and request, and let them know the team will follow up shortly.",
+        "Transfer is not available right now. Capture the caller's name and request, and let them know the team will follow up shortly. Use ctx.callerPhone as the callback number. Only ask for phone if ctx.callerPhone is null, empty, or invalid, or if the caller explicitly requests a different callback number.",
     };
   }
 

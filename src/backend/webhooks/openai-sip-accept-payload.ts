@@ -21,7 +21,7 @@ export type OpenAiRealtimeAcceptBody = {
     input?: {
       turn_detection?: Record<string, unknown> | null;
       /** Enables caller-speech transcription so the sideband can capture both sides of the call. */
-      transcription?: { model: string } | null;
+      transcription?: OpenAiRealtimeInputTranscription | null;
     };
     output?: {
       voice?: string;
@@ -29,6 +29,12 @@ export type OpenAiRealtimeAcceptBody = {
   };
   tools?: OpenAiSipFunctionTool[];
   tool_choice?: 'auto';
+};
+
+export type OpenAiRealtimeInputTranscription = {
+  model: string;
+  language?: string;
+  prompt?: string;
 };
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -42,6 +48,32 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
 function parseNumber(value: string | undefined, defaultValue: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
+function normalizeOptionalLanguage(value: string | undefined, defaultValue: string | undefined): string | undefined {
+  const raw = value?.trim();
+  if (!raw) return defaultValue;
+  const normalized = raw.toLowerCase();
+  if (['auto', 'detect', 'none', 'off', 'false', '0'].includes(normalized)) return undefined;
+  return raw;
+}
+
+export function buildOpenAiRealtimeInputTranscriptionFromEnv(
+  defaultLanguage?: string,
+): OpenAiRealtimeInputTranscription {
+  const language = normalizeOptionalLanguage(
+    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE ?? process.env.AGENT_OPENAI_LANGUAGE,
+    defaultLanguage,
+  );
+  const prompt = process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_PROMPT?.trim();
+  return {
+    model:
+      process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL?.trim() ||
+      process.env.AGENT_OPENAI_TRANSCRIPTION_MODEL?.trim() ||
+      'gpt-4o-mini-transcribe',
+    ...(language ? { language } : {}),
+    ...(prompt ? { prompt } : {}),
+  };
 }
 
 /**
@@ -60,10 +92,10 @@ export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Recor
   const interruptResponse = parseBoolean(process.env.AGENT_OPENAI_INTERRUPT_RESPONSE, true);
 
   if (mode === 'server_vad') {
-    const threshold = Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.5)));
-    const prefix_padding_ms = Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 300)));
-    const silence_duration_ms = Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 500)));
-    const idleRaw = Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 5000));
+    const threshold = Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.45)));
+    const prefix_padding_ms = Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 500)));
+    const silence_duration_ms = Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 900)));
+    const idleRaw = Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 10_000));
     const idle_timeout_ms = Math.max(5000, Math.min(30_000, idleRaw));
     return {
       turn_detection: {
@@ -82,7 +114,7 @@ export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Recor
   const eagerness =
     eagernessRaw === 'low' || eagernessRaw === 'medium' || eagernessRaw === 'high' || eagernessRaw === 'auto'
       ? eagernessRaw
-      : 'auto';
+      : 'low';
 
   return {
     turn_detection: {
@@ -134,6 +166,7 @@ export function buildOpenAiSipAcceptBody(params: {
   /** Production shop SIP: business tools from shared Realtime definitions. */
   shopBusinessTools?: OpenAiSipFunctionTool[];
   toolChoice?: 'auto';
+  transcriptionLanguage?: string;
 }): OpenAiRealtimeAcceptBody {
   let tools: OpenAiSipFunctionTool[] | undefined;
   if (params.includeDemoNoopTool) {
@@ -192,7 +225,9 @@ export function buildOpenAiSipAcceptBody(params: {
         ...audioInput,
         // Caller-speech transcription — required for the sideband to capture the caller side
         // (without it OpenAI never emits conversation.item.input_audio_transcription.completed).
-        transcription: { model: 'gpt-4o-mini-transcribe' },
+        transcription: buildOpenAiRealtimeInputTranscriptionFromEnv(
+          'transcriptionLanguage' in params ? params.transcriptionLanguage : 'en',
+        ),
       },
       output: {
         voice: params.voice,

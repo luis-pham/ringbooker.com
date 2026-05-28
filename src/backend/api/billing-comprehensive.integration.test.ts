@@ -1146,8 +1146,9 @@ test('5.4 — Alerts reset on billing cycle: 80% alert re-fires after period ren
     usageAlertsRepository, authUsersRepository, emailService,
   });
 
-  if (emailService.sent.length !== 2) {
-    const details = `Expected 2 emails (one per period), got ${emailService.sent.length}`;
+  const sentCount: number = emailService.sent.length;
+  if (sentCount !== 2) {
+    const details = `Expected 2 emails (one per period), got ${sentCount}`;
     record('5', '5.4', '80% alert resets on billing cycle', 'FAIL', details);
     assert.fail(details);
   } else {
@@ -1155,7 +1156,7 @@ test('5.4 — Alerts reset on billing cycle: 80% alert re-fires after period ren
       'Period A email + Period B email = 2 total');
   }
 
-  assert.equal(emailService.sent.length, 2);
+  assert.equal(sentCount, 2);
   assert.equal(emailService.sent[1]?.category, 'usage_80pct_warning');
 });
 

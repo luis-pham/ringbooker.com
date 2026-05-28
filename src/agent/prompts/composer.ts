@@ -75,12 +75,11 @@ export function composeVoicePrompt(input: VoicePromptInput): string {
     input.mode === 'demo' && input.vertical === 'nail-salon' ? NAIL_DEMO_ENGLISH_ONLY_PROMPT : null,
     verticalText,
     callTypePack.content,
-    STATIC_SERVICE_SCOPE_RULES,
     COMPOSITION_NOTE,
   ];
   const prefix = prefixSections.filter(Boolean).join('\n\n---\n\n').trim();
   const separator = '\n\n---\n\n';
-  const tail = runtimeText;
+  const tail = [STATIC_SERVICE_SCOPE_RULES, runtimeText].join(separator);
   const prompt = `${prefix}${separator}${tail}`.trim();
   if (prompt.length <= MAX_PROMPT_CHARS) return prompt;
 

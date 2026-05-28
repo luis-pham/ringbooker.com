@@ -23,6 +23,8 @@ export interface RealtimeDispatchPayload {
     destinationPhone: string;
     /** When set, gates LiveKit/OpenAI transcription defaults (e.g. Vietnamese) on Starter. */
     shopPlan?: ShopPlan;
+    /** Production language policy input for Realtime transcription hints. */
+    shopLanguages?: string[];
   };
   toolPolicy?: {
     allowedTools?: string[];
@@ -50,6 +52,7 @@ export interface StartInboundRealtimeParams {
   callerPhone: string;
   systemPrompt: string;
   shopPlan?: ShopPlan;
+  shopLanguages?: string[];
 }
 
 export interface StartInboundRealtimeResult {

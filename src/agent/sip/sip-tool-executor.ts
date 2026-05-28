@@ -4,9 +4,26 @@ import { cancelBookingTool } from '@/src/agent/tools/cancel-booking';
 import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
+import { scheduleCallbackTool } from '@/src/agent/tools/schedule-callback';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { requestHumanHandoffTool } from '@/src/agent/tools/request-human-handoff';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
+import {
+  createBookingDraft,
+  deriveBookingDraftReasonCodes,
+  summarizeBookingDraftForLog,
+  updateBookingDraftFromTranscript,
+  type BookingDraftReasonCode,
+} from '@/src/agent/booking/booking-draft';
+import {
+  applyConfirmedBookingDraftPhone,
+  buildActionGuardBlockedToolOutput,
+  createBookingActionGuardState,
+  evaluateBookingActionGuard,
+  markBookingActionGuardToolResult,
+  recordBookingActionGuardBlocked,
+  summarizeBookingActionGuardForLog,
+} from '@/src/agent/booking/booking-action-guard';
 import {
   type AppointmentTimeValidationResult,
   buildValidationMessageForAi,
@@ -85,6 +102,8 @@ export function createSipAgentToolContext(params: {
     parentTelnyxCallControlId: params.parentTelnyxCallControlId ?? null,
     rbCallId: params.rbCallId ?? params.requestId,
     openAiLegCallControlId: params.openAiLegCallControlId ?? null,
+    bookingDraft: createBookingDraft(),
+    actionGuard: createBookingActionGuardState(),
     appointmentTimeValidation: { latest: null },
   };
 }
@@ -121,12 +140,67 @@ export async function prePopulateFromTranscript(
   }
 }
 
+export function updateSipBookingDraftFromTranscript(
+  ctx: AgentToolContext,
+  transcript: string,
+): { reasonCodes: BookingDraftReasonCode[]; bookingDraft: ReturnType<typeof summarizeBookingDraftForLog> } | null {
+  const previous = ctx.bookingDraft ?? createBookingDraft();
+  const next = updateBookingDraftFromTranscript(previous, transcript, {
+    shop: ctx.shop,
+    callerPhone: ctx.callerPhone,
+  });
+  ctx.bookingDraft = next;
+
+  return {
+    reasonCodes: deriveBookingDraftReasonCodes(previous, next),
+    bookingDraft: summarizeBookingDraftForLog(next),
+  };
+}
+
 export async function executeSipShopToolCall(
   ctx: AgentToolContext,
   toolName: string,
   toolInput: unknown,
 ): Promise<string> {
   try {
+    const guardDecision = evaluateBookingActionGuard(ctx, toolName, toolInput);
+    logger.info(
+      {
+        callSessionId: ctx.rbCallId ?? ctx.requestId,
+        providerCallId: ctx.openAiLegCallControlId ?? null,
+        shopId: ctx.shop.id,
+        eventType: 'action_guard_decision',
+        proposedTool: toolName,
+        backendDecision: guardDecision.backendDecision,
+        reason: guardDecision.reason,
+        missingFields: guardDecision.allowed ? undefined : guardDecision.missingFields,
+        actionGuard: summarizeBookingActionGuardForLog(ctx),
+      },
+      'sip_action_guard_decision',
+    );
+    if (!guardDecision.allowed) {
+      recordBookingActionGuardBlocked(ctx, toolName, guardDecision);
+      return compactSipToolJson(JSON.parse(buildActionGuardBlockedToolOutput(guardDecision)));
+    }
+    if (toolName === 'create_booking' || toolName === 'send_booking_link' || toolName === 'schedule_callback') {
+      const appliedPhone = applyConfirmedBookingDraftPhone(ctx);
+      if (appliedPhone) {
+        logger.info(
+          {
+            callSessionId: ctx.rbCallId ?? ctx.requestId,
+            providerCallId: ctx.openAiLegCallControlId ?? null,
+            shopId: ctx.shop.id,
+            eventType: 'action_guard_phone_applied',
+            proposedTool: toolName,
+            backendDecision: 'execute_business_tool',
+            phoneLast4: appliedPhone.slice(-4),
+            reason: 'confirmed_phone_from_booking_draft',
+          },
+          'sip_action_guard_phone_applied',
+        );
+      }
+    }
+
     let result: unknown;
     switch (toolName) {
       case 'validate_appointment_time': {
@@ -172,6 +246,9 @@ export async function executeSipShopToolCall(
       case 'send_booking_link':
         result = await sendBookingLinkTool(ctx, toolInput);
         break;
+      case 'schedule_callback':
+        result = await scheduleCallbackTool(ctx, toolInput);
+        break;
       case 'end_call':
         result = await endCallTool(ctx, toolInput);
         break;
@@ -190,7 +267,9 @@ export async function executeSipShopToolCall(
       default:
         return compactSipToolJson({ error: `Unknown tool: ${toolName}` });
     }
-    return compactSipToolJson(result);
+    const output = compactSipToolJson(result);
+    markBookingActionGuardToolResult(ctx, toolName, output);
+    return output;
   } catch (err) {
     logger.warn({ err, toolName }, 'sip_shop_tool_execution_failed');
     return compactSipToolJson({ error: 'Tool execution failed. Please try again.' });

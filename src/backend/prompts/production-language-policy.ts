@@ -30,6 +30,15 @@ export function hasMultilingualLanguageConfiguration(languages: string[] | undef
   return Boolean(only && only !== 'en');
 }
 
+export function resolveProductionRealtimeTranscriptionDefaultLanguage(
+  plan: ShopPlan | undefined,
+  languages: string[] | undefined,
+): string | undefined {
+  if (!plan) return 'en';
+  if (!canUseBilingualWorkflow(plan)) return 'en';
+  return hasMultilingualLanguageConfiguration(languages) ? undefined : 'en';
+}
+
 export type ProductionLanguageRuntimeFields = {
   /** Passed through to RUNTIME BUSINESS CONFIG when bilingual workflow applies */
   languageOptions?: string[];
@@ -52,7 +61,7 @@ export function buildProductionLanguageRuntimeFields(
         ? `LANGUAGES NOTED FOR SETUP (internal metadata for your team only — do not change spoken assistant language based on this): ${labelsJoined}.`
         : null;
     const starterPolicy =
-      'LANGUAGE POLICY (STARTER PLAN): Keep all spoken assistant dialogue in English. Do not switch to another language for the live conversation based on setup notes or caller language. If a caller primarily speaks another language, stay in English, acknowledge politely, and offer human callback or written follow-up. Ignore any higher-layer vertical examples that suggest bilingual spoken replies; this policy overrides them for Starter.';
+      'LANGUAGE POLICY (STARTER PLAN): Keep all spoken assistant dialogue in English. Treat accented English, slow speech, and noisy ASR fragments as English. Do not switch to another language for the live conversation based on setup notes, accent, or caller language. If a caller primarily speaks another language, stay in English, acknowledge politely, and offer human callback or written follow-up. Ignore any higher-layer vertical examples that suggest bilingual spoken replies; this policy overrides them for Starter.';
     return {
       productionLanguageDirective: [starterPolicy, metadataLine].filter(Boolean).join('\n'),
     };
@@ -61,7 +70,7 @@ export function buildProductionLanguageRuntimeFields(
   if (!hasMultilingualLanguageConfiguration(languages)) {
     return {
       productionLanguageDirective:
-        'LANGUAGE POLICY (PAID PLAN): Keep spoken dialogue in English unless CUSTOM INSTRUCTIONS specify otherwise. This rule overrides any core instruction to automatically switch languages. If the caller speaks an unsupported language, stay in English, acknowledge politely, and offer human callback or written follow-up.',
+        'LANGUAGE POLICY (PAID PLAN): Keep spoken dialogue in English unless CUSTOM INSTRUCTIONS specify otherwise. Treat accented English, slow speech, and noisy ASR fragments as English. This rule overrides any core instruction to automatically switch languages. If the caller speaks an unsupported language, stay in English, acknowledge politely, and offer human callback or written follow-up.',
     };
   }
 

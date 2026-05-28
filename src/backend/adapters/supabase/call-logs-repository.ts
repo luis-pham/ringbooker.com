@@ -186,14 +186,18 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       throw new Error(`call_logs_get_started_at_failed:${currentError.message}`);
     }
 
+    const patch: Record<string, unknown> = {
+      ended_at: params.endedAt.toISOString(),
+      duration_secs: currentRow?.started_at
+        ? Math.max(0, Math.round((params.endedAt.getTime() - new Date(currentRow.started_at).getTime()) / 1000))
+        : 0,
+    };
+    if (params.outcome !== undefined) patch.outcome = params.outcome;
+    if (params.humanAnswered !== undefined) patch.human_answered = params.humanAnswered;
+
     const { error } = await this.supabase
       .from('call_logs')
-      .update({
-        ended_at: params.endedAt.toISOString(),
-        duration_secs: currentRow?.started_at ? Math.max(0, Math.round((params.endedAt.getTime() - new Date(currentRow.started_at).getTime()) / 1000)) : 0,
-        outcome: params.outcome,
-        human_answered: params.humanAnswered,
-      })
+      .update(patch)
       .eq('provider', params.provider)
       .eq('provider_call_id', params.providerCallId);
 

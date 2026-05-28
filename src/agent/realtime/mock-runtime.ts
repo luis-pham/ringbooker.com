@@ -25,6 +25,7 @@ export class MockRealtimeAgentRuntime implements RealtimeAgentRuntime {
         callerPhone: params.callerPhone,
         destinationPhone: params.destinationPhone,
         ...(params.shopPlan ? { shopPlan: params.shopPlan } : {}),
+        ...(params.shopLanguages?.length ? { shopLanguages: params.shopLanguages } : {}),
       },
     };
 

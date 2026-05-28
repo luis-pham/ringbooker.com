@@ -12,6 +12,16 @@ export function resolveShopPlanFromDispatchMetadata(
   return undefined;
 }
 
+export function resolveShopLanguagesFromDispatchMetadata(
+  metadata: Partial<RealtimeSessionMetadata> | Record<string, unknown> | undefined,
+): string[] | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  const dispatchPayload = (metadata as RealtimeSessionMetadata).dispatchPayload;
+  const languages = dispatchPayload?.context?.shopLanguages;
+  if (!Array.isArray(languages)) return undefined;
+  return languages.filter((language): language is string => typeof language === 'string' && language.trim().length > 0);
+}
+
 export function isDemoRealtimeMetadata(metadata: Partial<RealtimeSessionMetadata> | Record<string, unknown> | undefined): boolean {
   if (!metadata || typeof metadata !== 'object') return false;
   const dispatchPayload = (metadata as RealtimeSessionMetadata).dispatchPayload;
@@ -22,6 +32,7 @@ export type TranscriptionVietnameseDefaultParams = {
   callerPhone: string;
   destinationPhone: string;
   shopPlan: ShopPlan | undefined;
+  shopLanguages?: string[];
   demoIsolated: boolean;
   /** Production live path without shopPlan — English-safe default + optional log */
   onMissingShopPlanProduction?: () => void;
@@ -60,6 +71,7 @@ export function transcriptionPolicyFromDispatchInput(
     callerPhone: input.callerPhone,
     destinationPhone: input.destinationPhone,
     shopPlan: resolveShopPlanFromDispatchMetadata(metadata),
+    shopLanguages: resolveShopLanguagesFromDispatchMetadata(metadata),
     demoIsolated: isDemoRealtimeMetadata(metadata),
     onMissingShopPlanProduction,
   };

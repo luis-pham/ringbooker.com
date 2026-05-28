@@ -5,9 +5,11 @@ import type {
   RealtimeVoiceBridge,
 } from '@/src/agent/realtime/providers/types';
 import { REALTIME_TOOL_DEFINITIONS } from '@/src/agent/realtime/shared-tool-definitions';
+import { transcriptionPolicyFromDispatchInput } from '@/src/agent/realtime/livekit-language-policy';
 import { compactRealtimeSystemInstruction, normalizePromptWhitespace } from '@/src/agent/prompts';
 import { withLogContext } from '@/src/backend/observability/logger';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
+import { resolveProductionRealtimeTranscriptionDefaultLanguage } from '@/src/backend/prompts/production-language-policy';
 
 const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 18000;
 const DEFAULT_MAX_TOOL_RESPONSE_CHARS = 3000;
@@ -129,7 +131,21 @@ function parseSemanticVadEagerness(value: string | undefined): 'low' | 'medium' 
   if (normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'auto') {
     return normalized;
   }
-  return 'high';
+  return 'low';
+}
+
+function parseInputTranscriptionLanguage(value: string | undefined, defaultValue: string | undefined): string | undefined {
+  const raw = value?.trim();
+  if (!raw) return defaultValue;
+  const normalized = raw.toLowerCase();
+  if (['auto', 'detect', 'none', 'off', 'false', '0'].includes(normalized)) return undefined;
+  return raw;
+}
+
+function resolveDefaultInputTranscriptionLanguage(params: CreateRealtimeVoiceBridgeParams): string | undefined {
+  const policy = transcriptionPolicyFromDispatchInput(params.dispatch);
+  if (policy.demoIsolated) return 'en';
+  return resolveProductionRealtimeTranscriptionDefaultLanguage(policy.shopPlan, policy.shopLanguages);
 }
 
 function asString(value: unknown): string | null {
@@ -180,14 +196,23 @@ export async function createOpenAIRealtimeVoiceBridge(
   });
   const systemInstruction = compactSystemInstruction(params.dispatch.systemPrompt);
   const outputSampleRate = parseSampleRate(process.env.AGENT_OPENAI_OUTPUT_SAMPLE_RATE, 24000);
-  const inputTranscriptionModel = process.env.AGENT_OPENAI_TRANSCRIPTION_MODEL?.trim() || 'gpt-4o-mini-transcribe';
+  const inputTranscriptionModel =
+    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL?.trim() ||
+    process.env.AGENT_OPENAI_TRANSCRIPTION_MODEL?.trim() ||
+    'gpt-4o-mini-transcribe';
   const enableInputTranscription = parseBoolean(process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_ENABLED, true);
   /** Misnamed env: `true` = send `turn_detection` (semantic or server per `AGENT_OPENAI_TURN_DETECTION`); `false` = `turn_detection: null` (VAD off). */
   const turnDetectionEnabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
   const turnDetectionMode = parseTurnDetectionMode(process.env.AGENT_OPENAI_TURN_DETECTION);
-  const vadSilenceMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 120);
-  const vadPrefixMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 120);
-  const vadIdleMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 5000);
+  const inputTranscriptionLanguage = parseInputTranscriptionLanguage(
+    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE ?? process.env.AGENT_OPENAI_LANGUAGE,
+    resolveDefaultInputTranscriptionLanguage(params),
+  );
+  const vadSilenceMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 900);
+  const vadPrefixMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 500);
+  const vadIdleMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 10_000);
+  const vadThresholdRaw = Number(process.env.AGENT_OPENAI_VAD_THRESHOLD ?? 0.45);
+  const vadThreshold = Math.max(0, Math.min(1, Number.isFinite(vadThresholdRaw) ? vadThresholdRaw : 0.45));
   const semanticVadEagerness = parseSemanticVadEagerness(process.env.AGENT_OPENAI_SEMANTIC_VAD_EAGERNESS);
   const voice = process.env.AGENT_OPENAI_VOICE?.trim() || 'alloy';
   const websocketUrl = parseOpenAIRealtimeUrl(model);
@@ -235,6 +260,17 @@ export async function createOpenAIRealtimeVoiceBridge(
         const transcript = asString(event.transcript)?.trim();
         if (!transcript || transcript === lastUserTranscript) return;
         lastUserTranscript = transcript;
+        log.info(
+          {
+            eventType: event.type,
+            rawUserTranscript: transcript,
+            normalizedUserText: normalizeWhitespace(transcript),
+            model,
+            transcriptionModel: inputTranscriptionModel,
+            languageHint: inputTranscriptionLanguage ?? null,
+          },
+          'openai_realtime_transcript_event',
+        );
         if (params.onUserTranscript) {
           void params.onUserTranscript(transcript);
         }
@@ -399,6 +435,7 @@ export async function createOpenAIRealtimeVoiceBridge(
         ? {
             input_audio_transcription: {
               model: inputTranscriptionModel,
+              ...(inputTranscriptionLanguage ? { language: inputTranscriptionLanguage } : {}),
             },
           }
         : {}),
@@ -414,6 +451,7 @@ export async function createOpenAIRealtimeVoiceBridge(
               type: 'server_vad',
               create_response: true,
               interrupt_response: true,
+              threshold: vadThreshold,
               prefix_padding_ms: vadPrefixMs,
               silence_duration_ms: vadSilenceMs,
               idle_timeout_ms: vadIdleMs,
@@ -429,7 +467,21 @@ export async function createOpenAIRealtimeVoiceBridge(
     },
   });
 
-  log.info({ model, websocketUrl }, 'openai_realtime_session_opened');
+  log.info(
+    {
+      model,
+      websocketUrl,
+      transcriptionModel: enableInputTranscription ? inputTranscriptionModel : null,
+      languageHint: enableInputTranscription ? inputTranscriptionLanguage ?? null : null,
+      vadType: turnDetectionEnabled ? turnDetectionMode : null,
+      vadSettings: turnDetectionEnabled
+        ? turnDetectionMode === 'semantic_vad'
+          ? { eagerness: semanticVadEagerness }
+          : { threshold: vadThreshold, prefix_padding_ms: vadPrefixMs, silence_duration_ms: vadSilenceMs, idle_timeout_ms: vadIdleMs }
+        : null,
+    },
+    'openai_realtime_session_opened',
+  );
 
   return {
     provider: 'openai_realtime',

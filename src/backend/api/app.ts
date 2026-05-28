@@ -10,7 +10,10 @@ import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
 import { openAiRealtimeVoiceForDemoVerticalSlug } from '@/src/agent/prompts';
 import { buildPublicDemoScriptedWelcomeLine, buildPublicDemoSystemPrompt, getDemoVerticalShopContext } from '@/src/backend/demo/public-demo-system-prompt';
-import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
+import {
+  buildDirectWebDemoClientSecretAudioInput,
+  buildOpenAiRealtimeInputTranscriptionFromEnv,
+} from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   clearDirectDemoActiveSlot,
   consumePublicDemoRealtimeLimits,
@@ -374,7 +377,7 @@ async function createOpenAiRealtimeClientSecret(params: {
           input: {
             // GA Realtime schema: transcription lives under audio.input.transcription,
             // not the legacy top-level session.input_audio_transcription.
-            transcription: { model: 'gpt-4o-mini-transcribe' },
+            transcription: buildOpenAiRealtimeInputTranscriptionFromEnv('en'),
             turn_detection: turnDetectionForSecret,
           },
           output: {
@@ -4063,6 +4066,7 @@ export function createBackendApp(deps: {
         callerPhone: normalizedPhone,
         systemPrompt,
         shopPlan: demoShop.plan,
+        shopLanguages: demoShop.languages,
       });
 
       if (requireLivekitRealtimeInProduction() && realtime.mode !== 'livekit_realtime') {

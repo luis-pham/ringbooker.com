@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  resolveShopLanguagesFromDispatchMetadata,
   shouldDefaultTranscriptionToVietnamese,
   shouldUseVietnameseFallbackGreeting,
 } from '@/src/agent/realtime/livekit-language-policy';
+import { resolveProductionRealtimeTranscriptionDefaultLanguage } from '@/src/backend/prompts/production-language-policy';
 
 test('missing shopPlan on non-demo dispatch does not default Vietnamese and invokes warn callback', () => {
   let warned = false;
@@ -52,6 +54,39 @@ test('professional +84 still allows Vietnamese transcription default', () => {
       demoIsolated: false,
     }),
     true,
+  );
+});
+
+test('paid multilingual production omits Realtime transcription language hint', () => {
+  assert.equal(resolveProductionRealtimeTranscriptionDefaultLanguage('professional', ['en', 'vi']), undefined);
+  assert.equal(resolveProductionRealtimeTranscriptionDefaultLanguage('enterprise', ['en', 'es']), undefined);
+});
+
+test('starter or English-only production keeps English Realtime transcription hint', () => {
+  assert.equal(resolveProductionRealtimeTranscriptionDefaultLanguage('starter', ['en', 'vi']), 'en');
+  assert.equal(resolveProductionRealtimeTranscriptionDefaultLanguage('professional', ['en']), 'en');
+  assert.equal(resolveProductionRealtimeTranscriptionDefaultLanguage(undefined, ['en', 'vi']), 'en');
+});
+
+test('shop languages resolve from dispatch metadata context', () => {
+  assert.deepEqual(
+    resolveShopLanguagesFromDispatchMetadata({
+      requestId: 'req',
+      shopId: 'shop',
+      dispatchPayload: {
+        context: {
+          requestId: 'req',
+          shopId: 'shop',
+          callerPhone: '+15550001111',
+          destinationPhone: '+15550002222',
+          shopPlan: 'professional',
+          shopLanguages: ['en', 'vi'],
+        },
+        transport: { provider: 'livekit', roomName: 'room' },
+        llm: { provider: 'openai_realtime', model: 'gpt-realtime', apiKeyConfigured: true },
+      },
+    }),
+    ['en', 'vi'],
   );
 });
 

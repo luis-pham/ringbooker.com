@@ -20,6 +20,8 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
 
+type CachedAppointmentTimeValidation = NonNullable<NonNullable<AgentToolContext['appointmentTimeValidation']>['latest']>;
+
 // ---------------------------------------------------------------------------
 // Test infrastructure
 // ---------------------------------------------------------------------------
@@ -66,6 +68,10 @@ async function makeCtx(): Promise<AgentToolContext> {
   });
 }
 
+function latestAppointmentTimeValidation(ctx: AgentToolContext): CachedAppointmentTimeValidation | null {
+  return ctx.appointmentTimeValidation?.latest ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Test 1: pre-populate from transcript with explicit AM/PM
 // ---------------------------------------------------------------------------
@@ -76,7 +82,7 @@ test('pre-populate: transcript with explicit time populates cache', async () => 
 
   await prePopulateFromTranscript(ctx, 'Maybe 9 a.m.');
 
-  const cached = ctx.appointmentTimeValidation?.latest;
+  const cached = latestAppointmentTimeValidation(ctx);
   assert.ok(cached, 'cache is populated after transcript');
   assert.equal(cached.time, '09:00');
   assert.equal(typeof cached.valid, 'boolean');
@@ -101,7 +107,7 @@ test('cache hit: executeSipShopToolCall returns pre-computed result for matching
   // Override with exact known values via direct tool call to set cache precisely
   ctx.appointmentTimeValidation!.latest = null;
   await executeSipShopToolCall(ctx, 'validate_appointment_time', { date: targetDate, time: targetTime });
-  const cached = ctx.appointmentTimeValidation?.latest;
+  const cached = latestAppointmentTimeValidation(ctx);
   assert.ok(cached, 'cache set via direct tool call');
   assert.equal(cached.date, targetDate);
   assert.equal(cached.time, targetTime);

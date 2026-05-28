@@ -13,11 +13,13 @@ test('Starter production replaces core multilingual auto-switch block', () => {
   const filtered = filterCoreVoicePromptForProductionPlan(CORE_VOICE_PROMPT, 'starter', 'production');
   assert.doesNotMatch(filtered, /Detect and match the caller[\u2019']s language automatically/);
   assert.match(filtered, /Keep spoken dialogue in English unless RUNTIME BUSINESS CONFIG LANGUAGE DIRECTIVE/);
+  assert.match(filtered, /Treat accented English, slow speech, and noisy ASR fragments as English/);
 });
 
-test('Professional production keeps core multilingual block', () => {
+test('Professional production keeps core English-default language policy', () => {
   const filtered = filterCoreVoicePromptForProductionPlan(CORE_VOICE_PROMPT, 'professional', 'production');
-  assert.match(filtered, /Detect and match the caller[\u2019']s language automatically/);
+  assert.match(filtered, /Speak English by default/);
+  assert.match(filtered, /Treat accented English, slow speech, and noisy ASR fragments as English/);
 });
 
 test('Starter nail vertical strips bilingual / Vietnamese workflow lines', () => {

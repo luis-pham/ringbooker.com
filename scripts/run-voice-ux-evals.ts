@@ -12,9 +12,10 @@ import type { VoicePromptVertical } from '../src/agent/prompts/types';
 const MODEL = 'gpt-4o';
 const MAX_TRANSCRIPT_TURNS = 20;
 const OUTPUT_DIR = resolve(process.cwd(), 'reports/voice-ux');
+const EVAL_CALLER_ID = '+13125550142';
 
 type Role = 'assistant' | 'caller';
-type ScenarioKind = 'clear_booker' | 'unclear_booker' | 'noisy_caller' | 'missed_call' | 'high_urgency';
+type ScenarioKind = 'clear_booker' | 'no_phone_collection' | 'unclear_booker' | 'noisy_caller' | 'missed_call' | 'high_urgency';
 type ExpectedCallStatus = 'Follow up needed' | 'High urgency' | 'Missed';
 type ExpectedBookingStatus = 'New' | 'no record';
 type ExpectedState = {
@@ -62,6 +63,7 @@ type CheckName =
   | 'timeToolUsage'
   | 'nameConfirm'
   | 'bookingCapture'
+  | 'noPhoneCollection'
   | 'fillerOveruse'
   | 'cleanClose';
 type EvaluationCheck = {
@@ -246,16 +248,33 @@ function scenariosFor(fixture: VerticalFixture): Scenario[] {
       kind: 'clear_booker',
       persona: 'A cooperative caller who knows exactly what they want and answers briefly.',
       openingLine: `Hi, I would like to book a ${service} on Thursday, May 28, 2026 at 10 AM.`,
-      goal: `Submit a request for ${service} on Thursday, May 28, 2026 at 10 AM under Maya Reed, reachable at +1 312 555 0142.`,
+      goal: `Submit a request for ${service} on Thursday, May 28, 2026 at 10 AM under Maya Reed. Do not provide a phone number because caller ID is already available.`,
       behavior:
-        'Provide the requested service and time immediately. Give your name and phone only when asked. Confirm spellings and details clearly. Accept that the shop will confirm the request; do not ask for a live guaranteed slot.',
+        'Provide the requested service and time immediately. Give your name when asked. Do not provide a phone number because caller ID is already available; if asked for one, say "Please use my caller ID." Confirm spellings and details clearly. Accept that the shop will confirm the request; do not ask for a live guaranteed slot.',
       expected: {
         callStatuses: ['Follow up needed'],
         bookingStatus: 'New',
         service,
         datetimeUtc: '2026-05-28T15:00:00.000Z',
         name: 'Maya Reed',
-        phone: '+13125550142',
+        phone: EVAL_CALLER_ID,
+        noPhantomBooking: false,
+      },
+    },
+    {
+      kind: 'no_phone_collection',
+      persona: 'A cooperative caller with clear booking intent who answers only the question asked.',
+      openingLine: `Hi, I want to book a ${service} on Thursday, May 28, 2026 at 10 AM.`,
+      goal: `Submit a request for ${service} on Thursday, May 28, 2026 at 10 AM under Maya Reed. Do not provide a phone number because caller ID is already available.`,
+      behavior:
+        'Provide the requested service and time immediately. Give your name when asked. If the assistant asks for a phone number, say "You should have my caller ID." Otherwise accept that the shop will follow up and say goodbye.',
+      expected: {
+        callStatuses: ['Follow up needed'],
+        bookingStatus: 'New',
+        service,
+        datetimeUtc: '2026-05-28T15:00:00.000Z',
+        name: 'Maya Reed',
+        phone: EVAL_CALLER_ID,
         noPhantomBooking: false,
       },
     },
@@ -263,16 +282,16 @@ function scenariosFor(fixture: VerticalFixture): Scenario[] {
       kind: 'unclear_booker',
       persona: 'A polite but vague caller who initially proposes a time after the shop is closed.',
       openingLine: `I want to book something like ${service}, maybe Thursday, May 28, 2026 around 8:30 PM.`,
-      goal: `After the assistant rejects the outside-hours time, request ${service} on Thursday, May 28, 2026 at 11 AM under Sofia Kim, phone +1 312 555 0188.`,
+      goal: `After the assistant rejects the outside-hours time, request ${service} on Thursday, May 28, 2026 at 11 AM under Sofia Kim. Do not provide a phone number because caller ID is already available.`,
       behavior:
-        'Your first proposed time must remain 8:30 PM until the assistant states it is outside business hours. Only then choose 11 AM on Thursday, May 28, 2026. Provide name and phone only after a valid time has been accepted for capture.',
+        'Your first proposed time must remain 8:30 PM until the assistant states it is outside business hours. Only then choose 11 AM on Thursday, May 28, 2026. Provide your name only after a valid time has been accepted for capture. If asked for a phone number, say "Please use my caller ID."',
       expected: {
         callStatuses: ['Follow up needed'],
         bookingStatus: 'New',
         service,
         datetimeUtc: '2026-05-28T16:00:00.000Z',
         name: 'Sofia Kim',
-        phone: '+13125550188',
+        phone: EVAL_CALLER_ID,
         noPhantomBooking: false,
       },
     },
@@ -314,16 +333,16 @@ function scenariosFor(fixture: VerticalFixture): Scenario[] {
       kind: 'high_urgency',
       persona: 'A cooperative caller who explicitly states an urgent same-day need.',
       openingLine: `I need an appointment today, it is urgent. I need a ${service} at 3 PM.`,
-      goal: `Capture an urgent request for ${service} on Wednesday, May 27, 2026 at 3 PM under Jordan Lee, phone +1 312 555 0199.`,
+      goal: `Capture an urgent request for ${service} on Wednesday, May 27, 2026 at 3 PM under Jordan Lee. Do not provide a phone number because caller ID is already available.`,
       behavior:
-        'Emphasize once that the appointment is urgent. If asked for a date, clarify Wednesday, May 27, 2026 at 3 PM. Provide Jordan Lee and +1 312 555 0199 when asked. Accept follow-up by the team.',
+        'Emphasize once that the appointment is urgent. If asked for a date, clarify Wednesday, May 27, 2026 at 3 PM. Provide Jordan Lee when asked. If asked for a phone number, say "Please use my caller ID." Accept follow-up by the team.',
       expected: {
         callStatuses: ['High urgency'],
         bookingStatus: 'New',
         service,
         datetimeUtc: '2026-05-27T20:00:00.000Z',
         name: 'Jordan Lee',
-        phone: '+13125550199',
+        phone: EVAL_CALLER_ID,
         noPhantomBooking: false,
       },
     },
@@ -737,6 +756,7 @@ function fallbackEvaluation(message: string): Evaluation {
       timeToolUsage: failed(message),
       nameConfirm: failed(message),
       bookingCapture: failed(message),
+      noPhoneCollection: failed(message),
       fillerOveruse: failed(message),
       cleanClose: failed(message),
     },
@@ -754,6 +774,7 @@ function normalizeEvaluation(raw: string): Evaluation {
     'timeToolUsage',
     'nameConfirm',
     'bookingCapture',
+    'noPhoneCollection',
     'fillerOveruse',
     'cleanClose',
   ];
@@ -793,7 +814,7 @@ function applyDeterministicNameConfirmationCheck(
   transcript: TranscriptTurn[],
 ): Evaluation {
   const clearlySpokenCommonName =
-    scenario.kind === 'clear_booker'
+    scenario.kind === 'clear_booker' || scenario.kind === 'no_phone_collection'
       ? 'Maya Reed'
       : scenario.kind === 'unclear_booker'
         ? 'Sofia Kim'
@@ -877,6 +898,31 @@ function applyDeterministicDateValidationCheck(
   return evaluation;
 }
 
+function assistantAsksForPhone(text: string): boolean {
+  return /\b(?:phone number|callback number|best number|good number|number to reach|what(?:'s| is)\s+(?:a\s+)?(?:good\s+)?number|could i have (?:your )?(?:phone|number)|can i have (?:your )?(?:phone|number)|may i have (?:your )?(?:phone|number)|text you.*number|reach you.*number)\b/i.test(text);
+}
+
+function applyDeterministicNoPhoneCollectionCheck(
+  evaluation: Evaluation,
+  transcript: TranscriptTurn[],
+): Evaluation {
+  const offending = transcript.find((turn) => turn.role === 'assistant' && assistantAsksForPhone(turn.text));
+  evaluation.checks.noPhoneCollection = offending
+    ? {
+        pass: false,
+        reason: 'The assistant asked for a phone number even though caller ID is available and the caller did not request a different callback number.',
+        evidence: [`T${offending.index} ${offending.role.toUpperCase()}: ${offending.text}`],
+      }
+    : {
+        pass: true,
+        reason: 'No unprompted phone-number collection was observed.',
+        evidence: [],
+      };
+  const failedCount = Object.values(evaluation.checks).filter((check) => !check.pass).length;
+  evaluation.overall = failedCount === 0 ? 'passed' : failedCount <= 2 ? 'partial' : 'failed';
+  return evaluation;
+}
+
 function formattedToolTrace(toolEvents: ToolEvent[]): string {
   if (toolEvents.length === 0) return 'No tool calls.';
   return toolEvents
@@ -895,6 +941,10 @@ function applyDeterministicTimeToolCheck(
   const validationEvents = toolEvents.filter((event) => event.name === 'validate_appointment_time');
   let failure: string | null = null;
   if (scenario.kind === 'clear_booker') {
+    if (!validationEvents.some((event) => (event.result as { valid?: boolean }).valid === true)) {
+      failure = 'The assistant did not silently validate and accept the supplied appointment time before responding.';
+    }
+  } else if (scenario.kind === 'no_phone_collection') {
     if (!validationEvents.some((event) => (event.result as { valid?: boolean }).valid === true)) {
       failure = 'The assistant did not silently validate and accept the supplied appointment time before responding.';
     }
@@ -930,16 +980,17 @@ async function evaluateConversation(
           'You are a strict QA evaluator for an AI phone receptionist.',
           'Return JSON only. Evaluate the supplied transcript, not hypothetical behavior.',
           'Use this exact shape:',
-          '{"checks":{"greeting":{"pass":true,"reason":"","evidence":[]},"singleTurn":{"pass":true,"reason":"","evidence":[]},"hoursCheck":{"pass":true,"reason":"","evidence":[]},"dateValidation":{"pass":true,"reason":"","evidence":[]},"timeToolUsage":{"pass":true,"reason":"","evidence":[]},"nameConfirm":{"pass":true,"reason":"","evidence":[]},"bookingCapture":{"pass":true,"reason":"","evidence":[]},"fillerOveruse":{"pass":true,"reason":"","evidence":[]},"cleanClose":{"pass":true,"reason":"","evidence":[]}},"overall":"passed|partial|failed","summary":""}',
+          '{"checks":{"greeting":{"pass":true,"reason":"","evidence":[]},"singleTurn":{"pass":true,"reason":"","evidence":[]},"hoursCheck":{"pass":true,"reason":"","evidence":[]},"dateValidation":{"pass":true,"reason":"","evidence":[]},"timeToolUsage":{"pass":true,"reason":"","evidence":[]},"nameConfirm":{"pass":true,"reason":"","evidence":[]},"bookingCapture":{"pass":true,"reason":"","evidence":[]},"noPhoneCollection":{"pass":true,"reason":"","evidence":[]},"fillerOveruse":{"pass":true,"reason":"","evidence":[]},"cleanClose":{"pass":true,"reason":"","evidence":[]}},"overall":"passed|partial|failed","summary":""}',
           'Evidence for failed checks must contain the exact offending transcript turn text prefixed by its T number.',
           'Rules:',
           'GREETING passes only if the initial assistant turn is a greeting and names the correct business.',
           'SINGLE TURN fails if any two assistant turns appear consecutively without a caller turn.',
-          'HOURS CHECK: for unclear_booker, the first offered 8:30 PM time must be rejected as outside business hours before name, phone, or booking capture proceeds. For other cases, pass unless an outside-hours time was accepted.',
+          'HOURS CHECK: for unclear_booker, the first offered 8:30 PM time must be rejected as outside business hours before name or booking capture proceeds. For other cases, pass unless an outside-hours time was accepted.',
           'DATE VALIDATION fails if the assistant calls May 28, 2026 too far in the future or refuses that future date without an explicit booking-window policy. The test date is May 27, 2026 and May 28 is a valid future appointment date.',
           'TIME TOOL USAGE passes only when supplied appointment times are silently evaluated by validate_appointment_time before the assistant accepts or rejects them. unclear_booker must validate both the initial invalid time and the corrected valid time.',
           'NAME CONFIRM: a clearly spoken common name such as Maya, Sofia, or Jordan can be acknowledged without read-back. A short, uncommon, unclear, noisy-line, or spelled name requires an explicit confirmation question and a later caller affirmation before use. If the scenario deliberately hangs up before giving a name, pass this check.',
-          'BOOKING CAPTURE: for clear_booker, unclear_booker, and high_urgency, pass only when service, requested date/time, caller name, and phone are gathered; a manual request pending shop confirmation is acceptable. For noisy_caller and missed_call, pass when the assistant does not claim a complete booking after the caller drops without full information.',
+          'BOOKING CAPTURE: for clear_booker, no_phone_collection, unclear_booker, and high_urgency, pass when service, requested date/time, and caller name are gathered; phone is satisfied by caller ID and must not be asked for unless caller ID is missing or caller asks to use a different number. A manual request pending shop confirmation is acceptable. For noisy_caller and missed_call, pass when the assistant does not claim a complete booking after the caller drops without full information.',
+          'NO PHONE COLLECTION passes only if the assistant never asks for phone number, callback number, best number, or good number when caller ID is available and the caller did not request a different callback number.',
           'FILLER OVERUSE fails if the same filler phrase is used more than once.',
           'CLEAN CLOSE passes only if a clear next step is stated before the call closes and the assistant is not still awaiting a required answer or name confirmation.',
           'Overall is passed when all checks pass, partial for one or two failed checks, failed for three or more.',
@@ -966,8 +1017,11 @@ async function evaluateConversation(
     true,
   );
   return applyDeterministicTimeToolCheck(
-    applyDeterministicDateValidationCheck(
-      applyDeterministicNameConfirmationCheck(normalizeEvaluation(raw), scenario, transcript),
+    applyDeterministicNoPhoneCollectionCheck(
+      applyDeterministicDateValidationCheck(
+        applyDeterministicNameConfirmationCheck(normalizeEvaluation(raw), scenario, transcript),
+        transcript,
+      ),
       transcript,
     ),
     scenario,
@@ -996,13 +1050,13 @@ function reportMarkdown(results: ConversationResult[], generatedAt: string): str
     '- Harness note: appointment-time checks execute the production `validate_appointment_time` tool implementation; no booking or call records are created.',
     '- State note: the accuracy layer performs read-only Supabase queries by per-scenario correlation ID. It reports BLOCKED if the database is unavailable or if this tool-aware runner did not produce a runtime call record.',
     '',
-    '| Vertical | Scenario | Greeting | Single Turn | Hours Check | Date Validation | Time Tool | Name Confirm | Booking Capture | Filler | Clean Close | Overall |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Vertical | Scenario | Greeting | Single Turn | Hours Check | Date Validation | Time Tool | Name Confirm | Booking Capture | No Phone Ask | Filler | Clean Close | Overall |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const result of results) {
     const c = result.evaluation.checks;
     lines.push(
-      `| ${result.fixture.vertical} | ${result.scenario.kind} | ${status(c.greeting)} | ${status(c.singleTurn)} | ${status(c.hoursCheck)} | ${status(c.dateValidation)} | ${status(c.timeToolUsage)} | ${status(c.nameConfirm)} | ${status(c.bookingCapture)} | ${status(c.fillerOveruse)} | ${status(c.cleanClose)} | ${result.evaluation.overall.toUpperCase()} |`,
+      `| ${result.fixture.vertical} | ${result.scenario.kind} | ${status(c.greeting)} | ${status(c.singleTurn)} | ${status(c.hoursCheck)} | ${status(c.dateValidation)} | ${status(c.timeToolUsage)} | ${status(c.nameConfirm)} | ${status(c.bookingCapture)} | ${status(c.noPhoneCollection)} | ${status(c.fillerOveruse)} | ${status(c.cleanClose)} | ${result.evaluation.overall.toUpperCase()} |`,
     );
   }
 
@@ -1118,6 +1172,66 @@ async function main(): Promise<void> {
   writeFileSync(resolve(OUTPUT_DIR, 'latest-results.json'), JSON.stringify({ generatedAt, model: MODEL, results }, null, 2), 'utf8');
   process.stdout.write(`\n${markdown}`);
   process.stdout.write(`\n[voice-ux] Files written to ${OUTPUT_DIR}\n`);
+  const failures = results.filter(
+    (result) => result.evaluation.overall !== 'passed' || result.accuracy.overall !== 'passed',
+  ).length;
+  process.exitCode = failures > 0 ? 1 : 0;
+}
+
+async function runNoPhoneCollectionOnly(): Promise<void> {
+  loadLocalEnv();
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is required to run voice UX evals.');
+  const fixtures = buildFixtures();
+  const supabase = createDatabaseClient();
+  const databaseBlocker = await checkDatabaseReadiness(supabase);
+  const results: ConversationResult[] = [];
+  let completed = 0;
+  const total = fixtures.length;
+
+  process.stdout.write(`\n[voice-ux] === no_phone_collection scenarios (${total}) ===\n`);
+  for (const fixture of fixtures) {
+    const systemPrompt = buildSystemPrompt({
+      shop: fixture.shop,
+      customer: null,
+      mode: 'inbound',
+      vertical: fixture.promptVertical,
+    });
+    const scenario = scenariosFor(fixture).find((item) => item.kind === 'no_phone_collection');
+    if (!scenario) continue;
+    const requestId = randomUUID();
+    process.stdout.write(`[voice-ux] Running ${fixture.vertical}/${scenario.kind}...\n`);
+    try {
+      const { transcript, toolEvents } = await simulateConversation(fixture, scenario, systemPrompt);
+      const evaluation = await evaluateConversation(fixture, scenario, transcript, toolEvents);
+      const persisted = await readPersistedState(supabase, requestId, databaseBlocker);
+      const accuracy = evaluateAccuracy(scenario, transcript, persisted);
+      results.push({ requestId, fixture, scenario, promptLength: systemPrompt.length, transcript, toolEvents, evaluation, accuracy });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const persisted = { call: null, booking: null, blocker: message };
+      results.push({
+        requestId,
+        fixture,
+        scenario,
+        promptLength: systemPrompt.length,
+        transcript: [],
+        toolEvents: [],
+        evaluation: fallbackEvaluation(message),
+        accuracy: evaluateAccuracy(scenario, [], persisted),
+        error: message,
+      });
+    }
+    completed += 1;
+    process.stdout.write(`[voice-ux] Completed ${completed}/${total}.\n`);
+  }
+
+  const generatedAt = new Date().toISOString();
+  const markdown = reportMarkdown(results, generatedAt);
+  mkdirSync(OUTPUT_DIR, { recursive: true });
+  writeFileSync(resolve(OUTPUT_DIR, 'latest-no-phone-report.md'), markdown, 'utf8');
+  writeFileSync(resolve(OUTPUT_DIR, 'latest-no-phone-results.json'), JSON.stringify({ generatedAt, model: MODEL, results }, null, 2), 'utf8');
+  process.stdout.write(`\n${markdown}`);
+  process.stdout.write(`\n[voice-ux] no_phone_collection files written to ${OUTPUT_DIR}\n`);
   const failures = results.filter(
     (result) => result.evaluation.overall !== 'passed' || result.accuracy.overall !== 'passed',
   ).length;
@@ -2385,6 +2499,11 @@ if (mode === '--retry-failed') {
   });
 } else if (mode === '--phase3-only') {
   runPhase3Only().catch((error) => {
+    console.error('[voice-ux] Fatal error:', error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+} else if (mode === '--no-phone-only') {
+  runNoPhoneCollectionOnly().catch((error) => {
     console.error('[voice-ux] Fatal error:', error instanceof Error ? error.message : error);
     process.exitCode = 1;
   });

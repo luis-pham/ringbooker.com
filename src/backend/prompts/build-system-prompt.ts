@@ -16,7 +16,7 @@ import {
 type PromptMode = 'inbound' | 'outbound_reminder' | 'callback';
 const MAX_LINE_CHARS = 260;
 const MANUAL_BOOKING_REQUEST_INSTRUCTION =
-  'Silently call validate_appointment_time when time is given. Do not claim availability. After valid time, capture service, name, and phone before noting a request. No booking window: accept approved future times and never call them too far in the future.';
+  'Silently call validate_appointment_time when time is given. Do not claim availability. Capture service, name, and preferred date/time before noting a request. Use caller ID for phone; ask only if caller ID is missing or caller wants another number. No booking window: accept approved future times.';
 
 function compactLine(input: string, maxChars = MAX_LINE_CHARS): string {
   const normalized = input

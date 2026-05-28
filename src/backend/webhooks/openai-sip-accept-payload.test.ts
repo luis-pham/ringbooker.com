@@ -40,6 +40,27 @@ test('SIP accept audio.input uses semantic_vad when AGENT_OPENAI_TURN_DETECTION=
   );
 });
 
+test('SIP accept audio.input uses slower production-safe server VAD defaults', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'server_vad',
+      AGENT_OPENAI_VAD_THRESHOLD: undefined,
+      AGENT_OPENAI_VAD_PREFIX_MS: undefined,
+      AGENT_OPENAI_VAD_SILENCE_MS: undefined,
+      AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS: undefined,
+    },
+    () => {
+      const input = buildOpenAiSipAcceptAudioInputFromEnv();
+      assert.equal(input.turn_detection?.type, 'server_vad');
+      assert.equal(input.turn_detection?.threshold, 0.45);
+      assert.equal(input.turn_detection?.prefix_padding_ms, 500);
+      assert.equal(input.turn_detection?.silence_duration_ms, 900);
+      assert.equal(input.turn_detection?.idle_timeout_ms, 10000);
+    },
+  );
+});
+
 test('SIP accept audio.input turn_detection null when VAD disabled', () => {
   withEnv(
     {
@@ -105,6 +126,10 @@ test('buildOpenAiSipAcceptBody nests audio.input + audio.output', () => {
       AGENT_OPENAI_VAD_PREFIX_MS: '250',
       AGENT_OPENAI_VAD_SILENCE_MS: '400',
       AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS: '8000',
+      AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE: undefined,
+      AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL: undefined,
+      AGENT_OPENAI_LANGUAGE: undefined,
+      AGENT_OPENAI_TRANSCRIPTION_MODEL: undefined,
     },
     () => {
       const body = buildOpenAiSipAcceptBody({
@@ -119,6 +144,52 @@ test('buildOpenAiSipAcceptBody nests audio.input + audio.output', () => {
       assert.equal(body.audio?.input?.turn_detection?.prefix_padding_ms, 250);
       assert.equal(body.audio?.input?.turn_detection?.silence_duration_ms, 400);
       assert.equal(body.audio?.input?.turn_detection?.idle_timeout_ms, 8000);
+      assert.deepEqual(body.audio?.input?.transcription, {
+        model: 'gpt-4o-mini-transcribe',
+        language: 'en',
+      });
+    },
+  );
+});
+
+test('buildOpenAiSipAcceptBody allows explicit transcription language override', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE: 'vi',
+      AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL: 'gpt-4o-transcribe',
+    },
+    () => {
+      const body = buildOpenAiSipAcceptBody({
+        instructions: 'Test',
+        model: 'gpt-realtime',
+        voice: 'alloy',
+      });
+      assert.deepEqual(body.audio?.input?.transcription, {
+        model: 'gpt-4o-transcribe',
+        language: 'vi',
+      });
+    },
+  );
+});
+
+test('buildOpenAiSipAcceptBody omits transcription language when shop policy enables bilingual auto-detect', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE: undefined,
+      AGENT_OPENAI_LANGUAGE: undefined,
+      AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL: undefined,
+      AGENT_OPENAI_TRANSCRIPTION_MODEL: undefined,
+    },
+    () => {
+      const body = buildOpenAiSipAcceptBody({
+        instructions: 'Test',
+        model: 'gpt-realtime',
+        voice: 'alloy',
+        transcriptionLanguage: undefined,
+      });
+      assert.deepEqual(body.audio?.input?.transcription, {
+        model: 'gpt-4o-mini-transcribe',
+      });
     },
   );
 });

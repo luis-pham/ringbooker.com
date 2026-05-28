@@ -103,6 +103,45 @@ test('create_booking returns success for manual calendar shop', async () => {
   assert.ok(json.includes('"success":true'));
 });
 
+test('SIP booking-link flow enqueues SMS when caller wants to book and booking URL is configured', async () => {
+  const deps = memoryDeps();
+  await deps.shopsRepository.updateUserSettings('demo-shop', {
+    booking_method: 'app',
+    booking_url: 'https://booking.example/test-salon',
+  });
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop,
+    callerPhone: '+15550001111',
+    requestId: 'sip-booking-link-sms',
+    roomName: 'sip-room-booking-link-sms',
+    deps,
+  });
+
+  const json = await executeSipShopToolCall(ctx, 'send_booking_link', {
+    callerName: 'Maya',
+    serviceInterest: 'haircut',
+  });
+  const parsed = JSON.parse(json) as { success?: boolean; message?: string };
+  assert.equal(parsed.success, true);
+  assert.match(parsed.message ?? '', /\+15550001111/);
+
+  const job = await deps.jobsRepository.leaseNext({
+    now: new Date(),
+    leaseSeconds: 30,
+    workerId: 'sip-booking-link-test-worker',
+  });
+  assert.ok(job);
+  assert.equal(job.type, 'booking_link_sms');
+  assert.equal(job.shopId, shop.id);
+  assert.equal(job.payload.toPhone, '+15550001111');
+  assert.equal(job.payload.bookingUrl, 'https://booking.example/test-salon');
+  assert.match(String(job.payload.message), /Maya/);
+  assert.match(String(job.payload.message), /haircut/);
+  assert.match(String(job.payload.message), /https:\/\/booking\.example\/test-salon/);
+});
+
 test('SIP booking decisions require validation for the exact appointment time', async () => {
   const deps = memoryDeps();
   const baseShop = await deps.shopsRepository.findById('demo-shop');

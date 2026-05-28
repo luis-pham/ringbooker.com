@@ -18,9 +18,12 @@ type CapturedCallLike = {
 const ACTIONS_THAT_CAPTURE: CallSummaryNextAction[] = [
   'booking_created',
   'booking_link_sent',
+  'booking_request_incomplete',
   'callback_scheduled',
   'cancellation_requested',
   'reschedule_requested',
+  'needs_follow_up',
+  'low_confidence_booking_intent',
   'escalated',
 ];
 

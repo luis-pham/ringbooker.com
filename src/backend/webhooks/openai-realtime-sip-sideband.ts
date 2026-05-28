@@ -458,6 +458,18 @@ export function startOpenAiRealtimeSipSideband(
       if (transcript && speaker) {
         // Both shop and demo calls persist the full transcript via the callback.
         params.onTranscript?.(speaker, transcript);
+        logger.info(
+          {
+            callSessionId: params.callId,
+            providerCallId: params.callId,
+            eventType: evt.type,
+            rawUserTranscript: speaker === 'caller' ? transcript : null,
+            normalizedUserText: speaker === 'caller' ? transcript.replace(/\s+/g, ' ').trim() : null,
+            rawAssistantTranscript: speaker === 'assistant' ? transcript : null,
+            reason: speaker === 'caller' ? 'caller_transcript_completed' : 'assistant_transcript_completed',
+          },
+          'openai_sip_realtime_transcript_event',
+        );
         if (params.variant === 'shop' && params.initialResponseBridgeGate) {
           if (speaker === 'assistant' && mentionsBookingFlow(transcript)) {
             shopBookingFlowActive = true;
@@ -547,7 +559,16 @@ export function startOpenAiRealtimeSipSideband(
             },
           }),
         );
-        logger.info({ callId: params.callId }, 'openai_sip_end_call_tool_acknowledged');
+        logger.info(
+          {
+            callSessionId: params.callId,
+            providerCallId: params.callId,
+            eventType: 'tool_call',
+            proposedTool: toolName,
+            backendDecision: 'acknowledged_end_call',
+          },
+          'openai_sip_tool_decision',
+        );
       } catch (err) {
         logger.warn({ err, callId: params.callId }, 'openai_sip_end_call_ack_failed');
       }
@@ -561,10 +582,32 @@ export function startOpenAiRealtimeSipSideband(
     }
 
     const argsJson = typeof evt.arguments === 'string' ? evt.arguments : '{}';
+    logger.info(
+      {
+        callSessionId: params.callId,
+        providerCallId: params.callId,
+        eventType: 'tool_call',
+        proposedTool: toolName,
+        backendDecision: 'execute_business_tool',
+        toolArgsPreview: argsJson.slice(0, 1000),
+      },
+      'openai_sip_tool_decision',
+    );
     void (async () => {
       let output: string;
       try {
         output = await params.executeBusinessTool(toolName, argsJson);
+        logger.info(
+          {
+            callSessionId: params.callId,
+            providerCallId: params.callId,
+            eventType: 'tool_result',
+            proposedTool: toolName,
+            backendDecision: 'tool_executed',
+            reason: 'tool_execution_completed',
+          },
+          'openai_sip_tool_decision',
+        );
       } catch (err) {
         logger.warn({ err, callId: params.callId, toolName }, 'openai_sip_shop_tool_handler_failed');
         output = JSON.stringify({ error: 'Tool execution failed. Please try again.' });

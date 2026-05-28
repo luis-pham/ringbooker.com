@@ -7,11 +7,19 @@ import { logEmailRuntimeStartup } from '@/src/backend/services/email/startup';
 
 applyRequiredTestEnv();
 
+function setEnvValue(key: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+  process.env[key] = value;
+}
+
 test('logEmailRuntimeStartup throws in production when EMAIL_PROVIDER is noop', () => {
   const prevNodeEnv = process.env.NODE_ENV;
   const prevProvider = process.env.EMAIL_PROVIDER;
-  process.env.NODE_ENV = 'production';
-  process.env.EMAIL_PROVIDER = 'noop';
+  setEnvValue('NODE_ENV', 'production');
+  setEnvValue('EMAIL_PROVIDER', 'noop');
   resetEnvCacheForTests();
 
   try {
@@ -20,15 +28,15 @@ test('logEmailRuntimeStartup throws in production when EMAIL_PROVIDER is noop', 
       (error: unknown) => error instanceof Error && error.message === 'production_email_provider_is_noop',
     );
   } finally {
-    process.env.NODE_ENV = prevNodeEnv;
-    process.env.EMAIL_PROVIDER = prevProvider;
+    setEnvValue('NODE_ENV', prevNodeEnv);
+    setEnvValue('EMAIL_PROVIDER', prevProvider);
     resetEnvCacheForTests();
   }
 });
 
 test('logEmailRuntimeStartup does not throw in test when EMAIL_PROVIDER is noop', () => {
-  process.env.NODE_ENV = 'test';
-  process.env.EMAIL_PROVIDER = 'noop';
+  setEnvValue('NODE_ENV', 'test');
+  setEnvValue('EMAIL_PROVIDER', 'noop');
   resetEnvCacheForTests();
   assert.doesNotThrow(() => logEmailRuntimeStartup('noop'));
 });

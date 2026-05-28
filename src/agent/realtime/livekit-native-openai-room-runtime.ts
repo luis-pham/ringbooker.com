@@ -20,6 +20,7 @@ import {
 } from '@/src/agent/prompts';
 import { logger, withLogContext } from '@/src/backend/observability/logger';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
+import { resolveProductionRealtimeTranscriptionDefaultLanguage } from '@/src/backend/prompts/production-language-policy';
 
 function toWebsocketUrl(url: string): string {
   if (url.startsWith('wss://') || url.startsWith('ws://')) return url;
@@ -102,6 +103,20 @@ function applyOutputGain(frame: AudioFrame, gain: number): AudioFrame {
   return new AudioFrame(amplified, frame.sampleRate, frame.channels, frame.samplesPerChannel, frame.userdata);
 }
 
+function resolveDefaultInputTranscriptionLanguage(input: RealtimeDispatchInput): string | undefined {
+  const policy = transcriptionPolicyFromDispatchInput(input, () => {
+    logger.warn(
+      {
+        requestId: input.requestId,
+        roomName: input.roomName,
+      },
+      'shop_plan_missing_for_language_policy',
+    );
+  });
+  if (policy.demoIsolated && shouldDefaultTranscriptionToVietnamese(policy)) return 'vi';
+  return resolveProductionRealtimeTranscriptionDefaultLanguage(policy.shopPlan, policy.shopLanguages);
+}
+
 function shouldDefaultToVietnamese(input: RealtimeDispatchInput): boolean {
   return shouldDefaultTranscriptionToVietnamese(
     transcriptionPolicyFromDispatchInput(input, () => {
@@ -116,15 +131,23 @@ function shouldDefaultToVietnamese(input: RealtimeDispatchInput): boolean {
   );
 }
 
+function normalizeInputTranscriptionLanguage(value: string | undefined, defaultValue: string | undefined): string | undefined {
+  const raw = value?.trim();
+  if (!raw) return defaultValue;
+  const normalized = raw.toLowerCase();
+  if (['auto', 'detect', 'none', 'off', 'false', '0'].includes(normalized)) return undefined;
+  return raw;
+}
+
 function resolveOpenAIInputAudioTranscription(
   input: RealtimeDispatchInput,
 ): { model: string; language?: string; prompt?: string } | null {
   if (!parseBoolean(process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_ENABLED, true)) return null;
 
-  const language =
-    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE?.trim() ||
-    process.env.AGENT_OPENAI_LANGUAGE?.trim() ||
-    (shouldDefaultToVietnamese(input) ? 'vi' : undefined);
+  const language = normalizeInputTranscriptionLanguage(
+    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE ?? process.env.AGENT_OPENAI_LANGUAGE,
+    resolveDefaultInputTranscriptionLanguage(input),
+  );
   const prompt =
     process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_PROMPT?.trim() ||
     (language === 'vi' ? getOpenAiVietnameseBookingTranscriptionPrompt() : undefined);
@@ -263,8 +286,8 @@ function resolveLiveKitAgentSessionOptions() {
           process.env.AGENT_LIVEKIT_DISCARD_AUDIO_IF_UNINTERRUPTIBLE,
           true,
         ),
-        minDuration: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_INTERRUPTION_MIN_DURATION_MS, 650))),
-        minWords: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_INTERRUPTION_MIN_WORDS, 1))),
+        minDuration: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_INTERRUPTION_MIN_DURATION_MS, 800))),
+        minWords: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_INTERRUPTION_MIN_WORDS, 2))),
         falseInterruptionTimeout,
         resumeFalseInterruption: parseBoolean(process.env.AGENT_LIVEKIT_RESUME_FALSE_INTERRUPTION, false),
       },
@@ -373,9 +396,9 @@ function buildTurnDetectionConfig(): {
   if (mode === 'server_vad') {
     return {
       type: 'server_vad',
-      threshold: Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.5))),
-      prefix_padding_ms: Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 200))),
-      silence_duration_ms: Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 300))),
+      threshold: Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.45))),
+      prefix_padding_ms: Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 500))),
+      silence_duration_ms: Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 900))),
       create_response: createResponse,
       interrupt_response: interruptResponse,
     };
@@ -385,7 +408,7 @@ function buildTurnDetectionConfig(): {
   const normalizedEagerness =
     eagerness === 'low' || eagerness === 'medium' || eagerness === 'high' || eagerness === 'auto'
       ? eagerness
-      : 'high';
+      : 'low';
 
   return {
     type: 'semantic_vad',
@@ -1375,38 +1398,42 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   };
 
   session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
+    log.info(
+      {
+        roomName: input.roomName,
+        transcript: ev.transcript ?? null,
+        rawUserTranscript: ev.transcript ?? null,
+        normalizedUserText: ev.transcript ? normalizePromptValue(ev.transcript) : null,
+        transcriptionModel: openAiInputAudioTranscription?.model ?? null,
+        languageHint: openAiInputAudioTranscription?.language ?? null,
+        isFinal: ev.isFinal,
+        currentAgentState,
+        currentUserState,
+        msSinceUserSpeechStarted: latestUserSpeechStartedAtMs ? Date.now() - latestUserSpeechStartedAtMs : null,
+      },
+      'livekit_native_openai_user_input_transcribed',
+    );
+    if (!ev.isFinal || !ev.transcript) return;
+    const nowMs = Date.now();
+
+    if (!firstUserSpeechAtMs) {
+      firstUserSpeechAtMs = nowMs;
       log.info(
         {
           roomName: input.roomName,
-          transcript: ev.transcript ?? null,
-          isFinal: ev.isFinal,
-          currentAgentState,
-          currentUserState,
-          msSinceUserSpeechStarted: latestUserSpeechStartedAtMs ? Date.now() - latestUserSpeechStartedAtMs : null,
+          dispatchToFirstUserSpeechMs: nowMs - runtimeStartedAtMs,
+          roomConnectedToFirstUserSpeechMs: nowMs - roomConnectedAtMs,
+          ...timingSnapshot(nowMs),
         },
-        'livekit_native_openai_user_input_transcribed',
+        'livekit_native_openai_first_user_speech_detected',
       );
-      if (!ev.isFinal || !ev.transcript) return;
-      const nowMs = Date.now();
-
-      if (!firstUserSpeechAtMs) {
-        firstUserSpeechAtMs = nowMs;
-        log.info(
-          {
-            roomName: input.roomName,
-            dispatchToFirstUserSpeechMs: nowMs - runtimeStartedAtMs,
-            roomConnectedToFirstUserSpeechMs: nowMs - roomConnectedAtMs,
-            ...timingSnapshot(nowMs),
-          },
-          'livekit_native_openai_first_user_speech_detected',
-        );
-        observeDurationMs('realtime_worker_stage_ms', nowMs - runtimeStartedAtMs, {
-          transport: 'livekit',
-          voiceProvider: 'openai_realtime_native',
-          stage: 'dispatch_to_first_user_speech',
-        });
-      }
-    });
+      observeDurationMs('realtime_worker_stage_ms', nowMs - runtimeStartedAtMs, {
+        transport: 'livekit',
+        voiceProvider: 'openai_realtime_native',
+        stage: 'dispatch_to_first_user_speech',
+      });
+    }
+  });
 
   session.on(agentVoice.AgentSessionEventTypes.ConversationItemAdded, (ev) => {
       log.info(

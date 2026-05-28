@@ -69,7 +69,7 @@ test('extractCallSummary returns safe defaults on OpenAI error', async () => {
   }) as typeof fetch;
 
   const result = await extractCallSummary(
-    'CALLER: I want to book a gel manicure tomorrow afternoon. ASSISTANT: I can help with booking and checking availability for your requested appointment time.',
+    'CALLER: Hello, what time do you open on Saturday morning? ASSISTANT: We open at 9 AM on Saturday and close at 6 PM.',
   );
 
   assert.deepEqual(result, SAFE_CALL_SUMMARY_DEFAULTS);
@@ -86,6 +86,54 @@ test('extractCallSummary returns safe defaults for empty transcript', async () =
 
   assert.deepEqual(result, SAFE_CALL_SUMMARY_DEFAULTS);
   assert.equal(called, false);
+});
+
+test('extractCallSummary protects partial booking intent from no_action_needed', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: null,
+    urgency: 'low',
+    next_action: 'no_action_needed',
+    caller_question: null,
+    caller_name: null,
+    preferred_tech: null,
+    preferred_datetime: null,
+    follow_up_required: false,
+  });
+
+  const result = await extractCallSummary(
+    'CALLER: I want to book color tomorrow at 9 AM. ASSISTANT: Can I have your name for the request?',
+    { callerPhone: '+15550001111' },
+  );
+
+  assert.equal(result.nextAction, 'booking_request_incomplete');
+  assert.equal(result.followUpRequired, true);
+  assert.equal(result.serviceRequest, 'color');
+  assert.equal(result.preferredDatetime, 'tomorrow');
+});
+
+test('extractCallSummary prompt treats phone as missing only when caller ID is unavailable', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  let prompt = '';
+  globalThis.fetch = (async (_input, init) => {
+    const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ content?: string }> };
+    prompt = body.messages?.[0]?.content ?? '';
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { content: JSON.stringify(SAFE_CALL_SUMMARY_DEFAULTS) } }],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  await extractCallSummary(
+    'CALLER: I want to book color tomorrow at 9 AM. ASSISTANT: I have the service and time.',
+    { callerPhone: '+15550001111' },
+  );
+
+  assert.match(prompt, /Treat phone as already available when caller ID was available/);
+  assert.match(prompt, /treat phone as missing only if caller ID was unavailable/);
+  assert.doesNotMatch(prompt, /required details such as phone, name, service/);
 });
 
 test('post_call_summary job saves structured fields', async () => {
@@ -145,6 +193,62 @@ test('post_call_summary job saves structured fields', async () => {
   assert.equal(call.summaryCallerName, 'Mary');
   assert.equal(call.summaryPreferredTech, 'Sarah');
   assert.equal(call.summaryPreferredDatetime, 'Saturday morning');
+});
+
+test('post_call_summary job labels partial booking as incomplete instead of unknown', async () => {
+  process.env.OPENAI_API_KEY = 'test-key';
+  mockOpenAiResponse({
+    service_request: null,
+    urgency: 'low',
+    next_action: 'no_action_needed',
+    caller_question: null,
+    caller_name: null,
+    preferred_tech: null,
+    preferred_datetime: null,
+    follow_up_required: false,
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'partial-booking-call',
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking',
+    callerPhone: '+15550001111',
+    startedAt: new Date('2026-05-01T00:00:00.000Z'),
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking',
+    speaker: 'caller',
+    text: 'I want to book color tomorrow at 9 AM.',
+  });
+  await callLogsRepository.appendTranscriptByRequestId({
+    shopId: 'shop-1',
+    requestId: 'req-partial-booking',
+    speaker: 'assistant',
+    text: 'Can I have your name for the request?',
+  });
+  await jobsRepository.enqueue({
+    shopId: 'shop-1',
+    type: 'post_call_summary',
+    payload: { requestId: 'req-partial-booking', status: 'completed' },
+    runAt: new Date('2026-05-01T00:00:01.000Z'),
+    idempotencyKey: 'post-summary-partial-booking',
+  });
+
+  const result = await executeSingleJobsWorkerTickWithRuntime({
+    jobsRepository,
+    callLogsRepository,
+    shopsRepository: new InMemoryShopsRepository(),
+  } as any);
+
+  assert.equal(result.processed, true);
+  const [call] = await callLogsRepository.listByShop('shop-1', { limit: 1 });
+  assert.equal(call.summaryNextAction, 'booking_request_incomplete');
+  assert.equal(call.summaryFollowUpRequired, true);
+  assert.match(call.transcriptText ?? '', /outcome=booking_request_incomplete/);
 });
 
 test('post_call_summary job does not infer a captured outcome when only the assistant spoke', async () => {

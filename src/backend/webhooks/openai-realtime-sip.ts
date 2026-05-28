@@ -7,8 +7,10 @@ import {
   createSipAgentToolContext,
   executeSipShopToolCall,
   prePopulateFromTranscript,
+  updateSipBookingDraftFromTranscript,
   type SipToolExecutorDeps,
 } from '@/src/agent/sip/sip-tool-executor';
+import { summarizeBookingDraftForLog } from '@/src/agent/booking/booking-draft';
 import { getEnv } from '@/src/backend/config/env';
 import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import type { Shop, ShopVertical } from '@/src/backend/domain/types';
@@ -24,6 +26,7 @@ import {
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
+import { resolveProductionRealtimeTranscriptionDefaultLanguage } from '@/src/backend/prompts/production-language-policy';
 import {
   buildProductionInitialGreetingInstructions,
   resolveEffectiveRuntimeConfig,
@@ -851,7 +854,26 @@ export async function handleOpenAiRealtimeSipWebhook(
       ? getSipShopToolsForOpenAiAccept(route.kind === 'shop' ? route.shop : null)
       : undefined,
     toolChoice: shopToolsAndSideband ? 'auto' : undefined,
+    transcriptionLanguage:
+      route.kind === 'shop'
+        ? resolveProductionRealtimeTranscriptionDefaultLanguage(route.shop.plan, route.shop.languages)
+        : 'en',
   });
+  logger.info(
+    {
+      callSessionId: shopRoomContext?.rbCallId ?? callId,
+      providerCallId: callId,
+      model,
+      transcriptionModel: acceptBody.audio?.input?.transcription?.model ?? null,
+      languageHint: acceptBody.audio?.input?.transcription?.language ?? null,
+      vadType: (acceptBody.audio?.input?.turn_detection as { type?: unknown } | null | undefined)?.type ?? null,
+      vadSettings: acceptBody.audio?.input?.turn_detection ?? null,
+      eventType: 'realtime_session_accept',
+      toolChoice: acceptBody.tool_choice ?? null,
+      toolCount: acceptBody.tools?.length ?? 0,
+    },
+    'openai_sip_realtime_session_config',
+  );
 
   const acceptRes = await postOpenAiCallAction({
     callId,
@@ -1054,21 +1076,59 @@ export async function handleOpenAiRealtimeSipWebhook(
               } catch {
                 parsed = {};
               }
+              logger.info(
+                {
+                  callSessionId: sidebandCtx.rbCallId ?? sidebandCtx.requestId,
+                  providerCallId: callId,
+                  shopId: shop.id,
+                  eventType: 'tool_context',
+                  proposedTool: name,
+                  backendDecision: 'execute_business_tool',
+                  bookingDraft: summarizeBookingDraftForLog(toolCtx.bookingDraft),
+                  reason: 'booking_draft_attached_to_tool_call',
+                },
+                'openai_sip_tool_context',
+              );
               return executeSipShopToolCall(toolCtx, name, parsed);
             },
-            onTranscript: deps.callLogsRepository
-              ? (speaker: 'caller' | 'assistant', text: string) => {
-                  void deps.callLogsRepository!.appendTranscriptByRequestId({
-                    shopId: shop.id,
-                    requestId: sidebandCtx.requestId,
-                    speaker,
-                    text,
-                    occurredAt: new Date(),
-                  }).catch((err: unknown) => {
-                    logger.warn({ err, callId, shopId: shop.id }, 'openai_sip_transcript_append_failed');
-                  });
+            onTranscript: (speaker: 'caller' | 'assistant', text: string) => {
+              if (speaker === 'caller') {
+                const draftUpdate = updateSipBookingDraftFromTranscript(toolCtx, text);
+                if (draftUpdate) {
+                  const bookingDraftLog = draftUpdate.bookingDraft;
+                  logger.info(
+                    {
+                      callSessionId: sidebandCtx.rbCallId ?? sidebandCtx.requestId,
+                      providerCallId: callId,
+                      shopId: shop.id,
+                      eventType: 'booking_draft_updated',
+                      rawUserTranscript: text,
+                      normalizedUserText: text.replace(/\s+/g, ' ').trim(),
+                      extractedSlots: bookingDraftLog,
+                      bookingDraft: bookingDraftLog,
+                      confidence:
+                        bookingDraftLog && typeof bookingDraftLog === 'object'
+                          ? (bookingDraftLog as { confidence?: unknown }).confidence
+                          : undefined,
+                      reason: draftUpdate.reasonCodes.length > 0 ? draftUpdate.reasonCodes : ['caller_transcript_processed'],
+                    },
+                    'openai_sip_booking_draft_updated',
+                  );
                 }
-              : undefined,
+              }
+
+              if (deps.callLogsRepository) {
+                void deps.callLogsRepository.appendTranscriptByRequestId({
+                  shopId: shop.id,
+                  requestId: sidebandCtx.requestId,
+                  speaker,
+                  text,
+                  occurredAt: new Date(),
+                }).catch((err: unknown) => {
+                  logger.warn({ err, callId, shopId: shop.id }, 'openai_sip_transcript_append_failed');
+                });
+              }
+            },
             softLimitMs,
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,

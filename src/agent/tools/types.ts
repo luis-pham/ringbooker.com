@@ -7,6 +7,8 @@ import {
   normalizeServiceText,
 } from '@/src/backend/domain/service-catalog';
 import { isWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
+import type { BookingActionGuardState } from '@/src/agent/booking/booking-action-guard';
+import type { BookingDraft } from '@/src/agent/booking/booking-draft';
 import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
@@ -39,6 +41,10 @@ export type AgentToolContext = {
   rbCallId?: string;
   /** Optional OpenAI SIP outbound Telnyx leg call_control_id, when available from SIP headers. */
   openAiLegCallControlId?: string | null;
+  /** Runtime-only slot accumulator built from caller transcripts. */
+  bookingDraft?: BookingDraft;
+  /** Runtime-only guard state for sensitive booking/link/handoff/end-call actions. */
+  actionGuard?: BookingActionGuardState;
   /** Runtime-only state used to require deterministic time validation before booking decisions. */
   appointmentTimeValidation?: {
     latest: {

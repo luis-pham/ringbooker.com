@@ -280,10 +280,12 @@ test('Manual provider prompt tells AI to capture request without claiming availa
   });
 
   assert.match(prompt, /BOOKING REQUEST INSTRUCTION: Silently call validate_appointment_time when time is given/);
+  assert.match(prompt, /Capture service, name, and preferred date\/time before noting a request/);
+  assert.doesNotMatch(prompt, /capture service, name, and phone before noting a request/i);
   assert.match(prompt, /No booking window: accept approved future times/);
 });
 
-test('Production prompt requires complete booking capture and accepts valid future dates without an explicit booking window', () => {
+test('Production prompt treats caller ID as default phone source and accepts valid future dates without an explicit booking window', () => {
   const prompt = buildSystemPrompt({
     shop: createShop('professional'),
     customer: null,
@@ -291,7 +293,10 @@ test('Production prompt requires complete booking capture and accepts valid futu
   });
 
   assert.match(prompt, /BOOKING REQUEST REQUIRED DETAILS: Before ending a booking-request flow/);
-  assert.match(prompt, /service, preferred date and time, caller name, and caller phone number/);
+  assert.match(prompt, /service, preferred date and time, and caller name/);
+  assert.match(prompt, /Phone is satisfied by caller ID/);
+  assert.match(prompt, /Only collect phone if ctx\.callerPhone is null, empty, or caller explicitly requests a different number/);
+  assert.doesNotMatch(prompt, /caller name, and caller phone number/);
   assert.match(prompt, /validate_appointment_time result is the only source of truth/);
   assert.match(prompt, /accept a future date approved by validate_appointment_time for capture/);
 });

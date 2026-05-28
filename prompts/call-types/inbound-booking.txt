@@ -9,11 +9,13 @@ Booking flow, information priority, when to ask, when to check availability, whe
 No vertical tone. No demo copy. No runtime service examples.
 
 ### Prompt Content
-Target outcome: identify service and preferred time, collect caller name and callback number, check availability, confirm details, and mention SMS confirmation.
+Target outcome: identify service and preferred time, collect caller name, check availability, confirm details, and mention SMS confirmation.
 
-Conversation flow: acknowledge booking intent, ask for missing service, ask for preferred date/time, silently call validate_appointment_time immediately when time is supplied, collect caller name and callback number only after the time is validated, check availability when applicable, confirm final details once.
+Conversation flow: acknowledge booking intent, ask for missing service, ask for preferred date/time, silently call validate_appointment_time immediately when time is supplied, collect caller name only after the time is validated, check availability when applicable, confirm final details once.
 
-Information priority: service, date/time, provider or stylist preference if relevant, caller name, callback number.
+Information priority: service, date/time, provider or stylist preference if relevant, caller name.
+
+Phone is satisfied by caller ID. Only ask for phone if ctx.callerPhone is unavailable, or if the caller explicitly says they want to use a different number.
 
 Move forward once service and preferred time are known. Do not ask optional preference questions unless the vertical requires them.
 

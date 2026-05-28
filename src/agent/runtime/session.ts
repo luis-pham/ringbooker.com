@@ -239,6 +239,7 @@ export class InboundAgentSession {
       callerPhone: this.callerPhone,
       systemPrompt: this.systemPrompt,
       shopPlan: this.shop.plan,
+      shopLanguages: this.shop.languages,
     });
   }
 }

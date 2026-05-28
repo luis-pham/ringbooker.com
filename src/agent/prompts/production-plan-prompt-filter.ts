@@ -2,12 +2,12 @@ import { hasMultilingualLanguageConfiguration } from '@/src/backend/prompts/prod
 import type { ShopPlan } from '@/src/backend/domain/types';
 import type { VoicePromptMode } from '@/src/agent/prompts/types';
 
-/** Core layer: multilingual auto-switch block (Starter production replaces this). */
-const CORE_MULTILINGUAL_SWITCH_BLOCK =
-  /\nDetect and match the caller[\u2019']s language automatically\.[\s\S]*?Never ask the caller to repeat themselves in a different language\./;
+/** Core layer: language policy block (Starter production and English-only demos replace this). */
+const CORE_LANGUAGE_POLICY_BLOCK =
+  /\n(?:Detect and match the caller[\u2019']s language automatically\.[\s\S]*?Never ask the caller to repeat themselves in a different language\.|Speak English by default\.[\s\S]*?Do not mix languages in the same response\.)/;
 
 const CORE_STARTER_LANGUAGE_REPLACEMENT =
-  '\nKeep spoken dialogue in English unless RUNTIME BUSINESS CONFIG LANGUAGE DIRECTIVE explicitly allows otherwise. Do not switch languages based only on the caller speaking another language on Starter.';
+  '\nKeep spoken dialogue in English unless RUNTIME BUSINESS CONFIG LANGUAGE DIRECTIVE explicitly allows otherwise. Treat accented English, slow speech, and noisy ASR fragments as English. Do not switch languages based only on pronunciation, accent, or a few unclear words on Starter.';
 
 const CORE_DEMO_NAIL_LANGUAGE_REPLACEMENT =
   '\nNAIL DEMO LANGUAGE POLICY: Keep spoken dialogue in English only. Do not switch to another language during the nail salon demo, even if the caller speaks another language.';
@@ -17,14 +17,14 @@ const CORE_DEMO_NAIL_LANGUAGE_REPLACEMENT =
  */
 export function filterCoreVoicePromptForProductionPlan(coreContent: string, plan: ShopPlan, mode: VoicePromptMode): string {
   if (mode !== 'production' || plan !== 'starter') return coreContent;
-  if (!CORE_MULTILINGUAL_SWITCH_BLOCK.test(coreContent)) return coreContent;
-  return coreContent.replace(CORE_MULTILINGUAL_SWITCH_BLOCK, CORE_STARTER_LANGUAGE_REPLACEMENT);
+  if (!CORE_LANGUAGE_POLICY_BLOCK.test(coreContent)) return coreContent;
+  return coreContent.replace(CORE_LANGUAGE_POLICY_BLOCK, CORE_STARTER_LANGUAGE_REPLACEMENT);
 }
 
 export function filterCoreVoicePromptForNailDemo(coreContent: string, mode: VoicePromptMode, vertical: string): string {
   if (mode !== 'demo' || vertical !== 'nail-salon') return coreContent;
-  if (!CORE_MULTILINGUAL_SWITCH_BLOCK.test(coreContent)) return coreContent;
-  return coreContent.replace(CORE_MULTILINGUAL_SWITCH_BLOCK, CORE_DEMO_NAIL_LANGUAGE_REPLACEMENT);
+  if (!CORE_LANGUAGE_POLICY_BLOCK.test(coreContent)) return coreContent;
+  return coreContent.replace(CORE_LANGUAGE_POLICY_BLOCK, CORE_DEMO_NAIL_LANGUAGE_REPLACEMENT);
 }
 
 function shouldStripVerticalLanguageLine(line: string): boolean {

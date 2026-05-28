@@ -1,0 +1,1085 @@
+{
+  "generatedAt": "2026-05-28T12:26:03.787Z",
+  "model": "gpt-4o",
+  "results": [
+    {
+      "requestId": "f95437f0-5735-47f8-902f-f6a071ebc294",
+      "fixture": {
+        "vertical": "nail_salon",
+        "promptVertical": "nail-salon",
+        "shop": {
+          "id": "eval-nail-salon",
+          "name": "Luna Nail Studio",
+          "vertical": "nail_salon",
+          "phone_number": "+13125550100",
+          "user_phone": "+13125550101",
+          "handoff_phone": "+13125550102",
+          "address": "214 West Maple Street, Chicago, IL 60610",
+          "timezone": "America/Chicago",
+          "services": [
+            {
+              "name": "Gel Manicure",
+              "duration_min": 45,
+              "price": 42
+            },
+            {
+              "name": "Signature Pedicure",
+              "duration_min": 60,
+              "price": 58
+            },
+            {
+              "name": "Dip Powder Set",
+              "duration_min": 60,
+              "price": 55
+            }
+          ],
+          "hours": {
+            "mon": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "tue": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "wed": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "thu": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "fri": {
+              "open": "09:00",
+              "close": "18:00"
+            },
+            "sat": {
+              "open": "09:00",
+              "close": "16:00"
+            },
+            "sun": {
+              "closed": true
+            }
+          },
+          "cancel_policy": "Please provide at least 24 hours notice for changes or cancellation.",
+          "booking_url": null,
+          "booking_method": null,
+          "selected_integration": null,
+          "ai_welcome_message": "Thank you for calling Luna Nail Studio, how can I help you today?",
+          "allow_transfers": false,
+          "allow_callbacks": false,
+          "send_reminder_sms": true,
+          "send_review_request_sms": false,
+          "send_missed_call_followup_sms": true,
+          "plan": "professional",
+          "active": true,
+          "languages": [
+            "en"
+          ],
+          "country_code": "US",
+          "staff": [
+            {
+              "name": "Mina",
+              "role": "Nail technician",
+              "specialties": [
+                "Gel manicure",
+                "Nail art"
+              ]
+            }
+          ]
+        },
+        "targetService": "Gel Manicure"
+      },
+      "scenario": {
+        "kind": "no_phone_collection",
+        "persona": "A cooperative caller with clear booking intent who answers only the question asked.",
+        "openingLine": "Hi, I want to book a Gel Manicure on Thursday, May 28, 2026 at 10 AM.",
+        "goal": "Submit a request for Gel Manicure on Thursday, May 28, 2026 at 10 AM under Maya Reed. Do not provide a phone number because caller ID is already available.",
+        "behavior": "Provide the requested service and time immediately. Give your name when asked. If the assistant asks for a phone number, say \"You should have my caller ID.\" Otherwise accept that the shop will follow up and say goodbye.",
+        "expected": {
+          "callStatuses": [
+            "Follow up needed"
+          ],
+          "bookingStatus": "New",
+          "service": "Gel Manicure",
+          "datetimeUtc": "2026-05-28T15:00:00.000Z",
+          "name": "Maya Reed",
+          "phone": "+13125550142",
+          "noPhantomBooking": false
+        }
+      },
+      "promptLength": 18000,
+      "transcript": [
+        {
+          "index": 1,
+          "timestamp": "2026-05-28T12:25:28.524Z",
+          "role": "assistant",
+          "text": "Thank you for calling Luna Nail Studio, how can I help you today?"
+        },
+        {
+          "index": 2,
+          "timestamp": "2026-05-28T12:25:28.524Z",
+          "role": "caller",
+          "text": "Hi, I want to book a Gel Manicure on Thursday, May 28, 2026 at 10 AM."
+        },
+        {
+          "index": 3,
+          "timestamp": "2026-05-28T12:25:30.108Z",
+          "role": "assistant",
+          "text": "Great choice! Could I have your name to complete the booking request?"
+        },
+        {
+          "index": 4,
+          "timestamp": "2026-05-28T12:25:31.142Z",
+          "role": "caller",
+          "text": "Maya Reed."
+        },
+        {
+          "index": 5,
+          "timestamp": "2026-05-28T12:25:32.671Z",
+          "role": "assistant",
+          "text": "Thank you, Maya. The shop is currently closed, but I've noted your request for a Gel Manicure on May 28th at 10 AM. The team will follow up during business hours to confirm your appointment. You'll receive an SMS confirmation."
+        },
+        {
+          "index": 6,
+          "timestamp": "2026-05-28T12:25:33.272Z",
+          "role": "caller",
+          "text": "Thank you, goodbye."
+        },
+        {
+          "index": 7,
+          "timestamp": "2026-05-28T12:25:35.590Z",
+          "role": "assistant",
+          "text": "You're welcome! Have a great day. Goodbye!"
+        }
+      ],
+      "toolEvents": [
+        {
+          "timestamp": "2026-05-28T12:25:29.309Z",
+          "afterTurn": 2,
+          "name": "validate_appointment_time",
+          "input": {
+            "date": "2026-05-28",
+            "time": "10:00"
+          },
+          "result": {
+            "success": true,
+            "valid": true,
+            "reason": "within_business_hours",
+            "normalizedDatetimeUtc": "2026-05-28T15:00:00.000Z",
+            "messageForAi": "The requested time may be captured. Continue without saying you checked anything, without claiming availability, and without describing the date as too far in the future."
+          }
+        }
+      ],
+      "evaluation": {
+        "checks": {
+          "greeting": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "singleTurn": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "hoursCheck": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "dateValidation": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "timeToolUsage": {
+            "pass": true,
+            "reason": "Required appointment-time validation tool sequence was observed.",
+            "evidence": []
+          },
+          "nameConfirm": {
+            "pass": true,
+            "reason": "Caller clearly stated a common name; the active policy does not require read-back.",
+            "evidence": []
+          },
+          "bookingCapture": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "noPhoneCollection": {
+            "pass": true,
+            "reason": "No unprompted phone-number collection was observed.",
+            "evidence": []
+          },
+          "fillerOveruse": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "cleanClose": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          }
+        },
+        "overall": "passed",
+        "summary": "All checks passed. The assistant correctly greeted the caller, validated the appointment time, captured the necessary booking details without asking for a phone number, and provided a clear next step before closing the call."
+      },
+      "accuracy": {
+        "checks": {
+          "callStatus": {
+            "pass": false,
+            "expected": "Follow up needed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Gel Manicure on Thursday, May 28, 2026 at 10 AM."
+          },
+          "bookingStatus": {
+            "pass": false,
+            "expected": "New",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Gel Manicure on Thursday, May 28, 2026 at 10 AM."
+          },
+          "service": {
+            "pass": false,
+            "expected": "Gel Manicure",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Gel Manicure on Thursday, May 28, 2026 at 10 AM."
+          },
+          "datetime": {
+            "pass": false,
+            "expected": "2026-05-28T15:00:00.000Z",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T6 CALLER: Thank you, goodbye."
+          },
+          "name": {
+            "pass": false,
+            "expected": "Maya Reed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "phone": {
+            "pass": false,
+            "expected": "+13125550142",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T6 CALLER: Thank you, goodbye."
+          },
+          "noPhantom": {
+            "pass": false,
+            "expected": "booking permitted",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Gel Manicure on Thursday, May 28, 2026 at 10 AM."
+          }
+        },
+        "persisted": {
+          "call": null,
+          "booking": null,
+          "blocker": "call_logs preflight query failed: TypeError: fetch failed"
+        },
+        "overall": "blocked"
+      }
+    },
+    {
+      "requestId": "3bf6d6b2-9d38-46b7-a9fc-0bb94de760da",
+      "fixture": {
+        "vertical": "hair_salon",
+        "promptVertical": "hair-salon",
+        "shop": {
+          "id": "eval-hair-salon",
+          "name": "Cedar and Bloom Hair Salon",
+          "vertical": "hair_salon",
+          "phone_number": "+13125550100",
+          "user_phone": "+13125550101",
+          "handoff_phone": "+13125550102",
+          "address": "214 West Maple Street, Chicago, IL 60610",
+          "timezone": "America/Chicago",
+          "services": [
+            {
+              "name": "Women's Haircut",
+              "duration_min": 60,
+              "price": 72
+            },
+            {
+              "name": "Blowout",
+              "duration_min": 45,
+              "price": 55
+            },
+            {
+              "name": "Balayage",
+              "duration_min": 180,
+              "price": 220
+            }
+          ],
+          "hours": {
+            "mon": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "tue": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "wed": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "thu": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "fri": {
+              "open": "09:00",
+              "close": "18:00"
+            },
+            "sat": {
+              "open": "09:00",
+              "close": "16:00"
+            },
+            "sun": {
+              "closed": true
+            }
+          },
+          "cancel_policy": "Please provide at least 24 hours notice for changes or cancellation.",
+          "booking_url": null,
+          "booking_method": null,
+          "selected_integration": null,
+          "ai_welcome_message": "Thank you for calling Cedar and Bloom Hair Salon, how can I help you today?",
+          "allow_transfers": false,
+          "allow_callbacks": false,
+          "send_reminder_sms": true,
+          "send_review_request_sms": false,
+          "send_missed_call_followup_sms": true,
+          "plan": "professional",
+          "active": true,
+          "languages": [
+            "en"
+          ],
+          "country_code": "US",
+          "staff": [
+            {
+              "name": "Jordan",
+              "role": "Stylist",
+              "specialties": [
+                "Haircuts",
+                "Balayage"
+              ]
+            }
+          ]
+        },
+        "targetService": "Women's Haircut"
+      },
+      "scenario": {
+        "kind": "no_phone_collection",
+        "persona": "A cooperative caller with clear booking intent who answers only the question asked.",
+        "openingLine": "Hi, I want to book a Women's Haircut on Thursday, May 28, 2026 at 10 AM.",
+        "goal": "Submit a request for Women's Haircut on Thursday, May 28, 2026 at 10 AM under Maya Reed. Do not provide a phone number because caller ID is already available.",
+        "behavior": "Provide the requested service and time immediately. Give your name when asked. If the assistant asks for a phone number, say \"You should have my caller ID.\" Otherwise accept that the shop will follow up and say goodbye.",
+        "expected": {
+          "callStatuses": [
+            "Follow up needed"
+          ],
+          "bookingStatus": "New",
+          "service": "Women's Haircut",
+          "datetimeUtc": "2026-05-28T15:00:00.000Z",
+          "name": "Maya Reed",
+          "phone": "+13125550142",
+          "noPhantomBooking": false
+        }
+      },
+      "promptLength": 18000,
+      "transcript": [
+        {
+          "index": 1,
+          "timestamp": "2026-05-28T12:25:40.216Z",
+          "role": "assistant",
+          "text": "Thank you for calling Cedar and Bloom Hair Salon, how can I help you today?"
+        },
+        {
+          "index": 2,
+          "timestamp": "2026-05-28T12:25:40.216Z",
+          "role": "caller",
+          "text": "Hi, I want to book a Women's Haircut on Thursday, May 28, 2026 at 10 AM."
+        },
+        {
+          "index": 3,
+          "timestamp": "2026-05-28T12:25:41.959Z",
+          "role": "assistant",
+          "text": "Great, I can note your request for a Women's Haircut on Thursday, May 28, 2026, at 10 AM. Could I have your name, please?"
+        },
+        {
+          "index": 4,
+          "timestamp": "2026-05-28T12:25:42.629Z",
+          "role": "caller",
+          "text": "Maya Reed."
+        },
+        {
+          "index": 5,
+          "timestamp": "2026-05-28T12:25:43.659Z",
+          "role": "assistant",
+          "text": "Thank you, Maya. I've noted your request, and the salon will follow up shortly to confirm the appointment. You'll receive a confirmation via SMS. Have a great day! Goodbye!"
+        }
+      ],
+      "toolEvents": [
+        {
+          "timestamp": "2026-05-28T12:25:40.883Z",
+          "afterTurn": 2,
+          "name": "validate_appointment_time",
+          "input": {
+            "date": "2026-05-28",
+            "time": "10:00"
+          },
+          "result": {
+            "success": true,
+            "valid": true,
+            "reason": "within_business_hours",
+            "normalizedDatetimeUtc": "2026-05-28T15:00:00.000Z",
+            "messageForAi": "The requested time may be captured. Continue without saying you checked anything, without claiming availability, and without describing the date as too far in the future."
+          }
+        }
+      ],
+      "evaluation": {
+        "checks": {
+          "greeting": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "singleTurn": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "hoursCheck": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "dateValidation": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "timeToolUsage": {
+            "pass": true,
+            "reason": "Required appointment-time validation tool sequence was observed.",
+            "evidence": []
+          },
+          "nameConfirm": {
+            "pass": true,
+            "reason": "Caller clearly stated a common name; the active policy does not require read-back.",
+            "evidence": []
+          },
+          "bookingCapture": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "noPhoneCollection": {
+            "pass": true,
+            "reason": "No unprompted phone-number collection was observed.",
+            "evidence": []
+          },
+          "fillerOveruse": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "cleanClose": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          }
+        },
+        "overall": "passed",
+        "summary": "All checks passed successfully. The assistant greeted the caller correctly, validated the appointment time, captured the necessary booking details without asking for a phone number, and provided a clear next step before closing the call."
+      },
+      "accuracy": {
+        "checks": {
+          "callStatus": {
+            "pass": false,
+            "expected": "Follow up needed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Women's Haircut on Thursday, May 28, 2026 at 10 AM."
+          },
+          "bookingStatus": {
+            "pass": false,
+            "expected": "New",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Women's Haircut on Thursday, May 28, 2026 at 10 AM."
+          },
+          "service": {
+            "pass": false,
+            "expected": "Women's Haircut",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Women's Haircut on Thursday, May 28, 2026 at 10 AM."
+          },
+          "datetime": {
+            "pass": false,
+            "expected": "2026-05-28T15:00:00.000Z",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "name": {
+            "pass": false,
+            "expected": "Maya Reed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "phone": {
+            "pass": false,
+            "expected": "+13125550142",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "noPhantom": {
+            "pass": false,
+            "expected": "booking permitted",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Women's Haircut on Thursday, May 28, 2026 at 10 AM."
+          }
+        },
+        "persisted": {
+          "call": null,
+          "booking": null,
+          "blocker": "call_logs preflight query failed: TypeError: fetch failed"
+        },
+        "overall": "blocked"
+      }
+    },
+    {
+      "requestId": "9fea80f2-6f8e-4ca0-ab05-04ba07b15732",
+      "fixture": {
+        "vertical": "day_spa",
+        "promptVertical": "day-spa",
+        "shop": {
+          "id": "eval-day-spa",
+          "name": "Willow Day Spa",
+          "vertical": "day_spa",
+          "phone_number": "+13125550100",
+          "user_phone": "+13125550101",
+          "handoff_phone": "+13125550102",
+          "address": "214 West Maple Street, Chicago, IL 60610",
+          "timezone": "America/Chicago",
+          "services": [
+            {
+              "name": "Swedish Massage",
+              "duration_min": 60,
+              "price": 110
+            },
+            {
+              "name": "Deep Tissue Massage",
+              "duration_min": 60,
+              "price": 130
+            },
+            {
+              "name": "Signature Facial",
+              "duration_min": 60,
+              "price": 125
+            }
+          ],
+          "hours": {
+            "mon": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "tue": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "wed": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "thu": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "fri": {
+              "open": "09:00",
+              "close": "18:00"
+            },
+            "sat": {
+              "open": "09:00",
+              "close": "16:00"
+            },
+            "sun": {
+              "closed": true
+            }
+          },
+          "cancel_policy": "Please provide at least 24 hours notice for changes or cancellation.",
+          "booking_url": null,
+          "booking_method": null,
+          "selected_integration": null,
+          "ai_welcome_message": "Thank you for calling Willow Day Spa, how can I help you today?",
+          "allow_transfers": false,
+          "allow_callbacks": false,
+          "send_reminder_sms": true,
+          "send_review_request_sms": false,
+          "send_missed_call_followup_sms": true,
+          "plan": "professional",
+          "active": true,
+          "languages": [
+            "en"
+          ],
+          "country_code": "US",
+          "staff": [
+            {
+              "name": "Leah",
+              "role": "Therapist",
+              "specialties": [
+                "Massage",
+                "Facials"
+              ]
+            }
+          ]
+        },
+        "targetService": "Swedish Massage"
+      },
+      "scenario": {
+        "kind": "no_phone_collection",
+        "persona": "A cooperative caller with clear booking intent who answers only the question asked.",
+        "openingLine": "Hi, I want to book a Swedish Massage on Thursday, May 28, 2026 at 10 AM.",
+        "goal": "Submit a request for Swedish Massage on Thursday, May 28, 2026 at 10 AM under Maya Reed. Do not provide a phone number because caller ID is already available.",
+        "behavior": "Provide the requested service and time immediately. Give your name when asked. If the assistant asks for a phone number, say \"You should have my caller ID.\" Otherwise accept that the shop will follow up and say goodbye.",
+        "expected": {
+          "callStatuses": [
+            "Follow up needed"
+          ],
+          "bookingStatus": "New",
+          "service": "Swedish Massage",
+          "datetimeUtc": "2026-05-28T15:00:00.000Z",
+          "name": "Maya Reed",
+          "phone": "+13125550142",
+          "noPhantomBooking": false
+        }
+      },
+      "promptLength": 18000,
+      "transcript": [
+        {
+          "index": 1,
+          "timestamp": "2026-05-28T12:25:47.905Z",
+          "role": "assistant",
+          "text": "Thank you for calling Willow Day Spa, how can I help you today?"
+        },
+        {
+          "index": 2,
+          "timestamp": "2026-05-28T12:25:47.905Z",
+          "role": "caller",
+          "text": "Hi, I want to book a Swedish Massage on Thursday, May 28, 2026 at 10 AM."
+        },
+        {
+          "index": 3,
+          "timestamp": "2026-05-28T12:25:49.441Z",
+          "role": "assistant",
+          "text": "Great choice! May I have your name to complete the booking request?"
+        },
+        {
+          "index": 4,
+          "timestamp": "2026-05-28T12:25:50.259Z",
+          "role": "caller",
+          "text": "Maya Reed."
+        },
+        {
+          "index": 5,
+          "timestamp": "2026-05-28T12:25:51.284Z",
+          "role": "assistant",
+          "text": "Thank you, Maya. The spa is currently closed, but I've noted your request for a Swedish Massage on May 28th at 10 AM. The team will follow up during business hours to confirm your appointment. Have a great day!"
+        }
+      ],
+      "toolEvents": [
+        {
+          "timestamp": "2026-05-28T12:25:48.626Z",
+          "afterTurn": 2,
+          "name": "validate_appointment_time",
+          "input": {
+            "date": "2026-05-28",
+            "time": "10:00"
+          },
+          "result": {
+            "success": true,
+            "valid": true,
+            "reason": "within_business_hours",
+            "normalizedDatetimeUtc": "2026-05-28T15:00:00.000Z",
+            "messageForAi": "The requested time may be captured. Continue without saying you checked anything, without claiming availability, and without describing the date as too far in the future."
+          }
+        }
+      ],
+      "evaluation": {
+        "checks": {
+          "greeting": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "singleTurn": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "hoursCheck": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "dateValidation": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "timeToolUsage": {
+            "pass": true,
+            "reason": "Required appointment-time validation tool sequence was observed.",
+            "evidence": []
+          },
+          "nameConfirm": {
+            "pass": true,
+            "reason": "Caller clearly stated a common name; the active policy does not require read-back.",
+            "evidence": []
+          },
+          "bookingCapture": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "noPhoneCollection": {
+            "pass": true,
+            "reason": "No unprompted phone-number collection was observed.",
+            "evidence": []
+          },
+          "fillerOveruse": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "cleanClose": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          }
+        },
+        "overall": "passed",
+        "summary": "All checks passed. The assistant correctly greeted the caller, validated the appointment time, captured the necessary booking details without asking for a phone number, and provided a clear next step."
+      },
+      "accuracy": {
+        "checks": {
+          "callStatus": {
+            "pass": false,
+            "expected": "Follow up needed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Swedish Massage on Thursday, May 28, 2026 at 10 AM."
+          },
+          "bookingStatus": {
+            "pass": false,
+            "expected": "New",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Swedish Massage on Thursday, May 28, 2026 at 10 AM."
+          },
+          "service": {
+            "pass": false,
+            "expected": "Swedish Massage",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Swedish Massage on Thursday, May 28, 2026 at 10 AM."
+          },
+          "datetime": {
+            "pass": false,
+            "expected": "2026-05-28T15:00:00.000Z",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "name": {
+            "pass": false,
+            "expected": "Maya Reed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "phone": {
+            "pass": false,
+            "expected": "+13125550142",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "noPhantom": {
+            "pass": false,
+            "expected": "booking permitted",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Swedish Massage on Thursday, May 28, 2026 at 10 AM."
+          }
+        },
+        "persisted": {
+          "call": null,
+          "booking": null,
+          "blocker": "call_logs preflight query failed: TypeError: fetch failed"
+        },
+        "overall": "blocked"
+      }
+    },
+    {
+      "requestId": "d79a676d-7910-4527-babb-a98409964677",
+      "fixture": {
+        "vertical": "med_spa",
+        "promptVertical": "med-spa",
+        "shop": {
+          "id": "eval-med-spa",
+          "name": "Harbor Med Spa",
+          "vertical": "med_spa",
+          "phone_number": "+13125550100",
+          "user_phone": "+13125550101",
+          "handoff_phone": "+13125550102",
+          "address": "214 West Maple Street, Chicago, IL 60610",
+          "timezone": "America/Chicago",
+          "services": [
+            {
+              "name": "Skin Consultation",
+              "duration_min": 30,
+              "price": 0
+            },
+            {
+              "name": "Hydrafacial",
+              "duration_min": 60,
+              "price": 225
+            },
+            {
+              "name": "Laser Hair Removal Consultation",
+              "duration_min": 30,
+              "price": 0
+            }
+          ],
+          "hours": {
+            "mon": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "tue": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "wed": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "thu": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "fri": {
+              "open": "09:00",
+              "close": "18:00"
+            },
+            "sat": {
+              "open": "09:00",
+              "close": "16:00"
+            },
+            "sun": {
+              "closed": true
+            }
+          },
+          "cancel_policy": "Please provide at least 24 hours notice for changes or cancellation.",
+          "booking_url": null,
+          "booking_method": null,
+          "selected_integration": null,
+          "ai_welcome_message": "Thank you for calling Harbor Med Spa, how can I help you today?",
+          "allow_transfers": false,
+          "allow_callbacks": false,
+          "send_reminder_sms": true,
+          "send_review_request_sms": false,
+          "send_missed_call_followup_sms": true,
+          "plan": "professional",
+          "active": true,
+          "languages": [
+            "en"
+          ],
+          "country_code": "US",
+          "staff": [
+            {
+              "name": "Dr. Rivera",
+              "role": "Clinical provider",
+              "specialties": [
+                "Skin consultations"
+              ]
+            }
+          ]
+        },
+        "targetService": "Hydrafacial"
+      },
+      "scenario": {
+        "kind": "no_phone_collection",
+        "persona": "A cooperative caller with clear booking intent who answers only the question asked.",
+        "openingLine": "Hi, I want to book a Hydrafacial on Thursday, May 28, 2026 at 10 AM.",
+        "goal": "Submit a request for Hydrafacial on Thursday, May 28, 2026 at 10 AM under Maya Reed. Do not provide a phone number because caller ID is already available.",
+        "behavior": "Provide the requested service and time immediately. Give your name when asked. If the assistant asks for a phone number, say \"You should have my caller ID.\" Otherwise accept that the shop will follow up and say goodbye.",
+        "expected": {
+          "callStatuses": [
+            "Follow up needed"
+          ],
+          "bookingStatus": "New",
+          "service": "Hydrafacial",
+          "datetimeUtc": "2026-05-28T15:00:00.000Z",
+          "name": "Maya Reed",
+          "phone": "+13125550142",
+          "noPhantomBooking": false
+        }
+      },
+      "promptLength": 18000,
+      "transcript": [
+        {
+          "index": 1,
+          "timestamp": "2026-05-28T12:25:55.089Z",
+          "role": "assistant",
+          "text": "Thank you for calling Harbor Med Spa, how can I help you today?"
+        },
+        {
+          "index": 2,
+          "timestamp": "2026-05-28T12:25:55.089Z",
+          "role": "caller",
+          "text": "Hi, I want to book a Hydrafacial on Thursday, May 28, 2026 at 10 AM."
+        },
+        {
+          "index": 3,
+          "timestamp": "2026-05-28T12:25:58.571Z",
+          "role": "assistant",
+          "text": "Great, I can note your request for a Hydrafacial on Thursday, May 28, 2026, at 10 AM. Could I have your name, please?"
+        },
+        {
+          "index": 4,
+          "timestamp": "2026-05-28T12:25:59.334Z",
+          "role": "caller",
+          "text": "Maya Reed."
+        },
+        {
+          "index": 5,
+          "timestamp": "2026-05-28T12:26:00.501Z",
+          "role": "assistant",
+          "text": "Thank you, Maya. I've noted your request for a Hydrafacial on May 28th at 10 AM. The salon will follow up shortly to confirm the appointment. You'll receive an SMS confirmation. Have a great day! Goodbye!"
+        }
+      ],
+      "toolEvents": [
+        {
+          "timestamp": "2026-05-28T12:25:55.698Z",
+          "afterTurn": 2,
+          "name": "validate_appointment_time",
+          "input": {
+            "date": "2026-05-28",
+            "time": "10:00"
+          },
+          "result": {
+            "success": true,
+            "valid": true,
+            "reason": "within_business_hours",
+            "normalizedDatetimeUtc": "2026-05-28T15:00:00.000Z",
+            "messageForAi": "The requested time may be captured. Continue without saying you checked anything, without claiming availability, and without describing the date as too far in the future."
+          }
+        }
+      ],
+      "evaluation": {
+        "checks": {
+          "greeting": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "singleTurn": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "hoursCheck": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "dateValidation": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "timeToolUsage": {
+            "pass": true,
+            "reason": "Required appointment-time validation tool sequence was observed.",
+            "evidence": []
+          },
+          "nameConfirm": {
+            "pass": true,
+            "reason": "Caller clearly stated a common name; the active policy does not require read-back.",
+            "evidence": []
+          },
+          "bookingCapture": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "noPhoneCollection": {
+            "pass": true,
+            "reason": "No unprompted phone-number collection was observed.",
+            "evidence": []
+          },
+          "fillerOveruse": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          },
+          "cleanClose": {
+            "pass": true,
+            "reason": "",
+            "evidence": []
+          }
+        },
+        "overall": "passed",
+        "summary": "The assistant successfully greeted the caller with the correct business name, captured the booking request without asking for a phone number, and used the time validation tool appropriately. All checks passed."
+      },
+      "accuracy": {
+        "checks": {
+          "callStatus": {
+            "pass": false,
+            "expected": "Follow up needed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Hydrafacial on Thursday, May 28, 2026 at 10 AM."
+          },
+          "bookingStatus": {
+            "pass": false,
+            "expected": "New",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Hydrafacial on Thursday, May 28, 2026 at 10 AM."
+          },
+          "service": {
+            "pass": false,
+            "expected": "Hydrafacial",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Hydrafacial on Thursday, May 28, 2026 at 10 AM."
+          },
+          "datetime": {
+            "pass": false,
+            "expected": "2026-05-28T15:00:00.000Z",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "name": {
+            "pass": false,
+            "expected": "Maya Reed",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "phone": {
+            "pass": false,
+            "expected": "+13125550142",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T4 CALLER: Maya Reed."
+          },
+          "noPhantom": {
+            "pass": false,
+            "expected": "booking permitted",
+            "actual": "call_logs preflight query failed: TypeError: fetch failed",
+            "evidence": "T2 CALLER: Hi, I want to book a Hydrafacial on Thursday, May 28, 2026 at 10 AM."
+          }
+        },
+        "persisted": {
+          "call": null,
+          "booking": null,
+          "blocker": "call_logs preflight query failed: TypeError: fetch failed"
+        },
+        "overall": "blocked"
+      }
+    }
+  ]
+}

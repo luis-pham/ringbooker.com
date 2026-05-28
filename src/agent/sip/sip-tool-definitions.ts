@@ -21,6 +21,7 @@ export const SIP_CORE_TOOL_NAMES = [
   'cancel_booking',
   'reschedule_booking',
   'send_booking_link',
+  'schedule_callback',
 ] as const;
 
 export type OpenAiSipFunctionTool = {

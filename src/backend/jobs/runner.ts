@@ -69,6 +69,25 @@ const lifecycleEmailPayloadSchema = z.object({
   fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
+function derivePostCallOutcomeLabel(params: {
+  storedOutcome?: string | null;
+  hasCallerSpeech: boolean;
+  summaryNextAction?: string | null;
+  followUpRequired?: boolean | null;
+}): string {
+  const storedOutcome = params.storedOutcome?.trim();
+  const summaryBookingOutcome =
+    params.summaryNextAction === 'booking_request_incomplete' ||
+    params.summaryNextAction === 'low_confidence_booking_intent'
+      ? params.summaryNextAction
+      : null;
+  if (storedOutcome && !(storedOutcome === 'unknown' && summaryBookingOutcome)) return storedOutcome;
+  if (summaryBookingOutcome) return summaryBookingOutcome;
+  if (params.followUpRequired) return 'needs_follow_up';
+  if (params.summaryNextAction && params.summaryNextAction !== 'no_action_needed') return params.summaryNextAction;
+  return params.hasCallerSpeech ? 'no_action_needed' : 'unknown';
+}
+
 type LifecycleEmailKind = z.infer<typeof lifecycleEmailPayloadSchema>['kind'];
 
 const lifecycleNotificationTypeByKind: Record<LifecycleEmailKind, BillingNotificationType> = {
@@ -445,6 +464,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       callerPhone: params.customerPhone,
       systemPrompt,
       shopPlan: params.shop.plan,
+      shopLanguages: params.shop.languages,
     });
 
     await runtime.jobsRepository.enqueue({
@@ -1381,11 +1401,38 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const firstCaller = callerTurns[0]?.replace(/^.*CALLER:\s*/i, '') ?? '';
       const lastAssistant = assistantTurns.at(-1)?.replace(/^.*ASSISTANT:\s*/i, '') ?? '';
       const hasCallerSpeech = callerTurns.some((line) => line.replace(/^.*CALLER:\s*/i, '').trim().length > 0);
+      let extracted = SAFE_CALL_SUMMARY_DEFAULTS;
+      try {
+        extracted = hasCallerSpeech ? await extractCallSummary(existingTranscript, { callerPhone: call.callerPhone }) : SAFE_CALL_SUMMARY_DEFAULTS;
+        await callLogsRepository.updateStructuredSummary(params.shopId, payload.data.requestId, {
+          summaryServiceRequest: extracted.serviceRequest,
+          summaryUrgency: extracted.urgency,
+          summaryNextAction: extracted.nextAction,
+          summaryCallerQuestion: extracted.callerQuestion,
+          summaryCallerName: extracted.callerName,
+          summaryPreferredTech: extracted.preferredTech,
+          summaryPreferredDatetime: extracted.preferredDatetime,
+          summaryFollowUpRequired: extracted.followUpRequired,
+        });
+      } catch (summaryErr) {
+        logger.warn(
+          { err: summaryErr, shopId: params.shopId, requestId: payload.data.requestId },
+          'post_call_summary_structured_extraction_failed',
+        );
+      }
+      const derivedOutcome = derivePostCallOutcomeLabel({
+        storedOutcome: call.outcome,
+        hasCallerSpeech,
+        summaryNextAction: extracted.nextAction,
+        followUpRequired: extracted.followUpRequired,
+      });
       const summaryParts = [
         `[POST_CALL_SUMMARY] status=${status}`,
-        `outcome=${call.outcome ?? 'unknown'}`,
+        `outcome=${derivedOutcome}`,
         `agentJoined=${call.agentJoined ? 'yes' : 'no'}`,
         `humanAnswered=${call.humanAnswered ? 'yes' : 'no'}`,
+        `summaryNextAction=${extracted.nextAction}`,
+        `followUpRequired=${extracted.followUpRequired ? 'yes' : 'no'}`,
       ];
       if (payload.data.error) {
         summaryParts.push(`error=${payload.data.error}`);
@@ -1402,22 +1449,34 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         speaker: 'system',
         text: summaryParts.join(' | '),
       });
-
-      try {
-        const extracted = hasCallerSpeech ? await extractCallSummary(existingTranscript) : SAFE_CALL_SUMMARY_DEFAULTS;
-        await callLogsRepository.updateStructuredSummary(params.shopId, payload.data.requestId, {
-          summaryServiceRequest: extracted.serviceRequest,
-          summaryUrgency: extracted.urgency,
-          summaryNextAction: extracted.nextAction,
-          summaryCallerQuestion: extracted.callerQuestion,
-          summaryCallerName: extracted.callerName,
-          summaryPreferredTech: extracted.preferredTech,
-          summaryPreferredDatetime: extracted.preferredDatetime,
-          summaryFollowUpRequired: extracted.followUpRequired,
-        });
-      } catch (summaryErr) {
-        console.warn('[post_call_summary] Structured extraction failed:', summaryErr);
-      }
+      logger.info(
+        {
+          shopId: params.shopId,
+          requestId: payload.data.requestId,
+          eventType: 'post_call_summary',
+          outcome: derivedOutcome,
+          reason:
+            derivedOutcome === 'booking_request_incomplete'
+              ? 'booking_intent_detected'
+              : derivedOutcome === 'low_confidence_booking_intent'
+                ? 'low_confidence_booking_intent'
+                : extracted.followUpRequired
+                  ? 'incomplete_follow_up_created'
+                  : 'summary_extracted',
+          confidence: null,
+          extractedSlots: {
+            service: extracted.serviceRequest,
+            preferredDatetime: extracted.preferredDatetime,
+            callerName: extracted.callerName,
+            preferredTech: extracted.preferredTech,
+          },
+          backendDecision: {
+            summaryNextAction: extracted.nextAction,
+            followUpRequired: extracted.followUpRequired,
+          },
+        },
+        'call_summary_structured_decision',
+      );
 
       const shop = await runtime.shopsRepository.findById(params.shopId);
       if (shop) {
@@ -1438,7 +1497,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         const body = [
           `[${shop.name}] CALL SUMMARY`,
           `Status: ${status}`,
-          `Outcome: ${call.outcome ?? 'unknown'}`,
+          `Outcome: ${derivedOutcome}`,
           firstCaller ? `Caller: ${firstCaller.slice(0, 160)}` : null,
           payload.data.error ? `Error: ${payload.data.error.slice(0, 120)}` : null,
           'Reply STOP to opt out.',
