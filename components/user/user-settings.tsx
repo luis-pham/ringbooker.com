@@ -224,10 +224,13 @@ html[data-user-theme="dark"]{
   font:inherit;color:var(--text-dark);transition:background .15s ease,border-color .15s ease;
 }
 .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
+.integration-method-card:disabled{cursor:not-allowed;opacity:.72}
 .integration-method-icon{
   width:36px;height:36px;border-radius:10px;background:#dcfce7;display:inline-flex;
   align-items:center;justify-content:center;flex-shrink:0;
 }
+.integration-method-loading{margin-left:auto;animation:integration-spin .9s linear infinite;color:var(--text-gray)}
+@keyframes integration-spin{to{transform:rotate(360deg)}}
 .integration-method-card strong{display:block;font-size:14px;font-weight:600;letter-spacing:-.02em}
 .integration-method-card small{display:block;margin-top:4px;font-size:12px;line-height:1.45;color:var(--text-gray)}
 .integrations-later-link,.integrations-back-link{justify-self:start}
@@ -278,6 +281,7 @@ html[data-user-theme="dark"]{
 .integration-status-line{display:inline-flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--text-gray)}
 .integration-status-dot{width:8px;height:8px;border-radius:999px;background:#d1d5db;display:inline-block}
 .integration-status-dot.connected{background:#16a34a}
+.integration-status-dot.warning{background:#dc2626}
 .integration-config-body{display:grid;gap:12px}
 .integration-info-box,.integration-success-box{
   border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;line-height:1.55;color:var(--text-gray);

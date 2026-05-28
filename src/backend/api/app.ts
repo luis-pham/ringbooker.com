@@ -568,7 +568,7 @@ const userSettingsBaseSchema = z.object({
   timezone: z.string().min(1).optional(),
   cancel_policy: z.string().min(1).optional(),
   promotions: z.string().min(1).nullable().optional(),
-  booking_url: z.string().url().nullable().optional(),
+  booking_url: z.string().min(1).nullable().optional(),
   booking_method: z.enum(['app', 'direct', 'later']).nullable().optional(),
   website_url: z.string().url().optional().or(z.literal('')),
   languages: z.array(z.string()).optional(),
@@ -9646,13 +9646,21 @@ export function createBackendApp(deps: {
         400,
       );
     }
+    const settingsPatch = { ...parsed.data };
+    if (settingsPatch.booking_url !== undefined && settingsPatch.booking_url !== null) {
+      const bookingUrl = normalizeHttpsBookingUrl(settingsPatch.booking_url);
+      if (!bookingUrl) {
+        return c.json({ ok: false, error: 'bookingUrl must be a valid https URL', fields: ['booking_url'] }, 400);
+      }
+      settingsPatch.booking_url = bookingUrl;
+    }
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
-    if (parsed.data.handoff_phone != null) {
+    if (settingsPatch.handoff_phone != null) {
       const cc = shop.country_code ?? 'US';
-      const normalized = normalizePhoneForStorage(parsed.data.handoff_phone, cc);
+      const normalized = normalizePhoneForStorage(settingsPatch.handoff_phone, cc);
       const countryConfig = getCountryConfig(cc);
       if (!normalized || !normalized.startsWith(countryConfig.phonePrefix)) {
         return c.json(
@@ -9668,12 +9676,12 @@ export function createBackendApp(deps: {
       }
     }
 
-    const serviceCatalogPatch = parsed.data.service_catalog;
+    const serviceCatalogPatch = settingsPatch.service_catalog;
     const serviceCatalogEnabled = getEnv().SERVICE_CATALOG_ENABLED;
     if (serviceCatalogPatch && !serviceCatalogEnabled) {
       return c.json({ ok: false, error: 'service_catalog_disabled' }, 503);
     }
-    const { basicPatch, dynamicPatch, disallowedFields } = splitUserSettingsPatchByPlan(shop, parsed.data);
+    const { basicPatch, dynamicPatch, disallowedFields } = splitUserSettingsPatchByPlan(shop, settingsPatch);
     if (disallowedFields.length > 0) {
       return c.json(
         {
@@ -9751,7 +9759,7 @@ export function createBackendApp(deps: {
     // Warn (non-blocking) when handoff_phone matches the business line (possible forwarding loop via carrier).
     const handoffPhoneWarnings: string[] = [];
     const savedHandoffPhone = updated.handoff_phone?.trim();
-    if (savedHandoffPhone && 'handoff_phone' in parsed.data) {
+    if (savedHandoffPhone && 'handoff_phone' in settingsPatch) {
       const cc = updated.country_code ?? 'US';
       if (updated.phone_number && normalizePhoneForStorage(savedHandoffPhone, cc) === normalizePhoneForStorage(updated.phone_number, cc)) {
         handoffPhoneWarnings.push('matches_business_line');

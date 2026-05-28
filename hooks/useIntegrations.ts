@@ -80,10 +80,14 @@ function inferStep(method: BookingMethod): Step {
   return 'question';
 }
 
-function integrationErrorMessage(error: string | undefined, fallback: string): string {
+const GENERIC_INTEGRATION_ERROR = 'Something went wrong — please try again.';
+
+export function integrationErrorMessage(error: string | undefined, fallback = GENERIC_INTEGRATION_ERROR): string {
   if (error === 'plan_feature_locked') return 'This feature requires Professional.';
+  if (error === 'validation_error' || error === 'invalid_payload') return 'Please check the details and try again.';
+  if (error === 'unauthorized') return 'Please sign in and try again.';
   const message = error ?? fallback;
-  return message.includes('_') ? 'Unable to complete that action. Please try again.' : message;
+  return message.includes('_') ? GENERIC_INTEGRATION_ERROR : message;
 }
 
 export function useIntegrations(options: { enabled?: boolean } = {}) {
@@ -330,6 +334,13 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
     [load],
   );
 
+  const navigateBack = useCallback(() => {
+    setSelectedAppState(null);
+    setStep('question');
+  }, []);
+
+  // UI navigation only uses navigateBack(). goBack clears persisted preferences
+  // and is reserved for explicit reset actions such as changing a configured setup.
   const goBack = useCallback(async () => {
     setSelectedAppState(null);
     setStep('question');
@@ -367,6 +378,7 @@ export function useIntegrations(options: { enabled?: boolean } = {}) {
     disconnectMindbody: () => disconnectProvider('mindbody'),
     disconnectAcuity: () => disconnectProvider('acuity'),
     disconnectSquare: () => disconnectProvider('square_appointments'),
+    navigateBack,
     goBack,
     refresh: load,
   };
