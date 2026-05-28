@@ -613,7 +613,9 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                               className="note"
                               style={{
                                 marginBottom: 14,
-                                color: accountSaveMessage.type === 'err' ? '#b91c1c' : '#047857',
+                                color: accountSaveMessage.type === 'err'
+                                  ? 'var(--danger-text, #b91c1c)'
+                                  : 'var(--success-text, #047857)',
                               }}
                             >
                               {accountSaveMessage.text}
@@ -740,7 +742,9 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                         className="note"
                         style={{
                           marginBottom: 14,
-                          color: pwMessage.type === 'err' ? '#b91c1c' : '#047857',
+                          color: pwMessage.type === 'err'
+                            ? 'var(--danger-text, #b91c1c)'
+                            : 'var(--success-text, #047857)',
                         }}
                       >
                         {pwMessage.text}

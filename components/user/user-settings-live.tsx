@@ -784,7 +784,7 @@ export function UserSettingsLive({
       : portal === 'integrations'
         ? {
             title: 'Integrations',
-            subtitle: 'Connect Square, Vagaro, or your public booking link so the AI stays aligned with real availability.',
+            subtitle: 'Tell RingBooker how clients book so it gives callers the right next step.',
           }
         : {
             title: 'AI Settings',
@@ -3498,11 +3498,11 @@ export function UserSettingsLive({
                         <div className="field handoff-transfer-phone">
                           <label className="handoff-section-label">Transfer calls to</label>
                           {!effectiveShop.handoff_phone ? (
-                            <p style={{ color: '#b45309', fontSize: 12, marginBottom: 6 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</p>
+                            <p style={{ color: 'var(--warning-text, #b45309)', fontSize: 12, marginBottom: 6 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</p>
                           ) : handoffPhoneWarnings.includes('matches_business_line') ? (
-                            <p style={{ color: '#b45309', fontSize: 12, marginBottom: 6 }}>&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</p>
+                            <p style={{ color: 'var(--warning-text, #b45309)', fontSize: 12, marginBottom: 6 }}>&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</p>
                           ) : (
-                            <p style={{ color: '#16a34a', fontSize: 12, marginBottom: 6 }}>&#10003; Transfers will go to {effectiveShop.handoff_phone}</p>
+                            <p style={{ color: 'var(--success-text, #16a34a)', fontSize: 12, marginBottom: 6 }}>&#10003; Transfers will go to {effectiveShop.handoff_phone}</p>
                           )}
                           <input
                             value={handoffPhoneDraft}
@@ -3588,7 +3588,7 @@ export function UserSettingsLive({
                             {handoffPhoneStatus === 'saving' ? 'Saving...' : 'Save transfer settings'}
                           </button>
                           {handoffPhoneStatus !== 'idle' && handoffPhoneStatus !== 'saving' && handoffPhoneStatus !== 'saved' ? (
-                            <span style={{ color: '#dc2626', fontSize: 12 }}>{handoffPhoneStatus}</span>
+                            <span style={{ color: 'var(--danger-text, #dc2626)', fontSize: 12 }}>{handoffPhoneStatus}</span>
                           ) : null}
                         </div>
                       </div>

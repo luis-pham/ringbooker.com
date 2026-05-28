@@ -21,6 +21,9 @@ const styles: string[] = [
   --orange:#F59E0B;
   --red:#EF4444;
   --red-deep:#ba1a1a;
+  --success-text:#047857;
+  --warning-text:#92400e;
+  --danger-text:#b91c1c;
   --blue:#3B82F6;
   --secondary-accent:#4648d4;
   --sidebar-width:256px;
@@ -805,6 +808,9 @@ html[data-user-theme="dark"] .user-app-shell{
   --border:#30363d;
   --bg:#161b22;
   --bg-gray:#21262d;
+  --success-text:#3fb950;
+  --warning-text:#e3b341;
+  --danger-text:#f85149;
 }
 html[data-user-theme="dark"] .sidebar-body::-webkit-scrollbar-thumb{background:#484f58}
 html[data-user-theme="dark"] .nav-item{color:#8b949e}

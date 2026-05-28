@@ -40,22 +40,9 @@ function StatusDot({ connected }: { connected: boolean }) {
 
 function SectionBadge({ icon, label, variant }: { icon: 'refresh' | 'link'; label: string; variant: 'teal' | 'gray' }) {
   const Icon = icon === 'refresh' ? IconRefresh : IconLink;
-  const colors = variant === 'teal'
-    ? { background: '#9FE1CB', color: '#085041' }
-    : { background: '#D3D1C7', color: '#444441' };
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        borderRadius: 999,
-        padding: '4px 8px',
-        fontSize: 11,
-        fontWeight: 700,
-        lineHeight: 1,
-        ...colors,
-      }}
+      className={`integration-section-badge integration-section-badge--${variant}`}
     >
       <Icon size={12} stroke={2.2} aria-hidden="true" />
       {label}
@@ -94,15 +81,15 @@ function BookingMethodQuestion({ onChoose, showLater = true, title = 'How do you
 }) {
   const methodCardStyle = (method: 'app' | 'direct') => selectedMethod === method
     ? {
-        border: '1.5px solid #534AB7',
-        background: '#EEEDFE',
+        border: '1.5px solid var(--starter-method-selected-border)',
+        background: 'var(--starter-method-selected-bg)',
       }
     : {
         border: '0.5px solid var(--color-border-tertiary, var(--border))',
         background: 'var(--color-background-primary, var(--surface-card))',
       };
   const methodIconStyle = (method: 'app' | 'direct') => ({
-    color: selectedMethod === method ? '#534AB7' : 'var(--color-text-secondary, var(--text-gray))',
+    color: selectedMethod === method ? 'var(--starter-method-selected-icon)' : 'var(--color-text-secondary, var(--text-gray))',
   });
 
   return (
@@ -154,7 +141,7 @@ function AppCard({ app, selected, connected, onSelect, displayName, displayTag, 
       style={dashed ? { borderStyle: 'dashed' } : undefined}
     >
       {useLinkIcon ? (
-        <span className="integration-app-logo" style={{ background: '#f3f4f6', color: '#444441' }} aria-hidden="true">
+        <span className="integration-app-logo" style={{ background: 'var(--bg-gray)', color: 'var(--text-gray)' }} aria-hidden="true">
           <IconLink size={20} stroke={2} />
         </span>
       ) : <AppLogo app={app} />}
@@ -817,7 +804,59 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
   const lockedApps = FULL_SYNC_APPS.filter((app) => app.key === 'square' || app.key === 'mindbody' || app.key === 'acuity');
 
   return (
-    <div className="integrations-redesign">
+    <div className="integrations-redesign starter-integrations-view">
+      <style jsx global>{`
+        .starter-integrations-view {
+          --starter-method-selected-bg: #EEEDFE;
+          --starter-method-selected-border: #534AB7;
+          --starter-method-selected-icon: #534AB7;
+          --starter-upgrade-banner-bg: #EEEDFE;
+        }
+        .starter-integrations-view .panel-head h3,
+        .starter-integrations-view .integrations-flow-title,
+        .starter-integrations-view .integration-method-card strong,
+        .starter-integrations-view .integration-config-field label,
+        .starter-integrations-view .integrations-app-section h4,
+        .starter-integrations-view .integration-app-copy strong {
+          color: var(--color-text-primary, var(--text-dark));
+        }
+        .starter-integrations-view .panel-head .sub,
+        .starter-integrations-view .integration-method-card small,
+        .starter-integrations-view .integration-config-field small,
+        .starter-integrations-view .integrations-app-section .sub,
+        .starter-integrations-view .integration-app-copy small {
+          color: var(--color-text-secondary, var(--text-gray));
+        }
+        html[data-user-theme="dark"] .starter-integrations-view {
+          --starter-method-selected-bg: #26215C;
+          --starter-method-selected-border: #8B7CF6;
+          --starter-method-selected-icon: #B8AFFF;
+          --starter-upgrade-banner-bg: #26215C;
+        }
+        .starter-integrations-view .starter-booking-link-row {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .starter-integrations-view .starter-booking-link-save {
+          width: 100%;
+        }
+        @media (min-width: 768px) {
+          .starter-integrations-view .starter-booking-link-row {
+            flex-direction: row;
+            align-items: flex-end;
+          }
+          .starter-integrations-view .starter-booking-link-field {
+            flex: 1;
+            min-width: 0;
+          }
+          .starter-integrations-view .starter-booking-link-save {
+            width: auto;
+            flex: 0 0 auto;
+            white-space: nowrap;
+          }
+        }
+      `}</style>
       <div className="panel-head integrations-redesign-head">
         <div>
           <h3>Integrations</h3>
@@ -850,31 +889,6 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
               {savingUrl ? 'Saving...' : 'Save link'}
             </button>
           </div>
-          <style jsx>{`
-            .starter-booking-link-row {
-              display: flex;
-              flex-direction: column;
-              gap: 12px;
-            }
-            .starter-booking-link-save {
-              width: 100%;
-            }
-            @media (min-width: 768px) {
-              .starter-booking-link-row {
-                flex-direction: row;
-                align-items: flex-end;
-              }
-              .starter-booking-link-field {
-                flex: 1;
-                min-width: 0;
-              }
-              .starter-booking-link-save {
-                width: auto;
-                flex: 0 0 auto;
-                white-space: nowrap;
-              }
-            }
-          `}</style>
         </div>
       ) : null}
 
@@ -884,7 +898,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialBookingUrl }: {
       <hr style={{ border: 0, borderTop: '1px solid var(--border)', margin: '8px 0' }} />
 
       <section className="integration-config-panel" aria-disabled="true" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ background: '#EEEDFE', padding: '18px 20px' }}>
+        <div style={{ background: 'var(--starter-upgrade-banner-bg)', padding: '18px 20px' }}>
           <div className="integrations-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <span aria-hidden="true" className="integration-method-icon">⚡</span>
             <div style={{ flex: 1 }}>

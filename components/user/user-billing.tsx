@@ -5,6 +5,14 @@ import { userPortalTypographyStyles } from '@/components/user/user-portal-typogr
 export const userBillingStyles: string[] = [
   ...userDashboardStyles,
   String.raw`
+html{
+  --billing-warning-text:#92400e;
+  --billing-danger-text:#b91c1c;
+}
+html[data-user-theme="dark"]{
+  --billing-warning-text:#e3b341;
+  --billing-danger-text:#f85149;
+}
 .billing-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
 .billing-status-card{
   background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:none;
@@ -17,6 +25,8 @@ export const userBillingStyles: string[] = [
   display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
   padding:14px 18px;border-radius:18px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;font-size:13px;line-height:1.5;margin-bottom:16px
 }
+.billing-alert-strip.success{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
+.billing-alert-strip.info{border-color:#bfdbfe;background:#eff6ff;color:#1e40af}
 .billing-alert-strip p{margin:0;flex:1;min-width:200px}
 .tag.gray{background:#f3f4f6;color:#4b5563}
 .pricing-mini{
@@ -366,6 +376,16 @@ html[data-user-theme="dark"] .billing-alert-strip{
   background:rgba(187,128,9,0.12);
   border-color:rgba(187,128,9,0.35);
   color:#e3b341;
+}
+html[data-user-theme="dark"] .billing-alert-strip.success{
+  background:rgba(35,134,54,.16);
+  border-color:rgba(63,185,80,.38);
+  color:#3fb950;
+}
+html[data-user-theme="dark"] .billing-alert-strip.info{
+  background:rgba(56,139,253,.14);
+  border-color:rgba(88,166,255,.35);
+  color:#79c0ff;
 }
 html[data-user-theme="dark"] .tag.gray{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}

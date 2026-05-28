@@ -2376,6 +2376,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-card.invalid{border-color:#f97316;box-shadow:0 0 0 1px rgba(249,115,22,.18)}
 .profile-review-card.wide{grid-column:1 / -1}
 .profile-review-alert,.onb-warning,.onb-status,.onb-step3-thin-warn{margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#fffbeb;color:#9a3412;font-size:13px;font-weight:400;line-height:1.45;border:1px solid #fed7aa}
+.onb-status--complete{margin-top:16px;border-color:#c7d2fe;background:#eef2ff}
+html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,.35);background:rgba(56,139,253,.14);color:var(--text-dark,#e6edf3)}
 .profile-review-alert{margin:8px 0 12px}
 .onb-warning p{margin:0}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
@@ -4166,7 +4168,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         ) : null}
 
         {step4Phase === 'done' ? (
-          <div className="onb-status" style={{ marginTop: 16, border: '1px solid #c7d2fe', background: '#eef2ff' }}>
+          <div className="onb-status onb-status--complete">
             <h3 className="onb-title" style={{ fontSize: '1.15rem' }}>
               Setup complete
             </h3>

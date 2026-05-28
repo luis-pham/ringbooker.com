@@ -23,6 +23,7 @@ html[data-user-theme="dark"] .booking-status--completed{background:#21262d;color
 html[data-user-theme="dark"] .booking-status--link{background:rgba(56,139,253,.14);color:#79c0ff}
 html[data-user-theme="dark"] .booking-status--confirmed{background:rgba(35,134,54,.18);color:#3fb950}
 html[data-user-theme="dark"] .booking-status--warning{background:rgba(210,153,34,.18);color:#e3b341}
+html[data-user-theme="dark"] .booking-status--declined{background:rgba(248,81,73,.12);color:#ff7b72}
 html[data-user-theme="dark"] .booking-status--cancelled{background:rgba(248,81,73,.12);color:#f85149}
 html[data-user-theme="dark"] .booking-status--rescheduled{background:rgba(210,153,34,.12);color:#e3b341}
 html[data-user-theme="dark"] .booking-detail-overlay{background:rgba(1,4,9,.72)}

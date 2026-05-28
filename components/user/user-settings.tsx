@@ -3,6 +3,16 @@ import { userDashboardStyles } from '@/components/user/user-dashboard';
 import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
 
 const userSettingsSpecificStyles = String.raw`
+html{
+  --warning-text:#b45309;
+  --success-text:#16a34a;
+  --danger-text:#dc2626;
+}
+html[data-user-theme="dark"]{
+  --warning-text:#d29922;
+  --success-text:#3fb950;
+  --danger-text:#f85149;
+}
 .settings-save-footer{
   display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px;padding-top:16px;
   border-top:none;flex-wrap:wrap;
@@ -224,6 +234,12 @@ const userSettingsSpecificStyles = String.raw`
 .integrations-app-section{display:grid;gap:10px}
 .integrations-app-section h4{margin:0;font-size:14px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark)}
 .integrations-app-section p.sub{margin:4px 0 0}
+.integration-section-badge{
+  display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 8px;
+  font-size:11px;font-weight:700;line-height:1;
+}
+.integration-section-badge--teal{background:#9FE1CB;color:#085041}
+.integration-section-badge--gray{background:#D3D1C7;color:#444441}
 .integrations-app-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .integration-app-card{
   position:relative;min-height:104px;border:1px solid var(--border);background:var(--surface-card);
@@ -1409,6 +1425,8 @@ html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--
 html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-logo--image{background:#0d1117;border-color:var(--border)}
+html[data-user-theme="dark"] .integration-section-badge--teal{background:rgba(63,185,80,.18);color:#7ee787}
+html[data-user-theme="dark"] .integration-section-badge--gray{background:#30363d;color:#c9d1d9}
 html[data-user-theme="dark"] .integration-app-card.selected:hover{
   background:rgba(56,139,253,.12);
   border-color:rgba(56,139,253,.55);

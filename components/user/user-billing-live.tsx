@@ -957,7 +957,7 @@ export function UserBillingLive({
                 </section>
 
                 {billingNotice === 'checkout_success' ? (
-                  <section className="billing-alert-strip" style={{ borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534' }}>
+                  <section className="billing-alert-strip success">
                     <p>
                       <strong>{forwardingState === 'verified' ? 'Payment confirmed — switch on live answering now!' : 'Payment confirmed — verify forwarding to go live.'}</strong>
                     </p>
@@ -977,7 +977,7 @@ export function UserBillingLive({
                     ) : null}
                   </section>
                 ) : billingNotice === 'manage_returned' ? (
-                  <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }}>
+                  <section className="billing-alert-strip info">
                     <p>
                       <strong>Billing management closed.</strong> Changes made in billing management may take a minute to appear here.
                     </p>
@@ -988,7 +988,7 @@ export function UserBillingLive({
                 ) : null}
 
                 {planChangePending ? (
-                  <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }}>
+                  <section className="billing-alert-strip info">
                     <p>
                       <strong>Plan change pending.</strong>{' '}
                       {upgradePendingMessage ??
@@ -1003,7 +1003,7 @@ export function UserBillingLive({
                 ) : null}
 
                 {showForwardingNudge ? (
-                  <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }} aria-label="Complete forwarding setup">
+                  <section className="billing-alert-strip info" aria-label="Complete forwarding setup">
                     <p style={{ margin: 0 }}>
                       <strong>{forwardingState === 'configured' ? 'One more step after this — verify your call forwarding to go live.' : 'Set up call forwarding to continue.'}</strong>{' '}
                       {forwardingState === 'configured'
@@ -1297,7 +1297,9 @@ export function UserBillingLive({
                               className="sub"
                               style={{
                                 marginTop: 10,
-                                color: usage.overCapturedCallerLimit ? '#b91c1c' : '#92400e',
+                                color: usage.overCapturedCallerLimit
+                                  ? 'var(--billing-danger-text, #b91c1c)'
+                                  : 'var(--billing-warning-text, #92400e)',
                               }}
                             >
                               {usage.overCapturedCallerLimit
