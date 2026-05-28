@@ -901,7 +901,7 @@ function ConfiguredIntegrationView({
             ) : (
               <>
                 <span className="integration-configured-url-text">{bookingUrl || 'No booking link saved'}</span>
-                <button type="button" className="user-link--subtle" onClick={() => setEditingUrl(true)}>Edit link</button>
+                <button type="button" className="user-link--subtle integration-edit-link-button" onClick={() => setEditingUrl(true)}>Edit link</button>
               </>
             )}
           </div>
@@ -1179,13 +1179,18 @@ export function IntegrationsRedesign({
   const [forceMethodQuestion, setForceMethodQuestion] = useState(false);
   const [bookingUrlOverride, setBookingUrlOverride] = useState<string | null>(null);
   const configuredBookingUrl = bookingUrlOverride ?? status.bookingLinkUrl ?? initialBookingUrl ?? null;
-  const selectedProviderConnected = selectedApp
-    ? status.providers.some((provider) => provider.id === toBackendProviderKey(selectedApp.key) && provider.connected)
+  const configuredSelectedAppKey = status.selectedApp ?? fromBackendProviderKey(initialSelectedIntegration);
+  const configuredSelectedApp = useMemo(() => findIntegrationApp(configuredSelectedAppKey), [configuredSelectedAppKey]);
+  const effectiveBookingMethod = status.bookingMethod
+    ?? initialBookingMethod
+    ?? (configuredBookingUrl?.trim() || configuredSelectedAppKey ? 'app' : null);
+  const selectedProviderConnected = configuredSelectedApp
+    ? status.providers.some((provider) => provider.id === toBackendProviderKey(configuredSelectedApp.key) && provider.connected)
     : false;
-  const selectedAppIsFullSync = Boolean(selectedApp && selectedApp.category === 'full-sync');
-  const hasConfiguredState = status.bookingMethod === 'direct' || (
-    status.bookingMethod === 'app' && (
-      Boolean(configuredBookingUrl?.trim()) || (selectedAppIsFullSync && Boolean(status.selectedApp))
+  const selectedAppIsFullSync = Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync');
+  const hasConfiguredState = effectiveBookingMethod === 'direct' || (
+    effectiveBookingMethod === 'app' && (
+      Boolean(configuredBookingUrl?.trim()) || (selectedAppIsFullSync && Boolean(configuredSelectedAppKey))
     )
   );
   const showMethodQuestion = status.step === 'question' || forceMethodQuestion;
@@ -1216,12 +1221,12 @@ export function IntegrationsRedesign({
 
       {status.error ? <div className="note integration-error-note">{status.error}</div> : null}
 
-      {!showSetupFlow && hasConfiguredState ? (
+      {!showSetupFlow && hasConfiguredState && effectiveBookingMethod ? (
         <ConfiguredIntegrationView
-          bookingMethod={status.bookingMethod}
-          selectedAppKey={status.selectedApp}
+          bookingMethod={effectiveBookingMethod}
+          selectedAppKey={configuredSelectedAppKey}
           bookingUrl={configuredBookingUrl?.trim() || null}
-          fullSyncConnected={Boolean(selectedApp && selectedApp.category === 'full-sync' && selectedProviderConnected)}
+          fullSyncConnected={Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && selectedProviderConnected)}
           canUseThirdPartyIntegrations
           onChange={() => {
             void (async () => {
@@ -1231,6 +1236,7 @@ export function IntegrationsRedesign({
             })();
           }}
           onReconnect={() => {
+            if (configuredSelectedAppKey) void setSelectedApp(configuredSelectedAppKey);
             setShowSetupFlow(true);
             setForceMethodQuestion(false);
           }}

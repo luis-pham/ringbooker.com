@@ -289,6 +289,9 @@ html[data-user-theme="dark"] .billing-faq-q:hover{background:rgba(255,255,255,.0
 .billing-plan-card--feats-compact .billing-plan-card__feats{gap:3px}
 .billing-plan-card--feats-compact .billing-plan-card__feats li{line-height:1.3}
 .billing-plan-card--feats-compact .billing-plan-card__feats li::before{margin-top:1px}
+.page-billing .usage-captured-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.page-billing .usage-captured-head > div{flex:1 1 auto;min-width:0}
+.page-billing .usage-captured-head > .tag{flex:0 0 auto;width:auto;align-self:flex-start;margin-left:auto}
 
 
 @media (max-width:1200px){

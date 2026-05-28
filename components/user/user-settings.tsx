@@ -360,6 +360,9 @@ html[data-user-theme="dark"]{
   flex:1;
   min-width:0;
 }
+.integration-edit-link-button{
+  color:#630ed4;
+}
 .integration-app-logo--generic{
   background:var(--bg-gray);
   color:var(--text-gray);
@@ -1555,6 +1558,7 @@ html[data-user-theme="dark"] .integration-app-badge{
   border-color:var(--border);
   color:var(--text-gray);
 }
+html[data-user-theme="dark"] .integration-method-icon{background:#e3b341}
 html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-logo--image{background:#0d1117;border-color:var(--border)}
