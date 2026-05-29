@@ -87,6 +87,9 @@ type AvailabilityCheckRequest = {
   key: string;
 };
 
+export type AvailabilityCheckPrePopulatePreview =
+  Pick<AvailabilityCheckRequest, 'providerId' | 'service' | 'date' | 'time' | 'techName' | 'key'>;
+
 type AvailabilityToolResult = {
   available: boolean;
   suggestions?: unknown;
@@ -155,6 +158,19 @@ function buildAvailabilityRequestFromDraft(ctx: AgentToolContext): AvailabilityC
     time: validation.time,
     durationMin: service.durationMin,
     key,
+  };
+}
+
+export function previewAvailabilityFromDraft(ctx: AgentToolContext): AvailabilityCheckPrePopulatePreview | null {
+  const request = buildAvailabilityRequestFromDraft(ctx);
+  if (!request) return null;
+  return {
+    providerId: request.providerId,
+    service: request.service,
+    date: request.date,
+    time: request.time,
+    ...(request.techName ? { techName: request.techName } : {}),
+    key: request.key,
   };
 }
 
@@ -325,10 +341,39 @@ export async function prePopulateFromTranscript(
   }
   clearAvailabilityIfDateTimeChanged(ctx, extracted);
 
+  const startedAt = Date.now();
+  logger.info(
+    {
+      callSessionId: ctx.rbCallId ?? ctx.requestId,
+      providerCallId: ctx.openAiLegCallControlId ?? null,
+      shopId: ctx.shop.id,
+      timestamp: new Date(startedAt).toISOString(),
+      eventType: 'appointment_time_prepopulate_tool_start',
+      date: extracted.date,
+      time: extracted.time,
+    },
+    `[TIMING] appointment_time_prepopulate_tool_start date=${extracted.date} time=${extracted.time}`,
+  );
   try {
     await validateAppointmentTimeTool(ctx, extracted);
     const latest = ctx.appointmentTimeValidation.latest;
     if (!latest) return null;
+    const completedAt = Date.now();
+    logger.info(
+      {
+        callSessionId: ctx.rbCallId ?? ctx.requestId,
+        providerCallId: ctx.openAiLegCallControlId ?? null,
+        shopId: ctx.shop.id,
+        timestamp: new Date(completedAt).toISOString(),
+        eventType: 'appointment_time_prepopulate_tool_complete',
+        date: extracted.date,
+        time: extracted.time,
+        elapsedMs: completedAt - startedAt,
+        result: latest.valid ? 'valid' : 'invalid',
+        reason: latest.reason,
+      },
+      `[TIMING] appointment_time_prepopulate_tool_complete elapsedMs=${completedAt - startedAt} result=${latest.valid ? 'valid' : 'invalid'}`,
+    );
     return {
       ...extracted,
       valid: latest.valid,
@@ -338,7 +383,20 @@ export async function prePopulateFromTranscript(
       timestamp: new Date().toISOString(),
       status: 'set',
     };
-  } catch {
+  } catch (err) {
+    logger.warn(
+      {
+        err,
+        callSessionId: ctx.rbCallId ?? ctx.requestId,
+        providerCallId: ctx.openAiLegCallControlId ?? null,
+        shopId: ctx.shop.id,
+        eventType: 'appointment_time_prepopulate_tool_error',
+        date: extracted.date,
+        time: extracted.time,
+        elapsedMs: Date.now() - startedAt,
+      },
+      'appointment_time_prepopulate_tool_error',
+    );
     // Best-effort — never fail the call over a pre-population error
     return null;
   }

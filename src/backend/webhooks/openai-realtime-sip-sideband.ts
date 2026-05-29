@@ -123,6 +123,11 @@ export type OpenAiRealtimeSipSidebandParams =
        * Must enforce its own short timeout budget and return only already-safe evidence.
        */
       onBeforeResponseCreate?: () => Promise<{ availabilityResult: AvailabilityCheckPrePopulateResult | null }>;
+      /**
+       * Called on VAD `speech_stopped`, before transcription completes.
+       * Used only for safe, already-known session state prefetches.
+       */
+      onCallerSpeechStopped?: () => void;
     };
 
 /**
@@ -145,6 +150,7 @@ const TIME_VALIDATION_UNAVAILABLE_INSTRUCTION =
 const BOOKING_LINK_FINAL_RESPONSE_INSTRUCTION =
   "The booking link was sent successfully.\nDeliver ONE final message combining confirmation and goodbye. Example:\n'Perfect — booking link sent to your phone. The team will confirm shortly. Thanks for calling, have a great day!'\nThen call end_call immediately.\nDo not say 'One moment' or any separate filler.\nDo not send another message after this one.";
 const SIDE_BAND_QUEUE_LIMIT = 3;
+const TRANSCRIPTION_TIMEOUT_MS = 2_000;
 
 type SidebandTurnState =
   | 'idle'
@@ -231,6 +237,8 @@ export function startOpenAiRealtimeSipSideband(
   let activeTurnToken = 0;
   let turnStateTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
   let currentTurnAudioStarted = false;
+  let pendingTranscriptionTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  let timedOutTranscriptionItems = new Set<string>();
 
   /** Set when AI calls end_call; next output_audio_buffer.stopped triggers onEndCall. */
   let pendingHangupAfterAudio = false;
@@ -339,6 +347,61 @@ export function startOpenAiRealtimeSipSideband(
   function logRealtimeTiming(label: string, evt: RealtimeTimingEvent, fields: Record<string, unknown> = {}): void {
     const nowMs = Date.now();
     logTiming(label, { ...eventTimingFields(evt, nowMs), ...fields }, nowMs);
+  }
+
+  function realtimeItemId(evt: RealtimeTimingEvent): string | null {
+    return evt.item_id ?? (typeof evt.item?.id === 'string' ? evt.item.id : null);
+  }
+
+  function clearPendingTranscriptionTimeout(itemId: string | null): void {
+    if (!itemId) return;
+    const timeout = pendingTranscriptionTimeouts.get(itemId);
+    if (!timeout) return;
+    clearTimeout(timeout);
+    pendingTranscriptionTimeouts.delete(itemId);
+  }
+
+  function wasTranscriptionTimedOut(itemId: string | null): boolean {
+    if (!itemId || !timedOutTranscriptionItems.has(itemId)) return false;
+    timedOutTranscriptionItems.delete(itemId);
+    return true;
+  }
+
+  function clearAllTranscriptionTimeouts(): void {
+    for (const timeout of pendingTranscriptionTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    pendingTranscriptionTimeouts.clear();
+    timedOutTranscriptionItems.clear();
+  }
+
+  function startTranscriptionTimeout(itemId: string | null, speechStoppedAtMs: number): void {
+    if (!itemId) return;
+    clearPendingTranscriptionTimeout(itemId);
+    timedOutTranscriptionItems.delete(itemId);
+
+    const timeout = setTimeout(() => {
+      pendingTranscriptionTimeouts.delete(itemId);
+      timedOutTranscriptionItems.add(itemId);
+      logger.warn(
+        { callId: params.callId, itemId, timeoutMs: TRANSCRIPTION_TIMEOUT_MS },
+        'openai_sip_shop_transcription_timeout_reset_listening',
+      );
+      sendRealtimeEvent(
+        { type: 'conversation.item.delete', item_id: itemId },
+        'openai_sip_shop_transcription_timeout_item_delete_failed',
+      );
+      logTiming(
+        'transcription_timeout',
+        {
+          itemId,
+          timeoutMs: TRANSCRIPTION_TIMEOUT_MS,
+          elapsedSinceSpeechStoppedMs: elapsedSince(speechStoppedAtMs, Date.now()),
+        },
+      );
+    }, TRANSCRIPTION_TIMEOUT_MS);
+    timeout.unref?.();
+    pendingTranscriptionTimeouts.set(itemId, timeout);
   }
 
   function normalizeTranscriptForQueue(transcript: string): string {
@@ -1076,6 +1139,14 @@ export function startOpenAiRealtimeSipSideband(
     if (evt.type === 'input_audio_buffer.speech_stopped') {
       lastSpeechStoppedAtMs = Date.now();
       logTiming('VAD speech_stopped', eventTimingFields(evt, lastSpeechStoppedAtMs), lastSpeechStoppedAtMs);
+      if (params.variant === 'shop' && params.initialResponseBridgeGate && shopManualTurnResponseEnabled) {
+        startTranscriptionTimeout(realtimeItemId(evt), lastSpeechStoppedAtMs);
+        try {
+          params.onCallerSpeechStopped?.();
+        } catch (err) {
+          logger.warn({ err, callId: params.callId }, 'openai_sip_shop_speech_stopped_prefetch_callback_failed');
+        }
+      }
     }
 
     if (evt.type === 'response.created') {
@@ -1197,6 +1268,19 @@ export function startOpenAiRealtimeSipSideband(
           : evt.type === 'conversation.item.input_audio_transcription.completed'
             ? 'caller'
             : null;
+      if (evt.type === 'conversation.item.input_audio_transcription.completed') {
+        const itemId = realtimeItemId(evt);
+        const timedOut = wasTranscriptionTimedOut(itemId);
+        clearPendingTranscriptionTimeout(itemId);
+        if (timedOut) {
+          logger.warn(
+            { callId: params.callId, itemId, transcript },
+            'openai_sip_shop_late_transcription_ignored_after_timeout',
+          );
+          return;
+        }
+      }
+
       if (transcript && speaker) {
         const transcriptCompletedAtMs = Date.now();
         if (speaker === 'caller') {
@@ -1252,6 +1336,16 @@ export function startOpenAiRealtimeSipSideband(
       shopManualTurnResponseEnabled &&
       evt.type === 'conversation.item.input_audio_transcription.failed'
     ) {
+      const itemId = realtimeItemId(evt);
+      const timedOut = wasTranscriptionTimedOut(itemId);
+      clearPendingTranscriptionTimeout(itemId);
+      if (timedOut) {
+        logger.warn(
+          { callId: params.callId, itemId },
+          'openai_sip_shop_late_transcription_failure_ignored_after_timeout',
+        );
+        return;
+      }
       logger.warn({ callId: params.callId }, 'openai_sip_shop_caller_transcription_failed_using_unvalidated_response');
       createShopResponseForCallerTurn('');
     }
@@ -1468,6 +1562,7 @@ export function startOpenAiRealtimeSipSideband(
     if (softLimitTimer) { clearTimeout(softLimitTimer); softLimitTimer = null; }
     if (hardLimitTimer) { clearTimeout(hardLimitTimer); hardLimitTimer = null; }
     if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
+    clearAllTranscriptionTimeouts();
     pendingHangupAfterAudio = false;
     pendingAutoEndAfterFinalAudio = false;
     releaseTurnState({ processQueue: false, clearQueue: true });

@@ -5,6 +5,7 @@ import {
   createSipAgentToolContext,
   executeSipShopToolCall,
   prePopulateAvailabilityFromDraft,
+  previewAvailabilityFromDraft,
 } from '@/src/agent/sip/sip-tool-executor';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
@@ -163,6 +164,39 @@ test('prePopulateAvailabilityFromDraft stores provider result for a calendar-int
   assert.equal(result?.available, true);
   assert.equal(ctx.availabilityCheck?.latest?.providerId, 'google_calendar');
   assert.equal(ctx.availabilityCheck?.latest?.service, 'Manicure');
+});
+
+test('previewAvailabilityFromDraft only returns a request when service and validated time are ready', async () => {
+  const deps = memoryDeps();
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop: { ...shop, google_cal_id: 'calendar-preview-test' },
+    callerPhone: '+15550001111',
+    requestId: 'sip-availability-preview',
+    roomName: 'sip-room-availability-preview',
+    deps,
+  });
+
+  assert.equal(previewAvailabilityFromDraft(ctx), null);
+  ctx.bookingDraft!.serviceCandidates = ['Manicure'];
+  ctx.bookingDraft!.confidence.service = 0.9;
+  assert.equal(previewAvailabilityFromDraft(ctx), null);
+  ctx.appointmentTimeValidation = {
+    latest: {
+      date: '2099-01-06',
+      time: '10:00',
+      valid: true,
+      reason: 'within_business_hours',
+      normalizedDatetimeUtc: '2099-01-06T18:00:00.000Z',
+    },
+  };
+
+  const preview = previewAvailabilityFromDraft(ctx);
+  assert.equal(preview?.providerId, 'google_calendar');
+  assert.equal(preview?.service, 'Manicure');
+  assert.equal(preview?.date, '2099-01-06');
+  assert.equal(preview?.time, '10:00');
 });
 
 test('prePopulateAvailabilityFromDraft skips manual calendar shops', async () => {

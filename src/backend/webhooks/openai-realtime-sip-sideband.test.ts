@@ -447,6 +447,68 @@ test('bridge-gated shop injects availability before response when prefetch is re
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_availability_inject');
 });
 
+test('bridge-gated shop fires speculative prefetch hook on speech stopped before transcript', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_speculative_prefetch',
+    openaiLegCallControlId: 'cc_openai_speculative_prefetch',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_speculative_prefetch',
+    openaiLegCallControlId: 'cc_openai_speculative_prefetch',
+  });
+
+  const serverSocket = nextServerSocket();
+  let transcriptObserved = false;
+  let prefetchHookCalls = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'speculative-prefetch-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_speculative_prefetch',
+        openaiLegCallControlId: 'cc_openai_speculative_prefetch',
+      },
+      onCallerSpeechStopped: () => {
+        assert.equal(transcriptObserved, false);
+        prefetchHookCalls += 1;
+      },
+      onTranscript: (speaker) => {
+        if (speaker === 'caller') transcriptObserved = true;
+      },
+    },
+    { wsUrlOverride: sidebandUrl('speculative-prefetch-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  srv.on('message', () => undefined);
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({
+    type: 'input_audio_buffer.speech_stopped',
+    item_id: 'item_speculative_prefetch',
+  }));
+  await flushIO(30);
+  assert.equal(prefetchHookCalls, 1);
+  assert.equal(transcriptObserved, false);
+
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    item_id: 'item_speculative_prefetch',
+    transcript: 'Yes.',
+  }));
+  await flushIO(30);
+  assert.equal(transcriptObserved, true);
+
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_speculative_prefetch');
+});
+
 test('bridge-gated shop creates an ordinary response for a caller question without an appointment time', async () => {
   initializeBridgeGreetingSession({
     parentCallControlId: 'cc_parent_general_turn',
@@ -502,6 +564,139 @@ test('bridge-gated shop creates an ordinary response for a caller question witho
   assert.equal(responseCountAfterFailedTranscript, 3);
   srv.close(1000, 'test complete');
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_general_turn');
+});
+
+test('bridge-gated shop clears transcription timeout when transcript arrives in time', async (t) => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_transcription_in_time',
+    openaiLegCallControlId: 'cc_openai_transcription_in_time',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_transcription_in_time',
+    openaiLegCallControlId: 'cc_openai_transcription_in_time',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'transcription-in-time-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_transcription_in_time',
+        openaiLegCallControlId: 'cc_openai_transcription_in_time',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('transcription-in-time-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  messages.length = 0;
+
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  srv.send(JSON.stringify({
+    type: 'input_audio_buffer.speech_stopped',
+    item_id: 'item_transcription_in_time',
+  }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    item_id: 'item_transcription_in_time',
+    transcript: 'What are your hours?',
+  }));
+  await flushIO(30);
+  t.mock.timers.tick(2_001);
+  await flushIO(30);
+
+  const parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  assert.equal(parsed.filter((message) => message.type === 'response.create').length, 1);
+  assert.equal(parsed.some((message) => message.type === 'conversation.item.delete'), false);
+
+  srv.close(1000, 'test complete');
+  t.mock.timers.reset();
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_transcription_in_time');
+});
+
+test('bridge-gated shop ignores late transcription after timeout and stays listening', async (t) => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_transcription_timeout',
+    openaiLegCallControlId: 'cc_openai_transcription_timeout',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_transcription_timeout',
+    openaiLegCallControlId: 'cc_openai_transcription_timeout',
+  });
+
+  const serverSocket = nextServerSocket();
+  const callerTranscripts: string[] = [];
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'transcription-timeout-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_transcription_timeout',
+        openaiLegCallControlId: 'cc_openai_transcription_timeout',
+      },
+      onTranscript: (speaker, text) => {
+        if (speaker === 'caller') callerTranscripts.push(text);
+      },
+    },
+    { wsUrlOverride: sidebandUrl('transcription-timeout-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  messages.length = 0;
+
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  srv.send(JSON.stringify({
+    type: 'input_audio_buffer.speech_stopped',
+    item_id: 'item_transcription_timeout',
+  }));
+  await flushIO(30);
+  t.mock.timers.tick(2_001);
+  await flushIO(30);
+
+  let parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  assert.equal(parsed.filter((message) => message.type === 'response.create').length, 0);
+  assert.equal(
+    parsed.some((message) =>
+      message.type === 'conversation.item.delete' &&
+      message.item_id === 'item_transcription_timeout'
+    ),
+    true,
+  );
+
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    item_id: 'item_transcription_timeout',
+    transcript: '.',
+  }));
+  await flushIO(30);
+
+  parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  assert.equal(parsed.filter((message) => message.type === 'response.create').length, 0);
+  assert.deepEqual(callerTranscripts, []);
+
+  srv.close(1000, 'test complete');
+  t.mock.timers.reset();
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_transcription_timeout');
 });
 
 test('bridge-gated shop ignores filler transcripts while a response is in-flight', async () => {

@@ -9,9 +9,12 @@ import {
   prePopulateAvailabilityFromDraft,
   prePopulateFromTranscript,
   previewAppointmentTimeFromTranscript,
+  previewAvailabilityFromDraft,
   updateSipBookingDraftFromTranscript,
   type AppointmentTimePrePopulateResult,
+  type AppointmentTimePrePopulatePreview,
   type AvailabilityCheckPrePopulateResult,
+  type AvailabilityCheckPrePopulatePreview,
   type SipToolExecutorDeps,
 } from '@/src/agent/sip/sip-tool-executor';
 import { summarizeBookingDraftForLog } from '@/src/agent/booking/booking-draft';
@@ -850,6 +853,16 @@ export async function handleOpenAiRealtimeSipWebhook(
       callerPhone: callerPhoneForPrompt,
     });
   }
+  logger.debug(
+    {
+      callId,
+      routeKind: route.kind,
+      shopId: route.kind === 'shop' ? route.shop.id : null,
+      chars: instructions.length,
+      estimatedTokens: Math.round(instructions.length / 4),
+    },
+    'prompt_size',
+  );
 
   const acceptEnabled = env.OPENAI_SIP_ACCEPT_ENABLED && !!apiKey;
   if (!acceptEnabled) {
@@ -1104,6 +1117,7 @@ export async function handleOpenAiRealtimeSipWebhook(
           openAiLegCallControlId: shopRoomContext.openAiLegCallControlId,
         });
         let currentAvailabilityPrefetch: Promise<AvailabilityCheckPrePopulateResult | null> | null = null;
+        let currentAvailabilityPrefetchKey: string | null = null;
         const shop = route.shop;
         const sidebandCtx = shopRoomContext;
         const parentCcId = sidebandCtx.parentTelnyxCallControlId;
@@ -1120,24 +1134,86 @@ export async function handleOpenAiRealtimeSipWebhook(
 
         function clearAvailabilityPrefetch(options: { clearCache?: boolean } = {}): void {
           currentAvailabilityPrefetch = null;
+          currentAvailabilityPrefetchKey = null;
           if (options.clearCache) {
             toolCtx.availabilityCheck = { latest: null };
           }
         }
 
-        function startAvailabilityPrefetch(): void {
+        function availabilityMatchesPreview(
+          result: AvailabilityCheckPrePopulateResult | null | undefined,
+          preview: AvailabilityCheckPrePopulatePreview | null,
+        ): result is AvailabilityCheckPrePopulateResult {
+          if (!result || !preview) return false;
+          return result.providerId === preview.providerId &&
+            result.service.trim().toLowerCase() === preview.service.trim().toLowerCase() &&
+            result.date === preview.date &&
+            result.time === preview.time &&
+            (result.techName?.trim().toLowerCase() ?? '') === (preview.techName?.trim().toLowerCase() ?? '');
+        }
+
+        function shouldClearAvailabilityForTimePreview(preview: AppointmentTimePrePopulatePreview | null): boolean {
+          const validation = toolCtx.appointmentTimeValidation?.latest;
+          if (!preview || !validation) return true;
+          return validation.date !== preview.date || validation.time !== preview.time;
+        }
+
+        function startAvailabilityPrefetch(reason: 'speech_stopped' | 'validation_complete'): void {
+          const preview = previewAvailabilityFromDraft(toolCtx);
+          if (!preview) return;
+          if (availabilityMatchesPreview(toolCtx.availabilityCheck?.latest, preview)) return;
+          if (currentAvailabilityPrefetch && currentAvailabilityPrefetchKey === preview.key) {
+            logger.info(
+              {
+                callSessionId: sidebandCtx.rbCallId ?? sidebandCtx.requestId,
+                providerCallId: callId,
+                shopId: shop.id,
+                eventType: 'availability_prefetch_deduped',
+                reason,
+                key: preview.key,
+              },
+              `[TIMING] availability_prefetch_deduped reason=${reason}`,
+            );
+            return;
+          }
+
+          logger.info(
+            {
+              callSessionId: sidebandCtx.rbCallId ?? sidebandCtx.requestId,
+              providerCallId: callId,
+              shopId: shop.id,
+              eventType: 'availability_prefetch_requested',
+              reason,
+              provider: preview.providerId,
+              service: preview.service,
+              date: preview.date,
+              time: preview.time,
+              key: preview.key,
+            },
+            `[TIMING] availability_prefetch_requested reason=${reason} service=${preview.service} date=${preview.date} time=${preview.time}`,
+          );
           const prefetch = prePopulateAvailabilityFromDraft(toolCtx);
+          currentAvailabilityPrefetchKey = preview.key;
           currentAvailabilityPrefetch = prefetch;
           void prefetch.finally(() => {
             if (currentAvailabilityPrefetch === prefetch) {
               currentAvailabilityPrefetch = null;
+              currentAvailabilityPrefetchKey = null;
             }
           });
         }
 
         async function getAvailabilityBeforeResponse(): Promise<AvailabilityCheckPrePopulateResult | null> {
+          const preview = previewAvailabilityFromDraft(toolCtx);
+          if (!preview) return null;
+          if (availabilityMatchesPreview(toolCtx.availabilityCheck?.latest, preview)) {
+            return toolCtx.availabilityCheck.latest;
+          }
           if (!currentAvailabilityPrefetch) {
-            return toolCtx.availabilityCheck?.latest ?? null;
+            return null;
+          }
+          if (currentAvailabilityPrefetchKey !== preview.key) {
+            return null;
           }
 
           let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -1146,7 +1222,11 @@ export async function handleOpenAiRealtimeSipWebhook(
           });
           try {
             return await Promise.race([
-              currentAvailabilityPrefetch.then(() => toolCtx.availabilityCheck?.latest ?? null),
+              currentAvailabilityPrefetch.then(() =>
+                availabilityMatchesPreview(toolCtx.availabilityCheck?.latest, preview)
+                  ? toolCtx.availabilityCheck.latest
+                  : null
+              ),
               timeoutPromise,
             ]);
           } finally {
@@ -1237,20 +1317,26 @@ export async function handleOpenAiRealtimeSipWebhook(
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,
             onCallerTranscriptPrePopulate: (transcript: string) => {
-              clearAvailabilityPrefetch();
+              const preview = previewAppointmentTimeFromTranscript(toolCtx, transcript);
+              if (shouldClearAvailabilityForTimePreview(preview)) {
+                clearAvailabilityPrefetch();
+              }
               return {
-                preview: previewAppointmentTimeFromTranscript(toolCtx, transcript),
+                preview,
                 result: prePopulateFromTranscript(toolCtx, transcript),
               };
             },
             onValidationPrePopulateComplete: (result: AppointmentTimePrePopulateResult) => {
               if (result.valid) {
-                startAvailabilityPrefetch();
+                startAvailabilityPrefetch('validation_complete');
               }
             },
             onBeforeResponseCreate: async () => ({
               availabilityResult: await getAvailabilityBeforeResponse(),
             }),
+            onCallerSpeechStopped: () => {
+              startAvailabilityPrefetch('speech_stopped');
+            },
             onEndCall: () => {
               if (hangupInitiated) return;
               hangupInitiated = true;
