@@ -165,6 +165,23 @@ type SidebandTurnMode =
   | 'business_tool'
   | null;
 
+type CallerTurnResponsePath =
+  | 'fast_speech_stopped'
+  | 'transcript'
+  | 'direct_validation'
+  | 'validation_unavailable';
+
+type ActiveTurnTiming = {
+  itemId: string | null;
+  path: CallerTurnResponsePath;
+  waitReason: string | null;
+  speechStoppedAtMs: number | null;
+  transcriptionCompleteAtMs: number | null;
+  responseCreateSentAtMs: number | null;
+  audioSentAtMs: number | null;
+  summaryLogged: boolean;
+};
+
 function mentionsBookingFlow(text: string): boolean {
   return /\b(book(?:ing)?|appointment|schedul(?:e|ing)?|reschedul(?:e|ing)?|availability)\b/i.test(text)
     || /\b(?:what|which)\s+(?:date|day|time)\b/i.test(text)
@@ -175,6 +192,15 @@ function includesSpecificTime(text: string): boolean {
   return /\b\d{1,2}(?::[0-5]\d)?\s*(?:a\.?\s*m\.?|p\.?\s*m\.?)\b/i.test(text)
     || /\b(?:noon|midnight)\b/i.test(text)
     || /\b(?:at|around|by)\s+\d{1,2}(?::[0-5]\d)?\b/i.test(text);
+}
+
+function asksForAppointmentTime(text: string): boolean {
+  return /\b(?:date|day)\s+and\s+time\b/i.test(text)
+    || /\bpreferred\s+(?:date|day|time)\b/i.test(text)
+    || /\b(?:date|day|time)\s+(?:works|is best|would work)\b/i.test(text)
+    || /\bwhen\s+(?:would|do)\s+you\s+(?:like|want|prefer)\b/i.test(text)
+    || /\b(?:for|to)\s+(?:your\s+)?(?:appointment|booking).{0,80}\b(?:date|day|time|when)\b/i.test(text)
+    || /\b(?:date|day|time|when).{0,80}\b(?:appointment|booking)\b/i.test(text);
 }
 
 function isPrePopulateAttempt(value: unknown): value is AppointmentTimePrePopulateAttempt {
@@ -217,6 +243,7 @@ export function startOpenAiRealtimeSipSideband(
   let shopVadResumeAfterWelcomeSent = false;
   let shopManualTurnResponseEnabled = false;
   let shopBookingFlowActive = false;
+  let shopAwaitingAppointmentTime = false;
   let initialGreetingAudioStarted = false;
   let initialGreetingAudioStopped = false;
   let sawUserSpeechBeforeInitial = false;
@@ -239,6 +266,9 @@ export function startOpenAiRealtimeSipSideband(
   let currentTurnAudioStarted = false;
   let pendingTranscriptionTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   let timedOutTranscriptionItems = new Set<string>();
+  let fastRespondedTranscriptionItems = new Set<string>();
+  let fastRespondedTranscriptionWithoutItemIdCount = 0;
+  let activeTurnTiming: ActiveTurnTiming | null = null;
 
   /** Set when AI calls end_call; next output_audio_buffer.stopped triggers onEndCall. */
   let pendingHangupAfterAudio = false;
@@ -373,6 +403,8 @@ export function startOpenAiRealtimeSipSideband(
     }
     pendingTranscriptionTimeouts.clear();
     timedOutTranscriptionItems.clear();
+    fastRespondedTranscriptionItems.clear();
+    fastRespondedTranscriptionWithoutItemIdCount = 0;
   }
 
   function startTranscriptionTimeout(itemId: string | null, speechStoppedAtMs: number): void {
@@ -402,6 +434,74 @@ export function startOpenAiRealtimeSipSideband(
     }, TRANSCRIPTION_TIMEOUT_MS);
     timeout.unref?.();
     pendingTranscriptionTimeouts.set(itemId, timeout);
+  }
+
+  function markFastRespondedTranscription(itemId: string | null): void {
+    if (itemId) {
+      fastRespondedTranscriptionItems.add(itemId);
+    } else {
+      fastRespondedTranscriptionWithoutItemIdCount += 1;
+    }
+  }
+
+  function consumeFastRespondedTranscription(itemId: string | null): boolean {
+    if (itemId && fastRespondedTranscriptionItems.delete(itemId)) return true;
+    if (!itemId && fastRespondedTranscriptionWithoutItemIdCount > 0) {
+      fastRespondedTranscriptionWithoutItemIdCount -= 1;
+      return true;
+    }
+    return false;
+  }
+
+  function startActiveTurnTiming(fields: {
+    itemId: string | null;
+    path: CallerTurnResponsePath;
+    waitReason: string | null;
+    speechStoppedAtMs: number | null;
+  }): void {
+    activeTurnTiming = {
+      ...fields,
+      transcriptionCompleteAtMs: null,
+      responseCreateSentAtMs: null,
+      audioSentAtMs: null,
+      summaryLogged: false,
+    };
+  }
+
+  function maybeLogTurnLatencySummary(): void {
+    if (!activeTurnTiming || activeTurnTiming.summaryLogged) return;
+    const audioSentAtMs = activeTurnTiming.audioSentAtMs;
+    const responseCreateSentAtMs = activeTurnTiming.responseCreateSentAtMs;
+    if (audioSentAtMs === null || responseCreateSentAtMs === null) return;
+
+    activeTurnTiming.summaryLogged = true;
+    logTiming(
+      'turn_latency_summary',
+      {
+        itemId: activeTurnTiming.itemId,
+        responsePath: activeTurnTiming.path,
+        fastPath: activeTurnTiming.path === 'fast_speech_stopped',
+        waitReason: activeTurnTiming.waitReason,
+        speechStoppedToTranscriptMs:
+          activeTurnTiming.speechStoppedAtMs !== null && activeTurnTiming.transcriptionCompleteAtMs !== null
+            ? activeTurnTiming.transcriptionCompleteAtMs - activeTurnTiming.speechStoppedAtMs
+            : null,
+        transcriptToResponseCreateMs:
+          activeTurnTiming.transcriptionCompleteAtMs !== null
+            ? responseCreateSentAtMs - activeTurnTiming.transcriptionCompleteAtMs
+            : null,
+        speechStoppedToResponseCreateMs:
+          activeTurnTiming.speechStoppedAtMs !== null
+            ? responseCreateSentAtMs - activeTurnTiming.speechStoppedAtMs
+            : null,
+        responseCreateToAudioMs: audioSentAtMs - responseCreateSentAtMs,
+        speechStoppedToAudioMs:
+          activeTurnTiming.speechStoppedAtMs !== null
+            ? audioSentAtMs - activeTurnTiming.speechStoppedAtMs
+            : null,
+      },
+      audioSentAtMs,
+    );
   }
 
   function normalizeTranscriptForQueue(transcript: string): string {
@@ -478,6 +578,7 @@ export function startOpenAiRealtimeSipSideband(
     sidebandTurnMode = null;
     activeCallerTranscript = null;
     currentTurnAudioStarted = false;
+    activeTurnTiming = null;
     activeTurnToken += 1;
     if (options.clearQueue) queuedCallerTranscripts = [];
     if (options.processQueue !== false) {
@@ -511,6 +612,8 @@ export function startOpenAiRealtimeSipSideband(
           timeoutMs: 8_000,
           token,
           forceAppointmentTimeValidation: false,
+          responsePath: 'validation_unavailable',
+          waitReason: 'validation_timeout',
         });
         if (!sent) releaseTurnState();
         return;
@@ -597,6 +700,8 @@ export function startOpenAiRealtimeSipSideband(
     timeoutMs: number;
     token: number;
     forceAppointmentTimeValidation: boolean;
+    responsePath: CallerTurnResponsePath;
+    waitReason?: string | null;
   }): boolean {
     if (paramsSend.token !== activeTurnToken) return false;
     const response: Record<string, unknown> = {};
@@ -616,10 +721,18 @@ export function startOpenAiRealtimeSipSideband(
     startTurnStateTimeout(paramsSend.timeoutMs, paramsSend.token);
     lastResponseCreateSentAtMs = Date.now();
     waitingForAudioResponseStart = true;
+    if (activeTurnTiming) {
+      activeTurnTiming.responseCreateSentAtMs = lastResponseCreateSentAtMs;
+      activeTurnTiming.path = paramsSend.responsePath;
+      activeTurnTiming.waitReason = paramsSend.waitReason ?? activeTurnTiming.waitReason;
+    }
     logTiming(
       'response_create_sent',
       {
         forceAppointmentTimeValidation: paramsSend.forceAppointmentTimeValidation,
+        responsePath: paramsSend.responsePath,
+        fastPath: paramsSend.responsePath === 'fast_speech_stopped',
+        waitReason: paramsSend.waitReason ?? null,
         elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, lastResponseCreateSentAtMs),
         elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastResponseCreateSentAtMs),
       },
@@ -788,6 +901,8 @@ export function startOpenAiRealtimeSipSideband(
       timeoutMs: 8_000,
       token,
       forceAppointmentTimeValidation: true,
+      responsePath: 'direct_validation',
+      waitReason: 'appointment_time_validation',
     });
     const completedAtMs = Date.now();
     logTiming('inject_validation_complete', {
@@ -937,6 +1052,18 @@ export function startOpenAiRealtimeSipSideband(
     shopBookingFlowActive = inBookingFlow;
 
     if (forceTimeValidation) {
+      shopAwaitingAppointmentTime = false;
+      if (!activeTurnTiming) {
+        startActiveTurnTiming({
+          itemId: null,
+          path: 'direct_validation',
+          waitReason: 'appointment_time_validation',
+          speechStoppedAtMs: lastSpeechStoppedAtMs,
+        });
+      } else {
+        activeTurnTiming.path = 'direct_validation';
+        activeTurnTiming.waitReason = 'appointment_time_validation';
+      }
       const turnToken = beginTurnState('validating_time', 'direct_validation', transcript, 5_000);
       const prePopulateStartedAtMs = Date.now();
       const prePopulateAttempt = params.onCallerTranscriptPrePopulate?.(transcript);
@@ -976,6 +1103,8 @@ export function startOpenAiRealtimeSipSideband(
               timeoutMs: 8_000,
               token: turnToken,
               forceAppointmentTimeValidation: false,
+              responsePath: 'validation_unavailable',
+              waitReason: 'appointment_time_validation_failed',
             });
             return;
           }
@@ -1023,11 +1152,27 @@ export function startOpenAiRealtimeSipSideband(
             timeoutMs: 8_000,
             token: turnToken,
             forceAppointmentTimeValidation: false,
+            responsePath: 'validation_unavailable',
+            waitReason: 'appointment_time_validation_failed',
           });
         });
       return;
     }
 
+    if (shopAwaitingAppointmentTime) {
+      shopAwaitingAppointmentTime = false;
+    }
+    if (!activeTurnTiming) {
+      startActiveTurnTiming({
+        itemId: null,
+        path: 'transcript',
+        waitReason: null,
+        speechStoppedAtMs: lastSpeechStoppedAtMs,
+      });
+    } else {
+      activeTurnTiming.path = 'transcript';
+      activeTurnTiming.waitReason = null;
+    }
     const turnToken = beginTurnState('waiting_model_response', 'caller_response', transcript, 8_000);
     const sent = sendShopResponseCreate({
       state: 'waiting_model_response',
@@ -1035,8 +1180,56 @@ export function startOpenAiRealtimeSipSideband(
       timeoutMs: 8_000,
       token: turnToken,
       forceAppointmentTimeValidation: false,
+      responsePath: 'transcript',
+      waitReason: null,
     });
     if (!sent) releaseTurnState();
+  }
+
+  function maybeCreateFastShopResponseForSpeechStopped(itemId: string | null): boolean {
+    if (params.variant !== 'shop' || !params.initialResponseBridgeGate || !shopManualTurnResponseEnabled) return false;
+    if (ws.readyState !== WebSocket.OPEN) return false;
+    if (sidebandTurnState !== 'idle') return false;
+
+    const waitReason = shopAwaitingAppointmentTime ? 'assistant_requested_appointment_time' : null;
+    logTiming('turn_route_decision', {
+      itemId,
+      fastPath: waitReason === null,
+      waitReason,
+    });
+    if (waitReason !== null) {
+      startActiveTurnTiming({
+        itemId,
+        path: 'direct_validation',
+        waitReason,
+        speechStoppedAtMs: lastSpeechStoppedAtMs,
+      });
+      return false;
+    }
+
+    startActiveTurnTiming({
+      itemId,
+      path: 'fast_speech_stopped',
+      waitReason: null,
+      speechStoppedAtMs: lastSpeechStoppedAtMs,
+    });
+    const turnToken = beginTurnState('waiting_model_response', 'caller_response', null, 8_000);
+    const sent = sendShopResponseCreate({
+      state: 'waiting_model_response',
+      mode: 'caller_response',
+      timeoutMs: 8_000,
+      token: turnToken,
+      forceAppointmentTimeValidation: false,
+      responsePath: 'fast_speech_stopped',
+      waitReason: null,
+    });
+    if (!sent) {
+      activeTurnTiming = null;
+      releaseTurnState();
+      return false;
+    }
+    markFastRespondedTranscription(itemId);
+    return true;
   }
 
   ws.on('open', () => {
@@ -1140,11 +1333,15 @@ export function startOpenAiRealtimeSipSideband(
       lastSpeechStoppedAtMs = Date.now();
       logTiming('VAD speech_stopped', eventTimingFields(evt, lastSpeechStoppedAtMs), lastSpeechStoppedAtMs);
       if (params.variant === 'shop' && params.initialResponseBridgeGate && shopManualTurnResponseEnabled) {
-        startTranscriptionTimeout(realtimeItemId(evt), lastSpeechStoppedAtMs);
         try {
           params.onCallerSpeechStopped?.();
         } catch (err) {
           logger.warn({ err, callId: params.callId }, 'openai_sip_shop_speech_stopped_prefetch_callback_failed');
+        }
+        const itemId = realtimeItemId(evt);
+        const fastResponseCreated = maybeCreateFastShopResponseForSpeechStopped(itemId);
+        if (!fastResponseCreated) {
+          startTranscriptionTimeout(itemId, lastSpeechStoppedAtMs);
         }
       }
     }
@@ -1198,6 +1395,9 @@ export function startOpenAiRealtimeSipSideband(
       }
       if (evt.type === 'output_audio_buffer.started' && lastSpeechStoppedAtMs !== null) {
         const audioSentAtMs = Date.now();
+        if (activeTurnTiming) {
+          activeTurnTiming.audioSentAtMs = audioSentAtMs;
+        }
         logTiming(
           'audio_sent_to_caller',
           {
@@ -1208,6 +1408,7 @@ export function startOpenAiRealtimeSipSideband(
           },
           audioSentAtMs,
         );
+        maybeLogTurnLatencySummary();
       }
       if (evt.type === 'output_audio_buffer.stopped') {
         logRealtimeTiming('output_audio_buffer_stopped', evt);
@@ -1283,13 +1484,23 @@ export function startOpenAiRealtimeSipSideband(
 
       if (transcript && speaker) {
         const transcriptCompletedAtMs = Date.now();
+        const itemId = realtimeItemId(evt);
+        const fastRespondedCallerTranscript =
+          speaker === 'caller' && params.variant === 'shop' && params.initialResponseBridgeGate
+            ? consumeFastRespondedTranscription(itemId)
+            : false;
         if (speaker === 'caller') {
           lastTranscriptionCompleteAtMs = transcriptCompletedAtMs;
+          if (activeTurnTiming && (activeTurnTiming.itemId === itemId || activeTurnTiming.itemId === null)) {
+            activeTurnTiming.itemId = itemId;
+            activeTurnTiming.transcriptionCompleteAtMs = transcriptCompletedAtMs;
+          }
           logTiming(
             'transcription_complete',
             {
               ...eventTimingFields(evt, transcriptCompletedAtMs),
               transcript,
+              responseAlreadyCreated: fastRespondedCallerTranscript,
               elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastTranscriptionCompleteAtMs),
             },
             lastTranscriptionCompleteAtMs,
@@ -1321,9 +1532,26 @@ export function startOpenAiRealtimeSipSideband(
           'openai_sip_realtime_transcript_event',
         );
         if (params.variant === 'shop' && params.initialResponseBridgeGate) {
-          if (speaker === 'assistant' && mentionsBookingFlow(transcript)) {
-            shopBookingFlowActive = true;
+          if (speaker === 'assistant') {
+            if (mentionsBookingFlow(transcript)) {
+              shopBookingFlowActive = true;
+            }
+            if (asksForAppointmentTime(transcript)) {
+              shopBookingFlowActive = true;
+              shopAwaitingAppointmentTime = true;
+              logger.info(
+                { callId: params.callId, transcript },
+                'openai_sip_shop_awaiting_appointment_time',
+              );
+            }
           } else if (speaker === 'caller') {
+            if (fastRespondedCallerTranscript) {
+              logger.info(
+                { callId: params.callId, itemId, transcript },
+                'openai_sip_shop_fast_path_transcript_recorded_no_response',
+              );
+              return;
+            }
             createShopResponseForCallerTurn(transcript);
           }
         }
@@ -1343,6 +1571,13 @@ export function startOpenAiRealtimeSipSideband(
         logger.warn(
           { callId: params.callId, itemId },
           'openai_sip_shop_late_transcription_failure_ignored_after_timeout',
+        );
+        return;
+      }
+      if (consumeFastRespondedTranscription(itemId)) {
+        logger.warn(
+          { callId: params.callId, itemId },
+          'openai_sip_shop_fast_path_transcription_failure_ignored',
         );
         return;
       }
@@ -1516,6 +1751,8 @@ export function startOpenAiRealtimeSipSideband(
             timeoutMs: 8_000,
             token: toolTurnToken,
             forceAppointmentTimeValidation: false,
+            responsePath: 'transcript',
+            waitReason: 'send_booking_link_final',
           });
           if (!sent) {
             pendingAutoEndAfterFinalAudio = false;

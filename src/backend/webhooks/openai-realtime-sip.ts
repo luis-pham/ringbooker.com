@@ -853,7 +853,7 @@ export async function handleOpenAiRealtimeSipWebhook(
       callerPhone: callerPhoneForPrompt,
     });
   }
-  logger.debug(
+  logger.info(
     {
       callId,
       routeKind: route.kind,

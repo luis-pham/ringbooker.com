@@ -566,7 +566,71 @@ test('bridge-gated shop creates an ordinary response for a caller question witho
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_general_turn');
 });
 
-test('bridge-gated shop clears transcription timeout when transcript arrives in time', async (t) => {
+test('bridge-gated shop fast-paths non-time turns on speech stopped and ignores duplicate transcript response', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_fast_non_time',
+    openaiLegCallControlId: 'cc_openai_fast_non_time',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_fast_non_time',
+    openaiLegCallControlId: 'cc_openai_fast_non_time',
+  });
+
+  const serverSocket = nextServerSocket();
+  const callerTranscripts: string[] = [];
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'fast-non-time-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_fast_non_time',
+        openaiLegCallControlId: 'cc_openai_fast_non_time',
+      },
+      onTranscript: (speaker, text) => {
+        if (speaker === 'caller') callerTranscripts.push(text);
+      },
+    },
+    { wsUrlOverride: sidebandUrl('fast-non-time-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  messages.length = 0;
+
+  srv.send(JSON.stringify({
+    type: 'input_audio_buffer.speech_stopped',
+    item_id: 'item_fast_non_time',
+  }));
+  await flushIO(30);
+
+  let parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  assert.equal(parsed.filter((message) => message.type === 'response.create').length, 1);
+  assert.equal(parsed.some((message) => message.type === 'conversation.item.delete'), false);
+
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    item_id: 'item_fast_non_time',
+    transcript: 'What are your hours?',
+  }));
+  await flushIO(30);
+
+  parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  assert.equal(parsed.filter((message) => message.type === 'response.create').length, 1);
+  assert.deepEqual(callerTranscripts, ['What are your hours?']);
+
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_fast_non_time');
+});
+
+test('bridge-gated shop clears guarded transcription timeout when transcript arrives in time', async (t) => {
   initializeBridgeGreetingSession({
     parentCallControlId: 'cc_parent_transcription_in_time',
     openaiLegCallControlId: 'cc_openai_transcription_in_time',
@@ -599,6 +663,11 @@ test('bridge-gated shop clears transcription timeout when transcript arrives in 
   srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
   srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
   await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'What date and time would you like for your booking?',
+  }));
+  await flushIO(30);
   messages.length = 0;
 
   t.mock.timers.enable({ apis: ['setTimeout'] });
@@ -607,16 +676,19 @@ test('bridge-gated shop clears transcription timeout when transcript arrives in 
     item_id: 'item_transcription_in_time',
   }));
   await flushIO(30);
+  let parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  assert.equal(parsed.filter((message) => message.type === 'response.create').length, 0);
+
   srv.send(JSON.stringify({
     type: 'conversation.item.input_audio_transcription.completed',
     item_id: 'item_transcription_in_time',
-    transcript: 'What are your hours?',
+    transcript: 'Tomorrow at 9 AM.',
   }));
   await flushIO(30);
   t.mock.timers.tick(2_001);
   await flushIO(30);
 
-  const parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
+  parsed = messages.map((message) => JSON.parse(message) as { type?: string; item_id?: string });
   assert.equal(parsed.filter((message) => message.type === 'response.create').length, 1);
   assert.equal(parsed.some((message) => message.type === 'conversation.item.delete'), false);
 
@@ -661,6 +733,11 @@ test('bridge-gated shop ignores late transcription after timeout and stays liste
   await flushIO(30);
   srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
   srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'What date and time would you like for your booking?',
+  }));
   await flushIO(30);
   messages.length = 0;
 
