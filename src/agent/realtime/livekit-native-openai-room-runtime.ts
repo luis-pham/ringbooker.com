@@ -370,7 +370,31 @@ type OpenAIRealtimeModelDelegate = {
   close?: () => Promise<void>;
 };
 
-function buildTurnDetectionConfig(): {
+type OpenAiTurnDetectionEnvProfile = 'agent' | 'public_demo' | 'user_demo';
+
+const OPENAI_TURN_DETECTION_ENV_PREFIXES: Record<OpenAiTurnDetectionEnvProfile, string[]> = {
+  agent: ['AGENT_OPENAI'],
+  public_demo: ['PUBLIC_DEMO_OPENAI', 'WEB_DEMO_OPENAI', 'AGENT_OPENAI'],
+  user_demo: ['USER_DEMO_OPENAI', 'WEB_DEMO_OPENAI', 'AGENT_OPENAI'],
+};
+
+function openAiTurnDetectionProfileForDispatch(input: RealtimeDispatchInput): OpenAiTurnDetectionEnvProfile {
+  const demoSource = (
+    input.realtime.metadata as { dispatchPayload?: { demo?: { source?: string } } } | undefined
+  )?.dispatchPayload?.demo?.source;
+  if (!demoSource) return 'agent';
+  return demoSource.includes('onboarding') || demoSource.includes('user') ? 'user_demo' : 'public_demo';
+}
+
+function readOpenAiTurnDetectionEnv(profile: OpenAiTurnDetectionEnvProfile, key: string): string | undefined {
+  for (const prefix of OPENAI_TURN_DETECTION_ENV_PREFIXES[profile]) {
+    const value = process.env[`${prefix}_${key}`];
+    if (value !== undefined && value.trim() !== '') return value;
+  }
+  return undefined;
+}
+
+function buildTurnDetectionConfig(input: RealtimeDispatchInput): {
   type: 'semantic_vad';
   eagerness?: 'auto' | 'low' | 'medium' | 'high';
   create_response: boolean;
@@ -383,28 +407,29 @@ function buildTurnDetectionConfig(): {
   create_response: boolean;
   interrupt_response: boolean;
 } | null {
-  /** Misnamed env: `true` = enable turn detection; mode is `semantic_vad` vs `server_vad` from `AGENT_OPENAI_TURN_DETECTION`. `false` = no turn detection. */
-  const turnDetectionEnabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
+  /** Misnamed env: `true` = enable turn detection; mode is `semantic_vad` vs `server_vad` from `*_OPENAI_TURN_DETECTION`. `false` = no turn detection. */
+  const profile = openAiTurnDetectionProfileForDispatch(input);
+  const turnDetectionEnabled = parseBoolean(readOpenAiTurnDetectionEnv(profile, 'SERVER_VAD_ENABLED'), true);
   if (!turnDetectionEnabled) return null;
 
-  const mode = process.env.AGENT_OPENAI_TURN_DETECTION?.trim().toLowerCase() === 'semantic_vad'
+  const mode = readOpenAiTurnDetectionEnv(profile, 'TURN_DETECTION')?.trim().toLowerCase() === 'semantic_vad'
     ? 'semantic_vad'
     : 'server_vad';
-  const createResponse = parseBoolean(process.env.AGENT_OPENAI_CREATE_RESPONSE, true);
-  const interruptResponse = parseBoolean(process.env.AGENT_OPENAI_INTERRUPT_RESPONSE, true);
+  const createResponse = parseBoolean(readOpenAiTurnDetectionEnv(profile, 'CREATE_RESPONSE'), true);
+  const interruptResponse = parseBoolean(readOpenAiTurnDetectionEnv(profile, 'INTERRUPT_RESPONSE'), true);
 
   if (mode === 'server_vad') {
     return {
       type: 'server_vad',
-      threshold: Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.45))),
-      prefix_padding_ms: Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 500))),
-      silence_duration_ms: Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 900))),
+      threshold: Math.max(0, Math.min(1, parseNumber(readOpenAiTurnDetectionEnv(profile, 'VAD_THRESHOLD'), 0.45))),
+      prefix_padding_ms: Math.max(0, Math.round(parseNumber(readOpenAiTurnDetectionEnv(profile, 'VAD_PREFIX_MS'), 500))),
+      silence_duration_ms: Math.max(1, Math.round(parseNumber(readOpenAiTurnDetectionEnv(profile, 'VAD_SILENCE_MS'), 900))),
       create_response: createResponse,
       interrupt_response: interruptResponse,
     };
   }
 
-  const eagerness = process.env.AGENT_OPENAI_SEMANTIC_VAD_EAGERNESS?.trim().toLowerCase();
+  const eagerness = readOpenAiTurnDetectionEnv(profile, 'SEMANTIC_VAD_EAGERNESS')?.trim().toLowerCase();
   const normalizedEagerness =
     eagerness === 'low' || eagerness === 'medium' || eagerness === 'high' || eagerness === 'auto'
       ? eagerness
@@ -433,7 +458,7 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = resolveOpenAIModel(input);
   if (!apiKey || !model) throw new Error('missing_openai_api_key_or_model_for_native_runtime');
-  const turnDetection = buildTurnDetectionConfig();
+  const turnDetection = buildTurnDetectionConfig(input);
 
   const runtimeStartedAtMs = Date.now();
   const room = new Room();
@@ -497,7 +522,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const model = resolveOpenAIModel(input);
   if (!apiKey || !model) throw new Error('missing_openai_api_key_or_model_for_native_runtime');
   const openAiModel = model;
-  const turnDetection = buildTurnDetectionConfig();
+  const turnDetection = buildTurnDetectionConfig(input);
   const openAiVoice = resolveOpenAIVoice(input);
   const openAiAudioSpeed = resolveOpenAIAudioSpeed();
   const openAiInputNoiseReduction = resolveOpenAIInputNoiseReduction();

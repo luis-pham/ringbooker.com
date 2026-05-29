@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definitions';
-import { buildDirectWebDemoClientSecretAudioInput, buildOpenAiSipAcceptAudioInputFromEnv, buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
+import {
+  buildDirectWebDemoClientSecretAudioInput,
+  buildOpenAiSipAcceptAudioInputFromEnv,
+  buildOpenAiSipAcceptBody,
+  buildOpenAiTurnDetectionAudioInputFromEnv,
+} from '@/src/backend/webhooks/openai-sip-accept-payload';
 
 function withEnv(updates: Record<string, string | undefined>, fn: () => void) {
   const prev: Record<string, string | undefined> = {};
@@ -218,13 +223,15 @@ test('buildOpenAiSipAcceptBody adds shop tools + tool_choice when provided', () 
   );
 });
 
-test('buildDirectWebDemoClientSecretAudioInput suppresses then restores create_response', () => {
+test('buildDirectWebDemoClientSecretAudioInput uses public demo VAD profile before AGENT fallback', () => {
   withEnv(
     {
       AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
-      AGENT_OPENAI_TURN_DETECTION: 'semantic_vad',
-      AGENT_OPENAI_SEMANTIC_VAD_EAGERNESS: 'medium',
+      AGENT_OPENAI_TURN_DETECTION: 'server_vad',
       AGENT_OPENAI_CREATE_RESPONSE: 'true',
+      PUBLIC_DEMO_OPENAI_TURN_DETECTION: 'semantic_vad',
+      PUBLIC_DEMO_OPENAI_SEMANTIC_VAD_EAGERNESS: 'medium',
+      PUBLIC_DEMO_OPENAI_CREATE_RESPONSE: 'true',
     },
     () => {
       const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput();
@@ -236,8 +243,59 @@ test('buildDirectWebDemoClientSecretAudioInput suppresses then restores create_r
   );
 });
 
+test('buildDirectWebDemoClientSecretAudioInput uses user demo VAD profile for onboarding embed', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'server_vad',
+      PUBLIC_DEMO_OPENAI_TURN_DETECTION: 'semantic_vad',
+      USER_DEMO_OPENAI_TURN_DETECTION: 'server_vad',
+      USER_DEMO_OPENAI_VAD_THRESHOLD: '0.6',
+      USER_DEMO_OPENAI_VAD_PREFIX_MS: '120',
+      USER_DEMO_OPENAI_VAD_SILENCE_MS: '120',
+      USER_DEMO_OPENAI_VAD_IDLE_TIMEOUT_MS: '5000',
+      USER_DEMO_OPENAI_CREATE_RESPONSE: 'true',
+      USER_DEMO_OPENAI_INTERRUPT_RESPONSE: 'true',
+    },
+    () => {
+      const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput('user_demo');
+      assert.equal(turnDetectionForSecret?.type, 'server_vad');
+      assert.equal(turnDetectionForSecret?.threshold, 0.6);
+      assert.equal(turnDetectionForSecret?.prefix_padding_ms, 120);
+      assert.equal(turnDetectionForSecret?.silence_duration_ms, 120);
+      assert.equal(turnDetectionForSecret?.idle_timeout_ms, 5000);
+      assert.equal(turnDetectionForSecret?.create_response, false);
+      assert.equal(turnDetectionForSecret?.interrupt_response, false);
+      assert.equal(turnDetectionAfterWelcome?.type, 'server_vad');
+      assert.equal(turnDetectionAfterWelcome?.create_response, true);
+      assert.equal(turnDetectionAfterWelcome?.interrupt_response, true);
+    },
+  );
+});
+
+test('web demo VAD profiles fall back to shared WEB_DEMO then AGENT env', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'server_vad',
+      WEB_DEMO_OPENAI_TURN_DETECTION: 'semantic_vad',
+      WEB_DEMO_OPENAI_SEMANTIC_VAD_EAGERNESS: 'high',
+      PUBLIC_DEMO_OPENAI_TURN_DETECTION: undefined,
+      PUBLIC_DEMO_OPENAI_SEMANTIC_VAD_EAGERNESS: undefined,
+      USER_DEMO_OPENAI_TURN_DETECTION: undefined,
+      USER_DEMO_OPENAI_SEMANTIC_VAD_EAGERNESS: undefined,
+    },
+    () => {
+      assert.equal(buildOpenAiTurnDetectionAudioInputFromEnv('public_demo').turn_detection?.type, 'semantic_vad');
+      assert.equal(buildOpenAiTurnDetectionAudioInputFromEnv('public_demo').turn_detection?.eagerness, 'high');
+      assert.equal(buildOpenAiTurnDetectionAudioInputFromEnv('user_demo').turn_detection?.type, 'semantic_vad');
+      assert.equal(buildOpenAiTurnDetectionAudioInputFromEnv('user_demo').turn_detection?.eagerness, 'high');
+    },
+  );
+});
+
 test('buildDirectWebDemoClientSecretAudioInput returns nulls when VAD disabled', () => {
-  withEnv({ AGENT_OPENAI_SERVER_VAD_ENABLED: 'false' }, () => {
+  withEnv({ AGENT_OPENAI_SERVER_VAD_ENABLED: 'false', PUBLIC_DEMO_OPENAI_SERVER_VAD_ENABLED: undefined }, () => {
     const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput();
     assert.equal(turnDetectionForSecret, null);
     assert.equal(turnDetectionAfterWelcome, null);

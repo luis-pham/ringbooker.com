@@ -50,6 +50,24 @@ function parseNumber(value: string | undefined, defaultValue: number): number {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
+export type DirectWebDemoTurnDetectionProfile = 'public_demo' | 'user_demo';
+
+type OpenAiTurnDetectionProfile = 'sip' | DirectWebDemoTurnDetectionProfile;
+
+const OPENAI_TURN_DETECTION_ENV_PREFIXES: Record<OpenAiTurnDetectionProfile, string[]> = {
+  sip: ['AGENT_OPENAI'],
+  public_demo: ['PUBLIC_DEMO_OPENAI', 'WEB_DEMO_OPENAI', 'AGENT_OPENAI'],
+  user_demo: ['USER_DEMO_OPENAI', 'WEB_DEMO_OPENAI', 'AGENT_OPENAI'],
+};
+
+function readTurnDetectionEnv(profile: OpenAiTurnDetectionProfile, key: string): string | undefined {
+  for (const prefix of OPENAI_TURN_DETECTION_ENV_PREFIXES[profile]) {
+    const value = process.env[`${prefix}_${key}`];
+    if (value !== undefined && value.trim() !== '') return value;
+  }
+  return undefined;
+}
+
 function normalizeOptionalLanguage(value: string | undefined, defaultValue: string | undefined): string | undefined {
   const raw = value?.trim();
   if (!raw) return defaultValue;
@@ -77,25 +95,29 @@ export function buildOpenAiRealtimeInputTranscriptionFromEnv(
 }
 
 /**
- * Builds `audio.input` for SIP accept. Reads `process.env` so backend webhook matches deployment VAD config.
+ * Builds `audio.input` turn detection from a named env profile.
  * `AGENT_OPENAI_SERVER_VAD_ENABLED` is a legacy name: it toggles turn detection on/off, not “server VAD only”.
  */
-export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Record<string, unknown> | null } {
-  const turnDetectionEnabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
+export function buildOpenAiTurnDetectionAudioInputFromEnv(
+  profile: OpenAiTurnDetectionProfile,
+): { turn_detection: Record<string, unknown> | null } {
+  const turnDetectionEnabled = parseBoolean(readTurnDetectionEnv(profile, 'SERVER_VAD_ENABLED'), true);
   if (!turnDetectionEnabled) {
     return { turn_detection: null };
   }
 
   const mode =
-    process.env.AGENT_OPENAI_TURN_DETECTION?.trim().toLowerCase() === 'semantic_vad' ? 'semantic_vad' : 'server_vad';
-  const createResponse = parseBoolean(process.env.AGENT_OPENAI_CREATE_RESPONSE, true);
-  const interruptResponse = parseBoolean(process.env.AGENT_OPENAI_INTERRUPT_RESPONSE, true);
+    readTurnDetectionEnv(profile, 'TURN_DETECTION')?.trim().toLowerCase() === 'semantic_vad'
+      ? 'semantic_vad'
+      : 'server_vad';
+  const createResponse = parseBoolean(readTurnDetectionEnv(profile, 'CREATE_RESPONSE'), true);
+  const interruptResponse = parseBoolean(readTurnDetectionEnv(profile, 'INTERRUPT_RESPONSE'), true);
 
   if (mode === 'server_vad') {
-    const threshold = Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.45)));
-    const prefix_padding_ms = Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 500)));
-    const silence_duration_ms = Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 900)));
-    const idleRaw = Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 10_000));
+    const threshold = Math.max(0, Math.min(1, parseNumber(readTurnDetectionEnv(profile, 'VAD_THRESHOLD'), 0.45)));
+    const prefix_padding_ms = Math.max(0, Math.round(parseNumber(readTurnDetectionEnv(profile, 'VAD_PREFIX_MS'), 500)));
+    const silence_duration_ms = Math.max(1, Math.round(parseNumber(readTurnDetectionEnv(profile, 'VAD_SILENCE_MS'), 900)));
+    const idleRaw = Math.round(parseNumber(readTurnDetectionEnv(profile, 'VAD_IDLE_TIMEOUT_MS'), 10_000));
     const idle_timeout_ms = Math.max(5000, Math.min(30_000, idleRaw));
     return {
       turn_detection: {
@@ -110,7 +132,7 @@ export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Recor
     };
   }
 
-  const eagernessRaw = process.env.AGENT_OPENAI_SEMANTIC_VAD_EAGERNESS?.trim().toLowerCase();
+  const eagernessRaw = readTurnDetectionEnv(profile, 'SEMANTIC_VAD_EAGERNESS')?.trim().toLowerCase();
   const eagerness =
     eagernessRaw === 'low' || eagernessRaw === 'medium' || eagernessRaw === 'high' || eagernessRaw === 'auto'
       ? eagernessRaw
@@ -127,21 +149,28 @@ export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Recor
 }
 
 /**
+ * Builds `audio.input` for SIP accept. Reads only `AGENT_OPENAI_*` so phone/SIP tuning stays independent.
+ */
+export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Record<string, unknown> | null } {
+  return buildOpenAiTurnDetectionAudioInputFromEnv('sip');
+}
+
+/**
  * Browser WebRTC direct demo (`client_secrets`): mint session with `create_response: false` so VAD does not
  * start a stray assistant turn before the page sends the scripted welcome `response.create`. After that
  * welcome finishes, the client must apply `turnDetectionAfterWelcome` via `session.update` so user speech
  * triggers responses again.
  */
-export function buildDirectWebDemoClientSecretAudioInput(): {
+export function buildDirectWebDemoClientSecretAudioInput(profile: DirectWebDemoTurnDetectionProfile = 'public_demo'): {
   turnDetectionForSecret: Record<string, unknown> | null;
   turnDetectionAfterWelcome: Record<string, unknown> | null;
 } {
-  const envAudioInput = buildOpenAiSipAcceptAudioInputFromEnv();
+  const envAudioInput = buildOpenAiTurnDetectionAudioInputFromEnv(profile);
   const td = envAudioInput.turn_detection;
   if (!td || typeof td !== 'object' || Array.isArray(td)) {
     return { turnDetectionForSecret: null, turnDetectionAfterWelcome: null };
   }
-  const createResponse = parseBoolean(process.env.AGENT_OPENAI_CREATE_RESPONSE, true);
+  const createResponse = parseBoolean(readTurnDetectionEnv(profile, 'CREATE_RESPONSE'), true);
   return {
     // Disable both create_response AND interrupt_response during the greeting window:
     // create_response:false  → VAD won't auto-start a stray response before the page sends its own response.create

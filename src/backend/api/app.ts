@@ -13,6 +13,7 @@ import { buildPublicDemoScriptedWelcomeLine, buildPublicDemoSystemPrompt, getDem
 import {
   buildDirectWebDemoClientSecretAudioInput,
   buildOpenAiRealtimeInputTranscriptionFromEnv,
+  type DirectWebDemoTurnDetectionProfile,
 } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   clearDirectDemoActiveSlot,
@@ -343,10 +344,15 @@ function directOpenAiRealtimeModel() {
   return process.env.OPENAI_REALTIME_MODEL?.trim() || 'gpt-realtime';
 }
 
+function directWebDemoTurnDetectionProfileForSource(demoSource: string): DirectWebDemoTurnDetectionProfile {
+  return demoSource.includes('onboarding') || demoSource.includes('user') ? 'user_demo' : 'public_demo';
+}
+
 async function createOpenAiRealtimeClientSecret(params: {
   model: string;
   voice: string;
   instructions: string;
+  turnDetectionProfile: DirectWebDemoTurnDetectionProfile;
 }): Promise<{
   value: string;
   expiresAt?: number;
@@ -358,7 +364,9 @@ async function createOpenAiRealtimeClientSecret(params: {
     throw new Error('openai_config_missing');
   }
 
-  const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput();
+  const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput(
+    params.turnDetectionProfile,
+  );
 
   const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
@@ -3560,6 +3568,7 @@ export function createBackendApp(deps: {
 
       const demoMode = parsed.data.demoMode ?? 'quick';
       const demoSource = parsed.data.demoSource ?? 'vertical_demo_direct_openai';
+      const turnDetectionProfile = directWebDemoTurnDetectionProfileForSource(demoSource);
       const model = directOpenAiRealtimeModel();
       const voice = openAiRealtimeVoiceForDemoVerticalSlug(parsed.data.demoVertical ?? demoVertical);
       const systemPrompt = buildPublicDemoSystemPrompt({
@@ -3623,6 +3632,7 @@ export function createBackendApp(deps: {
               demoVertical,
               demoMode,
               demoSource,
+              turnDetectionProfile,
               model,
               voice,
             },
@@ -3653,6 +3663,7 @@ export function createBackendApp(deps: {
           model,
           voice,
           instructions: systemPrompt,
+          turnDetectionProfile,
         });
 
         securityAudit({
