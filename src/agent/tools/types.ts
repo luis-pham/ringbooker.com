@@ -55,6 +55,21 @@ export type AgentToolContext = {
       normalizedDatetimeUtc: string;
     } | null;
   };
+  /** Runtime-only cache used to avoid repeated availability provider calls during one live turn. */
+  availabilityCheck?: {
+    latest: {
+      providerId: string;
+      service: string;
+      date: string;
+      time: string;
+      techName?: string;
+      available: boolean;
+      suggestions?: unknown;
+      raw: unknown;
+      fetchedAtMs: number;
+      prefetchStartedAtMs?: number;
+    } | null;
+  };
 };
 
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

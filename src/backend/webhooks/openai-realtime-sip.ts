@@ -6,9 +6,12 @@ import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definit
 import {
   createSipAgentToolContext,
   executeSipShopToolCall,
+  prePopulateAvailabilityFromDraft,
   prePopulateFromTranscript,
   previewAppointmentTimeFromTranscript,
   updateSipBookingDraftFromTranscript,
+  type AppointmentTimePrePopulateResult,
+  type AvailabilityCheckPrePopulateResult,
   type SipToolExecutorDeps,
 } from '@/src/agent/sip/sip-tool-executor';
 import { summarizeBookingDraftForLog } from '@/src/agent/booking/booking-draft';
@@ -1100,6 +1103,7 @@ export async function handleOpenAiRealtimeSipWebhook(
           rbCallId: shopRoomContext.rbCallId,
           openAiLegCallControlId: shopRoomContext.openAiLegCallControlId,
         });
+        let currentAvailabilityPrefetch: Promise<AvailabilityCheckPrePopulateResult | null> | null = null;
         const shop = route.shop;
         const sidebandCtx = shopRoomContext;
         const parentCcId = sidebandCtx.parentTelnyxCallControlId;
@@ -1113,6 +1117,42 @@ export async function handleOpenAiRealtimeSipWebhook(
         /** One-shot guard: prevents double-hangup when caller hangs up during the end_call delay. */
         let hangupInitiated = false;
         const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
+
+        function clearAvailabilityPrefetch(options: { clearCache?: boolean } = {}): void {
+          currentAvailabilityPrefetch = null;
+          if (options.clearCache) {
+            toolCtx.availabilityCheck = { latest: null };
+          }
+        }
+
+        function startAvailabilityPrefetch(): void {
+          const prefetch = prePopulateAvailabilityFromDraft(toolCtx);
+          currentAvailabilityPrefetch = prefetch;
+          void prefetch.finally(() => {
+            if (currentAvailabilityPrefetch === prefetch) {
+              currentAvailabilityPrefetch = null;
+            }
+          });
+        }
+
+        async function getAvailabilityBeforeResponse(): Promise<AvailabilityCheckPrePopulateResult | null> {
+          if (!currentAvailabilityPrefetch) {
+            return toolCtx.availabilityCheck?.latest ?? null;
+          }
+
+          let timeout: ReturnType<typeof setTimeout> | null = null;
+          const timeoutPromise = new Promise<null>((resolve) => {
+            timeout = setTimeout(() => resolve(null), 200);
+          });
+          try {
+            return await Promise.race([
+              currentAvailabilityPrefetch.then(() => toolCtx.availabilityCheck?.latest ?? null),
+              timeoutPromise,
+            ]);
+          } finally {
+            if (timeout) clearTimeout(timeout);
+          }
+        }
 
         function buildShopSidebandCore() {
           return {
@@ -1156,6 +1196,9 @@ export async function handleOpenAiRealtimeSipWebhook(
               if (speaker === 'caller') {
                 const draftUpdate = updateSipBookingDraftFromTranscript(toolCtx, text);
                 if (draftUpdate) {
+                  if (draftUpdate.reasonCodes.includes('service_candidate_accumulated')) {
+                    clearAvailabilityPrefetch();
+                  }
                   const bookingDraftLog = draftUpdate.bookingDraft;
                   logger.info(
                     {
@@ -1194,14 +1237,24 @@ export async function handleOpenAiRealtimeSipWebhook(
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,
             onCallerTranscriptPrePopulate: (transcript: string) => {
+              clearAvailabilityPrefetch();
               return {
                 preview: previewAppointmentTimeFromTranscript(toolCtx, transcript),
                 result: prePopulateFromTranscript(toolCtx, transcript),
               };
             },
+            onValidationPrePopulateComplete: (result: AppointmentTimePrePopulateResult) => {
+              if (result.valid) {
+                startAvailabilityPrefetch();
+              }
+            },
+            onBeforeResponseCreate: async () => ({
+              availabilityResult: await getAvailabilityBeforeResponse(),
+            }),
             onEndCall: () => {
               if (hangupInitiated) return;
               hangupInitiated = true;
+              clearAvailabilityPrefetch({ clearCache: true });
               logger.info({ callId, shopId: shop.id }, 'openai_sip_end_call_tool_hangup');
               setTimeout(() => {
                 if (parentCcId && telnyxKey) {
@@ -1223,6 +1276,7 @@ export async function handleOpenAiRealtimeSipWebhook(
         }
 
         async function doFinalFallback() {
+          clearAvailabilityPrefetch({ clearCache: true });
           const handoffAvailability = isHandoffAvailable(shop);
           const fallbackHandoffPhone = shop.handoff_phone?.trim();
           const canTransfer =
@@ -1355,6 +1409,7 @@ export async function handleOpenAiRealtimeSipWebhook(
           onWsDropped: (closeCode) => { void handleWsDrop(closeCode); },
           onHardLimit: () => {
             hangupInitiated = true; // prevent stale onEndCall from double-hanging
+            clearAvailabilityPrefetch({ clearCache: true });
             logger.warn({ callId, shopId: shop.id, hardLimitMs }, 'openai_sip_shop_hard_limit_hit');
             if (deps.jobsRepository) {
               void deps.jobsRepository.enqueue({

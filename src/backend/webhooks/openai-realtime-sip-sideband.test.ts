@@ -37,8 +37,12 @@ test.before(() => {
   wssPort = (wss.address() as AddressInfo).port;
 });
 
-test.after(async () => {
-  await new Promise<void>((resolve) => wss.close(() => resolve()));
+test.after(() => {
+  for (const client of wss.clients) {
+    client.terminate();
+  }
+  wss.close();
+  (wss as unknown as { _server?: { unref?: () => void } })._server?.unref?.();
 });
 
 /** Returns a promise that resolves with the next server-side socket connection. */
@@ -154,6 +158,8 @@ test('onHardLimit fires after hardLimitMs from WS open', async (t) => {
   t.mock.timers.tick(5_001);
 
   assert.equal(hardLimitFired, true, 'onHardLimit should have fired after tick(5001)');
+  srv.close(1000, 'test complete');
+  t.mock.timers.reset();
 });
 
 // ---------------------------------------------------------------------------
@@ -191,6 +197,7 @@ test('hard-limit timer is cleared when WS closes with code 1000', async (t) => {
   t.mock.timers.tick(10_000);
 
   assert.equal(hardLimitFired, false, 'onHardLimit must not fire after clean WS close');
+  t.mock.timers.reset();
 });
 
 test('bridge-ready production greeting sends immediately without fixed sideband delay', async () => {
@@ -235,7 +242,7 @@ test('bridge-ready production greeting sends immediately without fixed sideband 
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_no_delay');
 });
 
-test('bridge-gated shop forces appointment validation before responding to a requested time', async () => {
+test('bridge-gated shop injects appointment validation before responding to a requested time', async () => {
   initializeBridgeGreetingSession({
     parentCallControlId: 'cc_parent_time_validation',
     openaiLegCallControlId: 'cc_openai_time_validation',
@@ -257,6 +264,19 @@ test('bridge-gated shop forces appointment validation before responding to a req
         parentCallControlId: 'cc_parent_time_validation',
         openaiLegCallControlId: 'cc_openai_time_validation',
       },
+      onCallerTranscriptPrePopulate: () => ({
+        preview: { date: '2099-01-06', time: '21:00' },
+        result: Promise.resolve({
+          date: '2099-01-06',
+          time: '21:00',
+          valid: true,
+          reason: 'within_business_hours',
+          normalizedDatetimeUtc: '2099-01-07T05:00:00.000Z',
+          messageForAi: 'The requested time may be captured.',
+          timestamp: new Date().toISOString(),
+          status: 'set',
+        }),
+      }),
     },
     { wsUrlOverride: sidebandUrl('time-validation-turn-test'), greetingDelayMs: 0 },
   );
@@ -279,13 +299,145 @@ test('bridge-gated shop forces appointment validation before responding to a req
   }));
   await flushIO(30);
 
-  const turnResponse = messages
-    .map((message) => JSON.parse(message) as { type?: string; response?: { tool_choice?: { name?: string } } })
-    .find((message) => message.response?.tool_choice?.name === 'validate_appointment_time');
-  assert.equal(turnResponse?.type, 'response.create');
-  assert.equal(turnResponse?.response?.tool_choice?.name, 'validate_appointment_time');
+  const parsed = messages
+    .map((message) => JSON.parse(message) as {
+      type?: string;
+      item?: { type?: string; name?: string; call_id?: string; output?: string };
+      response?: { tool_choice?: unknown; instructions?: string };
+    });
+  const injectedCall = parsed.find((message) =>
+    message.type === 'conversation.item.create' &&
+    message.item?.type === 'function_call' &&
+    message.item.name === 'validate_appointment_time'
+  );
+  const injectedOutput = parsed.find((message) =>
+    message.type === 'conversation.item.create' &&
+    message.item?.type === 'function_call_output' &&
+    message.item.call_id === injectedCall?.item?.call_id
+  );
+  const turnResponse = parsed.find((message) =>
+    message.type === 'response.create' &&
+    /already validated/.test(message.response?.instructions ?? '')
+  );
+  assert.ok(injectedCall, 'validation function_call should be injected');
+  assert.ok(injectedOutput, 'validation function_call_output should be injected');
+  assert.ok(turnResponse, 'response.create should use injected validation evidence');
+  assert.equal(turnResponse?.response?.tool_choice, undefined, 'valid time without availability should leave tool choice unset');
+  assert.equal(
+    parsed.some((message) =>
+      typeof message.response?.tool_choice === 'object' &&
+      (message.response.tool_choice as { name?: string }).name === 'validate_appointment_time'
+    ),
+    false,
+    'sideband should not force a validate_appointment_time model round-trip',
+  );
   srv.close(1000, 'test complete');
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_time_validation');
+});
+
+test('bridge-gated shop injects availability before response when prefetch is ready', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_availability_inject',
+    openaiLegCallControlId: 'cc_openai_availability_inject',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_availability_inject',
+    openaiLegCallControlId: 'cc_openai_availability_inject',
+  });
+
+  const serverSocket = nextServerSocket();
+  let validationCompleteCalled = false;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'availability-inject-turn-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_availability_inject',
+        openaiLegCallControlId: 'cc_openai_availability_inject',
+      },
+      onCallerTranscriptPrePopulate: () => ({
+        preview: { date: '2099-01-06', time: '09:00' },
+        result: Promise.resolve({
+          date: '2099-01-06',
+          time: '09:00',
+          valid: true,
+          reason: 'within_business_hours',
+          normalizedDatetimeUtc: '2099-01-06T17:00:00.000Z',
+          messageForAi: 'The requested time may be captured.',
+          timestamp: new Date().toISOString(),
+          status: 'set',
+        }),
+      }),
+      onValidationPrePopulateComplete: () => {
+        validationCompleteCalled = true;
+      },
+      onBeforeResponseCreate: async () => ({
+        availabilityResult: {
+          providerId: 'google_calendar',
+          service: 'Manicure',
+          date: '2099-01-06',
+          time: '09:00',
+          available: true,
+          suggestions: [{ date: '2099-01-06', time: '09:00' }],
+          raw: { available: true },
+          fetchedAtMs: Date.now(),
+          prefetchStartedAtMs: Date.now() - 50,
+        },
+      }),
+    },
+    { wsUrlOverride: sidebandUrl('availability-inject-turn-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'What date and time would you like for your booking?',
+  }));
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'Tomorrow at 9 AM.',
+  }));
+  await flushIO(30);
+
+  const parsed = messages
+    .map((message) => JSON.parse(message) as {
+      type?: string;
+      item?: { type?: string; name?: string; call_id?: string; output?: string };
+      response?: { tool_choice?: unknown; instructions?: string };
+    });
+  const injectedItems = parsed
+    .filter((message) => message.type === 'conversation.item.create')
+    .map((message) => {
+      if (message.item?.type === 'function_call') return `call:${message.item.name}`;
+      if (message.item?.type === 'function_call_output') return 'output';
+      return message.item?.type ?? 'unknown';
+    });
+  const turnResponse = parsed.find((message) =>
+    message.type === 'response.create' &&
+    /already validated/.test(message.response?.instructions ?? '')
+  );
+
+  assert.equal(validationCompleteCalled, true);
+  assert.deepEqual(injectedItems.slice(-4), [
+    'call:validate_appointment_time',
+    'output',
+    'call:check_availability',
+    'output',
+  ]);
+  assert.equal(turnResponse?.response?.tool_choice, 'none');
+  assert.match(turnResponse?.response?.instructions ?? '', /Availability checked/);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_availability_inject');
 });
 
 test('bridge-gated shop creates an ordinary response for a caller question without an appointment time', async () => {
@@ -333,6 +485,8 @@ test('bridge-gated shop creates an ordinary response for a caller question witho
   const callerTurnResponse = responseMessages.at(-1);
   assert.equal(responseMessages.length, 2);
   assert.equal(callerTurnResponse?.response?.tool_choice, undefined);
+  srv.send(JSON.stringify({ type: 'response.done' }));
+  await flushIO(30);
   srv.send(JSON.stringify({ type: 'conversation.item.input_audio_transcription.failed' }));
   await flushIO(30);
   const responseCountAfterFailedTranscript = messages
@@ -341,6 +495,124 @@ test('bridge-gated shop creates an ordinary response for a caller question witho
   assert.equal(responseCountAfterFailedTranscript, 3);
   srv.close(1000, 'test complete');
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_general_turn');
+});
+
+test('bridge-gated shop ignores filler transcripts while a response is in-flight', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_filler_lock',
+    openaiLegCallControlId: 'cc_openai_filler_lock',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_filler_lock',
+    openaiLegCallControlId: 'cc_openai_filler_lock',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'filler-lock-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_filler_lock',
+        openaiLegCallControlId: 'cc_openai_filler_lock',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('filler-lock-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'I want to book.',
+  }));
+  await flushIO(30);
+  const responseCountBeforeFiller = messages
+    .map((message) => JSON.parse(message) as { type?: string })
+    .filter((message) => message.type === 'response.create').length;
+
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'Hello',
+  }));
+  await flushIO(30);
+  const responseCountAfterFiller = messages
+    .map((message) => JSON.parse(message) as { type?: string })
+    .filter((message) => message.type === 'response.create').length;
+
+  assert.equal(responseCountBeforeFiller, 2);
+  assert.equal(responseCountAfterFiller, 2);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_filler_lock');
+});
+
+test('bridge-gated shop queues booking details while a response is in-flight', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_queue_lock',
+    openaiLegCallControlId: 'cc_openai_queue_lock',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_queue_lock',
+    openaiLegCallControlId: 'cc_openai_queue_lock',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'queue-lock-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_queue_lock',
+        openaiLegCallControlId: 'cc_openai_queue_lock',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('queue-lock-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'I want to book.',
+  }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'My name is Huy.',
+  }));
+  await flushIO(30);
+  const responseCountBeforeRelease = messages
+    .map((message) => JSON.parse(message) as { type?: string })
+    .filter((message) => message.type === 'response.create').length;
+
+  srv.send(JSON.stringify({ type: 'response.done' }));
+  await flushIO(50);
+  const responseCountAfterRelease = messages
+    .map((message) => JSON.parse(message) as { type?: string })
+    .filter((message) => message.type === 'response.create').length;
+
+  assert.equal(responseCountBeforeRelease, 2);
+  assert.equal(responseCountAfterRelease, 3);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_queue_lock');
 });
 
 // ---------------------------------------------------------------------------
@@ -432,4 +704,5 @@ test('onEndCall fires via 5s fallback when output_audio_buffer.stopped never arr
   assert.equal(endCallFired, true, 'onEndCall must fire after 5s fallback timer');
 
   srv.close(1000);
+  t.mock.timers.reset();
 });

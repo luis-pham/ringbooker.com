@@ -2424,9 +2424,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 @media(max-width:768px){.onb-step2-desktop-inline{display:none!important}}
 .preset-chip.mixed-chip.locked{opacity:.55;cursor:not-allowed}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
-.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups{max-width:780px;margin-left:auto;margin-right:auto}
+.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups{max-width:816px;margin-left:auto;margin-right:auto}
 .onb-desktop-copy{display:inline}.onb-mobile-copy{display:none}
-.service-group-card{border:1px solid #e5e7eb;border-radius:12px;background:#fff;margin-top:14px;max-width:780px;margin-left:auto;margin-right:auto}
+.service-group-card{border:1px solid #e5e7eb;border-radius:12px;background:#fff;margin-top:14px;max-width:816px;margin-left:auto;margin-right:auto}
 .service-group-head{width:100%;min-height:56px;display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f9fafb;border:0;border-bottom:1px solid #f3f4f6;text-align:left;font:inherit;color:#111827;box-sizing:border-box;border-radius:12px 12px 0 0}
 .service-group-title-row{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
 .service-group-title--btn{border:0;background:transparent;padding:0;margin:0;font:inherit;font-size:15px;font-weight:500;color:#111827;cursor:pointer;text-align:left}

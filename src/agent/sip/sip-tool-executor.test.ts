@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createSipAgentToolContext, executeSipShopToolCall } from '@/src/agent/sip/sip-tool-executor';
+import {
+  createSipAgentToolContext,
+  executeSipShopToolCall,
+  prePopulateAvailabilityFromDraft,
+} from '@/src/agent/sip/sip-tool-executor';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
@@ -75,6 +79,167 @@ test('check_availability returns availability JSON', async () => {
     service: 'Manicure',
   });
   assert.ok(json.includes('"available"'));
+});
+
+test('check_availability returns cached prefetch result without provider API call', async () => {
+  const deps = memoryDeps();
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop: { ...shop, google_cal_id: 'calendar-cache-test' },
+    callerPhone: '+15550001111',
+    requestId: 'sip-availability-cache-hit',
+    roomName: 'sip-room-availability-cache-hit',
+    deps,
+  });
+  ctx.appointmentTimeValidation = {
+    latest: {
+      date: '2099-01-06',
+      time: '10:00',
+      valid: true,
+      reason: 'within_business_hours',
+      normalizedDatetimeUtc: '2099-01-06T18:00:00.000Z',
+    },
+  };
+  ctx.availabilityCheck = {
+    latest: {
+      providerId: 'google_calendar',
+      service: 'Manicure',
+      date: '2099-01-06',
+      time: '10:00',
+      available: true,
+      suggestions: [{ date: '2099-01-06', time: '10:00' }],
+      raw: { available: true, suggestions: [{ date: '2099-01-06', time: '10:00' }] },
+      fetchedAtMs: Date.now(),
+    },
+  };
+  let providerCalled = false;
+  ctx.calendarProvider.checkAvailability = async () => {
+    providerCalled = true;
+    return { available: false };
+  };
+
+  const json = await executeSipShopToolCall(ctx, 'check_availability', {
+    date: '2099-01-06',
+    time: '10:00',
+    service: 'Manicure',
+  });
+  const parsed = JSON.parse(json) as { available?: boolean; suggestions?: unknown[] };
+  assert.equal(parsed.available, true);
+  assert.equal(Array.isArray(parsed.suggestions), true);
+  assert.equal(providerCalled, false);
+});
+
+test('prePopulateAvailabilityFromDraft stores provider result for a calendar-integrated shop', async () => {
+  const deps = memoryDeps();
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop: { ...shop, google_cal_id: 'calendar-prefetch-test' },
+    callerPhone: '+15550001111',
+    requestId: 'sip-availability-prefetch',
+    roomName: 'sip-room-availability-prefetch',
+    deps,
+  });
+  ctx.bookingDraft!.serviceCandidates = ['Manicure'];
+  ctx.bookingDraft!.confidence.service = 0.9;
+  ctx.appointmentTimeValidation = {
+    latest: {
+      date: '2099-01-06',
+      time: '10:00',
+      valid: true,
+      reason: 'within_business_hours',
+      normalizedDatetimeUtc: '2099-01-06T18:00:00.000Z',
+    },
+  };
+  let providerCalled = false;
+  ctx.calendarProvider.checkAvailability = async () => {
+    providerCalled = true;
+    return { available: true, suggestions: [{ date: '2099-01-06', time: '10:00' }] };
+  };
+
+  const result = await prePopulateAvailabilityFromDraft(ctx);
+  assert.equal(providerCalled, true);
+  assert.equal(result?.available, true);
+  assert.equal(ctx.availabilityCheck?.latest?.providerId, 'google_calendar');
+  assert.equal(ctx.availabilityCheck?.latest?.service, 'Manicure');
+});
+
+test('prePopulateAvailabilityFromDraft skips manual calendar shops', async () => {
+  const deps = memoryDeps();
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop,
+    callerPhone: '+15550001111',
+    requestId: 'sip-availability-manual-skip',
+    roomName: 'sip-room-availability-manual-skip',
+    deps,
+  });
+  ctx.bookingDraft!.serviceCandidates = ['Manicure'];
+  ctx.bookingDraft!.confidence.service = 0.9;
+  ctx.appointmentTimeValidation = {
+    latest: {
+      date: '2099-01-06',
+      time: '10:00',
+      valid: true,
+      reason: 'within_business_hours',
+      normalizedDatetimeUtc: '2099-01-06T18:00:00.000Z',
+    },
+  };
+  let providerCalled = false;
+  ctx.calendarProvider.checkAvailability = async () => {
+    providerCalled = true;
+    return { available: true };
+  };
+
+  const result = await prePopulateAvailabilityFromDraft(ctx);
+  assert.equal(result, null);
+  assert.equal(ctx.availabilityCheck?.latest, null);
+  assert.equal(providerCalled, false);
+});
+
+test('prePopulateAvailabilityFromDraft discards stale provider results after time changes', async () => {
+  const deps = memoryDeps();
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop: { ...shop, google_cal_id: 'calendar-stale-prefetch-test' },
+    callerPhone: '+15550001111',
+    requestId: 'sip-availability-stale',
+    roomName: 'sip-room-availability-stale',
+    deps,
+  });
+  ctx.bookingDraft!.serviceCandidates = ['Manicure'];
+  ctx.bookingDraft!.confidence.service = 0.9;
+  ctx.appointmentTimeValidation = {
+    latest: {
+      date: '2099-01-06',
+      time: '09:00',
+      valid: true,
+      reason: 'within_business_hours',
+      normalizedDatetimeUtc: '2099-01-06T17:00:00.000Z',
+    },
+  };
+
+  let resolveAvailability!: (value: { available: boolean }) => void;
+  ctx.calendarProvider.checkAvailability = () => new Promise((resolve) => {
+    resolveAvailability = resolve;
+  });
+
+  const prefetch = prePopulateAvailabilityFromDraft(ctx);
+  ctx.appointmentTimeValidation.latest = {
+    date: '2099-01-06',
+    time: '10:00',
+    valid: true,
+    reason: 'within_business_hours',
+    normalizedDatetimeUtc: '2099-01-06T18:00:00.000Z',
+  };
+  resolveAvailability({ available: true });
+
+  const result = await prefetch;
+  assert.equal(result, null);
+  assert.equal(ctx.availabilityCheck?.latest, null);
 });
 
 test('create_booking returns success for manual calendar shop', async () => {

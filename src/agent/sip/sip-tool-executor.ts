@@ -29,7 +29,7 @@ import {
   buildValidationMessageForAi,
   validateAppointmentTimeTool,
 } from '@/src/agent/tools/validate-appointment-time';
-import type { AgentToolContext } from '@/src/agent/tools/types';
+import { resolveRuntimeService, type AgentToolContext } from '@/src/agent/tools/types';
 import { extractAppointmentDateTime } from '@/src/agent/sip/appointment-time-extractor';
 import type { Shop } from '@/src/backend/domain/types';
 import type {
@@ -42,7 +42,7 @@ import type {
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
 import { logger } from '@/src/backend/observability/logger';
-import { getCalendarProvider } from '@/src/backend/services/calendar/types';
+import { getCalendarProvider, getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 
@@ -72,6 +72,150 @@ function appointmentValidationResultLabel(result: unknown): 'valid' | 'invalid' 
   if (valid === true) return 'valid';
   if (valid === false) return 'invalid';
   return 'error';
+}
+
+export type AvailabilityCheckPrePopulateResult =
+  NonNullable<NonNullable<AgentToolContext['availabilityCheck']>['latest']>;
+
+type AvailabilityCheckRequest = {
+  providerId: string;
+  service: string;
+  date: string;
+  time: string;
+  durationMin: number;
+  techName?: string;
+  key: string;
+};
+
+type AvailabilityToolResult = {
+  available: boolean;
+  suggestions?: unknown;
+};
+
+function availabilityCacheKey(params: {
+  providerId: string;
+  service: string;
+  date: string;
+  time: string;
+  techName?: string;
+}): string {
+  return [
+    params.providerId,
+    params.service.trim().toLowerCase(),
+    params.date,
+    params.time,
+    params.techName?.trim().toLowerCase() ?? '',
+  ].join('|');
+}
+
+function availabilityCacheMatches(
+  cached: AvailabilityCheckPrePopulateResult | null | undefined,
+  request: Pick<AvailabilityCheckRequest, 'providerId' | 'service' | 'date' | 'time' | 'techName'>,
+): cached is AvailabilityCheckPrePopulateResult {
+  if (!cached) return false;
+  return availabilityCacheKey(cached) === availabilityCacheKey(request);
+}
+
+function latestServiceCandidate(ctx: AgentToolContext): string | null {
+  const draft = ctx.bookingDraft;
+  if (!draft || draft.serviceCandidates.length === 0 || (draft.confidence.service ?? 0) < 0.55) return null;
+  return draft.serviceCandidates[draft.serviceCandidates.length - 1] ?? null;
+}
+
+function resolveDraftServiceName(ctx: AgentToolContext): string | null {
+  const candidate = latestServiceCandidate(ctx);
+  if (!candidate) return null;
+  const resolved = resolveRuntimeService(ctx.shop, candidate);
+  return resolved.ok ? resolved.serviceName : null;
+}
+
+function buildAvailabilityRequestFromDraft(ctx: AgentToolContext): AvailabilityCheckRequest | null {
+  const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
+  if (providerMeta.id === 'manual' || !providerMeta.capabilities.checkAvailability) return null;
+
+  const serviceCandidate = latestServiceCandidate(ctx);
+  if (!serviceCandidate) return null;
+  const service = resolveRuntimeService(ctx.shop, serviceCandidate);
+  if (!service.ok) return null;
+
+  const validation = ctx.appointmentTimeValidation?.latest;
+  if (!validation?.valid) return null;
+
+  const key = availabilityCacheKey({
+    providerId: providerMeta.id,
+    service: service.serviceName,
+    date: validation.date,
+    time: validation.time,
+  });
+
+  return {
+    providerId: providerMeta.id,
+    service: service.serviceName,
+    date: validation.date,
+    time: validation.time,
+    durationMin: service.durationMin,
+    key,
+  };
+}
+
+function buildAvailabilityRequestFromToolInput(
+  ctx: AgentToolContext,
+  input: unknown,
+): AvailabilityCheckRequest | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const record = input as Record<string, unknown>;
+  const date = typeof record.date === 'string' ? record.date : '';
+  const time = typeof record.time === 'string' ? record.time : '';
+  const serviceText = typeof record.service === 'string' ? record.service : '';
+  const techName = typeof record.techName === 'string' && record.techName.trim() ? record.techName.trim() : undefined;
+  if (!date || !time || !serviceText) return null;
+
+  const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
+  if (providerMeta.id === 'manual' || !providerMeta.capabilities.checkAvailability) return null;
+  const service = resolveRuntimeService(ctx.shop, serviceText);
+  if (!service.ok) return null;
+
+  return {
+    providerId: providerMeta.id,
+    service: service.serviceName,
+    date,
+    time,
+    durationMin: service.durationMin,
+    techName,
+    key: availabilityCacheKey({
+      providerId: providerMeta.id,
+      service: service.serviceName,
+      date,
+      time,
+      techName,
+    }),
+  };
+}
+
+function availabilityToolResult(result: unknown): AvailabilityToolResult | null {
+  if (!result || typeof result !== 'object') return null;
+  const record = result as Record<string, unknown>;
+  if (typeof record.available !== 'boolean') return null;
+  return {
+    available: record.available,
+    ...(record.suggestions !== undefined ? { suggestions: record.suggestions } : {}),
+  };
+}
+
+function clearAvailabilityIfDateTimeChanged(ctx: AgentToolContext, params: { date: string; time: string }): void {
+  const cached = ctx.availabilityCheck?.latest;
+  if (cached && (cached.date !== params.date || cached.time !== params.time)) {
+    ctx.availabilityCheck = { latest: null };
+  }
+}
+
+function clearAvailabilityIfServiceChanged(ctx: AgentToolContext, previousResolvedService: string | null): void {
+  const cached = ctx.availabilityCheck?.latest;
+  if (!cached) return;
+  const currentResolvedService = resolveDraftServiceName(ctx);
+  if (currentResolvedService !== previousResolvedService || currentResolvedService !== cached.service) {
+    ctx.availabilityCheck = { latest: null };
+  }
 }
 
 export function createSipAgentToolContext(params: {
@@ -113,6 +257,7 @@ export function createSipAgentToolContext(params: {
     bookingDraft: createBookingDraft(),
     actionGuard: createBookingActionGuardState(),
     appointmentTimeValidation: { latest: null },
+    availabilityCheck: { latest: null },
   };
 }
 
@@ -133,6 +278,9 @@ export type AppointmentTimePrePopulateResult = {
   date: string;
   time: string;
   valid: boolean;
+  reason: AppointmentTimeValidationResult['reason'];
+  normalizedDatetimeUtc: string;
+  messageForAi: string;
   timestamp: string;
   status: 'set' | 'already_cached';
 };
@@ -165,14 +313,28 @@ export async function prePopulateFromTranscript(
 
   const existing = ctx.appointmentTimeValidation.latest;
   if (existing && existing.date === extracted.date && existing.time === extracted.time) {
-    return { ...extracted, valid: existing.valid, timestamp: new Date().toISOString(), status: 'already_cached' };
+    return {
+      ...extracted,
+      valid: existing.valid,
+      reason: existing.reason,
+      normalizedDatetimeUtc: existing.normalizedDatetimeUtc,
+      messageForAi: buildValidationMessageForAi(existing.reason),
+      timestamp: new Date().toISOString(),
+      status: 'already_cached',
+    };
   }
+  clearAvailabilityIfDateTimeChanged(ctx, extracted);
 
   try {
     await validateAppointmentTimeTool(ctx, extracted);
+    const latest = ctx.appointmentTimeValidation.latest;
+    if (!latest) return null;
     return {
       ...extracted,
-      valid: ctx.appointmentTimeValidation.latest?.valid ?? false,
+      valid: latest.valid,
+      reason: latest.reason,
+      normalizedDatetimeUtc: latest.normalizedDatetimeUtc,
+      messageForAi: buildValidationMessageForAi(latest.reason),
       timestamp: new Date().toISOString(),
       status: 'set',
     };
@@ -182,16 +344,122 @@ export async function prePopulateFromTranscript(
   }
 }
 
+export async function prePopulateAvailabilityFromDraft(
+  ctx: AgentToolContext,
+): Promise<AvailabilityCheckPrePopulateResult | null> {
+  const request = buildAvailabilityRequestFromDraft(ctx);
+  if (!request) return null;
+
+  if (availabilityCacheMatches(ctx.availabilityCheck?.latest, request)) {
+    return ctx.availabilityCheck?.latest ?? null;
+  }
+
+  const startedAt = Date.now();
+  logger.info(
+    {
+      callSessionId: ctx.rbCallId ?? ctx.requestId,
+      providerCallId: ctx.openAiLegCallControlId ?? null,
+      shopId: ctx.shop.id,
+      timestamp: new Date(startedAt).toISOString(),
+      eventType: 'availability_prefetch_start',
+      provider: request.providerId,
+      service: request.service,
+      date: request.date,
+      time: request.time,
+    },
+    `[TIMING] availability_prefetch_start service=${request.service} date=${request.date} time=${request.time} provider=${request.providerId}`,
+  );
+
+  try {
+    const result = await ctx.calendarProvider.checkAvailability({
+      date: request.date,
+      time: request.time,
+      durationMin: request.durationMin,
+      techName: request.techName,
+      timezone: ctx.shop.timezone,
+    });
+    const parsedResult = availabilityToolResult(result);
+    if (!parsedResult) return null;
+
+    const currentRequest = buildAvailabilityRequestFromDraft(ctx);
+    if (!currentRequest || currentRequest.key !== request.key) {
+      logger.info(
+        {
+          callSessionId: ctx.rbCallId ?? ctx.requestId,
+          providerCallId: ctx.openAiLegCallControlId ?? null,
+          shopId: ctx.shop.id,
+          eventType: 'availability_prefetch_stale_discarded',
+          expectedKey: request.key,
+          currentKey: currentRequest?.key ?? null,
+        },
+        `[TIMING] availability_prefetch_stale_discarded expectedKey=${request.key} currentKey=${currentRequest?.key ?? 'null'}`,
+      );
+      return null;
+    }
+
+    const cached: AvailabilityCheckPrePopulateResult = {
+      providerId: request.providerId,
+      service: request.service,
+      date: request.date,
+      time: request.time,
+      ...(request.techName ? { techName: request.techName } : {}),
+      available: parsedResult.available,
+      ...(parsedResult.suggestions !== undefined ? { suggestions: parsedResult.suggestions } : {}),
+      raw: result,
+      fetchedAtMs: Date.now(),
+      prefetchStartedAtMs: startedAt,
+    };
+    ctx.availabilityCheck = { latest: cached };
+
+    logger.info(
+      {
+        callSessionId: ctx.rbCallId ?? ctx.requestId,
+        providerCallId: ctx.openAiLegCallControlId ?? null,
+        shopId: ctx.shop.id,
+        eventType: 'availability_prefetch_complete',
+        provider: request.providerId,
+        service: request.service,
+        date: request.date,
+        time: request.time,
+        available: cached.available,
+        elapsedMs: cached.fetchedAtMs - startedAt,
+      },
+      `[TIMING] availability_prefetch_complete available=${cached.available} elapsedMs=${cached.fetchedAtMs - startedAt}`,
+    );
+    return cached;
+  } catch (err) {
+    const elapsedMs = Date.now() - startedAt;
+    logger.warn(
+      {
+        err,
+        callSessionId: ctx.rbCallId ?? ctx.requestId,
+        providerCallId: ctx.openAiLegCallControlId ?? null,
+        shopId: ctx.shop.id,
+        eventType: 'availability_prefetch_error',
+        provider: request.providerId,
+        service: request.service,
+        date: request.date,
+        time: request.time,
+        elapsedMs,
+      },
+      `[TIMING] availability_prefetch_error error=${err instanceof Error ? err.message : String(err)} elapsedMs=${elapsedMs}`,
+    );
+    return null;
+  }
+}
+
 export function updateSipBookingDraftFromTranscript(
   ctx: AgentToolContext,
   transcript: string,
 ): { reasonCodes: BookingDraftReasonCode[]; bookingDraft: ReturnType<typeof summarizeBookingDraftForLog> } | null {
+  const previousResolvedService = resolveDraftServiceName(ctx);
   const previous = ctx.bookingDraft ?? createBookingDraft();
   const next = updateBookingDraftFromTranscript(previous, transcript, {
     shop: ctx.shop,
     callerPhone: ctx.callerPhone,
   });
   ctx.bookingDraft = next;
+  clearAvailabilityIfServiceChanged(ctx, previousResolvedService);
 
   return {
     reasonCodes: deriveBookingDraftReasonCodes(previous, next),
@@ -332,6 +600,10 @@ export async function executeSipShopToolCall(
           },
           'validate_appointment_time: CACHE MISS — executing tool',
         );
+        const inp = toolInput as Record<string, unknown>;
+        if (typeof inp.date === 'string' && typeof inp.time === 'string') {
+          clearAvailabilityIfDateTimeChanged(ctx, { date: inp.date, time: inp.time });
+        }
         result = await validateAppointmentTimeTool(ctx, toolInput);
         logger.info(
           {
@@ -352,9 +624,60 @@ export async function executeSipShopToolCall(
       case 'get_shop_info':
         result = await getShopInfoTool(ctx, toolInput);
         break;
-      case 'check_availability':
+      case 'check_availability': {
+        const startedAt = Date.now();
+        const request = buildAvailabilityRequestFromToolInput(ctx, toolInput);
+        if (request && availabilityCacheMatches(ctx.availabilityCheck?.latest, request)) {
+          const cached = ctx.availabilityCheck!.latest!;
+          const elapsedMs = Date.now() - startedAt;
+          logger.info(
+            {
+              callSessionId: ctx.rbCallId ?? ctx.requestId,
+              providerCallId: ctx.openAiLegCallControlId ?? null,
+              shopId: ctx.shop.id,
+              eventType: 'availability_cache_hit',
+              provider: request.providerId,
+              service: request.service,
+              date: request.date,
+              time: request.time,
+              elapsedMs,
+            },
+            `[TIMING] availability_cache_hit elapsedMs=${elapsedMs}`,
+          );
+          result = {
+            available: cached.available,
+            ...(cached.suggestions !== undefined ? { suggestions: cached.suggestions } : {}),
+          };
+          break;
+        }
+
         result = await checkAvailabilityTool(ctx, toolInput);
+        const parsedResult = availabilityToolResult(result);
+        if (request && parsedResult) {
+          const validation = ctx.appointmentTimeValidation?.latest;
+          const currentValidationMatches = !validation || (
+            validation.date === request.date &&
+            validation.time === request.time &&
+            validation.valid === true
+          );
+          if (currentValidationMatches) {
+            ctx.availabilityCheck = {
+              latest: {
+                providerId: request.providerId,
+                service: request.service,
+                date: request.date,
+                time: request.time,
+                ...(request.techName ? { techName: request.techName } : {}),
+                available: parsedResult.available,
+                ...(parsedResult.suggestions !== undefined ? { suggestions: parsedResult.suggestions } : {}),
+                raw: result,
+                fetchedAtMs: Date.now(),
+              },
+            };
+          }
+        }
         break;
+      }
       case 'create_booking':
         result = await createBookingTool(ctx, toolInput);
         break;

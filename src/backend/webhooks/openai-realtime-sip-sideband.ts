@@ -4,6 +4,7 @@ import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
 import type {
   AppointmentTimePrePopulateAttempt,
   AppointmentTimePrePopulateResult,
+  AvailabilityCheckPrePopulateResult,
 } from '@/src/agent/sip/sip-tool-executor';
 import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
@@ -86,11 +87,12 @@ export type OpenAiRealtimeSipSidebandParams =
       onEndCall?: () => void;
       /**
        * Called when a caller utterance contains a recognizable appointment time (explicit AM/PM)
-       * and the sideband is about to force `validate_appointment_time` via `tool_choice`.
+       * and the sideband needs backend validation evidence before responding.
        *
        * Fires the raw transcript so the server can pre-populate
-       * `ctx.appointmentTimeValidation.latest` before the model's ~7 s inference round-trip
-       * completes. Best-effort: never relied upon for correctness.
+       * `ctx.appointmentTimeValidation.latest`, then the sideband injects that validation
+       * result directly into the Realtime conversation for a single low-latency response.
+       * Best-effort: guards still enforce validation before any booking action.
        */
       onCallerTranscriptPrePopulate?: (
         transcript: string,
@@ -100,6 +102,16 @@ export type OpenAiRealtimeSipSidebandParams =
         | Promise<AppointmentTimePrePopulateResult | null>
         | null
         | void;
+      /**
+       * Called synchronously after a valid appointment-time prepopulate result is ready.
+       * The owner may start an availability prefetch and keep the promise outside sideband.
+       */
+      onValidationPrePopulateComplete?: (result: AppointmentTimePrePopulateResult) => void;
+      /**
+       * Called immediately before `response.create` on the direct validation path.
+       * Must enforce its own short timeout budget and return only already-safe evidence.
+       */
+      onBeforeResponseCreate?: () => Promise<{ availabilityResult: AvailabilityCheckPrePopulateResult | null }>;
     };
 
 /**
@@ -115,8 +127,23 @@ export type OpenAiRealtimeSipSidebandParams =
 const SOFT_LIMIT_WRAP_UP_INSTRUCTION =
   "You must now wrap up the call politely. Say something like: 'Is there anything else I can help you with before we finish?'";
 const VALIDATE_APPOINTMENT_TIME_TOOL_NAME = 'validate_appointment_time';
-const FORCE_APPOINTMENT_TIME_VALIDATION_INSTRUCTION =
-  'Silently call validate_appointment_time now using the appointment date and time the caller just requested. Do not speak before calling the tool.';
+const CHECK_AVAILABILITY_TOOL_NAME = 'check_availability';
+const TIME_VALIDATION_UNAVAILABLE_INSTRUCTION =
+  'The backend could not validate that appointment time from the last caller turn. Ask the caller to repeat the appointment date and time. Do not say the time is valid, invalid, available, booked, or captured yet.';
+const SIDE_BAND_QUEUE_LIMIT = 3;
+
+type SidebandTurnState =
+  | 'idle'
+  | 'validating_time'
+  | 'waiting_model_response'
+  | 'executing_tool'
+  | 'waiting_audio';
+
+type SidebandTurnMode =
+  | 'caller_response'
+  | 'direct_validation'
+  | 'business_tool'
+  | null;
 
 function mentionsBookingFlow(text: string): boolean {
   return /\b(book(?:ing)?|appointment|schedul(?:e|ing)?|reschedul(?:e|ing)?|availability)\b/i.test(text)
@@ -180,6 +207,13 @@ export function startOpenAiRealtimeSipSideband(
   let lastToolResultSentAtMs: number | null = null;
   let lastAudioResponseStartAtMs: number | null = null;
   let waitingForAudioResponseStart = false;
+  let sidebandTurnState: SidebandTurnState = 'idle';
+  let sidebandTurnMode: SidebandTurnMode = null;
+  let queuedCallerTranscripts: string[] = [];
+  let activeCallerTranscript: string | null = null;
+  let activeTurnToken = 0;
+  let turnStateTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  let currentTurnAudioStarted = false;
 
   /** Set when AI calls end_call; next output_audio_buffer.stopped triggers onEndCall. */
   let pendingHangupAfterAudio = false;
@@ -216,6 +250,392 @@ export function startOpenAiRealtimeSipSideband(
       },
       `[TIMING] ${label} at ${timestamp}`,
     );
+  }
+
+  function normalizeTranscriptForQueue(transcript: string): string {
+    return transcript
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function shouldQueueCallerTranscript(transcript: string): boolean {
+    const normalized = normalizeTranscriptForQueue(transcript);
+    if (normalized.length < 2) return false;
+    const fillers = new Set([
+      'hello',
+      'hi',
+      'hey',
+      'what',
+      'okay',
+      'ok',
+      'yeah',
+      'yes',
+      'yep',
+      'no',
+      'nope',
+      'uh',
+      'um',
+      'hmm',
+      'hm',
+      'are you there',
+      'still there',
+      'nothing',
+      'nothing else',
+    ]);
+    return !fillers.has(normalized);
+  }
+
+  function sendRealtimeEvent(payload: Record<string, unknown>, logName: string): boolean {
+    if (ws.readyState !== WebSocket.OPEN) return false;
+    try {
+      ws.send(JSON.stringify(payload));
+      return true;
+    } catch (err) {
+      logger.warn({ err, callId: params.callId }, logName);
+      return false;
+    }
+  }
+
+  function clearTurnStateTimeout(): void {
+    if (turnStateTimeoutHandle) {
+      clearTimeout(turnStateTimeoutHandle);
+      turnStateTimeoutHandle = null;
+    }
+  }
+
+  function processQueuedTranscript(): void {
+    if (sidebandTurnState !== 'idle') return;
+    const queued = queuedCallerTranscripts.shift();
+    if (!queued) return;
+    logTiming('queued_transcript_processed', {
+      transcript: queued,
+      remainingQueueDepth: queuedCallerTranscripts.length,
+    });
+    logger.info(
+      { callId: params.callId, transcript: queued, remainingQueueDepth: queuedCallerTranscripts.length },
+      'openai_sip_shop_queued_transcript_processed',
+    );
+    createShopResponseForCallerTurn(queued);
+  }
+
+  function releaseTurnState(options: { processQueue?: boolean; clearQueue?: boolean } = {}): void {
+    clearTurnStateTimeout();
+    sidebandTurnState = 'idle';
+    sidebandTurnMode = null;
+    activeCallerTranscript = null;
+    currentTurnAudioStarted = false;
+    activeTurnToken += 1;
+    if (options.clearQueue) queuedCallerTranscripts = [];
+    if (options.processQueue !== false) {
+      setImmediate(processQueuedTranscript);
+    }
+  }
+
+  function startTurnStateTimeout(ms: number, token: number): void {
+    clearTurnStateTimeout();
+    turnStateTimeoutHandle = setTimeout(() => {
+      turnStateTimeoutHandle = null;
+      if (token !== activeTurnToken || sidebandTurnState === 'idle') return;
+      const timedOutState = sidebandTurnState;
+      const timedOutMode = sidebandTurnMode;
+      logTiming('turn_state_timeout', {
+        state: timedOutState,
+        mode: timedOutMode,
+        timeoutMs: ms,
+      });
+      logger.warn(
+        { callId: params.callId, state: timedOutState, mode: timedOutMode, timeoutMs: ms },
+        'openai_sip_shop_turn_state_timeout',
+      );
+
+      if (timedOutState === 'validating_time') {
+        const sent = sendShopResponseCreate({
+          instructions: TIME_VALIDATION_UNAVAILABLE_INSTRUCTION,
+          toolChoice: 'none',
+          state: 'waiting_audio',
+          mode: 'caller_response',
+          timeoutMs: 8_000,
+          token,
+          forceAppointmentTimeValidation: false,
+        });
+        if (!sent) releaseTurnState();
+        return;
+      }
+
+      if (timedOutState === 'executing_tool') {
+        // Avoid releasing the lock while a side-effecting booking/SMS tool may still finish.
+        startTurnStateTimeout(30_000, token);
+        return;
+      }
+
+      sendRealtimeEvent({ type: 'response.cancel' }, 'openai_sip_shop_turn_timeout_cancel_failed');
+      releaseTurnState();
+    }, ms);
+  }
+
+  function beginTurnState(
+    state: SidebandTurnState,
+    mode: Exclude<SidebandTurnMode, null>,
+    transcript: string | null,
+    timeoutMs: number,
+  ): number {
+    activeTurnToken += 1;
+    const token = activeTurnToken;
+    sidebandTurnState = state;
+    sidebandTurnMode = mode;
+    activeCallerTranscript = transcript;
+    currentTurnAudioStarted = false;
+    startTurnStateTimeout(timeoutMs, token);
+    return token;
+  }
+
+  function queueCallerTranscriptWhileInFlight(transcript: string): void {
+    if (!shouldQueueCallerTranscript(transcript)) {
+      logger.info(
+        { callId: params.callId, transcript, state: sidebandTurnState },
+        'openai_sip_shop_ignored_filler_while_in_flight',
+      );
+      return;
+    }
+
+    const normalized = normalizeTranscriptForQueue(transcript);
+    const activeNormalized = activeCallerTranscript ? normalizeTranscriptForQueue(activeCallerTranscript) : '';
+    const lastQueuedNormalized = queuedCallerTranscripts.length > 0
+      ? normalizeTranscriptForQueue(queuedCallerTranscripts[queuedCallerTranscripts.length - 1] ?? '')
+      : '';
+    if (normalized === activeNormalized || normalized === lastQueuedNormalized) {
+      logger.info(
+        { callId: params.callId, transcript, state: sidebandTurnState },
+        'openai_sip_shop_ignored_duplicate_while_in_flight',
+      );
+      return;
+    }
+
+    queuedCallerTranscripts.push(transcript);
+    if (queuedCallerTranscripts.length > SIDE_BAND_QUEUE_LIMIT) {
+      queuedCallerTranscripts = queuedCallerTranscripts.slice(-SIDE_BAND_QUEUE_LIMIT);
+    }
+    logger.info(
+      { callId: params.callId, transcript, state: sidebandTurnState, queueDepth: queuedCallerTranscripts.length },
+      'openai_sip_shop_queued_transcript_while_in_flight',
+    );
+  }
+
+  function generateInjectedValidationCallId(): string {
+    return `call_rb_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function sendShopResponseCreate(paramsSend: {
+    instructions?: string;
+    toolChoice?: 'none';
+    state: SidebandTurnState;
+    mode: Exclude<SidebandTurnMode, null>;
+    timeoutMs: number;
+    token: number;
+    forceAppointmentTimeValidation: boolean;
+  }): boolean {
+    if (paramsSend.token !== activeTurnToken) return false;
+    const response: Record<string, unknown> = {};
+    if (paramsSend.instructions) response.instructions = paramsSend.instructions;
+    if (paramsSend.toolChoice) response.tool_choice = paramsSend.toolChoice;
+    const sent = sendRealtimeEvent(
+      {
+        type: 'response.create',
+        ...(Object.keys(response).length > 0 ? { response } : {}),
+      },
+      'openai_sip_shop_caller_turn_response_failed',
+    );
+    if (!sent) return false;
+
+    sidebandTurnState = paramsSend.state;
+    sidebandTurnMode = paramsSend.mode;
+    startTurnStateTimeout(paramsSend.timeoutMs, paramsSend.token);
+    lastResponseCreateSentAtMs = Date.now();
+    waitingForAudioResponseStart = true;
+    logTiming(
+      'response_create_sent',
+      {
+        forceAppointmentTimeValidation: paramsSend.forceAppointmentTimeValidation,
+        elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, lastResponseCreateSentAtMs),
+        elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastResponseCreateSentAtMs),
+      },
+      lastResponseCreateSentAtMs,
+    );
+    logger.info(
+      { callId: params.callId, forceAppointmentTimeValidation: paramsSend.forceAppointmentTimeValidation },
+      'openai_sip_shop_caller_turn_response_created',
+    );
+    return true;
+  }
+
+  async function injectValidationResultAndRespond(
+    validation: AppointmentTimePrePopulateResult,
+    startedAtMs: number,
+    token: number,
+  ): Promise<void> {
+    if (token !== activeTurnToken || ws.readyState !== WebSocket.OPEN) return;
+    const injectStartedAtMs = Date.now();
+    logTiming('inject_validation_start', {
+      date: validation.date,
+      time: validation.time,
+      valid: validation.valid,
+      elapsedSincePrepopulateStartMs: injectStartedAtMs - startedAtMs,
+    }, injectStartedAtMs);
+
+    const callIdTool = generateInjectedValidationCallId();
+    const toolInput = { date: validation.date, time: validation.time };
+    const toolOutput = {
+      success: true,
+      valid: validation.valid,
+      reason: validation.reason,
+      normalizedDatetimeUtc: validation.normalizedDatetimeUtc,
+      messageForAi: validation.messageForAi,
+    };
+    const validationSummaryLines = [
+      'The backend has already validated the appointment time for this caller turn.',
+      `Requested date: ${validation.date}`,
+      `Requested time: ${validation.time}`,
+      `Valid: ${validation.valid ? 'yes' : 'no'}`,
+      `Reason: ${validation.reason}`,
+      `Instruction from backend: ${validation.messageForAi}`,
+      'Do not call validate_appointment_time again for this turn. Respond now using this validation result.',
+    ];
+
+    const functionCallSent = sendRealtimeEvent(
+      {
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call',
+          call_id: callIdTool,
+          name: VALIDATE_APPOINTMENT_TIME_TOOL_NAME,
+          arguments: JSON.stringify(toolInput),
+          status: 'completed',
+        },
+      },
+      'openai_sip_shop_validation_function_call_inject_failed',
+    );
+    if (!functionCallSent) {
+      releaseTurnState();
+      return;
+    }
+
+    const outputSent = sendRealtimeEvent(
+      {
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call_output',
+          call_id: callIdTool,
+          output: compactToolOutput(JSON.stringify(toolOutput)),
+        },
+      },
+      'openai_sip_shop_validation_function_output_inject_failed',
+    );
+    if (!outputSent) {
+      releaseTurnState();
+      return;
+    }
+
+    let availabilityInjected = false;
+    if (params.variant === 'shop' && validation.valid) {
+      params.onValidationPrePopulateComplete?.(validation);
+
+      let availabilityResult: AvailabilityCheckPrePopulateResult | null = null;
+      try {
+        availabilityResult = (await params.onBeforeResponseCreate?.())?.availabilityResult ?? null;
+      } catch (err) {
+        logger.warn({ err, callId: params.callId }, 'openai_sip_shop_availability_before_response_failed');
+      }
+      if (token !== activeTurnToken || ws.readyState !== WebSocket.OPEN) return;
+
+      if (availabilityResult) {
+        const availabilityCallId = generateInjectedValidationCallId();
+        const availabilityInput = {
+          date: availabilityResult.date,
+          time: availabilityResult.time,
+          service: availabilityResult.service,
+          ...(availabilityResult.techName ? { techName: availabilityResult.techName } : {}),
+        };
+        const availabilityOutput = {
+          available: availabilityResult.available,
+          ...(availabilityResult.suggestions !== undefined ? { suggestions: availabilityResult.suggestions } : {}),
+        };
+        const availabilityCallSent = sendRealtimeEvent(
+          {
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call',
+              call_id: availabilityCallId,
+              name: CHECK_AVAILABILITY_TOOL_NAME,
+              arguments: JSON.stringify(availabilityInput),
+              status: 'completed',
+            },
+          },
+          'openai_sip_shop_availability_function_call_inject_failed',
+        );
+        if (!availabilityCallSent) {
+          releaseTurnState();
+          return;
+        }
+
+        const availabilityOutputSent = sendRealtimeEvent(
+          {
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: availabilityCallId,
+              output: compactToolOutput(JSON.stringify(availabilityOutput)),
+            },
+          },
+          'openai_sip_shop_availability_function_output_inject_failed',
+        );
+        if (!availabilityOutputSent) {
+          releaseTurnState();
+          return;
+        }
+
+        availabilityInjected = true;
+        const injectedAtMs = Date.now();
+        validationSummaryLines.push(
+          `Availability checked: ${availabilityResult.available ? 'available' : 'not available'}.`,
+          'Do not call check_availability again for this turn. Use the injected availability result.',
+        );
+        logTiming('availability_injected_directly', {
+          provider: availabilityResult.providerId,
+          service: availabilityResult.service,
+          date: availabilityResult.date,
+          time: availabilityResult.time,
+          available: availabilityResult.available,
+          elapsedMs: injectedAtMs - (availabilityResult.prefetchStartedAtMs ?? availabilityResult.fetchedAtMs),
+        }, injectedAtMs);
+      } else {
+        logTiming('availability_not_ready_before_response', {
+          date: validation.date,
+          time: validation.time,
+        });
+      }
+    }
+
+    lastToolResultSentAtMs = Date.now();
+    const responseSent = sendShopResponseCreate({
+      instructions: validationSummaryLines.join('\n'),
+      toolChoice: (!validation.valid || availabilityInjected) ? 'none' : undefined,
+      state: 'waiting_audio',
+      mode: 'caller_response',
+      timeoutMs: 8_000,
+      token,
+      forceAppointmentTimeValidation: true,
+    });
+    const completedAtMs = Date.now();
+    logTiming('inject_validation_complete', {
+      date: validation.date,
+      time: validation.time,
+      valid: validation.valid,
+      elapsedMs: completedAtMs - injectStartedAtMs,
+      responseSent,
+    }, completedAtMs);
+    if (!responseSent) releaseTurnState();
   }
 
   function cancelInitialTimer(): void {
@@ -325,7 +745,7 @@ export function startOpenAiRealtimeSipSideband(
             type: 'realtime',
             audio: {
               input: {
-                // Sideband owns shop responses after greeting so it can force required
+                // Sideband owns shop responses after greeting so it can perform required
                 // appointment-time validation before any spoken scheduling decision.
                 turn_detection: { ...td, create_response: false },
               },
@@ -345,14 +765,17 @@ export function startOpenAiRealtimeSipSideband(
     if (params.variant !== 'shop' || !params.initialResponseBridgeGate || !shopManualTurnResponseEnabled) return;
     if (ws.readyState !== WebSocket.OPEN) return;
 
+    if (sidebandTurnState !== 'idle') {
+      queueCallerTranscriptWhileInFlight(transcript);
+      return;
+    }
+
     const inBookingFlow = shopBookingFlowActive || mentionsBookingFlow(transcript);
     const forceTimeValidation = inBookingFlow && includesSpecificTime(transcript);
     shopBookingFlowActive = inBookingFlow;
 
-    // Pre-populate appointment-time cache server-side before the model round-trip starts.
-    // This fires while OpenAI is still doing its ~7 s inference, so the cache is warm
-    // by the time the model calls validate_appointment_time.
     if (forceTimeValidation) {
+      const turnToken = beginTurnState('validating_time', 'direct_validation', transcript, 5_000);
       const prePopulateStartedAtMs = Date.now();
       const prePopulateAttempt = params.onCallerTranscriptPrePopulate?.(transcript);
       const prePopulatePreview = isPrePopulateAttempt(prePopulateAttempt) ? prePopulateAttempt.preview : null;
@@ -372,6 +795,7 @@ export function startOpenAiRealtimeSipSideband(
         : prePopulateAttempt;
       void Promise.resolve(prePopulateResult)
         .then((result) => {
+          if (turnToken !== activeTurnToken) return;
           const completedAtMs = Date.now();
           if (!result) {
             logTiming(
@@ -382,6 +806,15 @@ export function startOpenAiRealtimeSipSideband(
               },
               completedAtMs,
             );
+            sendShopResponseCreate({
+              instructions: TIME_VALIDATION_UNAVAILABLE_INSTRUCTION,
+              toolChoice: 'none',
+              state: 'waiting_audio',
+              mode: 'caller_response',
+              timeoutMs: 8_000,
+              token: turnToken,
+              forceAppointmentTimeValidation: false,
+            });
             return;
           }
           logger.info(
@@ -406,8 +839,10 @@ export function startOpenAiRealtimeSipSideband(
             },
             completedAtMs,
           );
+          void injectValidationResultAndRespond(result, prePopulateStartedAtMs, turnToken);
         })
         .catch((err: unknown) => {
+          if (turnToken !== activeTurnToken) return;
           const completedAtMs = Date.now();
           logTiming(
             'prepopulate_complete',
@@ -418,41 +853,28 @@ export function startOpenAiRealtimeSipSideband(
             completedAtMs,
           );
           logger.warn({ err, callId: params.callId }, 'prepopulate: appointmentTimeValidation failed');
+          sendShopResponseCreate({
+            instructions: TIME_VALIDATION_UNAVAILABLE_INSTRUCTION,
+            toolChoice: 'none',
+            state: 'waiting_audio',
+            mode: 'caller_response',
+            timeoutMs: 8_000,
+            token: turnToken,
+            forceAppointmentTimeValidation: false,
+          });
         });
+      return;
     }
 
-    try {
-      ws.send(
-        JSON.stringify({
-          type: 'response.create',
-          ...(forceTimeValidation
-            ? {
-                response: {
-                  instructions: FORCE_APPOINTMENT_TIME_VALIDATION_INSTRUCTION,
-                  tool_choice: { type: 'function', name: VALIDATE_APPOINTMENT_TIME_TOOL_NAME },
-                },
-              }
-            : {}),
-        }),
-      );
-      lastResponseCreateSentAtMs = Date.now();
-      waitingForAudioResponseStart = true;
-      logTiming(
-        'response_create_sent',
-        {
-          forceAppointmentTimeValidation: forceTimeValidation,
-          elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, lastResponseCreateSentAtMs),
-          elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastResponseCreateSentAtMs),
-        },
-        lastResponseCreateSentAtMs,
-      );
-      logger.info(
-        { callId: params.callId, forceAppointmentTimeValidation: forceTimeValidation },
-        'openai_sip_shop_caller_turn_response_created',
-      );
-    } catch (err) {
-      logger.warn({ err, callId: params.callId }, 'openai_sip_shop_caller_turn_response_failed');
-    }
+    const turnToken = beginTurnState('waiting_model_response', 'caller_response', transcript, 8_000);
+    const sent = sendShopResponseCreate({
+      state: 'waiting_model_response',
+      mode: 'caller_response',
+      timeoutMs: 8_000,
+      token: turnToken,
+      forceAppointmentTimeValidation: false,
+    });
+    if (!sent) releaseTurnState();
   }
 
   ws.on('open', () => {
@@ -577,6 +999,9 @@ export function startOpenAiRealtimeSipSideband(
         initialGreetingAudioStarted = true;
         logger.info({ callId: params.callId }, 'openai_sip_initial_greeting_audio_started');
       }
+      if (evt.type === 'output_audio_buffer.started' && sidebandTurnState !== 'idle') {
+        currentTurnAudioStarted = true;
+      }
       if (evt.type === 'output_audio_buffer.started' && lastSpeechStoppedAtMs !== null) {
         const audioSentAtMs = Date.now();
         logTiming(
@@ -593,6 +1018,30 @@ export function startOpenAiRealtimeSipSideband(
         logger.info({ callId: params.callId }, 'openai_sip_initial_greeting_audio_stopped');
         maybeResumeShopVadAfterWelcome(evt.type);
       }
+      if (evt.type === 'output_audio_buffer.stopped' && sidebandTurnState !== 'idle') {
+        releaseTurnState();
+      }
+    }
+
+    if (
+      params.variant === 'shop' &&
+      params.initialResponseBridgeGate &&
+      evt.type === 'response.done' &&
+      sidebandTurnState !== 'idle' &&
+      !currentTurnAudioStarted &&
+      sidebandTurnState !== 'executing_tool'
+    ) {
+      releaseTurnState();
+    }
+
+    if (
+      params.variant === 'shop' &&
+      params.initialResponseBridgeGate &&
+      evt.type === 'error' &&
+      sidebandTurnState !== 'idle'
+    ) {
+      logger.warn({ callId: params.callId, state: sidebandTurnState }, 'openai_sip_shop_response_error_releasing_turn');
+      releaseTurnState();
     }
 
     // Fire onEndCall once the goodbye audio finishes playing.
@@ -745,10 +1194,17 @@ export function startOpenAiRealtimeSipSideband(
         // fire onEndCall after 5 s so the call isn't left open indefinitely.
         pendingHangupFallbackTimer = setTimeout(fireOnEndCall, 5_000);
       }
+      releaseTurnState({ processQueue: false, clearQueue: true });
       return;
     }
 
     const argsJson = typeof evt.arguments === 'string' ? evt.arguments : '{}';
+    const toolTurnToken = sidebandTurnState === 'idle'
+      ? beginTurnState('executing_tool', 'business_tool', null, 30_000)
+      : activeTurnToken;
+    sidebandTurnState = 'executing_tool';
+    sidebandTurnMode = 'business_tool';
+    startTurnStateTimeout(30_000, toolTurnToken);
     lastToolCallReceivedAtMs = Date.now();
     logTiming(
       'tool_call_received',
@@ -802,6 +1258,11 @@ export function startOpenAiRealtimeSipSideband(
         lastToolResultSentAtMs = Date.now();
         lastResponseCreateSentAtMs = lastToolResultSentAtMs;
         waitingForAudioResponseStart = true;
+        if (toolTurnToken === activeTurnToken) {
+          sidebandTurnState = 'waiting_audio';
+          sidebandTurnMode = 'caller_response';
+          startTurnStateTimeout(8_000, toolTurnToken);
+        }
         logTiming(
           'tool_result_sent',
           {
@@ -825,6 +1286,7 @@ export function startOpenAiRealtimeSipSideband(
     if (hardLimitTimer) { clearTimeout(hardLimitTimer); hardLimitTimer = null; }
     if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
     pendingHangupAfterAudio = false;
+    releaseTurnState({ processQueue: false, clearQueue: true });
     cancelInitialTimer();
     clearTimeout(t);
     logger.info({ callId: params.callId, closeCode }, 'openai_sip_sideband_ws_close');
