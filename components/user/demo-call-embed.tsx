@@ -45,6 +45,7 @@ const DEMO_STATUS_TIMEOUT_MESSAGE = 'The web demo is taking longer than expected
 const LIVEKIT_CONNECT_ERROR_MESSAGE = 'Unable to connect to the voice room. Please check your network and try again.';
 const DIRECT_OPENAI_CONNECT_TIMEOUT_MS = 45_000;
 const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
+const DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS = 1_200;
 const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
 const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
 const demoWebRealtimeDebug = process.env.NEXT_PUBLIC_DEMO_WEB_REALTIME_DEBUG === 'true';
@@ -142,6 +143,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
   const directAudioRef = useRef<HTMLAudioElement | null>(null);
   const directConnectTimerRef = useRef<number | null>(null);
   const directMaxDurationTimerRef = useRef<number | null>(null);
+  const directEndCallTailGraceTimerRef = useRef<number | null>(null);
   const directRealtimeRequestIdRef = useRef<string | null>(null);
   const directDurationTimerStartedRef = useRef(false);
   const directPeerFailureMutedRef = useRef(false);
@@ -275,6 +277,13 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
     }
   }
 
+  function clearDirectEndCallTailGraceTimer() {
+    if (directEndCallTailGraceTimerRef.current != null) {
+      window.clearTimeout(directEndCallTailGraceTimerRef.current);
+      directEndCallTailGraceTimerRef.current = null;
+    }
+  }
+
   function releaseDirectRealtimeSlotFireAndForget(requestId: string, endReason: 'completed' | 'timeout' = 'completed') {
     const url = '/api/backend/public/demo/realtime-session/release';
     const payload = JSON.stringify({ requestId, endReason });
@@ -306,6 +315,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
   function cleanupDirectRealtime(opts?: { endReason?: 'completed' | 'timeout' }) {
     clearDirectMaxDurationTimer();
     clearDirectConnectTimer();
+    clearDirectEndCallTailGraceTimer();
     const releaseRequestId = directRealtimeRequestIdRef.current;
     directRealtimeRequestIdRef.current = null;
     directDurationTimerStartedRef.current = false;
@@ -463,6 +473,21 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
       let vadResumeAfterWelcomeSent = false;
       let awaitingInitialGreetingAudioStop = false;
       let pendingDemoEndCall = false;
+      const completePendingDemoEndCallAfterTailGrace = () => {
+        if (directEndCallTailGraceTimerRef.current !== null) return;
+        directEndCallTailGraceTimerRef.current = window.setTimeout(() => {
+          directEndCallTailGraceTimerRef.current = null;
+          if (!pendingDemoEndCall) return;
+          pendingDemoEndCall = false;
+          directPeerFailureMutedRef.current = true; // prevent closed-connection from showing error
+          setStage('completed');
+          setStatusText('Demo ended. Thanks for trying RingBooker!');
+          cleanupDirectRealtime({ endReason: 'completed' });
+        }, DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS);
+        logDemoRealtime('end_call_tail_grace_started', {
+          delayMs: DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS,
+        });
+      };
       const maybeResumeVadAfterWelcome = (fromEvent: string) => {
         const td = sessionBody.turnDetectionAfterWelcome;
         if (!td || typeof td !== 'object' || Array.isArray(td) || vadResumeAfterWelcomeSent || dc.readyState !== 'open' || td.create_response !== true) return;
@@ -569,11 +594,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
             maybeResumeVadAfterWelcome('output_audio_buffer.stopped');
           }
           if (pendingDemoEndCall && data.type === 'output_audio_buffer.stopped') {
-            pendingDemoEndCall = false;
-            directPeerFailureMutedRef.current = true; // prevent closed-connection from showing error
-            setStage('completed');
-            setStatusText('Demo ended. Thanks for trying RingBooker!');
-            cleanupDirectRealtime({ endReason: 'completed' });
+            completePendingDemoEndCallAfterTailGrace();
           }
         } catch { /* ignore non-JSON */ }
       });

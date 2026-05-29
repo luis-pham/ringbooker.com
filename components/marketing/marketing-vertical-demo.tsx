@@ -358,6 +358,7 @@ const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
  */
 const DIRECT_OPENAI_GREETING_MIC_UNMUTE_FALLBACK_MS = 10_000;
 const DIRECT_OPENAI_END_CALL_AUDIO_STOP_FALLBACK_MS = 6_000;
+const DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS = 1_200;
 const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
 const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
 
@@ -876,6 +877,7 @@ export function MarketingVerticalDemoTemplate({
   const directAudioRef = useRef<HTMLAudioElement | null>(null);
   const directConnectTimerRef = useRef<number | null>(null);
   const directMaxDurationTimerRef = useRef<number | null>(null);
+  const directEndCallTailGraceTimerRef = useRef<number | null>(null);
   const directRealtimeRequestIdRef = useRef<string | null>(null);
   const directDurationTimerStartedRef = useRef(false);
   const directPeerFailureMutedRef = useRef(false);
@@ -1363,6 +1365,13 @@ export function MarketingVerticalDemoTemplate({
     }
   }
 
+  function clearDirectEndCallTailGraceTimer() {
+    if (directEndCallTailGraceTimerRef.current != null) {
+      window.clearTimeout(directEndCallTailGraceTimerRef.current);
+      directEndCallTailGraceTimerRef.current = null;
+    }
+  }
+
   function releaseDirectRealtimeSlotFireAndForget(
     requestId: string,
     endReason: 'completed' | 'timeout' = 'completed',
@@ -1435,6 +1444,7 @@ export function MarketingVerticalDemoTemplate({
   function cleanupDirectRealtime(opts?: { endReason?: 'completed' | 'timeout' }) {
     clearDirectMaxDurationTimer();
     clearDirectConnectTimer();
+    clearDirectEndCallTailGraceTimer();
     const releaseRequestId = directRealtimeRequestIdRef.current;
     directRealtimeRequestIdRef.current = null;
     directDurationTimerStartedRef.current = false;
@@ -1637,8 +1647,21 @@ export function MarketingVerticalDemoTemplate({
         if (!endCallPending) return;
         endCallPending = false;
         clearEndCallFallbackTimer();
+        clearDirectEndCallTailGraceTimer();
         logDemoRealtime('end_call_complete', { reason });
         endDirectDemo();
+      };
+
+      const armEndCallTailGrace = (reason: string) => {
+        if (directEndCallTailGraceTimerRef.current !== null) return;
+        directEndCallTailGraceTimerRef.current = window.setTimeout(() => {
+          directEndCallTailGraceTimerRef.current = null;
+          completeDirectDemoAfterEndCall(`${reason}_tail_grace`);
+        }, DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS);
+        logDemoRealtime('end_call_tail_grace_started', {
+          reason,
+          delayMs: DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS,
+        });
       };
 
       const armEndCallCompletion = () => {
@@ -1848,7 +1871,7 @@ export function MarketingVerticalDemoTemplate({
                 latestResponseDone,
               });
               if (!assistantAudioPlaying && latestResponseDone) {
-                completeDirectDemoAfterEndCall('goodbye_transcript_after_response_done');
+                armEndCallTailGrace('goodbye_transcript_after_response_done');
               }
             }
           }
@@ -1866,7 +1889,7 @@ export function MarketingVerticalDemoTemplate({
             latestResponseDone = true;
             logDemoRealtime('response_done', { status: responseDoneStatus });
             if (endCallPending && !assistantAudioPlaying) {
-              completeDirectDemoAfterEndCall('response.done_without_active_audio');
+              armEndCallTailGrace('response.done_without_active_audio');
             } else if (!awaitingInitialGreetingAudioStop && !endCallPending) {
               setStatusText('You\'re connected — speak naturally or tap a prompt below.');
             }
@@ -1974,7 +1997,7 @@ export function MarketingVerticalDemoTemplate({
           if (data.type === 'output_audio_buffer.stopped') {
             assistantAudioPlaying = false;
             if (endCallPending) {
-              completeDirectDemoAfterEndCall('output_audio_buffer.stopped');
+              armEndCallTailGrace('output_audio_buffer.stopped');
             }
           }
           if (data.type === 'input_audio_buffer.speech_started' && !endCallPending) setStatusText('Listening…');
