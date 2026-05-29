@@ -1238,6 +1238,70 @@ async function runNoPhoneCollectionOnly(): Promise<void> {
   process.exitCode = failures > 0 ? 1 : 0;
 }
 
+async function runClearBookerOnly(): Promise<void> {
+  loadLocalEnv();
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is required to run voice UX evals.');
+  const fixtures = buildFixtures();
+  const supabase = createDatabaseClient();
+  const databaseBlocker = await checkDatabaseReadiness(supabase);
+  const results: ConversationResult[] = [];
+  let completed = 0;
+  const total = fixtures.length;
+
+  process.stdout.write(`\n[voice-ux] === clear_booker scenarios (${total}) ===\n`);
+  for (const fixture of fixtures) {
+    const systemPrompt = buildSystemPrompt({
+      shop: fixture.shop,
+      customer: null,
+      mode: 'inbound',
+      vertical: fixture.promptVertical,
+    });
+    const scenario = scenariosFor(fixture).find((item) => item.kind === 'clear_booker');
+    if (!scenario) continue;
+    const requestId = randomUUID();
+    process.stdout.write(`[voice-ux] Running ${fixture.vertical}/${scenario.kind}...\n`);
+    try {
+      const { transcript, toolEvents } = await simulateConversation(fixture, scenario, systemPrompt);
+      const evaluation = await evaluateConversation(fixture, scenario, transcript, toolEvents);
+      const persisted = await readPersistedState(supabase, requestId, databaseBlocker);
+      const accuracy = evaluateAccuracy(scenario, transcript, persisted);
+      results.push({ requestId, fixture, scenario, promptLength: systemPrompt.length, transcript, toolEvents, evaluation, accuracy });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const persisted = { call: null, booking: null, blocker: message };
+      results.push({
+        requestId,
+        fixture,
+        scenario,
+        promptLength: systemPrompt.length,
+        transcript: [],
+        toolEvents: [],
+        evaluation: fallbackEvaluation(message),
+        accuracy: evaluateAccuracy(scenario, [], persisted),
+        error: message,
+      });
+    }
+    completed += 1;
+    process.stdout.write(`[voice-ux] Completed ${completed}/${total}.\n`);
+  }
+
+  const generatedAt = new Date().toISOString();
+  const markdown = reportMarkdown(results, generatedAt);
+  mkdirSync(OUTPUT_DIR, { recursive: true });
+  writeFileSync(resolve(OUTPUT_DIR, 'latest-clear-booker-report.md'), markdown, 'utf8');
+  writeFileSync(
+    resolve(OUTPUT_DIR, 'latest-clear-booker-results.json'),
+    JSON.stringify({ generatedAt, model: MODEL, results }, null, 2),
+    'utf8',
+  );
+  process.stdout.write(`\n${markdown}`);
+  process.stdout.write(`\n[voice-ux] clear_booker files written to ${OUTPUT_DIR}\n`);
+  const failures = results.filter(
+    (result) => result.evaluation.overall !== 'passed' || result.accuracy.overall !== 'passed',
+  ).length;
+  process.exitCode = failures > 0 ? 1 : 0;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EXTENDED SCENARIOS — 8 new scenario types × 4 verticals = 32 new scenarios
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2504,6 +2568,11 @@ if (mode === '--retry-failed') {
   });
 } else if (mode === '--no-phone-only') {
   runNoPhoneCollectionOnly().catch((error) => {
+    console.error('[voice-ux] Fatal error:', error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+} else if (mode === '--clear-booker-only') {
+  runClearBookerOnly().catch((error) => {
     console.error('[voice-ux] Fatal error:', error instanceof Error ? error.message : error);
     process.exitCode = 1;
   });

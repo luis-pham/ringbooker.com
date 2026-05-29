@@ -37,11 +37,18 @@ test.before(() => {
   wssPort = (wss.address() as AddressInfo).port;
 });
 
-test.after(() => {
+test.after(async () => {
   for (const client of wss.clients) {
     client.terminate();
   }
-  wss.close();
+  await new Promise<void>((resolve) => {
+    const fallback = setTimeout(resolve, 500);
+    fallback.unref?.();
+    wss.close(() => {
+      clearTimeout(fallback);
+      resolve();
+    });
+  });
   (wss as unknown as { _server?: { unref?: () => void } })._server?.unref?.();
 });
 
@@ -751,6 +758,9 @@ test('send_booking_link success uses final instruction and skips generic respons
   assert.equal(toolOutputs.length, 1);
   assert.equal(responses.length, 1, 'generic response.create must not also be sent');
   assert.match(responses[0]?.response?.instructions ?? '', /booking link was sent successfully/i);
+  assert.match(responses[0]?.response?.instructions ?? '', /Deliver ONE final message combining confirmation and goodbye/);
+  assert.match(responses[0]?.response?.instructions ?? '', /Then call end_call immediately/);
+  assert.match(responses[0]?.response?.instructions ?? '', /Do not say 'One moment'/);
 
   srv.close(1000);
 });
@@ -854,5 +864,75 @@ test('send_booking_link failure keeps generic response path and no auto-end', as
   await flushIO(50);
 
   assert.equal(endCallCount, 0);
+  srv.close(1000);
+});
+
+test('send_booking_link fallback URL success-shaped output does not trigger final auto-end path', async () => {
+  const serverSocket = nextServerSocket();
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'booking-link-fallback-success-shaped-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: async () => JSON.stringify({
+        success: true,
+        fallback: 'url',
+        bookingUrl: 'https://example.test/book',
+        message: 'Use the fallback booking URL.',
+      }),
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('booking-link-fallback-success-shaped-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  messages.length = 0;
+
+  srv.send(makeBusinessToolEvent('send_booking_link', 'booking-link-fallback-success-call', { callerName: 'Huy' }));
+  await flushIO(80);
+
+  const responses = messages
+    .map((message) => JSON.parse(message) as { type?: string; response?: { instructions?: string } })
+    .filter((message) => message.type === 'response.create');
+  assert.equal(responses.length, 1);
+  assert.equal(responses[0]?.response?.instructions, undefined);
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallCount, 0);
+  srv.close(1000);
+});
+
+test('booking-link auto-end and model end_call race hangs up exactly once', async () => {
+  const serverSocket = nextServerSocket();
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'booking-link-end-call-race-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: async () => JSON.stringify({ success: true, message: 'Booking link sent to +15551234567' }),
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('booking-link-end-call-race-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  await flushIO(30);
+
+  srv.send(makeBusinessToolEvent('send_booking_link', 'booking-link-race-call', { callerName: 'Huy' }));
+  await flushIO(80);
+
+  srv.send(makeAudioStoppedEvent());
+  srv.send(makeEndCallEvent('end-call-after-auto-link'));
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(80);
+
+  assert.equal(endCallCount, 1);
   srv.close(1000);
 });

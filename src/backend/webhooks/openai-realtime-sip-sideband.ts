@@ -143,7 +143,7 @@ const SEND_BOOKING_LINK_TOOL_NAME = 'send_booking_link';
 const TIME_VALIDATION_UNAVAILABLE_INSTRUCTION =
   'The backend could not validate that appointment time from the last caller turn. Ask the caller to repeat the appointment date and time. Do not say the time is valid, invalid, available, booked, or captured yet.';
 const BOOKING_LINK_FINAL_RESPONSE_INSTRUCTION =
-  "The booking link was sent successfully to the caller's phone. Say one brief final confirmation and goodbye in this message only. Then call end_call with reason 'link_sent'. Do not ask another question. Do not wait for the caller to respond. Do not send any additional messages after this.";
+  "The booking link was sent successfully.\nDeliver ONE final message combining confirmation and goodbye. Example:\n'Perfect — booking link sent to your phone. The team will confirm shortly. Thanks for calling, have a great day!'\nThen call end_call immediately.\nDo not say 'One moment' or any separate filler.\nDo not send another message after this one.";
 const SIDE_BAND_QUEUE_LIMIT = 3;
 
 type SidebandTurnState =
@@ -201,6 +201,7 @@ export function startOpenAiRealtimeSipSideband(
       /* ignore */
     }
   }, timeoutMs);
+  t.unref?.();
 
   let wsOpened = false;
   let softLimitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -236,7 +237,7 @@ export function startOpenAiRealtimeSipSideband(
   /** Set after booking-link final response is requested; audio stop triggers hangup if model skips end_call. */
   let pendingAutoEndAfterFinalAudio = false;
   /** Local idempotency guard; the caller's onEndCall callback also guards Telnyx hangup. */
-  let endCallRequested = false;
+  let hangupInitiated = false;
   /** Fallback: fire onEndCall after this many ms if output_audio_buffer.stopped never arrives. */
   let pendingHangupFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -244,8 +245,8 @@ export function startOpenAiRealtimeSipSideband(
     if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
     pendingHangupAfterAudio = false;
     pendingAutoEndAfterFinalAudio = false;
-    if (endCallRequested) return;
-    endCallRequested = true;
+    if (hangupInitiated) return;
+    hangupInitiated = true;
     params.onEndCall?.();
   }
 
@@ -1338,7 +1339,7 @@ export function startOpenAiRealtimeSipSideband(
       } catch (err) {
         logger.warn({ err, callId: params.callId }, 'openai_sip_end_call_ack_failed');
       }
-      if (params.variant === 'shop' && params.onEndCall) {
+      if (params.variant === 'shop' && params.onEndCall && !hangupInitiated) {
         pendingAutoEndAfterFinalAudio = false;
         pendingHangupAfterAudio = true;
         // Fallback: if output_audio_buffer.stopped never arrives (e.g., SIP path doesn't emit it),
