@@ -19,6 +19,17 @@ function compactToolOutput(output: string): string {
   return output.length > 8000 ? `${output.slice(0, 8000)}…` : output;
 }
 
+function parseToolOutputObject(output: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(output) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export type OpenAiRealtimeSipSidebandParams =
   | {
       variant: 'demo';
@@ -128,8 +139,11 @@ const SOFT_LIMIT_WRAP_UP_INSTRUCTION =
   "You must now wrap up the call politely. Say something like: 'Is there anything else I can help you with before we finish?'";
 const VALIDATE_APPOINTMENT_TIME_TOOL_NAME = 'validate_appointment_time';
 const CHECK_AVAILABILITY_TOOL_NAME = 'check_availability';
+const SEND_BOOKING_LINK_TOOL_NAME = 'send_booking_link';
 const TIME_VALIDATION_UNAVAILABLE_INSTRUCTION =
   'The backend could not validate that appointment time from the last caller turn. Ask the caller to repeat the appointment date and time. Do not say the time is valid, invalid, available, booked, or captured yet.';
+const BOOKING_LINK_FINAL_RESPONSE_INSTRUCTION =
+  "The booking link was sent successfully to the caller's phone. Say one brief final confirmation and goodbye in this message only. Then call end_call with reason 'link_sent'. Do not ask another question. Do not wait for the caller to respond. Do not send any additional messages after this.";
 const SIDE_BAND_QUEUE_LIMIT = 3;
 
 type SidebandTurnState =
@@ -217,12 +231,19 @@ export function startOpenAiRealtimeSipSideband(
 
   /** Set when AI calls end_call; next output_audio_buffer.stopped triggers onEndCall. */
   let pendingHangupAfterAudio = false;
+  /** Set after booking-link final response is requested; audio stop triggers hangup if model skips end_call. */
+  let pendingAutoEndAfterFinalAudio = false;
+  /** Local idempotency guard; the caller's onEndCall callback also guards Telnyx hangup. */
+  let endCallRequested = false;
   /** Fallback: fire onEndCall after this many ms if output_audio_buffer.stopped never arrives. */
   let pendingHangupFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   function fireOnEndCall(): void {
     if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
     pendingHangupAfterAudio = false;
+    pendingAutoEndAfterFinalAudio = false;
+    if (endCallRequested) return;
+    endCallRequested = true;
     params.onEndCall?.();
   }
 
@@ -367,6 +388,16 @@ export function startOpenAiRealtimeSipSideband(
       if (timedOutState === 'executing_tool') {
         // Avoid releasing the lock while a side-effecting booking/SMS tool may still finish.
         startTurnStateTimeout(30_000, token);
+        return;
+      }
+
+      if (timedOutState === 'waiting_audio' && pendingAutoEndAfterFinalAudio) {
+        logger.warn(
+          { callId: params.callId, timeoutMs: ms },
+          'auto_hangup_after_booking_link_final_audio',
+        );
+        fireOnEndCall();
+        releaseTurnState({ processQueue: false, clearQueue: true });
         return;
       }
 
@@ -914,6 +945,7 @@ export function startOpenAiRealtimeSipSideband(
       if (params.hardLimitMs) {
         hardLimitTimer = setTimeout(() => {
           hardLimitTimer = null;
+          pendingAutoEndAfterFinalAudio = false;
           logger.warn({ callId: params.callId }, 'openai_sip_shop_hard_limit_reached');
           params.onHardLimit?.();
         }, params.hardLimitMs);
@@ -1019,7 +1051,8 @@ export function startOpenAiRealtimeSipSideband(
         maybeResumeShopVadAfterWelcome(evt.type);
       }
       if (evt.type === 'output_audio_buffer.stopped' && sidebandTurnState !== 'idle') {
-        releaseTurnState();
+        const willAutoEnd = pendingAutoEndAfterFinalAudio;
+        releaseTurnState({ processQueue: !willAutoEnd, clearQueue: willAutoEnd });
       }
     }
 
@@ -1046,6 +1079,14 @@ export function startOpenAiRealtimeSipSideband(
 
     // Fire onEndCall once the goodbye audio finishes playing.
     if (pendingHangupAfterAudio && evt.type === 'output_audio_buffer.stopped') {
+      fireOnEndCall();
+    }
+
+    if (pendingAutoEndAfterFinalAudio && evt.type === 'output_audio_buffer.stopped') {
+      logger.warn(
+        { callId: params.callId },
+        'auto_hangup_after_booking_link_final_audio',
+      );
       fireOnEndCall();
     }
 
@@ -1131,6 +1172,7 @@ export function startOpenAiRealtimeSipSideband(
           logger.warn({ err, callId: params.callId }, 'openai_sip_demo_end_call_ack_failed');
         }
         if (params.onEndCall) {
+          pendingAutoEndAfterFinalAudio = false;
           pendingHangupAfterAudio = true;
           pendingHangupFallbackTimer = setTimeout(fireOnEndCall, 5_000);
         }
@@ -1189,6 +1231,7 @@ export function startOpenAiRealtimeSipSideband(
         logger.warn({ err, callId: params.callId }, 'openai_sip_end_call_ack_failed');
       }
       if (params.variant === 'shop' && params.onEndCall) {
+        pendingAutoEndAfterFinalAudio = false;
         pendingHangupAfterAudio = true;
         // Fallback: if output_audio_buffer.stopped never arrives (e.g., SIP path doesn't emit it),
         // fire onEndCall after 5 s so the call isn't left open indefinitely.
@@ -1254,8 +1297,39 @@ export function startOpenAiRealtimeSipSideband(
       };
       try {
         ws.send(JSON.stringify(payload));
-        ws.send(JSON.stringify({ type: 'response.create' }));
         lastToolResultSentAtMs = Date.now();
+        const parsedOutput = parseToolOutputObject(output);
+        const shouldFinalizeBookingLink =
+          toolName === SEND_BOOKING_LINK_TOOL_NAME &&
+          parsedOutput?.success === true &&
+          parsedOutput.error === undefined &&
+          parsedOutput.fallback === undefined;
+        if (shouldFinalizeBookingLink) {
+          pendingAutoEndAfterFinalAudio = true;
+          const sent = sendShopResponseCreate({
+            instructions: BOOKING_LINK_FINAL_RESPONSE_INSTRUCTION,
+            state: 'waiting_audio',
+            mode: 'caller_response',
+            timeoutMs: 8_000,
+            token: toolTurnToken,
+            forceAppointmentTimeValidation: false,
+          });
+          if (!sent) {
+            pendingAutoEndAfterFinalAudio = false;
+            releaseTurnState({ processQueue: false, clearQueue: true });
+          }
+          logTiming(
+            'tool_result_sent',
+            {
+              tool: toolName,
+              elapsedSinceToolCallMs: elapsedSince(lastToolCallReceivedAtMs, lastToolResultSentAtMs),
+            },
+            lastToolResultSentAtMs,
+          );
+          return;
+        }
+
+        ws.send(JSON.stringify({ type: 'response.create' }));
         lastResponseCreateSentAtMs = lastToolResultSentAtMs;
         waitingForAudioResponseStart = true;
         if (toolTurnToken === activeTurnToken) {
@@ -1286,6 +1360,7 @@ export function startOpenAiRealtimeSipSideband(
     if (hardLimitTimer) { clearTimeout(hardLimitTimer); hardLimitTimer = null; }
     if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
     pendingHangupAfterAudio = false;
+    pendingAutoEndAfterFinalAudio = false;
     releaseTurnState({ processQueue: false, clearQueue: true });
     cancelInitialTimer();
     clearTimeout(t);

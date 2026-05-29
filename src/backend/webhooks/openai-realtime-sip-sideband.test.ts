@@ -629,6 +629,15 @@ function makeEndCallEvent(callId = 'tool-call-1') {
   });
 }
 
+function makeBusinessToolEvent(toolName: string, callId: string, args: Record<string, unknown> = {}) {
+  return JSON.stringify({
+    type: 'response.function_call_arguments.done',
+    name: toolName,
+    call_id: callId,
+    arguments: JSON.stringify(args),
+  });
+}
+
 function makeAudioStoppedEvent() {
   return JSON.stringify({ type: 'output_audio_buffer.stopped' });
 }
@@ -705,4 +714,145 @@ test('onEndCall fires via 5s fallback when output_audio_buffer.stopped never arr
 
   srv.close(1000);
   t.mock.timers.reset();
+});
+
+test('send_booking_link success uses final instruction and skips generic response.create', async () => {
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'booking-link-final-response-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: async () => JSON.stringify({ success: true, message: 'Booking link sent to +15551234567' }),
+    },
+    { wsUrlOverride: sidebandUrl('booking-link-final-response-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  messages.length = 0;
+
+  srv.send(makeBusinessToolEvent('send_booking_link', 'booking-link-call', { callerName: 'Huy' }));
+  await flushIO(80);
+
+  const parsed = messages.map((message) => JSON.parse(message) as {
+    type?: string;
+    response?: { instructions?: string };
+    item?: { type?: string; call_id?: string };
+  });
+  const toolOutputs = parsed.filter((message) =>
+    message.type === 'conversation.item.create' &&
+    message.item?.type === 'function_call_output'
+  );
+  const responses = parsed.filter((message) => message.type === 'response.create');
+
+  assert.equal(toolOutputs.length, 1);
+  assert.equal(responses.length, 1, 'generic response.create must not also be sent');
+  assert.match(responses[0]?.response?.instructions ?? '', /booking link was sent successfully/i);
+
+  srv.close(1000);
+});
+
+test('send_booking_link final audio auto-hangups when model skips end_call', async () => {
+  const serverSocket = nextServerSocket();
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'booking-link-auto-hangup-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: async () => JSON.stringify({ success: true, message: 'Booking link sent to +15551234567' }),
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('booking-link-auto-hangup-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  await flushIO(30);
+
+  srv.send(makeBusinessToolEvent('send_booking_link', 'booking-link-auto-call', { callerName: 'Huy' }));
+  await flushIO(80);
+  assert.equal(endCallCount, 0);
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallCount, 1);
+  srv.close(1000);
+});
+
+test('send_booking_link final response does not double hangup when model calls end_call', async () => {
+  const serverSocket = nextServerSocket();
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'booking-link-model-end-call-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: async () => JSON.stringify({ success: true, message: 'Booking link sent to +15551234567' }),
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('booking-link-model-end-call-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  await flushIO(30);
+
+  srv.send(makeBusinessToolEvent('send_booking_link', 'booking-link-model-call', { callerName: 'Huy' }));
+  await flushIO(80);
+  srv.send(makeEndCallEvent('end-call-after-link'));
+  await flushIO(50);
+  assert.equal(endCallCount, 0, 'end_call should wait for final audio stop');
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallCount, 1);
+  srv.close(1000);
+});
+
+test('send_booking_link failure keeps generic response path and no auto-end', async () => {
+  const serverSocket = nextServerSocket();
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'booking-link-failure-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: async () => JSON.stringify({
+        success: false,
+        reason: 'no_phone',
+        fallback: 'url',
+        bookingUrl: 'https://example.test/book',
+        message: 'Unable to send booking link via SMS.',
+      }),
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('booking-link-failure-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  messages.length = 0;
+
+  srv.send(makeBusinessToolEvent('send_booking_link', 'booking-link-failure-call', { callerName: 'Huy' }));
+  await flushIO(80);
+
+  const responses = messages
+    .map((message) => JSON.parse(message) as { type?: string; response?: { instructions?: string } })
+    .filter((message) => message.type === 'response.create');
+  assert.equal(responses.length, 1);
+  assert.equal(responses[0]?.response?.instructions, undefined);
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallCount, 0);
+  srv.close(1000);
 });
