@@ -213,6 +213,7 @@ export function startOpenAiRealtimeSipSideband(
   let initialGreetingAudioStarted = false;
   let initialGreetingAudioStopped = false;
   let sawUserSpeechBeforeInitial = false;
+  let lastSpeechStartedAtMs: number | null = null;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSpeechStoppedAtMs: number | null = null;
   let lastTranscriptionCompleteAtMs: number | null = null;
@@ -220,6 +221,7 @@ export function startOpenAiRealtimeSipSideband(
   let lastToolCallReceivedAtMs: number | null = null;
   let lastToolResultSentAtMs: number | null = null;
   let lastAudioResponseStartAtMs: number | null = null;
+  let lastOutputAudioBufferStartedAtMs: number | null = null;
   let waitingForAudioResponseStart = false;
   let sidebandTurnState: SidebandTurnState = 'idle';
   let sidebandTurnMode: SidebandTurnMode = null;
@@ -271,6 +273,71 @@ export function startOpenAiRealtimeSipSideband(
       },
       `[TIMING] ${label} at ${timestamp}`,
     );
+  }
+
+  type RealtimeTimingEvent = {
+    type?: string;
+    event_id?: string;
+    response_id?: string;
+    item_id?: string;
+    call_id?: string;
+    output_index?: number;
+    content_index?: number;
+    audio_start_ms?: number;
+    audio_end_ms?: number;
+    status?: string;
+    response?: {
+      id?: unknown;
+      status?: unknown;
+      status_details?: unknown;
+    };
+    item?: {
+      id?: unknown;
+      type?: unknown;
+      role?: unknown;
+      name?: unknown;
+    };
+    error?: {
+      type?: unknown;
+      code?: unknown;
+      message?: unknown;
+    };
+  };
+
+  function eventTimingFields(evt: RealtimeTimingEvent, nowMs: number): Record<string, unknown> {
+    return {
+      eventType: evt.type ?? null,
+      eventId: evt.event_id ?? null,
+      responseId: evt.response_id ?? (typeof evt.response?.id === 'string' ? evt.response.id : null),
+      itemId: evt.item_id ?? (typeof evt.item?.id === 'string' ? evt.item.id : null),
+      toolCallId: evt.call_id ?? null,
+      outputIndex: typeof evt.output_index === 'number' ? evt.output_index : null,
+      contentIndex: typeof evt.content_index === 'number' ? evt.content_index : null,
+      audioStartMs: typeof evt.audio_start_ms === 'number' ? evt.audio_start_ms : null,
+      audioEndMs: typeof evt.audio_end_ms === 'number' ? evt.audio_end_ms : null,
+      status: evt.status ?? (typeof evt.response?.status === 'string' ? evt.response.status : null),
+      responseStatusDetails: evt.response?.status_details ?? null,
+      itemType: typeof evt.item?.type === 'string' ? evt.item.type : null,
+      itemRole: typeof evt.item?.role === 'string' ? evt.item.role : null,
+      itemName: typeof evt.item?.name === 'string' ? evt.item.name : null,
+      errorType: evt.error?.type ?? null,
+      errorCode: evt.error?.code ?? null,
+      sidebandTurnState,
+      sidebandTurnMode,
+      elapsedSinceSpeechStartedMs: elapsedSince(lastSpeechStartedAtMs, nowMs),
+      elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, nowMs),
+      elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, nowMs),
+      elapsedSinceResponseCreateMs: elapsedSince(lastResponseCreateSentAtMs, nowMs),
+      elapsedSinceToolCallMs: elapsedSince(lastToolCallReceivedAtMs, nowMs),
+      elapsedSinceToolResultMs: elapsedSince(lastToolResultSentAtMs, nowMs),
+      elapsedSinceAudioResponseStartMs: elapsedSince(lastAudioResponseStartAtMs, nowMs),
+      elapsedSinceOutputAudioBufferStartedMs: elapsedSince(lastOutputAudioBufferStartedAtMs, nowMs),
+    };
+  }
+
+  function logRealtimeTiming(label: string, evt: RealtimeTimingEvent, fields: Record<string, unknown> = {}): void {
+    const nowMs = Date.now();
+    logTiming(label, { ...eventTimingFields(evt, nowMs), ...fields }, nowMs);
   }
 
   function normalizeTranscriptForQueue(transcript: string): string {
@@ -981,7 +1048,7 @@ export function startOpenAiRealtimeSipSideband(
   });
 
   ws.on('message', (data) => {
-    let evt: { type?: string; name?: string; call_id?: string; arguments?: string; transcript?: string };
+    let evt: RealtimeTimingEvent & { name?: string; arguments?: string; transcript?: string };
     try {
       evt = JSON.parse(String(data)) as typeof evt;
     } catch {
@@ -1000,9 +1067,18 @@ export function startOpenAiRealtimeSipSideband(
       incrementMetric('initial_response_create_total', { outcome: 'skipped_speaking' });
     }
 
+    if (evt.type === 'input_audio_buffer.speech_started') {
+      lastSpeechStartedAtMs = Date.now();
+      logTiming('input_speech_started', eventTimingFields(evt, lastSpeechStartedAtMs), lastSpeechStartedAtMs);
+    }
+
     if (evt.type === 'input_audio_buffer.speech_stopped') {
       lastSpeechStoppedAtMs = Date.now();
-      logTiming('VAD speech_stopped', {}, lastSpeechStoppedAtMs);
+      logTiming('VAD speech_stopped', eventTimingFields(evt, lastSpeechStoppedAtMs), lastSpeechStoppedAtMs);
+    }
+
+    if (evt.type === 'response.created') {
+      logRealtimeTiming('response_created', evt);
     }
 
     if (evt.type === 'response.audio.delta' && waitingForAudioResponseStart) {
@@ -1011,12 +1087,18 @@ export function startOpenAiRealtimeSipSideband(
       logTiming(
         'audio_response_start',
         {
+          ...eventTimingFields(evt, lastAudioResponseStartAtMs),
+          elapsedSinceResponseCreateMs: elapsedSince(lastResponseCreateSentAtMs, lastAudioResponseStartAtMs),
           elapsedSinceToolResultMs: elapsedSince(lastToolResultSentAtMs, lastAudioResponseStartAtMs),
           elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastAudioResponseStartAtMs),
           totalLatencyMs: elapsedSince(lastSpeechStoppedAtMs, lastAudioResponseStartAtMs),
         },
         lastAudioResponseStartAtMs,
       );
+    }
+
+    if (evt.type === 'response.done') {
+      logRealtimeTiming('response_done', evt);
     }
 
     if (
@@ -1031,6 +1113,14 @@ export function startOpenAiRealtimeSipSideband(
         initialGreetingAudioStarted = true;
         logger.info({ callId: params.callId }, 'openai_sip_initial_greeting_audio_started');
       }
+      if (evt.type === 'output_audio_buffer.started') {
+        lastOutputAudioBufferStartedAtMs = Date.now();
+        logTiming(
+          'output_audio_buffer_started',
+          eventTimingFields(evt, lastOutputAudioBufferStartedAtMs),
+          lastOutputAudioBufferStartedAtMs,
+        );
+      }
       if (evt.type === 'output_audio_buffer.started' && sidebandTurnState !== 'idle') {
         currentTurnAudioStarted = true;
       }
@@ -1039,11 +1129,16 @@ export function startOpenAiRealtimeSipSideband(
         logTiming(
           'audio_sent_to_caller',
           {
+            ...eventTimingFields(evt, audioSentAtMs),
             elapsedSinceAudioStartMs: elapsedSince(lastAudioResponseStartAtMs, audioSentAtMs),
+            elapsedSinceResponseCreateMs: elapsedSince(lastResponseCreateSentAtMs, audioSentAtMs),
             elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, audioSentAtMs),
           },
           audioSentAtMs,
         );
+      }
+      if (evt.type === 'output_audio_buffer.stopped') {
+        logRealtimeTiming('output_audio_buffer_stopped', evt);
       }
       if (evt.type === 'output_audio_buffer.stopped' && !initialGreetingAudioStopped) {
         initialGreetingAudioStopped = true;
@@ -1102,15 +1197,28 @@ export function startOpenAiRealtimeSipSideband(
             ? 'caller'
             : null;
       if (transcript && speaker) {
+        const transcriptCompletedAtMs = Date.now();
         if (speaker === 'caller') {
-          lastTranscriptionCompleteAtMs = Date.now();
+          lastTranscriptionCompleteAtMs = transcriptCompletedAtMs;
           logTiming(
             'transcription_complete',
             {
+              ...eventTimingFields(evt, transcriptCompletedAtMs),
               transcript,
               elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastTranscriptionCompleteAtMs),
             },
             lastTranscriptionCompleteAtMs,
+          );
+        } else {
+          logTiming(
+            'assistant_transcript_complete',
+            {
+              ...eventTimingFields(evt, transcriptCompletedAtMs),
+              transcript,
+              elapsedSinceResponseCreateMs: elapsedSince(lastResponseCreateSentAtMs, transcriptCompletedAtMs),
+              elapsedSinceOutputAudioBufferStartedMs: elapsedSince(lastOutputAudioBufferStartedAtMs, transcriptCompletedAtMs),
+            },
+            transcriptCompletedAtMs,
           );
         }
         // Both shop and demo calls persist the full transcript via the callback.
