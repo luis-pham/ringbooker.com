@@ -1,6 +1,7 @@
 /** Shared link + typography tokens for the user portal (visual only). */
 export const userPortalTypographyStyles = String.raw`
 :root{
+  --user-link-color:#3C3489;
   --color-text-info:var(--purple-dark);
   --color-text-secondary:var(--text-gray);
   --color-text-primary:var(--text-dark);
@@ -19,9 +20,12 @@ a.link:not(.btn):not(.nav-item):not(.carrier-link),
 .gl-guide-link,
 .gl-gate-item a,
 .overview-rail-health-detail a,
-.overview-rail-step-title a{
-  color:var(--color-text-info);
-  font-weight:500;
+.overview-rail-step-title a,
+.booking-detail-section a,
+.integration-edit-link-button,
+.catalog-service-dialog-link-archive{
+  color:var(--user-link-color);
+  font-weight:400;
   font-size:14px;
   text-decoration:none;
   cursor:pointer;
@@ -48,7 +52,11 @@ a.link:not(.btn):not(.nav-item):not(.carrier-link):hover,
 .gl-inline-link:hover,
 .gl-gate-item a:hover,
 .overview-rail-health-detail a:hover,
-.overview-rail-step-title a:hover{
+.overview-rail-step-title a:hover,
+.booking-detail-section a:hover,
+button.user-link--subtle.integration-edit-link-button:hover,
+a.subtle-link.catalog-service-dialog-link-archive:hover,
+.catalog-service-dialog-link-archive.subtle-link:hover{
   text-decoration:underline;
 }
 
@@ -92,6 +100,14 @@ a.subtle-link:not(.user-link):hover,
 button.rb-account-btn-ghost:hover:not(:disabled){
   text-decoration:underline;
   color:var(--color-text-primary);
+}
+
+button.user-link--subtle.integration-edit-link-button,
+a.subtle-link.catalog-service-dialog-link-archive,
+.catalog-service-dialog-link-archive.subtle-link{
+  color:var(--user-link-color);
+  font-weight:400;
+  font-size:14px;
 }
 
 .sidebar-logout{
@@ -197,18 +213,28 @@ button.rb-account-btn-ghost:hover:not(:disabled){
   font-weight:500;
 }
 
+html[data-user-theme="dark"]{
+  --user-link-color:#AFA9EC;
+}
 html[data-user-theme="dark"] a.user-link,
 html[data-user-theme="dark"] button.user-link,
 html[data-user-theme="dark"] .user-link,
 html[data-user-theme="dark"] .rb-account-link,
 html[data-user-theme="dark"] a.rb-account-link,
 html[data-user-theme="dark"] button.rb-account-link,
-html[data-user-theme="dark"] a.link:not(.btn):not(.nav-item),
+html[data-user-theme="dark"] a.link:not(.btn):not(.nav-item):not(.carrier-link),
 html[data-user-theme="dark"] .portal-notif-refresh,
 html[data-user-theme="dark"] .overview-status-action,
 html[data-user-theme="dark"] .gl-guide-link,
-html[data-user-theme="dark"] .gl-inline-link{
-  color:var(--color-text-info);
+html[data-user-theme="dark"] .gl-inline-link,
+html[data-user-theme="dark"] .gl-gate-item a,
+html[data-user-theme="dark"] .overview-rail-health-detail a,
+html[data-user-theme="dark"] .overview-rail-step-title a,
+html[data-user-theme="dark"] .booking-detail-section a,
+html[data-user-theme="dark"] .integration-edit-link-button,
+html[data-user-theme="dark"] .catalog-service-dialog-link-archive{
+  color:var(--user-link-color);
+  font-weight:400;
 }
 html[data-user-theme="dark"] .subtle-link,
 html[data-user-theme="dark"] button.subtle-link,
@@ -223,5 +249,11 @@ html[data-user-theme="dark"] a.subtle-link:not(.user-link):hover,
 html[data-user-theme="dark"] .user-link--subtle:hover,
 html[data-user-theme="dark"] button.user-link--subtle:hover{
   color:var(--color-text-primary);
+}
+html[data-user-theme="dark"] button.user-link--subtle.integration-edit-link-button,
+html[data-user-theme="dark"] a.subtle-link.catalog-service-dialog-link-archive,
+html[data-user-theme="dark"] .catalog-service-dialog-link-archive.subtle-link,
+html[data-user-theme="dark"] button.user-link--subtle.integration-edit-link-button:hover{
+  color:var(--user-link-color);
 }
 `;

@@ -360,9 +360,6 @@ html[data-user-theme="dark"]{
   flex:1;
   min-width:0;
 }
-.integration-edit-link-button{
-  color:#630ed4;
-}
 .integration-app-logo--generic{
   background:var(--bg-gray);
   color:var(--text-gray);
@@ -1436,10 +1433,6 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
 .catalog-service-dialog-footer-spacer{
   flex:1;
   min-width:0;
-}
-.catalog-service-dialog-link-archive.subtle-link,
-.catalog-service-dialog-link-archive{
-  color:var(--purple-dark)!important;
 }
 .catalog-service-dialog-link-remove.subtle-link,
 .catalog-service-dialog-link-remove{
