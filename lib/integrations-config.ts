@@ -32,6 +32,7 @@ export type IntegrationApp = {
   helpUrl?: string;
   comingSoon?: boolean;
   note?: string;
+  supportsLiveSync?: boolean;
 };
 
 export const INTEGRATION_APPS: IntegrationApp[] = [
@@ -81,6 +82,7 @@ export const INTEGRATION_APPS: IntegrationApp[] = [
     category: 'booking-link',
     placeholder: 'https://vagaro.com/your-business',
     helpUrl: 'https://vagaro.com/pro/marketplace',
+    supportsLiveSync: true,
     note: 'Vagaro API requires enterprise approval. Add your booking link so callers can receive it by SMS while you wait for API access.',
   },
   {

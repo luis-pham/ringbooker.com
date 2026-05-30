@@ -242,6 +242,40 @@ test('manual provider with booking URL rejects direct create_booking', async () 
   assert.equal(harness.bookings.size, 0);
 });
 
+test('Vagaro live sync with booking URL rejects direct create_booking before provider call', async () => {
+  const harness = createContext({
+    provider: 'manual',
+    shop: {
+      booking_url: 'https://vagaro.com/test-salon',
+      booking_method: 'app',
+      selected_integration: 'vagaro',
+      vagaro_mode: 'live_sync',
+      vagaro_connection_status: 'connected',
+      vagaro_business_id: 'vagaro-business-id',
+      vagaro_region: 'usa03',
+      vagaro_client_id: 'vagaro-client-id',
+      vagaro_client_secret_encrypted: 'encrypted-secret',
+    },
+    createBooking: async () => {
+      throw new Error('vagaro_create_booking_should_not_be_called');
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.deepEqual(result, {
+    error: 'This salon uses an external booking system. Use send_booking_link to text the caller a booking link instead of creating a booking directly.',
+    code: 'BOOKING_LINK_PROVIDER',
+    retryable: false,
+  });
+  assert.equal(harness.createdInputs.length, 0);
+  assert.equal(harness.bookings.size, 0);
+});
+
 test('rejects booking outside configured business hours before provider call', async () => {
   const harness = createContext({
     shop: {

@@ -5,7 +5,7 @@ import {
   GENERAL_SERVICE_CATEGORY_NAME,
   serviceCatalogToLegacyServices,
 } from '@/src/backend/domain/service-catalog';
-import type { Shop } from '@/src/backend/domain/types';
+import type { Shop, VagaroSettings } from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 
 const defaultShop: Shop = {
@@ -48,6 +48,18 @@ const defaultShop: Shop = {
   booking_url: 'https://ringbooker.com/demo',
   booking_method: null,
   selected_integration: null,
+  vagaro_mode: 'link_only',
+  vagaro_booking_url: null,
+  vagaro_webhook_token: null,
+  vagaro_client_id: null,
+  vagaro_client_secret_encrypted: null,
+  vagaro_region: null,
+  vagaro_connection_status: 'disconnected',
+  vagaro_fallback_url: null,
+  vagaro_business_id: null,
+  vagaro_business_name: null,
+  vagaro_location_id: null,
+  vagaro_locations: null,
   website_url: 'https://ringbooker.com/demo',
   languages: ['en', 'vi'],
   current_onboarding_step: 4,
@@ -185,6 +197,18 @@ export class InMemoryShopsRepository implements ShopsRepository {
       current_onboarding_step: 1,
       booking_method: null,
       selected_integration: null,
+      vagaro_mode: 'link_only',
+      vagaro_booking_url: null,
+      vagaro_webhook_token: null,
+      vagaro_client_id: null,
+      vagaro_client_secret_encrypted: null,
+      vagaro_region: null,
+      vagaro_connection_status: 'disconnected',
+      vagaro_fallback_url: null,
+      vagaro_business_id: null,
+      vagaro_business_name: null,
+      vagaro_location_id: null,
+      vagaro_locations: null,
       setup_method: null,
       forwarding_type: 'no_answer',
       forwarding_carrier: null,
@@ -470,5 +494,25 @@ export class InMemoryShopsRepository implements ShopsRepository {
     };
     this.shops.set(shopId, updated);
     return updated;
+  }
+
+  async updateVagaroSettings(shopId: string, settings: Partial<VagaroSettings>): Promise<void> {
+    const current = this.shops.get(shopId);
+    if (!current) return;
+    this.shops.set(shopId, {
+      ...current,
+      ...settings,
+    });
+  }
+
+  async getShopByWebhookToken(token: string): Promise<Shop | null> {
+    const trimmed = token.trim();
+    if (!trimmed) return null;
+    for (const shop of this.shops.values()) {
+      if (shop.vagaro_webhook_token === trimmed) {
+        return this.hydrateShop(shop);
+      }
+    }
+    return null;
   }
 }

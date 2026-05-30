@@ -84,12 +84,14 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
     type: 'calendar',
     implemented: true,
     status: 'active',
+    // Vagaro availability and webhook capabilities require shop.vagaro_mode='live_sync'.
+    // Direct appointment creation is not available; callers confirm through the booking link.
     capabilities: {
       checkAvailability: true,
       createBooking: false,
       rescheduleBooking: false,
       cancelBooking: false,
-      webhookSync: false,
+      webhookSync: true,
       serviceSync: true,
       staffSync: true,
       customerSync: false,

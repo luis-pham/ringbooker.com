@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { BookingMethod, IntegrationAppKey } from '@/lib/integrations-config';
 import { fromBackendProviderKey, toBackendProviderKey } from '@/lib/integrations-config';
 
+export type VagaroMode = 'link_only' | 'live_sync';
+export type VagaroConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error';
+
 type ProviderSummary = {
   id: string;
   label: string;
@@ -38,6 +41,13 @@ type ProviderSummary = {
     bookingMode?: string | null;
     region?: string | null;
     businessId?: string | null;
+    businessName?: string | null;
+    clientId?: string | null;
+    webhookTokenMasked?: string | null;
+    vagaroMode?: VagaroMode | null;
+    vagaroConnectionStatus?: VagaroConnectionStatus | null;
+    fallbackUrl?: string | null;
+    locations?: unknown;
     capabilityNote?: string | null;
     type?: string | null;
   } | null;
@@ -74,6 +84,9 @@ export type IntegrationsState = {
   acuityConnected: boolean;
   bookingLinkSaved: boolean;
   bookingLinkUrl: string | null;
+  vagaroMode: VagaroMode;
+  vagaroConnectionStatus: VagaroConnectionStatus;
+  vagaroWebhookToken: string | null;
   providers: ProviderSummary[];
   isLoading: boolean;
   error: string | null;
@@ -96,6 +109,15 @@ export function integrationErrorMessage(error: string | undefined, fallback = GE
   return message.includes('_') ? GENERIC_INTEGRATION_ERROR : message;
 }
 
+function asVagaroMode(value: unknown): VagaroMode {
+  return value === 'live_sync' ? 'live_sync' : 'link_only';
+}
+
+function asVagaroConnectionStatus(value: unknown): VagaroConnectionStatus {
+  if (value === 'pending' || value === 'connected' || value === 'error') return value;
+  return 'disconnected';
+}
+
 export function useIntegrations(options: UseIntegrationsOptions = {}) {
   const enabled = options.enabled !== false;
   const initialBookingMethod = options.initialBookingMethod ?? null;
@@ -108,6 +130,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(enabled && !hasInitialPreferences);
   const [error, setError] = useState<string | null>(null);
+  const [vagaroMode, setVagaroModeState] = useState<VagaroMode>('link_only');
+  const [vagaroConnectionStatus, setVagaroConnectionStatus] = useState<VagaroConnectionStatus>('disconnected');
+  const [vagaroWebhookToken, setVagaroWebhookToken] = useState<string | null>(null);
 
   const selectedBackendProvider = selectedApp ? toBackendProviderKey(selectedApp) : null;
   const selectedProvider = useMemo(
@@ -120,6 +145,12 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
   const mindbodyProvider = providers.find((provider) => provider.id === 'mindbody') ?? null;
   const acuityProvider = providers.find((provider) => provider.id === 'acuity') ?? null;
   const bookingLinkProvider = selectedProvider?.details?.type === 'booking_link' ? selectedProvider : null;
+
+  useEffect(() => {
+    const details = vagaroProvider?.details;
+    setVagaroModeState(asVagaroMode(details?.vagaroMode));
+    setVagaroConnectionStatus(asVagaroConnectionStatus(details?.vagaroConnectionStatus));
+  }, [vagaroProvider?.details?.vagaroMode, vagaroProvider?.details?.vagaroConnectionStatus]);
 
   const applyPreferences = useCallback((preferences: PreferencesResponse) => {
     const method = preferences.bookingMethod ?? null;
@@ -263,6 +294,101 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
     [applyPreferences, loadProviders, patchPreferences],
   );
 
+  const setVagaroMode = useCallback((mode: VagaroMode) => {
+    setVagaroModeState(mode);
+  }, []);
+
+  const saveVagaroBookingLink = useCallback(
+    async (url: string) => {
+      setError(null);
+      const response = await fetch('/api/backend/user/calendar/providers/vagaro/settings', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'link_only', booking_url: url }),
+      });
+      const payload = (await response.json()) as { success: boolean; error?: string };
+      if (!response.ok || !payload.success) {
+        const message = integrationErrorMessage(payload.error, 'booking_link_save_failed');
+        setError(message);
+        throw new Error(message);
+      }
+      setVagaroModeState('link_only');
+      const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
+      applyPreferences(preferences);
+      await loadProviders();
+    },
+    [applyPreferences, loadProviders, patchPreferences],
+  );
+
+  const saveVagaroLiveSyncSettings = useCallback(
+    async (settings: { mode?: VagaroMode; fallback_url?: string | null; booking_url?: string | null }) => {
+      setError(null);
+      const response = await fetch('/api/backend/user/calendar/providers/vagaro/settings', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      const payload = (await response.json()) as { success: boolean; error?: string };
+      if (!response.ok || !payload.success) {
+        const message = integrationErrorMessage(payload.error, 'vagaro_settings_failed');
+        setError(message);
+        throw new Error(message);
+      }
+      if (settings.mode) setVagaroModeState(settings.mode);
+      await loadProviders();
+    },
+    [loadProviders],
+  );
+
+  const connectVagaroLiveSync = useCallback(
+    async (creds: { clientId: string; clientSecretKey: string; region: string }) => {
+      setError(null);
+      const response = await fetch('/api/backend/user/calendar/providers/vagaro/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(creds),
+      });
+      const payload = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        webhook_token?: string | null;
+        connection_status?: VagaroConnectionStatus;
+        business_name?: string | null;
+        locations?: unknown;
+      };
+      if (!response.ok || !payload.success) {
+        const code = payload.error ?? 'connection_failed';
+        setVagaroConnectionStatus('error');
+        throw new Error(code);
+      }
+      setVagaroModeState('live_sync');
+      setVagaroConnectionStatus(asVagaroConnectionStatus(payload.connection_status));
+      setVagaroWebhookToken(payload.webhook_token ?? null);
+      const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
+      applyPreferences(preferences);
+      await loadProviders();
+      return payload;
+    },
+    [applyPreferences, loadProviders, patchPreferences],
+  );
+
+  const regenerateVagaroToken = useCallback(async () => {
+    setError(null);
+    const response = await fetch('/api/backend/user/calendar/providers/vagaro/regenerate-token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    });
+    const payload = (await response.json()) as { success: boolean; webhook_token?: string; error?: string };
+    if (!response.ok || !payload.success || !payload.webhook_token) {
+      const message = integrationErrorMessage(payload.error, 'vagaro_token_regenerate_failed');
+      setError(message);
+      throw new Error(message);
+    }
+    setVagaroWebhookToken(payload.webhook_token);
+    await loadProviders();
+    return payload.webhook_token;
+  }, [loadProviders]);
+
   const connectVagaro = useCallback(
     async (creds: { clientId: string; clientSecret: string; region: string; businessId: string; bookingLink?: string }) => {
       setError(null);
@@ -397,6 +523,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       acuityConnected: Boolean(acuityProvider?.connected),
       bookingLinkSaved: Boolean(bookingLinkProvider?.connected),
       bookingLinkUrl: selectedProvider?.details?.bookingUrl ?? null,
+      vagaroMode,
+      vagaroConnectionStatus,
+      vagaroWebhookToken,
       providers,
       isLoading,
       error,
@@ -405,6 +534,11 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
     setBookingMethod,
     setSelectedApp,
     saveBookingLink,
+    setVagaroMode,
+    saveVagaroBookingLink,
+    connectVagaroLiveSync,
+    regenerateVagaroToken,
+    saveVagaroLiveSyncSettings,
     connectVagaro,
     connectMindbody,
     connectAcuity,

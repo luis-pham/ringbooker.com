@@ -60,6 +60,7 @@ import type {
   Shop,
   ShopAccessState,
   ShopServiceCatalog,
+  VagaroSettings,
 } from '@/src/backend/domain/types';
 import type {
   BlogPostsRepository,
@@ -97,6 +98,7 @@ import type {
   ForwardingTestSessionsRepository,
   VoiceCallLegsRepository,
   CustomersRepository,
+  VagaroWebhookEventsRepository,
 } from '@/src/backend/ports/repositories';
 import type { WebDemoSessionAdminRecord, WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
@@ -189,11 +191,14 @@ import {
 } from '@/src/backend/services/calendar/provider-connections';
 import {
   encodeVagaroCredentials,
+  generateWebhookToken,
   generateVagaroAccessToken,
   parseVagaroCredentials,
+  verifyVagaroCredentials,
   VagaroProvider,
   type VagaroCredentials,
 } from '@/src/backend/services/calendar/vagaro';
+import { encrypt } from '@/src/backend/services/crypto/encrypt';
 import {
   encodeMindbodyCredentials,
   parseMindbodyCredentials,
@@ -1013,6 +1018,18 @@ const vagaroConnectSchema = z.object({
   bookingUrl: z.string().optional(),
 });
 
+const vagaroVerifySchema = z.object({
+  clientId: z.string().min(1),
+  clientSecretKey: z.string().min(1),
+  region: z.string().min(1),
+});
+
+const vagaroSettingsSchema = z.object({
+  mode: z.enum(['link_only', 'live_sync']).optional(),
+  booking_url: z.string().nullable().optional(),
+  fallback_url: z.string().nullable().optional(),
+});
+
 const vagaroConfigureSchema = z.object({
   clientId: z.string().min(1).optional(),
   clientSecretKey: z.string().min(1).optional(),
@@ -1765,6 +1782,8 @@ function toUserFacingServiceCatalog(catalog?: ShopServiceCatalog | null): ShopSe
 function toUserFacingShop(shop: Shop): Shop {
   return {
     ...shop,
+    vagaro_webhook_token: shop.vagaro_webhook_token ? 'whk_••••••••••••' : null,
+    vagaro_client_secret_encrypted: undefined,
     service_catalog: toUserFacingServiceCatalog(shop.service_catalog) ?? undefined,
   };
 }
@@ -2269,6 +2288,24 @@ function normalizeHttpsBookingUrl(value: string): string | null {
   }
 }
 
+function safeWebhookHeaders(headers: Headers): Record<string, string> {
+  const safe: Record<string, string> = {};
+  const exact = new Set(['content-type', 'user-agent', 'x-request-id']);
+  for (const [rawName, value] of headers.entries()) {
+    const name = rawName.toLowerCase();
+    if (exact.has(name) || (name.startsWith('x-vagaro-') && !name.includes('signature'))) {
+      safe[name] = value;
+    }
+  }
+  return safe;
+}
+
+function getWebhookStringField(payload: unknown, key: string): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const value = (payload as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 function buildCalendarSettingsRedirect(params: { appBaseUrl: string; result: 'success' | 'error'; provider: string; message?: string }) {
   const url = new URL('/user/integrations', params.appBaseUrl);
   url.searchParams.set('calendar_connect', params.result);
@@ -2686,6 +2723,7 @@ async function fetchPaddleGrossCollected(): Promise<{ value: number; cachedAt: s
 
 export function createBackendApp(deps: {
   providerEventsRepository: ProviderEventsRepository;
+  vagaroWebhookEventsRepository?: VagaroWebhookEventsRepository;
   jobsRepository?: JobsRepository;
   bookingsRepository?: BookingsRepository;
   billingCustomersRepository?: BillingCustomersRepository;
@@ -3050,11 +3088,47 @@ export function createBackendApp(deps: {
 
   app.post(path('/webhooks/vagaro'), (c) =>
     (async () => {
+      logger.info({ timestamp: new Date().toISOString() }, 'vagaro_webhook_legacy_route_called');
       const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_paddle, 'webhook_vagaro');
       if (limited) return limited;
       return handleVagaroWebhook(c, {
         providerEventsRepository: deps.providerEventsRepository,
       });
+    })(),
+  );
+
+  app.post(path('/webhooks/vagaro/:token'), (c) =>
+    (async () => {
+      const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_paddle, 'webhook_vagaro_token');
+      if (limited) return limited;
+      if (!deps.shopsRepository || !deps.vagaroWebhookEventsRepository) {
+        return c.json({ ok: false, error: 'vagaro_webhook_dependencies_unavailable' }, 500);
+      }
+      const token = c.req.param('token') ?? '';
+      const shop = await deps.shopsRepository.getShopByWebhookToken(token);
+      if (!shop) return c.json({ ok: false }, 404);
+
+      const body = await c.req.json().catch(() => null);
+      const eventType = getWebhookStringField(body, 'type') ?? 'unknown';
+      const action = getWebhookStringField(body, 'action');
+      const payload =
+        body && typeof body === 'object' && Object.prototype.hasOwnProperty.call(body, 'payload')
+          ? (body as Record<string, unknown>).payload
+          : body;
+
+      await deps.vagaroWebhookEventsRepository.save({
+        shop_id: shop.id,
+        event_type: eventType,
+        action,
+        payload: payload ?? {},
+        raw_headers: safeWebhookHeaders(c.req.raw.headers),
+        received_at: new Date().toISOString(),
+        processed_at: null,
+        processing_error: null,
+      });
+
+      logger.info({ shopId: shop.id, eventType, action }, 'vagaro_webhook_received');
+      return c.json({ ok: true }, 200);
     })(),
   );
 
@@ -7178,36 +7252,44 @@ export function createBackendApp(deps: {
           };
         }
         if (id === 'vagaro') {
-          if ((bookingLinkProvider === 'vagaro' || shop.selected_integration === 'vagaro') && shop.booking_url) {
-            return {
-              id,
-              label: meta.label,
-              implemented: true,
-              connected: true,
-              configured: true,
-              details: {
-                bookingUrl: shop.booking_url,
-                type: 'booking_link',
-                capabilityNote: 'Vagaro booking link saved. Full API sync requires Vagaro API approval.',
-              },
-            };
-          }
-          const connected = Boolean(vagaroCredentials?.accessToken || vagaroCredentials?.clientId);
-          const configured = Boolean(vagaroCredentials?.region && vagaroCredentials?.businessId);
+          const vagaroMode = shop.vagaro_mode ?? 'link_only';
+          const vagaroConnectionStatus = shop.vagaro_connection_status ?? 'disconnected';
+          const vagaroBookingUrl =
+            shop.vagaro_booking_url ??
+            (((bookingLinkProvider === 'vagaro' || shop.selected_integration === 'vagaro') && shop.booking_url) ? shop.booking_url : null);
+          const businessId = shop.vagaro_business_id ?? vagaroCredentials?.businessId ?? null;
+          const liveSyncConnected =
+            vagaroMode === 'live_sync' &&
+            vagaroConnectionStatus === 'connected' &&
+            Boolean(businessId);
+          const legacyCredentialsConnected = Boolean(vagaroCredentials?.accessToken || vagaroCredentials?.clientId);
+          const connected = Boolean(vagaroBookingUrl) || liveSyncConnected || legacyCredentialsConnected;
+          const configured = Boolean(vagaroBookingUrl) || liveSyncConnected || Boolean(vagaroCredentials?.region && vagaroCredentials?.businessId);
           return {
             id,
             label: meta.label,
-            implemented: meta.implemented,
+            implemented: true,
             connected,
             configured,
-            details: connected
-              ? {
-                  region: vagaroCredentials?.region ?? null,
-                  businessId: vagaroCredentials?.businessId ?? null,
-                  bookingUrl: shop.booking_url ?? null,
-                  capabilityNote: 'Availability checking supported. Booking creation requires Vagaro app.',
-                }
-              : null,
+            details: {
+              vagaroMode,
+              vagaroConnectionStatus,
+              region: shop.vagaro_region ?? vagaroCredentials?.region ?? null,
+              businessId,
+              businessName: shop.vagaro_business_name ?? null,
+              locationId: shop.vagaro_location_id ?? null,
+              clientId: shop.vagaro_client_id ?? vagaroCredentials?.clientId ?? null,
+              locations: shop.vagaro_locations ?? null,
+              webhookTokenMasked: shop.vagaro_webhook_token ? 'whk_••••••••••••' : null,
+              bookingUrl: vagaroBookingUrl,
+              fallbackUrl: shop.vagaro_fallback_url ?? null,
+              availabilityCheck: liveSyncConnected ? 'available' : 'needs_credentials',
+              directAppointmentCreation: 'not_available',
+              type: vagaroMode === 'live_sync' ? 'live_sync' : 'booking_link',
+              capabilityNote: liveSyncConnected
+                ? 'Vagaro live sync connected for availability reads. Booking links are still sent by SMS for caller confirmation.'
+                : 'Vagaro booking link saved. Live sync requires Vagaro APIs & Webhooks access.',
+            },
           };
         }
         if (id === 'mindbody') {
@@ -7312,6 +7394,145 @@ export function createBackendApp(deps: {
       ok: true,
       providers,
     });
+  });
+
+  app.post(path('/user/calendar/providers/vagaro/verify'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_vagaro_verify');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ success: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = vagaroVerifySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ success: false, error: 'invalid_payload' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ success: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
+
+    const verification = await verifyVagaroCredentials(
+      parsed.data.clientId,
+      parsed.data.clientSecretKey,
+      parsed.data.region,
+    );
+    if (!verification.valid) {
+      await deps.shopsRepository.updateVagaroSettings(shop.id, {
+        vagaro_connection_status: 'error',
+      });
+      return c.json({ success: false, error: verification.error }, 400);
+    }
+
+    const generatedToken = shop.vagaro_webhook_token?.trim() ? null : generateWebhookToken();
+    await deps.shopsRepository.updateVagaroSettings(shop.id, {
+      vagaro_mode: 'live_sync',
+      vagaro_client_id: parsed.data.clientId,
+      vagaro_client_secret_encrypted: encrypt(parsed.data.clientSecretKey),
+      vagaro_region: parsed.data.region,
+      vagaro_connection_status: 'connected',
+      ...(generatedToken ? { vagaro_webhook_token: generatedToken } : {}),
+      vagaro_business_id: verification.businessId,
+      vagaro_business_name: verification.businessName ?? null,
+      vagaro_location_id: verification.locations[0]?.locationId ?? null,
+      vagaro_locations: verification.locations,
+    });
+
+    return c.json({
+      success: true,
+      webhook_token: generatedToken,
+      connection_status: 'connected',
+      business_name: verification.businessName ?? null,
+      locations: verification.locations,
+    });
+  });
+
+  app.patch(path('/user/calendar/providers/vagaro/settings'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_vagaro_settings');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ success: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = vagaroSettingsSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ success: false, error: 'invalid_payload' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ success: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
+
+    const settings: Partial<VagaroSettings> = {};
+    if (parsed.data.mode !== undefined) settings.vagaro_mode = parsed.data.mode;
+    if (parsed.data.booking_url !== undefined) {
+      if (parsed.data.booking_url === null || parsed.data.booking_url.trim() === '') {
+        settings.vagaro_booking_url = null;
+      } else {
+        const bookingUrl = normalizeHttpsBookingUrl(parsed.data.booking_url);
+        if (!bookingUrl) return c.json({ success: false, error: 'bookingUrl must start with https://' }, 400);
+        settings.vagaro_booking_url = bookingUrl;
+      }
+    }
+    if (parsed.data.fallback_url !== undefined) {
+      if (parsed.data.fallback_url === null || parsed.data.fallback_url.trim() === '') {
+        settings.vagaro_fallback_url = null;
+      } else {
+        const fallbackUrl = normalizeHttpsBookingUrl(parsed.data.fallback_url);
+        if (!fallbackUrl) return c.json({ success: false, error: 'fallbackUrl must start with https://' }, 400);
+        settings.vagaro_fallback_url = fallbackUrl;
+      }
+    }
+
+    await deps.shopsRepository.updateVagaroSettings(shop.id, settings);
+    if (parsed.data.booking_url !== undefined) {
+      const updated = await deps.shopsRepository.updateUserSettings(shop.id, {
+        booking_url: settings.vagaro_booking_url ?? null,
+        booking_method: 'app',
+        selected_integration: 'vagaro',
+      });
+      if (!updated) return c.json({ success: false, error: 'shop_not_found' }, 404);
+    }
+
+    return c.json({ success: true });
+  });
+
+  app.post(path('/user/calendar/providers/vagaro/regenerate-token'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_vagaro_regenerate_token');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ success: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ success: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
+
+    const webhookToken = generateWebhookToken();
+    await deps.shopsRepository.updateVagaroSettings(shop.id, {
+      vagaro_webhook_token: webhookToken,
+    });
+    return c.json({ success: true, webhook_token: webhookToken });
   });
 
   app.post(path('/user/calendar/providers/vagaro/connect'), async (c) => {
@@ -7421,6 +7642,10 @@ export function createBackendApp(deps: {
       selected_integration: 'vagaro',
     });
     if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    await deps.shopsRepository.updateVagaroSettings(shop.id, {
+      vagaro_mode: 'link_only',
+      vagaro_booking_url: bookingUrl,
+    });
 
     return c.json({
       ok: true,
@@ -7941,10 +8166,18 @@ export function createBackendApp(deps: {
 
     if (provider === 'vagaro') {
       const credentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
-      if (!credentials?.accessToken && !credentials?.clientId) {
+      const hasNewLiveSyncCredentials =
+        shop.vagaro_mode === 'live_sync' &&
+        shop.vagaro_connection_status === 'connected' &&
+        Boolean(shop.vagaro_business_id?.trim()) &&
+        Boolean(shop.vagaro_region?.trim()) &&
+        Boolean(shop.vagaro_client_id?.trim()) &&
+        Boolean(shop.vagaro_client_secret_encrypted?.trim());
+      const hasLegacyCredentials = Boolean(credentials?.businessId && (credentials.accessToken || credentials.clientId));
+      if (!hasNewLiveSyncCredentials && !hasLegacyCredentials) {
         return c.json({ ok: false, error: 'provider_not_connected' }, 400);
       }
-      if (!credentials.businessId) {
+      if (!hasNewLiveSyncCredentials && !credentials.businessId) {
         return c.json({ ok: false, error: 'Business ID is required for Vagaro integration' }, 400);
       }
 

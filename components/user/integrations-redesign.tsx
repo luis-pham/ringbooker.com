@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconBolt,
+  IconCopy,
   IconDeviceMobile,
+  IconEye,
+  IconEyeOff,
   IconLink,
   IconLoader2,
   IconPhoneCall,
@@ -22,6 +25,7 @@ import {
 } from '@/lib/integrations-config';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { integrationErrorMessage } from '@/hooks/useIntegrations';
+import type { VagaroConnectionStatus, VagaroMode } from '@/hooks/useIntegrations';
 
 function AppLogo({ app }: { app: IntegrationApp }) {
   if (app.logoSrc) {
@@ -165,16 +169,19 @@ function BookingMethodQuestion({
   );
 }
 
-function AppCard({ app, selected, connected, onSelect, displayName, displayTag, dashed = false, useLinkIcon = false }: {
+function AppCard({ app, selected, connected, onSelect, displayName, displayTag, displayTagVariant = 'default', upgradePill, dashed = false, useLinkIcon = false }: {
   app: IntegrationApp;
   selected: boolean;
   connected: boolean;
   onSelect: () => void;
   displayName?: string;
   displayTag?: string;
+  displayTagVariant?: 'default' | 'success';
+  upgradePill?: string;
   dashed?: boolean;
   useLinkIcon?: boolean;
 }) {
+  const tag = displayTag ?? (app.category === 'full-sync' ? 'Full sync' : 'Link only');
   return (
     <button
       type="button"
@@ -189,17 +196,34 @@ function AppCard({ app, selected, connected, onSelect, displayName, displayTag, 
       ) : <AppLogo app={app} />}
       <span className="integration-app-copy">
         <strong>{displayName ?? app.name}</strong>
-        <small>{displayTag ?? (app.category === 'full-sync' ? 'Full sync' : 'Link only')}</small>
+        {displayTagVariant === 'success' ? <small className="integration-app-badge connected">{tag}</small> : <small>{tag}</small>}
       </span>
+      {upgradePill ? (
+        <span
+          className="integration-app-badge"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            background: 'var(--purple-ultra)',
+            borderColor: 'var(--purple-dark)',
+            color: 'var(--purple-dark)',
+          }}
+        >
+          {upgradePill}
+        </span>
+      ) : null}
       {connected ? <span className="integration-app-badge connected">Connected</span> : null}
       {app.comingSoon ? <span className="integration-app-badge">Coming soon</span> : null}
     </button>
   );
 }
 
-function AppPicker({ selectedApp, providers, onBack, onSelect }: {
+function AppPicker({ selectedApp, providers, vagaroMode, vagaroConnectionStatus, onBack, onSelect }: {
   selectedApp: IntegrationAppKey | null;
   providers: Array<{ id: string; connected: boolean }>;
+  vagaroMode: VagaroMode;
+  vagaroConnectionStatus: VagaroConnectionStatus;
   onBack: () => void;
   onSelect: (key: IntegrationAppKey) => void;
 }) {
@@ -242,7 +266,15 @@ function AppPicker({ selectedApp, providers, onBack, onSelect }: {
               connected={isConnected(app)}
               onSelect={() => onSelect(app.key)}
               displayName={app.key === 'custom' ? 'Any booking link' : undefined}
-              displayTag={app.key === 'custom' ? 'Works with any URL' : undefined}
+              displayTag={
+                app.key === 'custom'
+                  ? 'Works with any URL'
+                  : app.key === 'vagaro' && vagaroMode === 'live_sync' && vagaroConnectionStatus === 'connected'
+                    ? 'Live sync'
+                    : undefined
+              }
+              displayTagVariant={app.key === 'vagaro' && vagaroMode === 'live_sync' && vagaroConnectionStatus === 'connected' ? 'success' : 'default'}
+              upgradePill={app.supportsLiveSync && app.key === 'vagaro' && vagaroMode === 'link_only' ? '+ Live sync' : undefined}
               dashed={app.key === 'custom'}
               useLinkIcon={app.key === 'custom'}
             />
@@ -305,6 +337,315 @@ function LinkConfigPanel({ app, savedUrl, onSave }: { app: IntegrationApp; saved
         ) : null}
       </div>
       <div className="note">One link per account. Callers receive it by SMS.</div>
+    </div>
+  );
+}
+
+function vagaroErrorMessage(error: string | null): string | null {
+  if (!error) return null;
+  if (error === 'invalid_credentials') return 'Client ID or Secret is incorrect. Check your Vagaro API settings.';
+  if (error === 'region_not_found') return 'No account found for this region. Check your Vagaro URL.';
+  if (error === 'connection_failed') return 'Connection failed. Try again or contact support.';
+  return integrationErrorMessage(error, 'Connection failed. Try again or contact support.');
+}
+
+function VagaroStatusRow({
+  title,
+  description,
+  status,
+  alwaysOn = false,
+}: {
+  title: string;
+  description: string;
+  status: VagaroConnectionStatus;
+  alwaysOn?: boolean;
+}) {
+  const isConnected = alwaysOn || status === 'connected';
+  const label = alwaysOn ? 'Always on' : status === 'connected' ? 'Connected' : status === 'error' ? 'Connection error' : 'Awaiting credentials';
+  const badgeStyle = isConnected
+    ? undefined
+    : status === 'error'
+      ? { background: '#fef2f2', borderColor: '#fecaca', color: '#b91c1c' }
+      : { background: '#fffbeb', borderColor: '#fde68a', color: '#92400e' };
+  return (
+    <div className="integration-info-box" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <span>
+        <strong style={{ color: 'var(--text-dark)' }}>{title}</strong>
+        <br />
+        {description}
+      </span>
+      <span className={`integration-app-badge ${isConnected ? 'connected' : ''}`} style={badgeStyle}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function VagaroConfigPanel({
+  provider,
+  vagaroMode,
+  connectionStatus,
+  rawWebhookToken,
+  onModeChange,
+  onSaveBookingLink,
+  onConnect,
+  onRegenerate,
+  onSaveSettings,
+}: {
+  provider: { details: Record<string, unknown> | null } | null;
+  vagaroMode: VagaroMode;
+  connectionStatus: VagaroConnectionStatus;
+  rawWebhookToken: string | null;
+  onModeChange: (mode: VagaroMode) => void;
+  onSaveBookingLink: (url: string) => Promise<void>;
+  onConnect: (credentials: { clientId: string; clientSecretKey: string; region: string }) => Promise<unknown>;
+  onRegenerate: () => Promise<string>;
+  onSaveSettings: (settings: { mode?: VagaroMode; fallback_url?: string | null; booking_url?: string | null }) => Promise<void>;
+}) {
+  const details = provider?.details ?? {};
+  const savedBookingUrl = typeof details.bookingUrl === 'string' ? details.bookingUrl : '';
+  const savedFallbackUrl = typeof details.fallbackUrl === 'string' ? details.fallbackUrl : '';
+  const savedRegion = typeof details.region === 'string' ? details.region : '';
+  const savedClientId = typeof details.clientId === 'string' ? details.clientId : '';
+  const maskedToken = typeof details.webhookTokenMasked === 'string' ? details.webhookTokenMasked : null;
+  const businessName = typeof details.businessName === 'string' ? details.businessName : null;
+  const readAvailabilityStatus = connectionStatus === 'connected' && typeof details.businessId === 'string' && details.businessId
+    ? 'connected'
+    : connectionStatus === 'error'
+      ? 'error'
+      : 'pending';
+  const [localMode, setLocalMode] = useState<VagaroMode>(vagaroMode);
+  const [bookingUrl, setBookingUrl] = useState(savedBookingUrl);
+  const [clientId, setClientId] = useState(savedClientId);
+  const [clientSecretKey, setClientSecretKey] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
+  const [region, setRegion] = useState(savedRegion);
+  const [fallbackUrl, setFallbackUrl] = useState(savedFallbackUrl);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalMode(vagaroMode);
+  }, [vagaroMode]);
+
+  useEffect(() => {
+    setBookingUrl(savedBookingUrl);
+    setFallbackUrl(savedFallbackUrl);
+    setClientId(savedClientId);
+    setRegion(savedRegion);
+    setMessage(null);
+    setInlineError(null);
+  }, [savedBookingUrl, savedFallbackUrl, savedClientId, savedRegion]);
+
+  const webhookBase = typeof window === 'undefined'
+    ? 'https://api.[your-domain]/api/backend/webhooks/vagaro'
+    : `${window.location.origin}/api/backend/webhooks/vagaro`;
+  const displayedEndpoint = rawWebhookToken
+    ? `${webhookBase}/${rawWebhookToken}`
+    : maskedToken
+      ? `${webhookBase}/${maskedToken}`
+      : `${webhookBase}/whk_...`;
+
+  const modeButtonStyle = (mode: VagaroMode) => localMode === mode
+    ? { border: '2px solid var(--purple-dark)', background: 'var(--purple-ultra)', color: 'var(--purple-dark)' }
+    : { border: '1px solid var(--border)', background: 'var(--surface-card)', color: 'var(--text-dark)' };
+
+  return (
+    <div className="integration-config-body">
+      <div className="integrations-inline-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10 }}>
+        <button
+          type="button"
+          className="btn"
+          style={modeButtonStyle('link_only')}
+          aria-pressed={localMode === 'link_only'}
+          onClick={() => {
+            setLocalMode('link_only');
+            onModeChange('link_only');
+            setMessage(null);
+            setInlineError(null);
+          }}
+        >
+          Booking link
+        </button>
+        <button
+          type="button"
+          className="btn"
+          style={modeButtonStyle('live_sync')}
+          aria-pressed={localMode === 'live_sync'}
+          onClick={() => {
+            setLocalMode('live_sync');
+            onModeChange('live_sync');
+            setMessage(null);
+            setInlineError(null);
+          }}
+        >
+          Live sync
+        </button>
+      </div>
+
+      {localMode === 'link_only' ? (
+        <>
+          <div className="field integration-config-field">
+            <label>Your Vagaro booking URL</label>
+            <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://vagaro.com/your-salon" />
+            <small>Find this in Vagaro → Share → Copy booking link</small>
+          </div>
+          <div className="integration-info-box">The AI will text this link to callers who ask to book.</div>
+          {message ? <div className="note">{message}</div> : null}
+          <div className="integrations-inline-actions">
+            <button
+              type="button"
+              className="btn user-save integrations-primary-button"
+              disabled={busy || !bookingUrl.trim()}
+              onClick={async () => {
+                setBusy(true);
+                setMessage(null);
+                setInlineError(null);
+                try {
+                  await onSaveBookingLink(bookingUrl.trim());
+                  setMessage('Booking link saved.');
+                } catch (err) {
+                  setInlineError(err instanceof Error ? err.message : 'Unable to save booking link.');
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+          {inlineError ? <div className="note integration-error-note">{inlineError}</div> : null}
+        </>
+      ) : (
+        <>
+          <div className="integration-info-box" style={{ borderColor: 'var(--purple-dark)', background: 'var(--purple-ultra)' }}>
+            Requires Vagaro&apos;s APIs & Webhooks add-on ($10/mo from Vagaro). Go to Settings → Developers → APIs & Webhooks → Contact Us to request access — takes up to 5 business days.{' '}
+            <a className="user-link" href="#" target="_blank" rel="noreferrer">Setup guide →</a>
+          </div>
+          {businessName ? <div className="integration-success-box">Connected · Business: {businessName}</div> : null}
+          <div className="field integration-config-field" style={{ maxWidth: 'none' }}>
+            <label>Your webhook endpoint — paste this into Vagaro</label>
+            <div className="integrations-inline-actions" style={{ gap: 8 }}>
+              <input value={displayedEndpoint} readOnly style={{ flex: '1 1 340px', minWidth: 0 }} />
+              <button
+                type="button"
+                className="btn"
+                disabled={!rawWebhookToken}
+                title={rawWebhookToken ? 'Copy webhook endpoint' : 'Connect or regenerate to copy the full token once'}
+                onClick={async () => {
+                  if (!rawWebhookToken) return;
+                  await navigator.clipboard.writeText(`${webhookBase}/${rawWebhookToken}`);
+                  setMessage('Webhook endpoint copied.');
+                }}
+              >
+                <IconCopy size={16} stroke={2} aria-hidden="true" />
+                Copy
+              </button>
+              {connectionStatus === 'connected' ? (
+                <button
+                  type="button"
+                  className="user-link--subtle"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setMessage(null);
+                    setInlineError(null);
+                    try {
+                      await onRegenerate();
+                      setMessage('Webhook token regenerated. Copy the new endpoint now.');
+                    } catch (err) {
+                      setInlineError(err instanceof Error ? err.message : 'Unable to regenerate webhook token.');
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Regenerate token
+                </button>
+              ) : null}
+            </div>
+            <small>Set trigger to Appointment and Customer in Vagaro. Raw tokens are shown only when first generated or regenerated.</small>
+          </div>
+
+          <div className="calendar-int-grid">
+            <div className="field integration-config-field">
+              <label>Client ID</label>
+              <input value={clientId} onChange={(event) => setClientId(event.target.value)} placeholder="Vagaro client ID" />
+            </div>
+            <div className="field integration-config-field">
+              <label>Client Secret</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type={showSecret ? 'text' : 'password'}
+                  value={clientSecretKey}
+                  onChange={(event) => setClientSecretKey(event.target.value)}
+                  placeholder="Vagaro client secret"
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                <button type="button" className="btn" onClick={() => setShowSecret((current) => !current)} aria-label={showSecret ? 'Hide secret' : 'Show secret'}>
+                  {showSecret ? <IconEyeOff size={16} stroke={2} /> : <IconEye size={16} stroke={2} />}
+                </button>
+              </div>
+            </div>
+            <div className="field integration-config-field">
+              <label>Region</label>
+              <input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="usa03" />
+              <small>Found at the start of your Vagaro URL</small>
+            </div>
+          </div>
+          <div className="field integration-config-field" style={{ maxWidth: 'none' }}>
+            <label>Booking URL fallback (optional)</label>
+            <input value={fallbackUrl} onChange={(event) => setFallbackUrl(event.target.value)} placeholder="https://vagaro.com/your-salon — sent to caller after booking" />
+          </div>
+
+          <div className="integration-config-body">
+            <VagaroStatusRow title="Webhook — appointment events" description="Notified when bookings change" status={connectionStatus} />
+            <VagaroStatusRow title="Read availability" description="AI checks open slots in real time" status={readAvailabilityStatus} />
+            <VagaroStatusRow title="SMS booking link" description="Sent to caller after AI confirms slot" status="connected" alwaysOn />
+          </div>
+
+          {inlineError ? <div className="note integration-error-note">{vagaroErrorMessage(inlineError)}</div> : null}
+          {message ? <div className="note">{message}</div> : null}
+          <div className="integrations-inline-actions">
+            <button
+              type="button"
+              className="btn user-save integrations-primary-button"
+              disabled={busy || !clientId.trim() || !clientSecretKey.trim() || !region.trim()}
+              onClick={async () => {
+                setBusy(true);
+                setMessage(null);
+                setInlineError(null);
+                try {
+                  await onConnect({
+                    clientId: clientId.trim(),
+                    clientSecretKey: clientSecretKey.trim(),
+                    region: region.trim(),
+                  });
+                  await onSaveSettings({
+                    mode: 'live_sync',
+                    fallback_url: fallbackUrl.trim() || null,
+                  });
+                  setClientSecretKey('');
+                  setMessage('Vagaro live sync connected. Copy the webhook endpoint if this is the first connection.');
+                } catch (err) {
+                  setInlineError(err instanceof Error ? err.message : 'connection_failed');
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? 'Connecting...' : 'Connect Vagaro'}
+            </button>
+            <a className="user-link" href="https://docs.vagaro.com" target="_blank" rel="noreferrer">
+              Vagaro developer docs →
+            </a>
+          </div>
+          <div className="note">
+            RingBooker reads availability and sends booking links. Direct appointment creation in Vagaro is not available via API — callers confirm via the Vagaro booking link sent by SMS.
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -680,11 +1021,38 @@ function ComingSoonPanel({ app, onSave }: { app: IntegrationApp; onSave: (url: s
   );
 }
 
-function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, connectMindbody, connectAcuity, disconnectMindbody, disconnectAcuity, disconnectSquare, refresh }: {
+function AppConfigPanel({
+  appKey,
+  providers,
+  selectedProvider,
+  saveBookingLink,
+  vagaroMode,
+  vagaroConnectionStatus,
+  vagaroWebhookToken,
+  setVagaroMode,
+  saveVagaroBookingLink,
+  connectVagaroLiveSync,
+  regenerateVagaroToken,
+  saveVagaroLiveSyncSettings,
+  connectMindbody,
+  connectAcuity,
+  disconnectMindbody,
+  disconnectAcuity,
+  disconnectSquare,
+  refresh,
+}: {
   appKey: IntegrationAppKey | null;
   providers: Array<{ id: string; connected: boolean; details: Record<string, unknown> | null }>;
   selectedProvider: { id: string; connected: boolean; details: Record<string, unknown> | null } | null;
   saveBookingLink: (url: string, key: IntegrationAppKey) => Promise<void>;
+  vagaroMode: VagaroMode;
+  vagaroConnectionStatus: VagaroConnectionStatus;
+  vagaroWebhookToken: string | null;
+  setVagaroMode: (mode: VagaroMode) => void;
+  saveVagaroBookingLink: (url: string) => Promise<void>;
+  connectVagaroLiveSync: (credentials: { clientId: string; clientSecretKey: string; region: string }) => Promise<unknown>;
+  regenerateVagaroToken: () => Promise<string>;
+  saveVagaroLiveSyncSettings: (settings: { mode?: VagaroMode; fallback_url?: string | null; booking_url?: string | null }) => Promise<void>;
   connectMindbody: (creds: {
     siteId: string;
     apiKey: string;
@@ -740,6 +1108,18 @@ function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, 
         <MindbodyConfigPanel connected={connected} provider={selectedProvider} onConnect={connectMindbody} onDisconnect={disconnectMindbody} />
       ) : app.key === 'acuity' ? (
         <AcuityConfigPanel connected={connected} provider={selectedProvider} onConnect={connectAcuity} onDisconnect={disconnectAcuity} />
+      ) : app.key === 'vagaro' ? (
+        <VagaroConfigPanel
+          provider={selectedProvider}
+          vagaroMode={vagaroMode}
+          connectionStatus={vagaroConnectionStatus}
+          rawWebhookToken={vagaroWebhookToken}
+          onModeChange={setVagaroMode}
+          onSaveBookingLink={saveVagaroBookingLink}
+          onConnect={connectVagaroLiveSync}
+          onRegenerate={regenerateVagaroToken}
+          onSaveSettings={saveVagaroLiveSyncSettings}
+        />
       ) : app.comingSoon ? (
         <ComingSoonPanel app={app} onSave={(url) => saveBookingLink(url, app.key)} />
       ) : (
@@ -826,7 +1206,7 @@ function ConfiguredIntegrationView({
   const [message, setMessage] = useState<string | null>(null);
   const app = findIntegrationApp(selectedAppKey);
   const isFullSyncApp = Boolean(app && app.category === 'full-sync');
-  const isFullSync = Boolean(isFullSyncApp && fullSyncConnected);
+  const isFullSync = Boolean(fullSyncConnected);
   const needsReconnect = Boolean(isFullSyncApp && !fullSyncConnected);
   const displayName = app?.key === 'custom' ? 'Any booking link' : app?.name ?? 'Booking link';
 
@@ -1161,10 +1541,15 @@ export function IntegrationsRedesign({
   const {
     status,
     selectedProvider,
-    setBookingMethod,
-    setSelectedApp,
-    saveBookingLink,
-    connectMindbody,
+	    setBookingMethod,
+	    setSelectedApp,
+	    saveBookingLink,
+	    setVagaroMode,
+	    saveVagaroBookingLink,
+	    connectVagaroLiveSync,
+	    regenerateVagaroToken,
+	    saveVagaroLiveSyncSettings,
+	    connectMindbody,
     connectAcuity,
     disconnectMindbody,
     disconnectAcuity,
@@ -1188,15 +1573,16 @@ export function IntegrationsRedesign({
   const effectiveBookingMethod = status.bookingMethod
     ?? initialBookingMethod
     ?? (configuredBookingUrl?.trim() || configuredSelectedAppKey ? 'app' : null);
-  const selectedProviderConnected = configuredSelectedApp
-    ? status.providers.some((provider) => provider.id === toBackendProviderKey(configuredSelectedApp.key) && provider.connected)
-    : false;
-  const selectedAppIsFullSync = Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync');
-  const hasConfiguredState = effectiveBookingMethod === 'direct' || (
-    effectiveBookingMethod === 'app' && (
-      Boolean(configuredBookingUrl?.trim()) || (selectedAppIsFullSync && Boolean(configuredSelectedAppKey))
-    )
-  );
+	  const selectedProviderConnected = configuredSelectedApp
+	    ? status.providers.some((provider) => provider.id === toBackendProviderKey(configuredSelectedApp.key) && provider.connected)
+	    : false;
+	  const selectedAppIsFullSync = Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync');
+	  const vagaroLiveSyncConnected = configuredSelectedAppKey === 'vagaro' && status.vagaroMode === 'live_sync' && status.vagaroConnectionStatus === 'connected';
+	  const hasConfiguredState = effectiveBookingMethod === 'direct' || (
+	    effectiveBookingMethod === 'app' && (
+	      Boolean(configuredBookingUrl?.trim()) || vagaroLiveSyncConnected || (selectedAppIsFullSync && Boolean(configuredSelectedAppKey))
+	    )
+	  );
   const showMethodQuestion = status.step === 'question' || forceMethodQuestion;
 
   if (!canUseThirdPartyIntegrations) {
@@ -1229,7 +1615,7 @@ export function IntegrationsRedesign({
           bookingMethod={effectiveBookingMethod}
           selectedAppKey={configuredSelectedAppKey}
           bookingUrl={configuredBookingUrl?.trim() || null}
-          fullSyncConnected={Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && selectedProviderConnected)}
+	          fullSyncConnected={Boolean(vagaroLiveSyncConnected || (configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && selectedProviderConnected))}
           canUseThirdPartyIntegrations
           onChange={() => {
             void (async () => {
@@ -1246,15 +1632,19 @@ export function IntegrationsRedesign({
           onSaveBookingUrl={async (url) => {
             const validationError = validateHttpsBookingUrl(url);
             if (validationError) throw new Error(validationError);
-            const response = await fetch('/api/backend/user/settings', {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ booking_url: url || null }),
-            });
-            const body = (await response.json()) as { ok: boolean; error?: string };
-            if (!response.ok || !body.ok) throw new Error(integrationErrorMessage(body.error, 'Unable to save booking link.'));
-            setBookingUrlOverride(url);
-            await refresh();
+	            if (configuredSelectedAppKey === 'vagaro') {
+	              await saveVagaroBookingLink(url);
+	            } else {
+	              const response = await fetch('/api/backend/user/settings', {
+	                method: 'PUT',
+	                headers: { 'content-type': 'application/json' },
+	                body: JSON.stringify({ booking_url: url || null }),
+	              });
+	              const body = (await response.json()) as { ok: boolean; error?: string };
+	              if (!response.ok || !body.ok) throw new Error(integrationErrorMessage(body.error, 'Unable to save booking link.'));
+	            }
+	            setBookingUrlOverride(url);
+	            await refresh();
           }}
         />
       ) : (
@@ -1273,23 +1663,38 @@ export function IntegrationsRedesign({
 
       {!forceMethodQuestion && status.step === 'app-picker' ? (
         <>
-          <AppPicker
-            selectedApp={status.selectedApp}
-            providers={status.providers}
-            onBack={navigateBack}
-            onSelect={(key) => void setSelectedApp(key)}
-          />
+	          <AppPicker
+	            selectedApp={status.selectedApp}
+	            providers={status.providers}
+	            vagaroMode={status.vagaroMode}
+	            vagaroConnectionStatus={status.vagaroConnectionStatus}
+	            onBack={navigateBack}
+	            onSelect={(key) => void setSelectedApp(key)}
+	          />
           <AppConfigPanel
             appKey={selectedApp?.key ?? null}
             providers={status.providers}
-            selectedProvider={selectedProvider}
-            saveBookingLink={async (url, appKey) => {
-              await saveBookingLink(url, appKey);
-              setBookingUrlOverride(url);
+	            selectedProvider={selectedProvider}
+	            saveBookingLink={async (url, appKey) => {
+	              await saveBookingLink(url, appKey);
+	              setBookingUrlOverride(url);
               setForceMethodQuestion(false);
-              setShowSetupFlow(false);
-            }}
-            connectMindbody={async (credentials) => {
+	              setShowSetupFlow(false);
+	            }}
+	            vagaroMode={status.vagaroMode}
+	            vagaroConnectionStatus={status.vagaroConnectionStatus}
+	            vagaroWebhookToken={status.vagaroWebhookToken}
+	            setVagaroMode={setVagaroMode}
+	            saveVagaroBookingLink={async (url) => {
+	              await saveVagaroBookingLink(url);
+	              setBookingUrlOverride(url);
+	              setForceMethodQuestion(false);
+	              setShowSetupFlow(false);
+	            }}
+	            connectVagaroLiveSync={connectVagaroLiveSync}
+	            regenerateVagaroToken={regenerateVagaroToken}
+	            saveVagaroLiveSyncSettings={saveVagaroLiveSyncSettings}
+	            connectMindbody={async (credentials) => {
               await connectMindbody(credentials);
               setForceMethodQuestion(false);
               setShowSetupFlow(false);

@@ -17,6 +17,7 @@ import type {
   ShopService,
   ShopServiceCatalog,
   StaffMember,
+  VagaroSettings,
 } from '@/src/backend/domain/types';
 import { logger } from '@/src/backend/observability/logger';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
@@ -45,6 +46,18 @@ type ShopsRow = {
   booking_url: string | null;
   booking_method: Shop['booking_method'] | null;
   selected_integration: string | null;
+  vagaro_mode: Shop['vagaro_mode'] | null;
+  vagaro_booking_url: string | null;
+  vagaro_webhook_token: string | null;
+  vagaro_client_id: string | null;
+  vagaro_client_secret_encrypted: string | null;
+  vagaro_region: string | null;
+  vagaro_connection_status: Shop['vagaro_connection_status'] | null;
+  vagaro_fallback_url: string | null;
+  vagaro_business_id: string | null;
+  vagaro_business_name: string | null;
+  vagaro_location_id: string | null;
+  vagaro_locations: unknown;
   website_url: string | null;
   languages: string[] | null;
   current_onboarding_step: number | null;
@@ -115,6 +128,18 @@ const SHOP_SELECT_COLUMNS = [
   'booking_url',
   'booking_method',
   'selected_integration',
+  'vagaro_mode',
+  'vagaro_booking_url',
+  'vagaro_webhook_token',
+  'vagaro_client_id',
+  'vagaro_client_secret_encrypted',
+  'vagaro_region',
+  'vagaro_connection_status',
+  'vagaro_fallback_url',
+  'vagaro_business_id',
+  'vagaro_business_name',
+  'vagaro_location_id',
+  'vagaro_locations',
   'sms_owner_opted_in',
   'website_url',
   'languages',
@@ -196,6 +221,21 @@ function shopSelectColumns(options: { includeSmsOwnerOptIn?: boolean; coreOnly?:
     .filter((column) => includeSmsOwnerOptIn || column !== 'sms_owner_opted_in')
     .join(',');
 }
+
+const VAGARO_SETTING_COLUMNS = [
+  'vagaro_mode',
+  'vagaro_booking_url',
+  'vagaro_webhook_token',
+  'vagaro_client_id',
+  'vagaro_client_secret_encrypted',
+  'vagaro_region',
+  'vagaro_connection_status',
+  'vagaro_fallback_url',
+  'vagaro_business_id',
+  'vagaro_business_name',
+  'vagaro_location_id',
+  'vagaro_locations',
+] as const satisfies readonly (keyof VagaroSettings)[];
 
 function isMissingShopColumn(error: { message?: string } | null): boolean {
   const message = error?.message ?? '';
@@ -431,6 +471,18 @@ function toShop(row: ShopsRow): Shop {
     booking_url: row.booking_url,
     booking_method: row.booking_method ?? null,
     selected_integration: row.selected_integration ?? null,
+    vagaro_mode: row.vagaro_mode ?? 'link_only',
+    vagaro_booking_url: row.vagaro_booking_url ?? null,
+    vagaro_webhook_token: row.vagaro_webhook_token ?? null,
+    vagaro_client_id: row.vagaro_client_id ?? null,
+    vagaro_client_secret_encrypted: row.vagaro_client_secret_encrypted ?? null,
+    vagaro_region: row.vagaro_region ?? null,
+    vagaro_connection_status: row.vagaro_connection_status ?? 'disconnected',
+    vagaro_fallback_url: row.vagaro_fallback_url ?? null,
+    vagaro_business_id: row.vagaro_business_id ?? null,
+    vagaro_business_name: row.vagaro_business_name ?? null,
+    vagaro_location_id: row.vagaro_location_id ?? null,
+    vagaro_locations: row.vagaro_locations ?? null,
     website_url: row.website_url,
     languages: Array.isArray(row.languages) && row.languages.length > 0 ? row.languages : ['en'],
     current_onboarding_step: row.current_onboarding_step ?? 1,
@@ -1563,6 +1615,38 @@ export class SupabaseShopsRepository implements ShopsRepository {
       throw new Error(`shops_update_integration_connection_failed:${error.message}`);
     }
     return data ? toShop(data) : null;
+  }
+
+  async updateVagaroSettings(shopId: string, settings: Partial<VagaroSettings>): Promise<void> {
+    const payload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    for (const column of VAGARO_SETTING_COLUMNS) {
+      if (Object.prototype.hasOwnProperty.call(settings, column)) {
+        payload[column] = settings[column] ?? null;
+      }
+    }
+    if (Object.keys(payload).length === 1) return;
+
+    const { error } = await this.supabase.from('shops').update(payload).eq('id', shopId);
+    if (error) {
+      throw new Error(`shops_update_vagaro_settings_failed:${error.message}`);
+    }
+  }
+
+  async getShopByWebhookToken(token: string): Promise<Shop | null> {
+    const trimmed = token.trim();
+    if (!trimmed) return null;
+    const { data, error } = await this.supabase
+      .from('shops')
+      .select(shopSelectColumns())
+      .eq('vagaro_webhook_token', trimmed)
+      .maybeSingle<ShopsRow>();
+
+    if (error) {
+      throw new Error(`shops_find_by_vagaro_webhook_token_failed:${error.message}`);
+    }
+    return data ? this.hydrateServiceCatalog(toShop(data)) : null;
   }
 
   async listCreatedAtInRange(params: { createdAfter: Date; createdBefore: Date }): Promise<string[]> {

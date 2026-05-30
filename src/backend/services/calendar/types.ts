@@ -72,7 +72,19 @@ function parseShopCalendarProviderHint(shop: Shop): CalendarProviderId | null {
   return null;
 }
 
+function hasVagaroLiveSyncConfig(shop: Shop): boolean {
+  return (
+    shop.vagaro_mode === 'live_sync' &&
+    shop.vagaro_connection_status === 'connected' &&
+    Boolean(shop.vagaro_business_id?.trim()) &&
+    Boolean(shop.vagaro_region?.trim()) &&
+    Boolean(shop.vagaro_client_id?.trim()) &&
+    Boolean(shop.vagaro_client_secret_encrypted?.trim())
+  );
+}
+
 function resolveShopCalendarProviderId(shop: Shop): CalendarProviderId {
+  if (hasVagaroLiveSyncConfig(shop)) return 'vagaro';
   const hinted = parseShopCalendarProviderHint(shop);
   if (hinted) return hinted;
   if (shop.google_cal_id) return 'google_calendar';

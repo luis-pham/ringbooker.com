@@ -95,6 +95,17 @@ export async function createBookingTool(
       );
     }
 
+    if (
+      ctx.shop.booking_url?.trim() &&
+      providerMeta?.capabilities.createBooking === false &&
+      providerMeta.capabilities.hasBookingLink
+    ) {
+      return toToolError(
+        'This salon uses an external booking system. Use send_booking_link to text the caller a booking link instead of creating a booking directly.',
+        { code: 'BOOKING_LINK_PROVIDER', retryable: false },
+      );
+    }
+
     let teamMemberId: string | undefined;
 
     if (parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {

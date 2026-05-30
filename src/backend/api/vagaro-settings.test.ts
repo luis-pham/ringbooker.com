@@ -13,6 +13,7 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { parseVagaroCredentials } from '@/src/backend/services/calendar/vagaro';
+import { encrypt } from '@/src/backend/services/crypto/encrypt';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'user@ringbooker.local',
@@ -45,7 +46,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
     headers: {
       'content-type': 'application/json',
       'origin': 'http://localhost:3000',
-      'x-forwarded-for': `10.44.0.${loginCounter}`,
+      'x-rb-remote-addr': `10.44.0.${loginCounter}`,
     },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
@@ -70,6 +71,60 @@ function mockVagaroTokenFetch() {
         }),
         { status: 200 },
       );
+    }
+    return new Response(JSON.stringify({}), { status: 404 });
+  }) as typeof fetch;
+  return () => {
+    globalThis.fetch = originalFetch;
+  };
+}
+
+function mockVagaroVerifyFetch() {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/v2/merchants/generate-access-token')) {
+      return new Response(
+        JSON.stringify({
+          accessToken: 'vagaro-access-token',
+          expiresIn: 3600,
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.includes('/api/v2/businesslocations')) {
+      return new Response(
+        JSON.stringify({
+          businessLocations: [
+            {
+              businessId: 'vagaro-business-id',
+              businessName: 'Avalon Salon and Spa',
+              locationId: 'vagaro-location-id',
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }
+    return new Response(JSON.stringify({}), { status: 404 });
+  }) as typeof fetch;
+  return () => {
+    globalThis.fetch = originalFetch;
+  };
+}
+
+function mockVagaroOptionsFetch() {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/v2/merchants/generate-access-token')) {
+      return new Response(JSON.stringify({ accessToken: 'vagaro-access-token', expiresIn: 3600 }), { status: 200 });
+    }
+    if (url.includes('/api/v2/services')) {
+      return new Response(JSON.stringify({ services: [] }), { status: 200 });
+    }
+    if (url.includes('/api/v2/employees')) {
+      return new Response(JSON.stringify({ employees: [] }), { status: 200 });
     }
     return new Response(JSON.stringify({}), { status: 404 });
   }) as typeof fetch;
@@ -149,6 +204,35 @@ test('vagaro options returns capability note', async () => {
     assert.match(body.options?.capabilityNote ?? '', /Booking creation requires Vagaro app/);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test('vagaro options route prefers live sync fields over legacy credentials', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+  const restoreFetch = mockVagaroOptionsFetch();
+
+  try {
+    await shopsRepository.updateVagaroSettings('demo-shop', {
+      vagaro_mode: 'live_sync',
+      vagaro_connection_status: 'connected',
+      vagaro_client_id: 'vagaro-client-id',
+      vagaro_client_secret_encrypted: encrypt('vagaro-client-secret'),
+      vagaro_region: 'usa03',
+      vagaro_business_id: 'vagaro-business-id',
+    });
+
+    const response = await app.request('/user/calendar/providers/vagaro/options', {
+      headers: { cookie },
+    });
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { ok: boolean; provider: string; options?: { capabilityNote?: string } };
+    assert.equal(body.ok, true);
+    assert.equal(body.provider, 'vagaro');
+    assert.match(body.options?.capabilityNote ?? '', /Availability checking supported/);
+  } finally {
+    restoreFetch();
   }
 });
 
@@ -240,6 +324,151 @@ test('vagaro connect rejects invalid bookingUrl', async () => {
   const body = (await response.json()) as { ok: boolean; error: string };
   assert.equal(body.ok, false);
   assert.match(body.error, /https/i);
+});
+
+test('vagaro verify stores live sync settings and returns webhook token only once', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+  const restoreFetch = mockVagaroVerifyFetch();
+  try {
+    const first = await app.request('/user/calendar/providers/vagaro/verify', {
+      method: 'POST',
+      headers: userApiHeaders(cookie),
+      body: JSON.stringify({
+        clientId: 'vagaro-client-id',
+        clientSecretKey: 'vagaro-client-secret',
+        region: 'usa03',
+      }),
+    });
+    assert.equal(first.status, 200);
+    const firstBody = (await first.json()) as {
+      success: boolean;
+      webhook_token: string | null;
+      connection_status: string;
+      business_name: string | null;
+    };
+    assert.equal(firstBody.success, true);
+    assert.equal(firstBody.connection_status, 'connected');
+    assert.equal(firstBody.business_name, 'Avalon Salon and Spa');
+    assert.match(firstBody.webhook_token ?? '', /^whk_[0-9a-f]{32}$/);
+
+    const shop = await shopsRepository.findById('demo-shop');
+    assert.equal(shop?.vagaro_mode, 'live_sync');
+    assert.equal(shop?.vagaro_client_id, 'vagaro-client-id');
+    assert.equal(shop?.vagaro_region, 'usa03');
+    assert.equal(shop?.vagaro_connection_status, 'connected');
+    assert.equal(shop?.vagaro_business_id, 'vagaro-business-id');
+    assert.equal(shop?.vagaro_business_name, 'Avalon Salon and Spa');
+    assert.equal(shop?.vagaro_location_id, 'vagaro-location-id');
+    assert.ok(shop?.vagaro_client_secret_encrypted);
+    const providersResponse = await app.request('/user/calendar/providers', {
+      headers: userApiHeaders(cookie),
+    });
+    assert.equal(providersResponse.status, 200);
+    const providersBody = (await providersResponse.json()) as {
+      ok: boolean;
+      providers: Array<{ id: string; connected: boolean; configured: boolean; details: Record<string, unknown> | null }>;
+    };
+    const vagaroProvider = providersBody.providers.find((provider) => provider.id === 'vagaro');
+    assert.equal(providersBody.ok, true);
+    assert.equal(vagaroProvider?.connected, true);
+    assert.equal(vagaroProvider?.configured, true);
+    assert.equal(vagaroProvider?.details?.vagaroMode, 'live_sync');
+    assert.equal(vagaroProvider?.details?.vagaroConnectionStatus, 'connected');
+    assert.equal(vagaroProvider?.details?.webhookTokenMasked, 'whk_••••••••••••');
+    assert.equal(vagaroProvider?.details?.businessId, 'vagaro-business-id');
+    assert.ok(firstBody.webhook_token);
+    assert.equal(JSON.stringify(vagaroProvider).includes(firstBody.webhook_token), false);
+
+    const second = await app.request('/user/calendar/providers/vagaro/verify', {
+      method: 'POST',
+      headers: userApiHeaders(cookie),
+      body: JSON.stringify({
+        clientId: 'vagaro-client-id',
+        clientSecretKey: 'vagaro-client-secret',
+        region: 'usa03',
+      }),
+    });
+    assert.equal(second.status, 200);
+    const secondBody = (await second.json()) as { success: boolean; webhook_token: string | null };
+    assert.equal(secondBody.success, true);
+    assert.equal(secondBody.webhook_token, null);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('vagaro settings mirrors booking url to legacy runtime fields', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calendar/providers/vagaro/settings', {
+    method: 'PATCH',
+    headers: userApiHeaders(cookie),
+    body: JSON.stringify({
+      mode: 'link_only',
+      booking_url: 'https://vagaro.com/test-salon',
+    }),
+  });
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { success: boolean };
+  assert.equal(body.success, true);
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.vagaro_mode, 'link_only');
+  assert.equal(shop?.vagaro_booking_url, 'https://vagaro.com/test-salon');
+  assert.equal(shop?.booking_url, 'https://vagaro.com/test-salon');
+  assert.equal(shop?.booking_method, 'app');
+  assert.equal(shop?.selected_integration, 'vagaro');
+});
+
+test('vagaro settings mode-only switch to link_only keeps existing booking url', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+  await shopsRepository.updateVagaroSettings('demo-shop', {
+    vagaro_mode: 'live_sync',
+    vagaro_booking_url: 'https://vagaro.com/test-salon',
+  });
+  await shopsRepository.updateUserSettings('demo-shop', {
+    booking_url: 'https://vagaro.com/test-salon',
+    booking_method: 'app',
+    selected_integration: 'vagaro',
+  });
+
+  const response = await app.request('/user/calendar/providers/vagaro/settings', {
+    method: 'PATCH',
+    headers: userApiHeaders(cookie),
+    body: JSON.stringify({
+      mode: 'link_only',
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { success: boolean };
+  assert.equal(body.success, true);
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.vagaro_mode, 'link_only');
+  assert.equal(shop?.vagaro_booking_url, 'https://vagaro.com/test-salon');
+  assert.equal(shop?.booking_url, 'https://vagaro.com/test-salon');
+  assert.equal(shop?.selected_integration, 'vagaro');
+});
+
+test('vagaro regenerate-token replaces webhook token', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  await shopsRepository.updateVagaroSettings('demo-shop', { vagaro_webhook_token: 'whk_oldtoken' });
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calendar/providers/vagaro/regenerate-token', {
+    method: 'POST',
+    headers: userApiHeaders(cookie),
+  });
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { success: boolean; webhook_token: string };
+  assert.equal(body.success, true);
+  assert.match(body.webhook_token, /^whk_[0-9a-f]{32}$/);
+  assert.notEqual(body.webhook_token, 'whk_oldtoken');
+
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.vagaro_webhook_token, body.webhook_token);
 });
 
 test('vagaro booking-url patch updates shop booking_url', async () => {

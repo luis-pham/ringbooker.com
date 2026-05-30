@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBackendApp } from '@/src/backend/api/app';
+import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
+import { InMemoryVagaroWebhookEventsRepository } from '@/src/backend/adapters/memory/vagaro-webhook-events-repository';
 import type { ProviderEventRecord, ProviderEventsRepository } from '@/src/backend/ports/repositories';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
@@ -169,4 +171,64 @@ test('vagaro customer created event handled', async () => {
       },
     },
   });
+});
+
+test('vagaro tokenized webhook stores per-shop raw event', async () => {
+  const providerEventsRepository = new MockProviderEventsRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const vagaroWebhookEventsRepository = new InMemoryVagaroWebhookEventsRepository();
+  await shopsRepository.updateVagaroSettings('demo-shop', {
+    vagaro_webhook_token: 'whk_testtoken',
+  });
+  const app = createBackendApp({
+    providerEventsRepository,
+    shopsRepository,
+    vagaroWebhookEventsRepository,
+  });
+
+  const response = await app.request('/webhooks/vagaro/whk_testtoken', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'user-agent': 'vagaro-test',
+      authorization: 'Bearer secret',
+      cookie: 'secret=true',
+      'x-vagaro-event-id': 'evt-tokenized',
+      'x-vagaro-signature': 'do-not-store',
+    },
+    body: JSON.stringify({
+      id: 'evt-tokenized',
+      type: 'appointment',
+      action: 'created',
+      payload: { appointmentId: 'apt-tokenized' },
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const events = vagaroWebhookEventsRepository.list();
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.shop_id, 'demo-shop');
+  assert.equal(events[0]?.event_type, 'appointment');
+  assert.equal(events[0]?.action, 'created');
+  assert.deepEqual(events[0]?.payload, { appointmentId: 'apt-tokenized' });
+  assert.equal(events[0]?.raw_headers?.authorization, undefined);
+  assert.equal(events[0]?.raw_headers?.cookie, undefined);
+  assert.equal(events[0]?.raw_headers?.['x-vagaro-signature'], undefined);
+  assert.equal(events[0]?.raw_headers?.['x-vagaro-event-id'], 'evt-tokenized');
+});
+
+test('vagaro tokenized webhook returns 404 for unknown token', async () => {
+  const app = createBackendApp({
+    providerEventsRepository: new MockProviderEventsRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+    vagaroWebhookEventsRepository: new InMemoryVagaroWebhookEventsRepository(),
+  });
+
+  const response = await app.request('/webhooks/vagaro/whk_missing', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'appointment', action: 'created', payload: {} }),
+  });
+
+  assert.equal(response.status, 404);
 });

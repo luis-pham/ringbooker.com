@@ -16,6 +16,7 @@ import { InMemoryBusinessKnowledgeSuggestionsRepository } from '@/src/backend/ad
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
 import { InMemoryOutboundMessagesRepository } from '@/src/backend/adapters/memory/outbound-messages-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
+import { InMemoryVagaroWebhookEventsRepository } from '@/src/backend/adapters/memory/vagaro-webhook-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryMissedCallsRepository } from '@/src/backend/adapters/memory/missed-calls-repository';
@@ -49,6 +50,7 @@ import { SupabaseBusinessKnowledgeSuggestionsRepository } from '@/src/backend/ad
 import { SupabaseCallbacksRepository } from '@/src/backend/adapters/supabase/callbacks-repository';
 import { SupabaseOutboundMessagesRepository } from '@/src/backend/adapters/supabase/outbound-messages-repository';
 import { SupabaseProviderEventsRepository } from '@/src/backend/adapters/supabase/provider-events-repository';
+import { SupabaseVagaroWebhookEventsRepository } from '@/src/backend/adapters/supabase/vagaro-webhook-events-repository';
 import { SupabaseShopsRepository } from '@/src/backend/adapters/supabase/shops-repository';
 import { SupabaseCallLogsRepository } from '@/src/backend/adapters/supabase/call-logs-repository';
 import { SupabaseMissedCallsRepository } from '@/src/backend/adapters/supabase/missed-calls-repository';
@@ -166,6 +168,7 @@ export function createBackendRuntime() {
           const supabase = createSupabaseServiceClient();
           return {
             providerEventsRepository: new SupabaseProviderEventsRepository(supabase),
+            vagaroWebhookEventsRepository: new SupabaseVagaroWebhookEventsRepository(supabase),
             shopsRepository: new SupabaseShopsRepository(supabase),
             customersRepository: new SupabaseCustomersRepository(supabase),
             billingCustomersRepository: new SupabaseBillingCustomersRepository(supabase),
@@ -199,6 +202,7 @@ export function createBackendRuntime() {
         })()
       : {
           providerEventsRepository: new InMemoryProviderEventsRepository(),
+          vagaroWebhookEventsRepository: new InMemoryVagaroWebhookEventsRepository(),
           shopsRepository: new InMemoryShopsRepository(),
           customersRepository: new InMemoryCustomersRepository(),
           billingCustomersRepository: new InMemoryBillingCustomersRepository(),
@@ -321,6 +325,7 @@ export function createBackendRuntime() {
 
   const app = createBackendApp({
     providerEventsRepository: repositories.providerEventsRepository,
+    vagaroWebhookEventsRepository: repositories.vagaroWebhookEventsRepository,
     jobsRepository: repositories.jobsRepository,
     bookingsRepository: repositories.bookingsRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,
@@ -370,6 +375,7 @@ export function createBackendRuntime() {
     agentTransportMode,
     agentVoiceProviderMode,
     providerEventsRepository: repositories.providerEventsRepository,
+    vagaroWebhookEventsRepository: repositories.vagaroWebhookEventsRepository,
     shopsRepository: repositories.shopsRepository,
     customersRepository: repositories.customersRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,

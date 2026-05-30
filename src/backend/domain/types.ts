@@ -14,6 +14,8 @@ export type BillingSubscriptionStatus =
   | 'unpaid'
   | 'unknown';
 export type BillingPaymentMethodStatus = 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
+export type VagaroMode = 'link_only' | 'live_sync';
+export type VagaroConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error';
 
 export type BookingStatus =
   | 'pending'
@@ -262,6 +264,18 @@ export interface Shop {
   booking_url?: string | null;
   booking_method?: 'app' | 'direct' | 'later' | null;
   selected_integration?: string | null;
+  vagaro_mode?: VagaroMode;
+  vagaro_booking_url?: string | null;
+  vagaro_webhook_token?: string | null;
+  vagaro_client_id?: string | null;
+  vagaro_client_secret_encrypted?: string | null;
+  vagaro_region?: string | null;
+  vagaro_connection_status?: VagaroConnectionStatus;
+  vagaro_fallback_url?: string | null;
+  vagaro_business_id?: string | null;
+  vagaro_business_name?: string | null;
+  vagaro_location_id?: string | null;
+  vagaro_locations?: unknown | null;
   website_url?: string | null;
   languages?: string[];
   current_onboarding_step?: number | null;
@@ -310,6 +324,34 @@ export interface Shop {
   /** ISO 3166-1 alpha-2 country code for the business location (e.g. 'US', 'AU', 'GB'). Defaults to 'US'. */
   country_code?: string | null;
 }
+
+export type VagaroSettings = Pick<
+  Shop,
+  | 'vagaro_mode'
+  | 'vagaro_booking_url'
+  | 'vagaro_webhook_token'
+  | 'vagaro_client_id'
+  | 'vagaro_client_secret_encrypted'
+  | 'vagaro_region'
+  | 'vagaro_connection_status'
+  | 'vagaro_fallback_url'
+  | 'vagaro_business_id'
+  | 'vagaro_business_name'
+  | 'vagaro_location_id'
+  | 'vagaro_locations'
+>;
+
+export type VagaroWebhookEvent = {
+  id: string;
+  shop_id: string;
+  event_type: string;
+  action?: string | null;
+  payload: unknown;
+  raw_headers?: Record<string, string> | null;
+  received_at: string;
+  processed_at?: string | null;
+  processing_error?: string | null;
+};
 
 export type BusinessKnowledgeSuggestionType = 'staff' | 'policy' | 'faq' | 'promotion' | 'booking_hint';
 export type BusinessKnowledgeSuggestionSource = 'website' | 'llm' | 'jsonld' | 'deterministic';

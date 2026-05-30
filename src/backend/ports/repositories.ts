@@ -36,6 +36,8 @@ import type {
   TestCallAttempt,
   TestCallAttemptStatus,
   TestCallAttemptType,
+  VagaroSettings,
+  VagaroWebhookEvent,
 } from '@/src/backend/domain/types';
 
 export interface ProviderEventRecord {
@@ -56,6 +58,10 @@ export interface ProviderEventsRepository {
   markProcessed(event: ProviderEventRecord): Promise<void>;
   markProcessingError(provider: string, providerEventId: string, reason: string): Promise<void>;
   clearProcessingError(provider: string, providerEventId: string): Promise<void>;
+}
+
+export interface VagaroWebhookEventsRepository {
+  save(event: Omit<VagaroWebhookEvent, 'id'>): Promise<void>;
 }
 
 export type DemoMode = 'quick' | 'advanced' | 'free-form';
@@ -540,6 +546,8 @@ export interface ShopsRepository {
     shopId: string,
     patch: Pick<Shop, 'integration_credentials_encrypted'>,
   ): Promise<Shop | null>;
+  updateVagaroSettings(shopId: string, settings: Partial<VagaroSettings>): Promise<void>;
+  getShopByWebhookToken(token: string): Promise<Shop | null>;
   findServiceCatalogByShopId(shopId: string): Promise<Shop['service_catalog'] | null>;
   saveServiceCatalog(shopId: string, catalog: NonNullable<Shop['service_catalog']>): Promise<Shop['service_catalog'] | null>;
   deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<Shop['service_catalog'] | null>;

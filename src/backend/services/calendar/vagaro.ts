@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { DateTime } from 'luxon';
 
 import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
@@ -27,6 +28,22 @@ type VagaroTokenResponse = {
   expiresAt?: string;
   expires_at?: string;
 };
+
+export type VagaroVerifyError = 'invalid_credentials' | 'region_not_found' | 'connection_failed';
+
+export type VagaroVerifyResult =
+  | {
+      valid: true;
+      accessToken: string;
+      expiresAt?: string;
+      businessId: string;
+      businessName?: string;
+      locations: VagaroBusinessLocation[];
+    }
+  | {
+      valid: false;
+      error: VagaroVerifyError;
+    };
 
 export type VagaroConnectionOptions = {
   services: VagaroService[];
@@ -120,6 +137,20 @@ export type VagaroCustomerResponse = {
   customer?: VagaroCustomer;
 };
 
+export type VagaroBusinessLocation = {
+  businessId: string;
+  businessName?: string;
+  locationId?: string;
+  raw: unknown;
+};
+
+type VagaroBusinessLocationResponse = {
+  businessLocations?: unknown[];
+  locations?: unknown[];
+  data?: unknown[] | { businessLocations?: unknown[]; locations?: unknown[] };
+  result?: unknown[] | { businessLocations?: unknown[]; locations?: unknown[] };
+};
+
 export function parseVagaroCredentials(raw: string | null | undefined): Partial<VagaroCredentials> {
   if (!raw) return {};
   const candidates = [raw];
@@ -192,6 +223,83 @@ export function encodeVagaroCredentials(input: VagaroCredentials): string {
   return encrypt(JSON.stringify(input));
 }
 
+export function generateWebhookToken(): string {
+  return `whk_${randomBytes(16).toString('hex')}`;
+}
+
+function classifyVagaroTokenFailure(error: unknown): VagaroVerifyError {
+  const message = error instanceof Error ? error.message : String(error);
+  const statusMatch = message.match(/"status":(\d+)/);
+  const status = statusMatch ? Number(statusMatch[1]) : null;
+  if (status === 401 || status === 403) return 'invalid_credentials';
+  if (status === 404 || /ENOTFOUND|fetch failed|network|abort|timeout/i.test(message)) return 'region_not_found';
+  return 'connection_failed';
+}
+
+function getStringField(input: unknown, keys: string[]): string | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const record = input as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return undefined;
+}
+
+function extractBusinessLocationArray(payload: VagaroBusinessLocationResponse): unknown[] {
+  const candidates = [
+    payload.businessLocations,
+    payload.locations,
+    Array.isArray(payload.data) ? payload.data : payload.data?.businessLocations,
+    Array.isArray(payload.data) ? payload.data : payload.data?.locations,
+    Array.isArray(payload.result) ? payload.result : payload.result?.businessLocations,
+    Array.isArray(payload.result) ? payload.result : payload.result?.locations,
+  ];
+  return candidates.find((candidate): candidate is unknown[] => Array.isArray(candidate)) ?? [];
+}
+
+function normalizeBusinessLocation(raw: unknown): VagaroBusinessLocation | null {
+  const businessId = getStringField(raw, ['businessId', 'businessID', 'business_id', 'id']);
+  if (!businessId) return null;
+  return {
+    businessId,
+    businessName: getStringField(raw, ['businessName', 'business_name', 'name', 'displayName']),
+    locationId: getStringField(raw, ['locationId', 'locationID', 'location_id', 'businessLocationId']),
+    raw,
+  };
+}
+
+async function fetchVagaroBusinessLocations(params: {
+  region: string;
+  accessToken: string;
+  timeoutMs?: number;
+}): Promise<VagaroBusinessLocation[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), params.timeoutMs ?? vagaroTimeoutMs());
+  try {
+    const response = await fetch(
+      `https://api.vagaro.com/${encodeURIComponent(params.region.trim())}/api/v2/businesslocations`,
+      {
+        method: 'GET',
+        headers: {
+          accessToken: params.accessToken,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) {
+      const safeError = { status: response.status, path: response.url };
+      throw new Error(`vagaro_business_locations_failed:${JSON.stringify(safeError)}`);
+    }
+    const payload = (await response.json()) as VagaroBusinessLocationResponse;
+    return extractBusinessLocationArray(payload).map(normalizeBusinessLocation).filter((item): item is VagaroBusinessLocation => Boolean(item));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function generateVagaroAccessToken(params: {
   region: string;
   clientId: string;
@@ -234,10 +342,57 @@ export async function generateVagaroAccessToken(params: {
   }
 }
 
+export async function verifyVagaroCredentials(
+  clientId: string,
+  clientSecretKey: string,
+  region: string,
+  scope = 'read access',
+): Promise<VagaroVerifyResult> {
+  let token: { accessToken: string; expiresAt?: string };
+  try {
+    token = await generateVagaroAccessToken({
+      region,
+      clientId,
+      clientSecretKey,
+      scope,
+    });
+  } catch (error) {
+    return { valid: false, error: classifyVagaroTokenFailure(error) };
+  }
+
+  try {
+    const locations = await fetchVagaroBusinessLocations({
+      region,
+      accessToken: token.accessToken,
+    });
+    const primary = locations[0];
+    if (!primary?.businessId) return { valid: false, error: 'connection_failed' };
+    return {
+      valid: true,
+      accessToken: token.accessToken,
+      expiresAt: token.expiresAt,
+      businessId: primary.businessId,
+      businessName: primary.businessName,
+      locations,
+    };
+  } catch (error) {
+    return { valid: false, error: classifyVagaroTokenFailure(error) };
+  }
+}
+
 function resolveVagaroCredentials(shop: Shop): VagaroCredentials {
   const parsed = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
-  const region = parsed.region?.trim() || process.env.VAGARO_REGION?.trim();
-  const businessId = parsed.businessId?.trim() || process.env.VAGARO_BUSINESS_ID?.trim();
+  let vagaroClientSecretKey: string | undefined;
+  if (shop.vagaro_client_secret_encrypted) {
+    try {
+      vagaroClientSecretKey = decrypt(shop.vagaro_client_secret_encrypted).trim() || undefined;
+    } catch {
+      vagaroClientSecretKey = undefined;
+    }
+  }
+
+  const region = parsed.region?.trim() || shop.vagaro_region?.trim() || process.env.VAGARO_REGION?.trim();
+  const businessId = parsed.businessId?.trim() || shop.vagaro_business_id?.trim() || process.env.VAGARO_BUSINESS_ID?.trim();
   if (!region || !businessId) {
     throw new Error('vagaro_calendar_missing_region_or_business_id');
   }
@@ -246,8 +401,8 @@ function resolveVagaroCredentials(shop: Shop): VagaroCredentials {
     provider: 'vagaro',
     region,
     businessId,
-    clientId: parsed.clientId?.trim() || process.env.VAGARO_CLIENT_ID?.trim(),
-    clientSecretKey: parsed.clientSecretKey?.trim() || process.env.VAGARO_CLIENT_SECRET_KEY?.trim(),
+    clientId: parsed.clientId?.trim() || shop.vagaro_client_id?.trim() || process.env.VAGARO_CLIENT_ID?.trim(),
+    clientSecretKey: parsed.clientSecretKey?.trim() || vagaroClientSecretKey || process.env.VAGARO_CLIENT_SECRET_KEY?.trim(),
     scope: parsed.scope?.trim() || process.env.VAGARO_SCOPE?.trim() || 'read access',
     accessToken: parsed.accessToken?.trim() || process.env.VAGARO_ACCESS_TOKEN?.trim(),
     expiresAt: parsed.expiresAt,
