@@ -301,7 +301,7 @@ function CallRecoveryInsightsUpsell() {
       </div>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
         <div className="modal-card" style={{ width: 'min(440px, 100%)', textAlign: 'center', padding: 28 }}>
-          <span className="calls-stat-icon" style={{ margin: '0 auto 14px' }}><IconChartBar size={26} stroke={2} /></span>
+          <span className="calls-stat-icon calls-stat-icon--purple" style={{ margin: '0 auto 14px' }}><IconChartBar size={26} stroke={2} /></span>
           <div className="modal-title"><h3>Call recovery insights</h3></div>
           <p className="sub" style={{ lineHeight: 1.6, margin: '10px 0 22px' }}>See missed opportunities, top requested services, and peak call times. Available on Professional.</p>
           <a className="btn user-save" href="/user/billing#upgrade">Upgrade to Professional</a>
@@ -525,19 +525,19 @@ export function UserCallsLive({
               {activeFilter !== 'insights' ? (
                 <section className="calls-metric-grid" aria-label="Call activity summary">
                   <div className="calls-metric-card">
-                    <span className="calls-stat-icon" aria-hidden><IconPhoneCall size={26} stroke={2} /></span>
+                    <span className="calls-stat-icon calls-stat-icon--blue" aria-hidden><IconPhoneCall size={26} stroke={2} /></span>
                     <div><p>This week</p><strong>{stats.last7Days}</strong></div>
                   </div>
                   <div className="calls-metric-card">
-                    <span className="calls-stat-icon" aria-hidden><IconCalendarCheck size={26} stroke={2} /></span>
+                    <span className="calls-stat-icon calls-stat-icon--purple" aria-hidden><IconCalendarCheck size={26} stroke={2} /></span>
                     <div><p>Booking requests</p><strong>{stats.bookings}</strong></div>
                   </div>
                   <div className="calls-metric-card">
-                    <span className="calls-stat-icon" aria-hidden><IconAlertTriangle size={26} stroke={2} /></span>
+                    <span className="calls-stat-icon calls-stat-icon--amber" aria-hidden><IconAlertTriangle size={26} stroke={2} /></span>
                     <div><p>Follow-up</p><strong>{stats.followUp}</strong></div>
                   </div>
                   <div className="calls-metric-card">
-                    <span className="calls-stat-icon" aria-hidden><IconPhoneOff size={26} stroke={2} /></span>
+                    <span className="calls-stat-icon calls-stat-icon--red" aria-hidden><IconPhoneOff size={26} stroke={2} /></span>
                     <div><p>Missed</p><strong>{stats.missed}</strong></div>
                   </div>
                 </section>

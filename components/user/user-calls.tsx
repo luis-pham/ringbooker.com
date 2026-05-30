@@ -8,7 +8,11 @@ const callsPortalStyles = String.raw`
 .calls-metric-card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;min-height:92px}
 .calls-metric-card p{margin:0 0 4px;font-size:13px;color:var(--text-gray);line-height:1.35}
 .calls-metric-card strong{display:block;font-size:28px;line-height:1;font-weight:650;letter-spacing:-.03em;color:var(--text-dark)}
-.calls-stat-icon{width:44px;height:44px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;color:var(--purple-dark)}
+.calls-stat-icon{width:44px;height:44px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;color:#111}
+.calls-stat-icon--blue{color:#2563eb}
+.calls-stat-icon--purple{color:#7c3aed}
+.calls-stat-icon--amber{color:#ca8a04}
+.calls-stat-icon--red{color:#dc2626}
 .calls-filter-bar{border-bottom:1.5px solid var(--border);margin-bottom:32px}
 .calls-filter-tabs{
   display:flex;align-items:flex-end;flex-wrap:nowrap;gap:24px;
@@ -102,7 +106,11 @@ const callsPortalStyles = String.raw`
 .recording-panel p{margin:0;color:var(--text-gray);font-size:13px}
 .recording-panel audio{display:block;width:100%;height:38px}
 .transcript-toggle{margin-bottom:12px}
-html[data-user-theme="dark"] .calls-stat-icon{color:var(--purple-dark)}
+html[data-user-theme="dark"] .calls-stat-icon{color:var(--text-dark)}
+html[data-user-theme="dark"] .calls-stat-icon--blue{color:#79c0ff}
+html[data-user-theme="dark"] .calls-stat-icon--purple{color:#d2a8ff}
+html[data-user-theme="dark"] .calls-stat-icon--amber{color:#e3b341}
+html[data-user-theme="dark"] .calls-stat-icon--red{color:#f85149}
 html[data-user-theme="dark"] .calls-caller-avatar{background:rgba(163,113,247,.15);color:#d2a8ff}
 html[data-user-theme="dark"] .calls-repeat-badge{background:rgba(163,113,247,.15);color:#d2a8ff}
 html[data-user-theme="dark"] .calls-outcome{background:#21262d;color:var(--text-gray)}
