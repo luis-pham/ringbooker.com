@@ -342,6 +342,166 @@ test('bridge-gated shop injects appointment validation before responding to a re
   cleanupBridgeGreetingSessionByCallControlId('cc_parent_time_validation');
 });
 
+test('direct validation suppresses availability tool for link-only providers', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_link_only_validation',
+    openaiLegCallControlId: 'cc_openai_link_only_validation',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_link_only_validation',
+    openaiLegCallControlId: 'cc_openai_link_only_validation',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'link-only-validation-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_link_only_validation',
+        openaiLegCallControlId: 'cc_openai_link_only_validation',
+      },
+      onCallerTranscriptPrePopulate: () => ({
+        preview: { date: '2099-01-06', time: '09:00' },
+        result: Promise.resolve({
+          date: '2099-01-06',
+          time: '09:00',
+          valid: true,
+          reason: 'within_business_hours',
+          normalizedDatetimeUtc: '2099-01-06T17:00:00.000Z',
+          messageForAi: 'The requested time may be captured.',
+          timestamp: new Date().toISOString(),
+          status: 'set',
+        }),
+      }),
+      onBeforeResponseCreate: async () => ({
+        availabilityResult: null,
+        notReadyReason: 'provider_has_no_live_availability',
+        availabilityProvider: 'fresha',
+        availabilityWaitMs: 0,
+      }),
+    },
+    { wsUrlOverride: sidebandUrl('link-only-validation-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'What date and time would you like for your booking?',
+  }));
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'Tomorrow at 9 AM.',
+  }));
+  await flushIO(30);
+
+  const parsed = messages
+    .map((message) => JSON.parse(message) as {
+      type?: string;
+      response?: { tool_choice?: unknown; instructions?: string };
+    });
+  const turnResponse = parsed.find((message) =>
+    message.type === 'response.create' &&
+    /already validated/.test(message.response?.instructions ?? '')
+  );
+
+  assert.equal(turnResponse?.response?.tool_choice, 'none');
+  assert.match(turnResponse?.response?.instructions ?? '', /Live availability is not connected/);
+  assert.match(turnResponse?.response?.instructions ?? '', /Do not call check_availability/);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_link_only_validation');
+});
+
+test('direct validation asks for service context instead of calling availability without a preview', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_no_preview_validation',
+    openaiLegCallControlId: 'cc_openai_no_preview_validation',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_no_preview_validation',
+    openaiLegCallControlId: 'cc_openai_no_preview_validation',
+  });
+
+  const serverSocket = nextServerSocket();
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'no-preview-validation-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_no_preview_validation',
+        openaiLegCallControlId: 'cc_openai_no_preview_validation',
+      },
+      onCallerTranscriptPrePopulate: () => ({
+        preview: { date: '2099-01-06', time: '09:00' },
+        result: Promise.resolve({
+          date: '2099-01-06',
+          time: '09:00',
+          valid: true,
+          reason: 'within_business_hours',
+          normalizedDatetimeUtc: '2099-01-06T17:00:00.000Z',
+          messageForAi: 'The requested time may be captured.',
+          timestamp: new Date().toISOString(),
+          status: 'set',
+        }),
+      }),
+      onBeforeResponseCreate: async () => ({
+        availabilityResult: null,
+        notReadyReason: 'no_availability_preview',
+        availabilityProvider: 'square_appointments',
+        availabilityWaitMs: 0,
+      }),
+    },
+    { wsUrlOverride: sidebandUrl('no-preview-validation-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  const messages: string[] = [];
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.started' }));
+  srv.send(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+  await flushIO(30);
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'What date and time would you like for your booking?',
+  }));
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'Tomorrow at 9 AM.',
+  }));
+  await flushIO(30);
+
+  const parsed = messages
+    .map((message) => JSON.parse(message) as {
+      type?: string;
+      response?: { tool_choice?: unknown; instructions?: string };
+    });
+  const turnResponse = parsed.find((message) =>
+    message.type === 'response.create' &&
+    /already validated/.test(message.response?.instructions ?? '')
+  );
+
+  assert.equal(turnResponse?.response?.tool_choice, 'none');
+  assert.match(turnResponse?.response?.instructions ?? '', /not have enough service context/);
+  assert.match(turnResponse?.response?.instructions ?? '', /confirm the service/);
+  srv.close(1000, 'test complete');
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_no_preview_validation');
+});
+
 test('bridge-gated shop injects availability before response when prefetch is ready', async () => {
   initializeBridgeGreetingSession({
     parentCallControlId: 'cc_parent_availability_inject',

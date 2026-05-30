@@ -122,7 +122,7 @@ export type OpenAiRealtimeSipSidebandParams =
        * Called immediately before `response.create` on the direct validation path.
        * Must enforce its own short timeout budget and return only already-safe evidence.
        */
-      onBeforeResponseCreate?: () => Promise<{ availabilityResult: AvailabilityCheckPrePopulateResult | null }>;
+      onBeforeResponseCreate?: () => Promise<AvailabilityBeforeResponseResult>;
       /**
        * Called on VAD `speech_stopped`, before transcription completes.
        * Used only for safe, already-known session state prefetches.
@@ -171,6 +171,17 @@ type CallerTurnResponsePath =
   | 'direct_validation'
   | 'validation_unavailable';
 
+type AvailabilityBeforeResponseResult = {
+  availabilityResult: AvailabilityCheckPrePopulateResult | null;
+  notReadyReason?: string | null;
+  availabilityWaitMs?: number | null;
+  availabilityPrefetchElapsedMs?: number | null;
+  availabilityProvider?: string | null;
+  availabilityPreviewKey?: string | null;
+  currentPrefetchKey?: string | null;
+  currentPrefetchReason?: string | null;
+};
+
 type ActiveTurnTiming = {
   itemId: string | null;
   path: CallerTurnResponsePath;
@@ -179,6 +190,8 @@ type ActiveTurnTiming = {
   transcriptionCompleteAtMs: number | null;
   responseCreateSentAtMs: number | null;
   audioSentAtMs: number | null;
+  toolChoiceUsed: string | null;
+  responseInstructionChars: number | null;
   summaryLogged: boolean;
 };
 
@@ -210,6 +223,31 @@ function isPrePopulateAttempt(value: unknown): value is AppointmentTimePrePopula
     'result' in value &&
     (value as { result?: unknown }).result instanceof Promise
   );
+}
+
+function shouldSuppressAvailabilityToolForNotReady(reason: string | null | undefined): boolean {
+  return reason === 'provider_has_no_live_availability' || reason === 'no_availability_preview';
+}
+
+function buildAvailabilityNotReadyInstruction(reason: string | null | undefined, provider: string | null | undefined): string {
+  if (reason === 'provider_has_no_live_availability') {
+    return [
+      `Live availability is not connected for this provider${provider ? ` (${provider})` : ''}.`,
+      'Do not call check_availability for this turn.',
+      'The requested time has only been validated against business hours, not live slot inventory.',
+      'Continue the booking-link or manual scheduling flow without saying the slot is available.',
+    ].join(' ');
+  }
+
+  if (reason === 'no_availability_preview') {
+    return [
+      'The backend does not have enough service context to safely check live availability for this turn.',
+      'Do not call check_availability.',
+      'Ask one concise follow-up to confirm the service before discussing availability or booking the slot.',
+    ].join(' ');
+  }
+
+  return '';
 }
 
 export function startOpenAiRealtimeSipSideband(
@@ -464,6 +502,8 @@ export function startOpenAiRealtimeSipSideband(
       transcriptionCompleteAtMs: null,
       responseCreateSentAtMs: null,
       audioSentAtMs: null,
+      toolChoiceUsed: null,
+      responseInstructionChars: null,
       summaryLogged: false,
     };
   }
@@ -499,6 +539,8 @@ export function startOpenAiRealtimeSipSideband(
           activeTurnTiming.speechStoppedAtMs !== null
             ? audioSentAtMs - activeTurnTiming.speechStoppedAtMs
             : null,
+        toolChoiceUsed: activeTurnTiming.toolChoiceUsed,
+        responseInstructionChars: activeTurnTiming.responseInstructionChars,
       },
       audioSentAtMs,
     );
@@ -725,6 +767,8 @@ export function startOpenAiRealtimeSipSideband(
       activeTurnTiming.responseCreateSentAtMs = lastResponseCreateSentAtMs;
       activeTurnTiming.path = paramsSend.responsePath;
       activeTurnTiming.waitReason = paramsSend.waitReason ?? activeTurnTiming.waitReason;
+      activeTurnTiming.toolChoiceUsed = paramsSend.toolChoice ?? 'session_default';
+      activeTurnTiming.responseInstructionChars = paramsSend.instructions?.length ?? 0;
     }
     logTiming(
       'response_create_sent',
@@ -733,6 +777,8 @@ export function startOpenAiRealtimeSipSideband(
         responsePath: paramsSend.responsePath,
         fastPath: paramsSend.responsePath === 'fast_speech_stopped',
         waitReason: paramsSend.waitReason ?? null,
+        toolChoiceUsed: paramsSend.toolChoice ?? 'session_default',
+        responseInstructionChars: paramsSend.instructions?.length ?? 0,
         elapsedSinceTranscriptionMs: elapsedSince(lastTranscriptionCompleteAtMs, lastResponseCreateSentAtMs),
         elapsedSinceSpeechStoppedMs: elapsedSince(lastSpeechStoppedAtMs, lastResponseCreateSentAtMs),
       },
@@ -813,12 +859,16 @@ export function startOpenAiRealtimeSipSideband(
     }
 
     let availabilityInjected = false;
+    let availabilityToolSuppressed = false;
+    let availabilityNotReadyReason: string | null = null;
     if (params.variant === 'shop' && validation.valid) {
       params.onValidationPrePopulateComplete?.(validation);
 
       let availabilityResult: AvailabilityCheckPrePopulateResult | null = null;
+      let availabilityBeforeResponse: AvailabilityBeforeResponseResult | null = null;
       try {
-        availabilityResult = (await params.onBeforeResponseCreate?.())?.availabilityResult ?? null;
+        availabilityBeforeResponse = await params.onBeforeResponseCreate?.() ?? null;
+        availabilityResult = availabilityBeforeResponse?.availabilityResult ?? null;
       } catch (err) {
         logger.warn({ err, callId: params.callId }, 'openai_sip_shop_availability_before_response_failed');
       }
@@ -882,20 +932,42 @@ export function startOpenAiRealtimeSipSideband(
           date: availabilityResult.date,
           time: availabilityResult.time,
           available: availabilityResult.available,
+          availabilityWaitMs: availabilityBeforeResponse?.availabilityWaitMs ?? null,
           elapsedMs: injectedAtMs - (availabilityResult.prefetchStartedAtMs ?? availabilityResult.fetchedAtMs),
         }, injectedAtMs);
       } else {
+        availabilityNotReadyReason = availabilityBeforeResponse?.notReadyReason ?? 'unknown';
+        if (shouldSuppressAvailabilityToolForNotReady(availabilityNotReadyReason)) {
+          const instruction = buildAvailabilityNotReadyInstruction(
+            availabilityNotReadyReason,
+            availabilityBeforeResponse?.availabilityProvider ?? null,
+          );
+          if (instruction) {
+            validationSummaryLines.push(instruction);
+          }
+          availabilityToolSuppressed = true;
+        }
         logTiming('availability_not_ready_before_response', {
           date: validation.date,
           time: validation.time,
+          notReadyReason: availabilityNotReadyReason,
+          provider: availabilityBeforeResponse?.availabilityProvider ?? null,
+          availabilityWaitMs: availabilityBeforeResponse?.availabilityWaitMs ?? null,
+          availabilityPrefetchElapsedMs: availabilityBeforeResponse?.availabilityPrefetchElapsedMs ?? null,
+          availabilityPreviewKey: availabilityBeforeResponse?.availabilityPreviewKey ?? null,
+          currentPrefetchKey: availabilityBeforeResponse?.currentPrefetchKey ?? null,
+          currentPrefetchReason: availabilityBeforeResponse?.currentPrefetchReason ?? null,
+          availabilityToolSuppressed,
         });
       }
     }
 
     lastToolResultSentAtMs = Date.now();
+    const responseInstructions = validationSummaryLines.join('\n');
+    const responseToolChoice = (!validation.valid || availabilityInjected || availabilityToolSuppressed) ? 'none' : undefined;
     const responseSent = sendShopResponseCreate({
-      instructions: validationSummaryLines.join('\n'),
-      toolChoice: (!validation.valid || availabilityInjected) ? 'none' : undefined,
+      instructions: responseInstructions,
+      toolChoice: responseToolChoice,
       state: 'waiting_audio',
       mode: 'caller_response',
       timeoutMs: 8_000,
@@ -910,6 +982,11 @@ export function startOpenAiRealtimeSipSideband(
       time: validation.time,
       valid: validation.valid,
       elapsedMs: completedAtMs - injectStartedAtMs,
+      availabilityInjected,
+      availabilityToolSuppressed,
+      availabilityNotReadyReason,
+      toolChoiceUsed: responseToolChoice ?? 'session_default',
+      responseInstructionChars: responseInstructions.length,
       responseSent,
     }, completedAtMs);
     if (!responseSent) releaseTurnState();

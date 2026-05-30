@@ -67,6 +67,7 @@ import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/serv
 import { checkLiveCallUsageGate } from '@/src/backend/services/usage/live-call-usage-gate';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { callControlHangup } from '@/src/backend/services/calls/call-control-client';
+import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   collectOpenAiSipDidCandidates,
@@ -118,6 +119,25 @@ const FALLBACK_ISSUE_MESSAGE =
 
 type DemoCallTimer = { timer: ReturnType<typeof setTimeout>; telnyxCallControlId: string };
 const demoCallTimers = new Map<string, DemoCallTimer>();
+
+type AvailabilityBeforeResponseNotReadyReason =
+  | 'provider_has_no_live_availability'
+  | 'no_availability_preview'
+  | 'no_prefetch_started'
+  | 'prefetch_key_mismatch'
+  | 'prefetch_timeout_200ms'
+  | 'prefetch_completed_cache_miss';
+
+type AvailabilityBeforeResponseDiagnostics = {
+  availabilityResult: AvailabilityCheckPrePopulateResult | null;
+  notReadyReason?: AvailabilityBeforeResponseNotReadyReason | null;
+  availabilityWaitMs?: number | null;
+  availabilityPrefetchElapsedMs?: number | null;
+  availabilityProvider?: string | null;
+  availabilityPreviewKey?: string | null;
+  currentPrefetchKey?: string | null;
+  currentPrefetchReason?: string | null;
+};
 
 /**
  * Wraps callControlHangup with up to HANGUP_RETRY_ATTEMPTS retries spaced
@@ -1118,6 +1138,9 @@ export async function handleOpenAiRealtimeSipWebhook(
         });
         let currentAvailabilityPrefetch: Promise<AvailabilityCheckPrePopulateResult | null> | null = null;
         let currentAvailabilityPrefetchKey: string | null = null;
+        let currentAvailabilityPrefetchStartedAtMs: number | null = null;
+        let currentAvailabilityPrefetchProvider: string | null = null;
+        let currentAvailabilityPrefetchReason: 'speech_stopped' | 'validation_complete' | null = null;
         const shop = route.shop;
         const sidebandCtx = shopRoomContext;
         const parentCcId = sidebandCtx.parentTelnyxCallControlId;
@@ -1135,6 +1158,9 @@ export async function handleOpenAiRealtimeSipWebhook(
         function clearAvailabilityPrefetch(options: { clearCache?: boolean } = {}): void {
           currentAvailabilityPrefetch = null;
           currentAvailabilityPrefetchKey = null;
+          currentAvailabilityPrefetchStartedAtMs = null;
+          currentAvailabilityPrefetchProvider = null;
+          currentAvailabilityPrefetchReason = null;
           if (options.clearCache) {
             toolCtx.availabilityCheck = { latest: null };
           }
@@ -1192,43 +1218,152 @@ export async function handleOpenAiRealtimeSipWebhook(
             },
             `[TIMING] availability_prefetch_requested reason=${reason} service=${preview.service} date=${preview.date} time=${preview.time}`,
           );
+          const prefetchStartedAtMs = Date.now();
           const prefetch = prePopulateAvailabilityFromDraft(toolCtx);
           currentAvailabilityPrefetchKey = preview.key;
           currentAvailabilityPrefetch = prefetch;
+          currentAvailabilityPrefetchStartedAtMs = prefetchStartedAtMs;
+          currentAvailabilityPrefetchProvider = preview.providerId;
+          currentAvailabilityPrefetchReason = reason;
           void prefetch.finally(() => {
             if (currentAvailabilityPrefetch === prefetch) {
               currentAvailabilityPrefetch = null;
               currentAvailabilityPrefetchKey = null;
+              currentAvailabilityPrefetchStartedAtMs = null;
+              currentAvailabilityPrefetchProvider = null;
+              currentAvailabilityPrefetchReason = null;
             }
           });
         }
 
-        async function getAvailabilityBeforeResponse(): Promise<AvailabilityCheckPrePopulateResult | null> {
+        async function getAvailabilityBeforeResponse(): Promise<AvailabilityBeforeResponseDiagnostics> {
+          const providerMeta = getShopCalendarProviderMetadata(shop);
           const preview = previewAvailabilityFromDraft(toolCtx);
-          if (!preview) return null;
-          if (availabilityMatchesPreview(toolCtx.availabilityCheck?.latest, preview)) {
-            return toolCtx.availabilityCheck.latest;
+          if (!providerMeta.capabilities.checkAvailability) {
+            return {
+              availabilityResult: null,
+              notReadyReason: 'provider_has_no_live_availability',
+              availabilityWaitMs: 0,
+              availabilityProvider: providerMeta.id,
+              availabilityPreviewKey: null,
+              currentPrefetchKey: currentAvailabilityPrefetchKey,
+              currentPrefetchReason: currentAvailabilityPrefetchReason,
+            };
+          }
+          if (!preview) {
+            return {
+              availabilityResult: null,
+              notReadyReason: 'no_availability_preview',
+              availabilityWaitMs: 0,
+              availabilityProvider: providerMeta.id,
+              availabilityPreviewKey: null,
+              currentPrefetchKey: currentAvailabilityPrefetchKey,
+              currentPrefetchReason: currentAvailabilityPrefetchReason,
+            };
+          }
+          const latestAvailability = toolCtx.availabilityCheck?.latest;
+          if (availabilityMatchesPreview(latestAvailability, preview)) {
+            return {
+              availabilityResult: latestAvailability,
+              availabilityWaitMs: 0,
+              availabilityPrefetchElapsedMs: latestAvailability.prefetchStartedAtMs
+                ? latestAvailability.fetchedAtMs - latestAvailability.prefetchStartedAtMs
+                : 0,
+              availabilityProvider: preview.providerId,
+              availabilityPreviewKey: preview.key,
+              currentPrefetchKey: currentAvailabilityPrefetchKey,
+              currentPrefetchReason: currentAvailabilityPrefetchReason,
+            };
           }
           if (!currentAvailabilityPrefetch) {
-            return null;
+            return {
+              availabilityResult: null,
+              notReadyReason: 'no_prefetch_started',
+              availabilityWaitMs: 0,
+              availabilityProvider: preview.providerId,
+              availabilityPreviewKey: preview.key,
+              currentPrefetchKey: currentAvailabilityPrefetchKey,
+              currentPrefetchReason: currentAvailabilityPrefetchReason,
+            };
           }
           if (currentAvailabilityPrefetchKey !== preview.key) {
-            return null;
+            return {
+              availabilityResult: null,
+              notReadyReason: 'prefetch_key_mismatch',
+              availabilityWaitMs: 0,
+              availabilityPrefetchElapsedMs: currentAvailabilityPrefetchStartedAtMs
+                ? Date.now() - currentAvailabilityPrefetchStartedAtMs
+                : null,
+              availabilityProvider: preview.providerId,
+              availabilityPreviewKey: preview.key,
+              currentPrefetchKey: currentAvailabilityPrefetchKey,
+              currentPrefetchReason: currentAvailabilityPrefetchReason,
+            };
           }
 
+          const activeAvailabilityPrefetch = currentAvailabilityPrefetch;
+          const activePrefetchKey = currentAvailabilityPrefetchKey;
+          const activePrefetchStartedAtMs = currentAvailabilityPrefetchStartedAtMs;
+          const activePrefetchProvider = currentAvailabilityPrefetchProvider;
+          const activePrefetchReason = currentAvailabilityPrefetchReason;
           let timeout: ReturnType<typeof setTimeout> | null = null;
-          const timeoutPromise = new Promise<null>((resolve) => {
-            timeout = setTimeout(() => resolve(null), 200);
+          const waitStartedAtMs = Date.now();
+          type AvailabilityWaitResult =
+            | { status: 'ready'; result: AvailabilityCheckPrePopulateResult | null }
+            | { status: 'timeout' };
+          const timeoutPromise = new Promise<AvailabilityWaitResult>((resolve) => {
+            timeout = setTimeout(() => resolve({ status: 'timeout' }), 200);
           });
           try {
-            return await Promise.race([
-              currentAvailabilityPrefetch.then(() =>
-                availabilityMatchesPreview(toolCtx.availabilityCheck?.latest, preview)
+            const waitResult = await Promise.race([
+              activeAvailabilityPrefetch.then<AvailabilityWaitResult>(() => ({
+                status: 'ready',
+                result: availabilityMatchesPreview(toolCtx.availabilityCheck?.latest, preview)
                   ? toolCtx.availabilityCheck.latest
-                  : null
-              ),
+                  : null,
+              })),
               timeoutPromise,
             ]);
+            const availabilityWaitMs = Date.now() - waitStartedAtMs;
+            if (waitResult.status === 'timeout') {
+              return {
+                availabilityResult: null,
+                notReadyReason: 'prefetch_timeout_200ms',
+                availabilityWaitMs,
+                availabilityPrefetchElapsedMs: activePrefetchStartedAtMs
+                  ? Date.now() - activePrefetchStartedAtMs
+                  : null,
+                availabilityProvider: activePrefetchProvider ?? preview.providerId,
+                availabilityPreviewKey: preview.key,
+                currentPrefetchKey: activePrefetchKey,
+                currentPrefetchReason: activePrefetchReason,
+              };
+            }
+            if (waitResult.result) {
+              return {
+                availabilityResult: waitResult.result,
+                availabilityWaitMs,
+                availabilityPrefetchElapsedMs: waitResult.result.prefetchStartedAtMs
+                  ? waitResult.result.fetchedAtMs - waitResult.result.prefetchStartedAtMs
+                  : availabilityWaitMs,
+                availabilityProvider: waitResult.result.providerId,
+                availabilityPreviewKey: preview.key,
+                currentPrefetchKey: activePrefetchKey,
+                currentPrefetchReason: activePrefetchReason,
+              };
+            }
+            return {
+              availabilityResult: null,
+              notReadyReason: 'prefetch_completed_cache_miss',
+              availabilityWaitMs,
+              availabilityPrefetchElapsedMs: activePrefetchStartedAtMs
+                ? Date.now() - activePrefetchStartedAtMs
+                : null,
+              availabilityProvider: activePrefetchProvider ?? preview.providerId,
+              availabilityPreviewKey: preview.key,
+              currentPrefetchKey: activePrefetchKey,
+              currentPrefetchReason: activePrefetchReason,
+            };
           } finally {
             if (timeout) clearTimeout(timeout);
           }
@@ -1331,9 +1466,7 @@ export async function handleOpenAiRealtimeSipWebhook(
                 startAvailabilityPrefetch('validation_complete');
               }
             },
-            onBeforeResponseCreate: async () => ({
-              availabilityResult: await getAvailabilityBeforeResponse(),
-            }),
+            onBeforeResponseCreate: getAvailabilityBeforeResponse,
             onCallerSpeechStopped: () => {
               startAvailabilityPrefetch('speech_stopped');
             },
