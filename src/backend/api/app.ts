@@ -8670,6 +8670,9 @@ export function createBackendApp(deps: {
         google_cal_credentials_encrypted: null,
       });
       if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        selected_integration: null,
+      });
       return c.json({ ok: true, disconnected: true, provider });
     }
 

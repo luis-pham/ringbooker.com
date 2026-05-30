@@ -1269,6 +1269,118 @@ test('send_booking_link final audio auto-hangups when model skips end_call', asy
   srv.close(1000);
 });
 
+test('shop auto-hangups after assistant goodbye when model skips end_call', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_goodbye_auto_end',
+    openaiLegCallControlId: 'cc_openai_goodbye_auto_end',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_goodbye_auto_end',
+    openaiLegCallControlId: 'cc_openai_goodbye_auto_end',
+  });
+
+  const serverSocket = nextServerSocket();
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'goodbye-auto-end-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_goodbye_auto_end',
+        openaiLegCallControlId: 'cc_openai_goodbye_auto_end',
+      },
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('goodbye-auto-end-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  await flushIO(30);
+  srv.send(makeAudioStartedEvent());
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(30);
+
+  srv.send(makeAudioStartedEvent());
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'Great, have a wonderful day!',
+  }));
+  await flushIO(30);
+  assert.equal(endCallCount, 0, 'goodbye auto-end should wait for final audio stop');
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallCount, 1);
+  srv.close(1000);
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_goodbye_auto_end');
+});
+
+test('shop ignores caller speech after assistant goodbye instead of creating a silence-timeout response', async () => {
+  initializeBridgeGreetingSession({
+    parentCallControlId: 'cc_parent_goodbye_caller_ignored',
+    openaiLegCallControlId: 'cc_openai_goodbye_caller_ignored',
+  });
+  markBridgeReadyForGreeting({
+    parentCallControlId: 'cc_parent_goodbye_caller_ignored',
+    openaiLegCallControlId: 'cc_openai_goodbye_caller_ignored',
+  });
+
+  const serverSocket = nextServerSocket();
+  const messages: string[] = [];
+  let endCallCount = 0;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'goodbye-caller-ignored-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      initialResponseInstructions: 'Hello',
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_goodbye_caller_ignored',
+        openaiLegCallControlId: 'cc_openai_goodbye_caller_ignored',
+      },
+      onEndCall: () => { endCallCount += 1; },
+    },
+    { wsUrlOverride: sidebandUrl('goodbye-caller-ignored-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  srv.on('message', (data) => messages.push(String(data)));
+  await flushIO(30);
+  srv.send(makeAudioStartedEvent());
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(30);
+  messages.length = 0;
+
+  srv.send(makeAudioStartedEvent());
+  srv.send(JSON.stringify({
+    type: 'response.output_audio_transcript.done',
+    transcript: 'Thanks for calling, have a great day!',
+  }));
+  srv.send(JSON.stringify({
+    type: 'conversation.item.input_audio_transcription.completed',
+    transcript: 'Hello?',
+  }));
+  await flushIO(50);
+
+  const responseCreatesBeforeStop = messages
+    .map((message) => JSON.parse(message) as { type?: string })
+    .filter((message) => message.type === 'response.create').length;
+  assert.equal(responseCreatesBeforeStop, 0, 'caller speech after goodbye must not create another assistant response');
+  assert.equal(endCallCount, 0, 'hangup should wait while goodbye audio is still active');
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallCount, 1);
+  srv.close(1000);
+  cleanupBridgeGreetingSessionByCallControlId('cc_parent_goodbye_caller_ignored');
+});
+
 test('send_booking_link final response does not double hangup when model calls end_call', async () => {
   const serverSocket = nextServerSocket();
   let endCallCount = 0;

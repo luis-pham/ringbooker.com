@@ -22,6 +22,7 @@ import {
   settingsSaveSuccessMessage,
 } from '@/lib/user-portal-save-messages';
 import { IntegrationsRedesign } from '@/components/user/integrations-redesign';
+import { normalizeIntegrationError } from '@/hooks/useIntegrations';
 import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 import {
@@ -820,6 +821,7 @@ export function UserSettingsLive({
   const [activeTab, setActiveTab] = useState<SettingsTabId>(defaultTabForPortal);
   const [calendarProviders, setCalendarProviders] = useState<CalendarProviderSummary[]>([]);
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null);
+  const [calendarStatusKind, setCalendarStatusKind] = useState<'connected' | 'error' | null>(null);
   const [loadingCalendarProviders, setLoadingCalendarProviders] = useState(false);
   const [squareOptions, setSquareOptions] = useState<SquareOptionsResponse['options'] | null>(null);
   const [loadingSquareOptions, setLoadingSquareOptions] = useState(false);
@@ -958,13 +960,15 @@ export function UserSettingsLive({
     const query = new URLSearchParams(window.location.search);
     const calendarConnect = query.get('calendar_connect');
     if (!calendarConnect) return;
-    const provider = query.get('provider') ?? 'provider';
     const message = query.get('calendar_message');
     if (calendarConnect === 'success') {
-      setCalendarStatus(`${provider} connected successfully.`);
+      setCalendarStatus('Connected successfully');
+      setCalendarStatusKind('connected');
     } else {
-      setCalendarStatus(message ? `Connection failed: ${message}` : `Connection failed for ${provider}.`);
+      setCalendarStatus(normalizeIntegrationError('square', message ?? calendarConnect).message);
+      setCalendarStatusKind('error');
     }
+    window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
   }, []);
 
   useEffect(() => {
@@ -2219,6 +2223,8 @@ export function UserSettingsLive({
                 initialBookingMethod={effectiveShop.booking_method ?? null}
                 initialSelectedIntegration={effectiveShop.selected_integration ?? null}
                 initialBookingUrl={effectiveShop.booking_url ?? null}
+                calendarStatus={calendarStatus}
+                calendarStatusKind={calendarStatusKind}
               />
             </section>
             ) : null}

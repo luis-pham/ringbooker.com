@@ -24,8 +24,8 @@ import {
   type IntegrationAppKey,
 } from '@/lib/integrations-config';
 import { useIntegrations } from '@/hooks/useIntegrations';
-import { integrationErrorMessage } from '@/hooks/useIntegrations';
-import type { VagaroConnectionStatus, VagaroMode } from '@/hooks/useIntegrations';
+import { integrationErrorMessage, normalizeIntegrationError } from '@/hooks/useIntegrations';
+import type { IntegrationError, VagaroConnectionStatus, VagaroMode } from '@/hooks/useIntegrations';
 
 function AppLogo({ app }: { app: IntegrationApp }) {
   if (app.logoSrc) {
@@ -100,6 +100,11 @@ function validateHttpsBookingUrl(value: string): string | null {
   } catch {
     return 'Booking link must be a valid URL.';
   }
+}
+
+function IntegrationInlineError({ error }: { error: IntegrationError | null }) {
+  if (!error) return null;
+  return <div className="note integration-error-note">{error.message}</div>;
 }
 
 function BookingMethodQuestion({
@@ -338,14 +343,6 @@ function LinkConfigPanel({ app, savedUrl, onSave }: { app: IntegrationApp; saved
   );
 }
 
-function vagaroErrorMessage(error: string | null): string | null {
-  if (!error) return null;
-  if (error === 'invalid_credentials') return 'Client ID or Secret is incorrect. Check your Vagaro API settings.';
-  if (error === 'region_not_found') return 'No account found for this region. Check your Vagaro URL.';
-  if (error === 'connection_failed') return 'Connection failed. Try again or contact support.';
-  return integrationErrorMessage(error, 'Connection failed. Try again or contact support.');
-}
-
 function VagaroStatusRow({
   title,
   description,
@@ -383,7 +380,6 @@ function VagaroConfigPanel({
   vagaroMode,
   connectionStatus,
   rawWebhookToken,
-  onModeChange,
   onSaveBookingLink,
   onConnect,
   onRegenerate,
@@ -393,7 +389,6 @@ function VagaroConfigPanel({
   vagaroMode: VagaroMode;
   connectionStatus: VagaroConnectionStatus;
   rawWebhookToken: string | null;
-  onModeChange: (mode: VagaroMode) => void;
   onSaveBookingLink: (url: string) => Promise<void>;
   onConnect: (credentials: { clientId: string; clientSecretKey: string; region: string }) => Promise<unknown>;
   onRegenerate: () => Promise<string>;
@@ -420,20 +415,22 @@ function VagaroConfigPanel({
   const [fallbackUrl, setFallbackUrl] = useState(savedFallbackUrl);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [inlineError, setInlineError] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<IntegrationError | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
-    setLocalMode(vagaroMode);
-  }, [vagaroMode]);
+    if (!isDirty) setLocalMode(vagaroMode);
+  }, [isDirty, vagaroMode]);
 
   useEffect(() => {
+    if (isDirty) return;
     setBookingUrl(savedBookingUrl);
     setFallbackUrl(savedFallbackUrl);
     setClientId(savedClientId);
     setRegion(savedRegion);
     setMessage(null);
     setInlineError(null);
-  }, [savedBookingUrl, savedFallbackUrl, savedClientId, savedRegion]);
+  }, [isDirty, savedBookingUrl, savedFallbackUrl, savedClientId, savedRegion]);
 
   const webhookBase = typeof window === 'undefined'
     ? 'https://api.[your-domain]/api/backend/webhooks/vagaro'
@@ -458,7 +455,7 @@ function VagaroConfigPanel({
           aria-pressed={localMode === 'link_only'}
           onClick={() => {
             setLocalMode('link_only');
-            onModeChange('link_only');
+            setIsDirty(true);
             setMessage(null);
             setInlineError(null);
           }}
@@ -472,7 +469,7 @@ function VagaroConfigPanel({
           aria-pressed={localMode === 'live_sync'}
           onClick={() => {
             setLocalMode('live_sync');
-            onModeChange('live_sync');
+            setIsDirty(true);
             setMessage(null);
             setInlineError(null);
           }}
@@ -480,12 +477,22 @@ function VagaroConfigPanel({
           Live sync
         </button>
       </div>
+      {localMode !== vagaroMode ? <small className="sub">Unsaved changes</small> : null}
 
       {localMode === 'link_only' ? (
         <>
           <div className="field integration-config-field">
             <label>Your Vagaro booking URL</label>
-            <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://vagaro.com/your-salon" />
+            <input
+              value={bookingUrl}
+              onChange={(event) => {
+                setIsDirty(true);
+                setInlineError(null);
+                setMessage(null);
+                setBookingUrl(event.target.value);
+              }}
+              placeholder="https://vagaro.com/your-salon"
+            />
             <small>Find this in Vagaro → Share → Copy booking link</small>
           </div>
           <div className="integration-info-box">The AI will text this link to callers who ask to book.</div>
@@ -500,11 +507,12 @@ function VagaroConfigPanel({
                 setMessage(null);
                 setInlineError(null);
                 try {
-                  await onSaveBookingLink(bookingUrl.trim());
-                  setMessage('Booking link saved.');
-                } catch (err) {
-                  setInlineError(err instanceof Error ? err.message : 'Unable to save booking link.');
-                } finally {
+	                  await onSaveBookingLink(bookingUrl.trim());
+                  setIsDirty(false);
+	                  setMessage('Booking link saved.');
+	                } catch (err) {
+	                  setInlineError(normalizeIntegrationError('vagaro', err, 'booking_link_save_failed'));
+	                } finally {
                   setBusy(false);
                 }
               }}
@@ -512,7 +520,7 @@ function VagaroConfigPanel({
               {busy ? 'Saving...' : 'Save'}
             </button>
           </div>
-          {inlineError ? <div className="note integration-error-note">{inlineError}</div> : null}
+          <IntegrationInlineError error={inlineError} />
         </>
       ) : (
         <>
@@ -549,11 +557,11 @@ function VagaroConfigPanel({
                     setMessage(null);
                     setInlineError(null);
                     try {
-                      await onRegenerate();
-                      setMessage('Webhook token regenerated. Copy the new endpoint now.');
-                    } catch (err) {
-                      setInlineError(err instanceof Error ? err.message : 'Unable to regenerate webhook token.');
-                    } finally {
+	                      await onRegenerate();
+	                      setMessage('Webhook token regenerated. Copy the new endpoint now.');
+	                    } catch (err) {
+	                      setInlineError(normalizeIntegrationError('vagaro', err, 'vagaro_token_regenerate_failed'));
+	                    } finally {
                       setBusy(false);
                     }
                   }}
@@ -566,18 +574,32 @@ function VagaroConfigPanel({
           </div>
 
           <div className="calendar-int-grid">
-            <div className="field integration-config-field">
-              <label>Client ID</label>
-              <input value={clientId} onChange={(event) => setClientId(event.target.value)} placeholder="Vagaro client ID" />
-            </div>
+	            <div className="field integration-config-field">
+	              <label>Client ID</label>
+	              <input
+                  value={clientId}
+                  onChange={(event) => {
+                    setIsDirty(true);
+                    setInlineError(null);
+                    setMessage(null);
+                    setClientId(event.target.value);
+                  }}
+                  placeholder="Vagaro client ID"
+                />
+	            </div>
             <div className="field integration-config-field">
               <label>Client Secret</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
-                  type={showSecret ? 'text' : 'password'}
-                  value={clientSecretKey}
-                  onChange={(event) => setClientSecretKey(event.target.value)}
-                  placeholder="Vagaro client secret"
+	                  type={showSecret ? 'text' : 'password'}
+	                  value={clientSecretKey}
+	                  onChange={(event) => {
+                      setIsDirty(true);
+                      setInlineError(null);
+                      setMessage(null);
+                      setClientSecretKey(event.target.value);
+                    }}
+	                  placeholder="Vagaro client secret"
                   style={{ flex: 1, minWidth: 0 }}
                 />
                 <button type="button" className="btn" onClick={() => setShowSecret((current) => !current)} aria-label={showSecret ? 'Hide secret' : 'Show secret'}>
@@ -585,16 +607,34 @@ function VagaroConfigPanel({
                 </button>
               </div>
             </div>
-            <div className="field integration-config-field">
-              <label>Region</label>
-              <input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="usa03" />
+	            <div className="field integration-config-field">
+	              <label>Region</label>
+	              <input
+                  value={region}
+                  onChange={(event) => {
+                    setIsDirty(true);
+                    setInlineError(null);
+                    setMessage(null);
+                    setRegion(event.target.value);
+                  }}
+                  placeholder="usa03"
+                />
               <small>Found at the start of your Vagaro URL</small>
             </div>
           </div>
-          <div className="field integration-config-field" style={{ maxWidth: 'none' }}>
-            <label>Booking URL fallback (optional)</label>
-            <input value={fallbackUrl} onChange={(event) => setFallbackUrl(event.target.value)} placeholder="https://vagaro.com/your-salon — sent to caller after booking" />
-          </div>
+	          <div className="field integration-config-field" style={{ maxWidth: 'none' }}>
+	            <label>Booking URL fallback (optional)</label>
+	            <input
+                value={fallbackUrl}
+                onChange={(event) => {
+                  setIsDirty(true);
+                  setInlineError(null);
+                  setMessage(null);
+                  setFallbackUrl(event.target.value);
+                }}
+                placeholder="https://vagaro.com/your-salon — sent to caller after booking"
+              />
+	          </div>
 
           <div className="integration-config-body">
             <VagaroStatusRow title="Webhook — appointment events" description="Notified when bookings change" status={connectionStatus} />
@@ -602,8 +642,8 @@ function VagaroConfigPanel({
             <VagaroStatusRow title="SMS booking link" description="Sent to caller after AI confirms slot" status="connected" alwaysOn />
           </div>
 
-          {inlineError ? <div className="note integration-error-note">{vagaroErrorMessage(inlineError)}</div> : null}
-          {message ? <div className="note">{message}</div> : null}
+	          <IntegrationInlineError error={inlineError} />
+	          {message ? <div className="note">{message}</div> : null}
           <div className="integrations-inline-actions">
             <button
               type="button"
@@ -619,15 +659,16 @@ function VagaroConfigPanel({
                     clientSecretKey: clientSecretKey.trim(),
                     region: region.trim(),
                   });
-                  await onSaveSettings({
-                    mode: 'live_sync',
-                    fallback_url: fallbackUrl.trim() || null,
-                  });
-                  setClientSecretKey('');
-                  setMessage('Vagaro live sync connected. Copy the webhook endpoint if this is the first connection.');
-                } catch (err) {
-                  setInlineError(err instanceof Error ? err.message : 'connection_failed');
-                } finally {
+	                  await onSaveSettings({
+	                    mode: 'live_sync',
+	                    fallback_url: fallbackUrl.trim() || null,
+	                  });
+	                  setClientSecretKey('');
+                  setIsDirty(false);
+	                  setMessage('Vagaro live sync connected. Copy the webhook endpoint if this is the first connection.');
+	                } catch (err) {
+	                  setInlineError(normalizeIntegrationError('vagaro', err, 'connection_failed'));
+	                } finally {
                   setBusy(false);
                 }
               }}
@@ -726,15 +767,24 @@ function MindbodyConfigPanel({
   const [bookingUrl, setBookingUrl] = useState(String(details.bookingUrl ?? ''));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<IntegrationError | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
+    if (isDirty) return;
     setSiteId(String(details.siteId ?? ''));
     setSourceName(String(details.sourceName ?? 'RingBooker'));
     setLocationId(String(details.locationId ?? ''));
     setSessionTypeId(String(details.sessionTypeId ?? ''));
     setStaffId(String(details.staffId ?? ''));
     setBookingUrl(String(details.bookingUrl ?? ''));
-  }, [provider?.details]);
+  }, [isDirty, provider?.details]);
+
+  function markMindbodyDirty() {
+    setIsDirty(true);
+    setInlineError(null);
+    setMessage(null);
+  }
 
   return (
     <div className="integration-config-body">
@@ -751,35 +801,35 @@ function MindbodyConfigPanel({
         Services/staff sync: available · Availability check: best-effort · Direct appointment creation: not enabled.
       </div>
       <div className="calendar-int-grid">
-        <div className="field integration-config-field">
-          <label>Mindbody Site ID</label>
-          <input value={siteId} onChange={(event) => setSiteId(event.target.value)} placeholder="123456" />
-        </div>
-        <div className="field integration-config-field">
-          <label>API key</label>
-          <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Your Mindbody API key" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Source name</label>
-          <input value={sourceName} onChange={(event) => setSourceName(event.target.value)} placeholder="RingBooker" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Location ID optional</label>
-          <input value={locationId} onChange={(event) => setLocationId(event.target.value)} placeholder="1" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Session type ID optional</label>
-          <input value={sessionTypeId} onChange={(event) => setSessionTypeId(event.target.value)} placeholder="17" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Staff ID optional</label>
-          <input value={staffId} onChange={(event) => setStaffId(event.target.value)} placeholder="5" />
-        </div>
+	        <div className="field integration-config-field">
+	          <label>Mindbody Site ID</label>
+	          <input value={siteId} onChange={(event) => { markMindbodyDirty(); setSiteId(event.target.value); }} placeholder="123456" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>API key</label>
+	          <input type="password" value={apiKey} onChange={(event) => { markMindbodyDirty(); setApiKey(event.target.value); }} placeholder="Your Mindbody API key" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Source name</label>
+	          <input value={sourceName} onChange={(event) => { markMindbodyDirty(); setSourceName(event.target.value); }} placeholder="RingBooker" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Location ID optional</label>
+	          <input value={locationId} onChange={(event) => { markMindbodyDirty(); setLocationId(event.target.value); }} placeholder="1" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Session type ID optional</label>
+	          <input value={sessionTypeId} onChange={(event) => { markMindbodyDirty(); setSessionTypeId(event.target.value); }} placeholder="17" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Staff ID optional</label>
+	          <input value={staffId} onChange={(event) => { markMindbodyDirty(); setStaffId(event.target.value); }} placeholder="5" />
+	        </div>
       </div>
-      <div className="field integration-config-field">
-        <label>Booking URL fallback optional</label>
-        <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://clients.mindbodyonline.com/..." />
-      </div>
+	      <div className="field integration-config-field">
+	        <label>Booking URL fallback optional</label>
+	        <input value={bookingUrl} onChange={(event) => { markMindbodyDirty(); setBookingUrl(event.target.value); }} placeholder="https://clients.mindbodyonline.com/..." />
+	      </div>
       {message ? <div className="note">{message}</div> : null}
       <div className="integrations-inline-actions">
         <button
@@ -798,12 +848,14 @@ function MindbodyConfigPanel({
                 sessionTypeId: sessionTypeId.trim() || undefined,
                 staffId: staffId.trim() || undefined,
                 bookingUrl: bookingUrl.trim() || undefined,
-              });
-              setApiKey('');
-              setMessage('Mindbody settings saved.');
-            } catch (err) {
-              setMessage(err instanceof Error ? err.message : 'Unable to connect Mindbody.');
-            } finally {
+	              });
+	              setApiKey('');
+              setIsDirty(false);
+              setInlineError(null);
+	              setMessage('Mindbody settings saved.');
+	            } catch (err) {
+	              setInlineError(normalizeIntegrationError('mindbody', err, 'mindbody_connect_failed'));
+	            } finally {
               setBusy(false);
             }
           }}
@@ -815,19 +867,23 @@ function MindbodyConfigPanel({
             type="button"
             className="btn"
             disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try { await onDisconnect(); } finally { setBusy(false); }
-            }}
+	            onClick={async () => {
+	              setBusy(true);
+	              try {
+                  await onDisconnect();
+                  setIsDirty(false);
+                } finally { setBusy(false); }
+	            }}
           >
             Disconnect Mindbody
           </button>
         ) : null}
         <a className="user-link" href="https://developers.mindbodyonline.com/" target="_blank" rel="noreferrer">
           Mindbody developer docs →
-        </a>
-      </div>
-      <div className="note">RingBooker will not tell callers an appointment is confirmed. Mindbody booking creation is not enabled in this release.</div>
+	        </a>
+	      </div>
+	      <IntegrationInlineError error={inlineError} />
+	      <div className="note">RingBooker will not tell callers an appointment is confirmed. Mindbody booking creation is not enabled in this release.</div>
     </div>
   );
 }
@@ -865,8 +921,11 @@ function AcuityConfigPanel({
   const [bookingUrl, setBookingUrl] = useState(String(details.bookingUrl ?? ''));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<IntegrationError | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
+    if (isDirty) return;
     setAppointmentTypeId(String(details.appointmentTypeId ?? ''));
     setDefaultCalendarId(String(details.defaultCalendarId ?? details.calendarId ?? ''));
     setServiceMappingsText(stringifyMappings(details.serviceMappings));
@@ -874,7 +933,13 @@ function AcuityConfigPanel({
     setRequiresCallerEmail(Boolean(details.requiresCallerEmail ?? false));
     setTimezone(String(details.timezone ?? ''));
     setBookingUrl(String(details.bookingUrl ?? ''));
-  }, [provider?.details]);
+  }, [isDirty, provider?.details]);
+
+  function markAcuityDirty() {
+    setIsDirty(true);
+    setInlineError(null);
+    setMessage(null);
+  }
 
   const directAppointmentCreation = String(details.directAppointmentCreation ?? 'not_enabled');
   const bookingMode = String(details.bookingMode ?? 'capture_request_only');
@@ -919,28 +984,28 @@ function AcuityConfigPanel({
         </div>
       ) : null}
       <div className="calendar-int-grid">
-        <div className="field integration-config-field">
-          <label>Legacy default appointment type ID optional</label>
-          <input value={appointmentTypeId} onChange={(event) => setAppointmentTypeId(event.target.value)} placeholder="1001" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Default Acuity calendar ID</label>
-          <input value={defaultCalendarId} onChange={(event) => setDefaultCalendarId(event.target.value)} placeholder="2002" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Timezone optional</label>
-          <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="America/Chicago" />
-        </div>
-        <div className="field integration-config-field">
-          <label>Booking URL fallback optional</label>
-          <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://your-business.as.me/" />
-        </div>
+	        <div className="field integration-config-field">
+	          <label>Legacy default appointment type ID optional</label>
+	          <input value={appointmentTypeId} onChange={(event) => { markAcuityDirty(); setAppointmentTypeId(event.target.value); }} placeholder="1001" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Default Acuity calendar ID</label>
+	          <input value={defaultCalendarId} onChange={(event) => { markAcuityDirty(); setDefaultCalendarId(event.target.value); }} placeholder="2002" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Timezone optional</label>
+	          <input value={timezone} onChange={(event) => { markAcuityDirty(); setTimezone(event.target.value); }} placeholder="America/Chicago" />
+	        </div>
+	        <div className="field integration-config-field">
+	          <label>Booking URL fallback optional</label>
+	          <input value={bookingUrl} onChange={(event) => { markAcuityDirty(); setBookingUrl(event.target.value); }} placeholder="https://your-business.as.me/" />
+	        </div>
       </div>
       <div className="field integration-config-field">
         <label>RingBooker service → Acuity appointment type ID</label>
         <textarea
-          value={serviceMappingsText}
-          onChange={(event) => setServiceMappingsText(event.target.value)}
+	          value={serviceMappingsText}
+	          onChange={(event) => { markAcuityDirty(); setServiceMappingsText(event.target.value); }}
           placeholder={'haircut=1001\nhair color=1002'}
           rows={4}
         />
@@ -949,15 +1014,15 @@ function AcuityConfigPanel({
       <div className="field integration-config-field">
         <label>RingBooker staff/provider → Acuity calendar ID optional</label>
         <textarea
-          value={staffMappingsText}
-          onChange={(event) => setStaffMappingsText(event.target.value)}
+	          value={staffMappingsText}
+	          onChange={(event) => { markAcuityDirty(); setStaffMappingsText(event.target.value); }}
           placeholder={'alex=2002\njamie=2003'}
           rows={3}
         />
         <small>If no staff mapping matches, RingBooker uses the default Acuity calendar ID.</small>
       </div>
       <label className="integration-checkbox-row">
-        <input type="checkbox" checked={requiresCallerEmail} onChange={(event) => setRequiresCallerEmail(event.target.checked)} />
+	        <input type="checkbox" checked={requiresCallerEmail} onChange={(event) => { markAcuityDirty(); setRequiresCallerEmail(event.target.checked); }} />
         <span>Require caller email before direct Acuity booking. If missing, RingBooker captures a booking request instead.</span>
       </label>
       {message ? <div className="note">{message}</div> : null}
@@ -979,11 +1044,13 @@ function AcuityConfigPanel({
                 requiresCallerEmail,
                 timezone: timezone.trim() || undefined,
                 bookingUrl: bookingUrl.trim() || undefined,
-              });
-              setMessage('Acuity settings saved.');
-            } catch (err) {
-              setMessage(err instanceof Error ? err.message : 'Unable to connect Acuity.');
-            } finally {
+	              });
+              setIsDirty(false);
+              setInlineError(null);
+	              setMessage('Acuity settings saved.');
+	            } catch (err) {
+	              setInlineError(normalizeIntegrationError('acuity', err, 'acuity_connect_failed'));
+	            } finally {
               setBusy(false);
             }
           }}
@@ -994,18 +1061,22 @@ function AcuityConfigPanel({
           type="button"
           className="btn"
           disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            try { await onDisconnect(); } finally { setBusy(false); }
-          }}
+	          onClick={async () => {
+	            setBusy(true);
+	            try {
+                await onDisconnect();
+                setIsDirty(false);
+              } finally { setBusy(false); }
+	          }}
         >
           Disconnect Acuity
         </button>
         <a className="user-link" href="https://developers.acuityscheduling.com/" target="_blank" rel="noreferrer">
           Acuity developer docs →
         </a>
-      </div>
-      <div className="note">RingBooker only tells callers an appointment is confirmed after Acuity returns a real appointment ID. Failed API bookings become normal booking requests.</div>
+	      </div>
+	      <IntegrationInlineError error={inlineError} />
+	      <div className="note">RingBooker only tells callers an appointment is confirmed after Acuity returns a real appointment ID. Failed API bookings become normal booking requests.</div>
     </div>
   );
 }
@@ -1027,7 +1098,6 @@ function AppConfigPanel({
   vagaroMode,
   vagaroConnectionStatus,
   vagaroWebhookToken,
-  setVagaroMode,
   saveVagaroBookingLink,
   connectVagaroLiveSync,
   regenerateVagaroToken,
@@ -1046,7 +1116,6 @@ function AppConfigPanel({
   vagaroMode: VagaroMode;
   vagaroConnectionStatus: VagaroConnectionStatus;
   vagaroWebhookToken: string | null;
-  setVagaroMode: (mode: VagaroMode) => void;
   saveVagaroBookingLink: (url: string) => Promise<void>;
   connectVagaroLiveSync: (credentials: { clientId: string; clientSecretKey: string; region: string }) => Promise<unknown>;
   regenerateVagaroToken: () => Promise<string>;
@@ -1110,10 +1179,9 @@ function AppConfigPanel({
         <VagaroConfigPanel
           provider={selectedProvider}
           vagaroMode={vagaroMode}
-          connectionStatus={vagaroConnectionStatus}
-          rawWebhookToken={vagaroWebhookToken}
-          onModeChange={setVagaroMode}
-          onSaveBookingLink={saveVagaroBookingLink}
+	          connectionStatus={vagaroConnectionStatus}
+	          rawWebhookToken={vagaroWebhookToken}
+	          onSaveBookingLink={saveVagaroBookingLink}
           onConnect={connectVagaroLiveSync}
           onRegenerate={regenerateVagaroToken}
           onSaveSettings={saveVagaroLiveSyncSettings}
@@ -1296,6 +1364,8 @@ type IntegrationsRedesignProps = {
   initialBookingMethod?: BookingMethod;
   initialSelectedIntegration?: string | null;
   initialBookingUrl?: string | null;
+  calendarStatus?: string | null;
+  calendarStatusKind?: 'connected' | 'error' | null;
 };
 
 function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegration, initialBookingUrl }: {
@@ -1535,15 +1605,16 @@ export function IntegrationsRedesign({
   initialBookingMethod = null,
   initialSelectedIntegration = null,
   initialBookingUrl = null,
+  calendarStatus = null,
+  calendarStatusKind = null,
 }: IntegrationsRedesignProps) {
   const {
-    status,
-    selectedProvider,
-	    setBookingMethod,
-	    setSelectedApp,
-	    saveBookingLink,
-	    setVagaroMode,
-	    saveVagaroBookingLink,
+	    status,
+	    selectedProvider,
+		    setBookingMethod,
+		    setSelectedApp,
+		    saveBookingLink,
+		    saveVagaroBookingLink,
 	    connectVagaroLiveSync,
 	    regenerateVagaroToken,
 	    saveVagaroLiveSyncSettings,
@@ -1565,6 +1636,7 @@ export function IntegrationsRedesign({
   const [showSetupFlow, setShowSetupFlow] = useState(false);
   const [forceMethodQuestion, setForceMethodQuestion] = useState(false);
   const [bookingUrlOverride, setBookingUrlOverride] = useState<string | null>(null);
+  const [showCalendarStatusBanner, setShowCalendarStatusBanner] = useState(Boolean(calendarStatus));
   const configuredBookingUrl = bookingUrlOverride ?? status.bookingLinkUrl ?? initialBookingUrl ?? null;
   const configuredSelectedAppKey = status.selectedApp ?? fromBackendProviderKey(initialSelectedIntegration);
   const configuredSelectedApp = useMemo(() => findIntegrationApp(configuredSelectedAppKey), [configuredSelectedAppKey]);
@@ -1582,6 +1654,16 @@ export function IntegrationsRedesign({
 	    )
 	  );
   const showMethodQuestion = status.step === 'question' || forceMethodQuestion;
+
+  useEffect(() => {
+    if (!calendarStatus) {
+      setShowCalendarStatusBanner(false);
+      return;
+    }
+    setShowCalendarStatusBanner(true);
+    const timeout = window.setTimeout(() => setShowCalendarStatusBanner(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [calendarStatus]);
 
   if (!canUseThirdPartyIntegrations) {
     return (
@@ -1604,6 +1686,19 @@ export function IntegrationsRedesign({
           {status.isLoading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+
+      {calendarStatus && showCalendarStatusBanner ? (
+        <div
+          className={calendarStatusKind === 'connected' ? 'integration-success-box' : 'note integration-error-note'}
+          role="status"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+        >
+          <span>{calendarStatusKind === 'connected' ? 'Connected successfully' : calendarStatus}</span>
+          <button type="button" className="user-link--subtle" onClick={() => setShowCalendarStatusBanner(false)}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {status.error ? <div className="note integration-error-note">{status.error}</div> : null}
       {status.isLoading ? <div className="note">Refreshing integration status...</div> : null}
@@ -1679,11 +1774,10 @@ export function IntegrationsRedesign({
               setForceMethodQuestion(false);
 	              setShowSetupFlow(false);
 	            }}
-	            vagaroMode={status.vagaroMode}
-	            vagaroConnectionStatus={status.vagaroConnectionStatus}
-	            vagaroWebhookToken={status.vagaroWebhookToken}
-	            setVagaroMode={setVagaroMode}
-	            saveVagaroBookingLink={async (url) => {
+		            vagaroMode={status.vagaroMode}
+		            vagaroConnectionStatus={status.vagaroConnectionStatus}
+		            vagaroWebhookToken={status.vagaroWebhookToken}
+		            saveVagaroBookingLink={async (url) => {
 	              await saveVagaroBookingLink(url);
 	              setBookingUrlOverride(url);
 	              setForceMethodQuestion(false);

@@ -190,26 +190,23 @@ test('action guard blocks send_booking_link when caller has not expressed bookin
   assert.equal(parsed.reason, 'booking_intent_required');
 });
 
-test('action guard blocks end_call from closing partial booking as other', async () => {
+test('action guard allows end_call to close partial booking as other', async () => {
   const ctx = await createCtx({ bookingUrl: null });
   updateSipBookingDraftFromTranscript(ctx, 'I want to book color tomorrow at nine AM.');
 
   const json = await executeSipShopToolCall(ctx, 'end_call', { reason: 'other' });
-  const parsed = JSON.parse(json) as { code?: string; reason?: string; backendDecision?: string };
+  const parsed = JSON.parse(json) as { ok?: boolean };
 
-  assert.equal(parsed.code, 'ACTION_GUARD_BLOCKED');
-  assert.equal(parsed.reason, 'partial_booking_cannot_end_as_unknown');
-  assert.equal(parsed.backendDecision, 'incomplete_follow_up_required');
+  assert.equal(parsed.ok, true);
 });
 
-test('action guard blocks end_call as link_sent until booking link tool succeeds', async () => {
+test('action guard allows end_call as link_sent even before booking link tool succeeds', async () => {
   const ctx = await createCtx({ bookingUrl: 'https://booking.example/demo' });
   updateSipBookingDraftFromTranscript(ctx, 'I want to book a manicure.');
 
-  const blockedJson = await executeSipShopToolCall(ctx, 'end_call', { reason: 'link_sent' });
-  const blocked = JSON.parse(blockedJson) as { code?: string; reason?: string };
-  assert.equal(blocked.code, 'ACTION_GUARD_BLOCKED');
-  assert.equal(blocked.reason, 'link_action_not_completed');
+  const earlyJson = await executeSipShopToolCall(ctx, 'end_call', { reason: 'link_sent' });
+  const early = JSON.parse(earlyJson) as { ok?: boolean };
+  assert.equal(early.ok, true);
 
   const linkJson = await executeSipShopToolCall(ctx, 'send_booking_link', {
     callerName: 'there',
@@ -223,14 +220,13 @@ test('action guard blocks end_call as link_sent until booking link tool succeeds
   assert.equal(allowed.ok, true);
 });
 
-test('action guard allows partial booking to close after callback follow-up is recorded', async () => {
+test('action guard allows partial booking to close even before callback follow-up is recorded', async () => {
   const ctx = await createCtx({ bookingUrl: null });
   updateSipBookingDraftFromTranscript(ctx, 'I want to book color tomorrow at nine AM.');
 
-  const blockedJson = await executeSipShopToolCall(ctx, 'end_call', { reason: 'callback_scheduled' });
-  const blocked = JSON.parse(blockedJson) as { code?: string; reason?: string };
-  assert.equal(blocked.code, 'ACTION_GUARD_BLOCKED');
-  assert.equal(blocked.reason, 'booking_action_not_completed');
+  const earlyJson = await executeSipShopToolCall(ctx, 'end_call', { reason: 'callback_scheduled' });
+  const early = JSON.parse(earlyJson) as { ok?: boolean };
+  assert.equal(early.ok, true);
 
   const callbackJson = await executeSipShopToolCall(ctx, 'schedule_callback', {
     reason: 'Incomplete booking request: color tomorrow at 9 AM. Caller needs team follow-up.',

@@ -315,62 +315,12 @@ function guardScheduleCallback(ctx: AgentToolContext, draft: BookingDraft): Book
 }
 
 function guardEndCall(ctx: AgentToolContext, draft: BookingDraft, input: ToolInputRecord): BookingActionGuardDecision {
-  const reason = stringField(input, 'reason') || 'other';
-  const state = ctx.actionGuard ?? createBookingActionGuardState();
-
-  if (reason === 'booking_completed' && !state.createBookingCompleted) {
-    return blocked(
-      'action_guard_blocked',
-      'booking_action_not_completed',
-      'Do not end the call as booking completed because no successful booking tool result exists. Continue the booking flow or offer follow-up.',
-    );
-  }
-
-  if (reason === 'link_sent' && !state.bookingLinkSent) {
-    return blocked(
-      'action_guard_blocked',
-      'link_action_not_completed',
-      'Do not end the call as link sent because no successful booking-link tool result exists. Send the link or offer follow-up first.',
-    );
-  }
-
-  if (reason === 'handoff_initiated' && !state.handoffStarted && !state.transferStarted) {
-    return blocked(
-      'action_guard_blocked',
-      'handoff_action_not_completed',
-      'Do not end the call as handoff initiated because no live handoff has started. Follow the handoff tool result and continue with fallback capture if needed.',
-    );
-  }
-
-  if (reason === 'callback_scheduled' && !state.callbackScheduled) {
-    return blocked(
-      'action_guard_blocked',
-      'booking_action_not_completed',
-      'Do not end the call as callback scheduled because no follow-up request has been recorded. Record follow-up first.',
-    );
-  }
-
-  if (draft.intent === 'book_appointment' && !state.createBookingCompleted && !state.bookingLinkSent && !state.callbackScheduled) {
-    if ((draft.confidence.time ?? 0) > 0 && (draft.confidence.time ?? 0) < 0.55) {
-      return blocked(
-        'confirmation_required',
-        'time_candidate_low_confidence',
-        'Do not end the call yet. Confirm the appointment time or offer owner follow-up for the incomplete booking request.',
-        ['time'],
-      );
-    }
-
-    const missingFields = bookingMissingFields(ctx, draft, input);
-    if (missingFields.length > 0 && ['other', 'question_answered', 'booking_completed', 'link_sent'].includes(reason)) {
-      return blocked(
-        'incomplete_follow_up_required',
-        'partial_booking_cannot_end_as_unknown',
-        `${missingFieldsMessage(missingFields)} If the caller cannot provide it after two attempts, create an incomplete follow-up path instead of ending as unknown.`,
-        missingFields,
-      );
-    }
-  }
-
+  void ctx;
+  void draft;
+  void input;
+  // Once the assistant has delivered a closing line, end_call must not be blocked
+  // by booking outcome heuristics. Post-call summary extraction owns the final
+  // outcome classification (booking_created, booking_request_incomplete, info, etc.).
   return allowed();
 }
 

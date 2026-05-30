@@ -30,6 +30,13 @@ function parseToolOutputObject(output: string): Record<string, unknown> | null {
   }
 }
 
+const GOODBYE_CLOSING_RE =
+  /\b(?:have (?:a )?(?:wonderful|great|good) day|feel free to call back anytime|take care|goodbye|bye)\b/i;
+
+function includesGoodbyeClosing(text: string): boolean {
+  return GOODBYE_CLOSING_RE.test(text);
+}
+
 export type OpenAiRealtimeSipSidebandParams =
   | {
       variant: 'demo';
@@ -315,6 +322,9 @@ export function startOpenAiRealtimeSipSideband(
   let pendingHangupAfterAudio = false;
   /** Set after booking-link final response is requested; audio stop triggers hangup if model skips end_call. */
   let pendingAutoEndAfterFinalAudio = false;
+  /** Set when assistant says a final goodbye but the model fails to call end_call. */
+  let pendingAutoEndAfterGoodbyeAudio = false;
+  let assistantGoodbyeSaid = false;
   /** Local idempotency guard; the caller's onEndCall callback also guards Telnyx hangup. */
   let hangupInitiated = false;
   /** Fallback: fire onEndCall after this many ms if output_audio_buffer.stopped never arrives. */
@@ -326,6 +336,7 @@ export function startOpenAiRealtimeSipSideband(
     pendingHangupFallbackStartedAtMs = null;
     pendingHangupAfterAudio = false;
     pendingAutoEndAfterFinalAudio = false;
+    pendingAutoEndAfterGoodbyeAudio = false;
     if (hangupInitiated) return;
     hangupInitiated = true;
     params.onEndCall?.();
@@ -340,7 +351,7 @@ export function startOpenAiRealtimeSipSideband(
     pendingHangupFallbackStartedAtMs = startedAt;
     pendingHangupFallbackTimer = setTimeout(() => {
       pendingHangupFallbackTimer = null;
-      if (!pendingHangupAfterAudio && !pendingAutoEndAfterFinalAudio) {
+      if (!pendingHangupAfterAudio && !pendingAutoEndAfterFinalAudio && !pendingAutoEndAfterGoodbyeAudio) {
         pendingHangupFallbackStartedAtMs = null;
         return;
       }
@@ -377,6 +388,26 @@ export function startOpenAiRealtimeSipSideband(
       fireOnEndCall();
     }, delayMs);
     pendingHangupFallbackTimer.unref?.();
+  }
+
+  function armAutoEndAfterGoodbye(reason: 'assistant_goodbye' | 'caller_after_goodbye' | 'idle_timeout_after_goodbye'): void {
+    assistantGoodbyeSaid = true;
+    if (params.variant !== 'shop' || !params.onEndCall || hangupInitiated) return;
+    pendingAutoEndAfterGoodbyeAudio = true;
+    queuedCallerTranscripts = [];
+    logger.info(
+      {
+        callId: params.callId,
+        reason,
+        outputAudioBufferActive,
+      },
+      'openai_sip_goodbye_auto_end_armed',
+    );
+    if (reason !== 'assistant_goodbye' && !outputAudioBufferActive) {
+      fireOnEndCall();
+      return;
+    }
+    schedulePendingHangupFallback();
   }
 
   const needsDemoVadResumeAfterWelcome =
@@ -724,6 +755,16 @@ export function startOpenAiRealtimeSipSideband(
         logger.warn(
           { callId: params.callId, timeoutMs: ms },
           'auto_hangup_after_booking_link_final_audio',
+        );
+        fireOnEndCall();
+        releaseTurnState({ processQueue: false, clearQueue: true });
+        return;
+      }
+
+      if (timedOutState === 'waiting_audio' && pendingAutoEndAfterGoodbyeAudio) {
+        logger.warn(
+          { callId: params.callId, timeoutMs: ms },
+          'auto_hangup_after_goodbye_final_audio',
         );
         fireOnEndCall();
         releaseTurnState({ processQueue: false, clearQueue: true });
@@ -1172,6 +1213,15 @@ export function startOpenAiRealtimeSipSideband(
     if (params.variant !== 'shop' || !params.initialResponseBridgeGate || !shopManualTurnResponseEnabled) return;
     if (ws.readyState !== WebSocket.OPEN) return;
 
+    if (assistantGoodbyeSaid || pendingAutoEndAfterGoodbyeAudio || pendingHangupAfterAudio) {
+      logger.info(
+        { callId: params.callId, transcript },
+        'openai_sip_shop_caller_turn_ignored_after_goodbye',
+      );
+      armAutoEndAfterGoodbye('caller_after_goodbye');
+      return;
+    }
+
     if (sidebandTurnState !== 'idle') {
       queueCallerTranscriptWhileInFlight(transcript);
       return;
@@ -1457,6 +1507,19 @@ export function startOpenAiRealtimeSipSideband(
     if (evt.type === 'input_audio_buffer.speech_started') {
       lastSpeechStartedAtMs = Date.now();
       logTiming('input_speech_started', eventTimingFields(evt, lastSpeechStartedAtMs), lastSpeechStartedAtMs);
+      if (assistantGoodbyeSaid || pendingAutoEndAfterGoodbyeAudio || pendingHangupAfterAudio) {
+        logger.info({ callId: params.callId }, 'openai_sip_shop_speech_started_after_goodbye_ignored');
+        armAutoEndAfterGoodbye('caller_after_goodbye');
+        return;
+      }
+    }
+
+    if (evt.type === 'input_audio_buffer.timeout_triggered') {
+      if (assistantGoodbyeSaid || pendingAutoEndAfterGoodbyeAudio || pendingHangupAfterAudio) {
+        logger.info({ callId: params.callId }, 'openai_sip_shop_idle_timeout_after_goodbye');
+        armAutoEndAfterGoodbye('idle_timeout_after_goodbye');
+      }
+      return;
     }
 
     if (evt.type === 'input_audio_buffer.speech_stopped') {
@@ -1587,7 +1650,13 @@ export function startOpenAiRealtimeSipSideband(
       fireOnEndCall();
     }
 
-    if (pendingAutoEndAfterFinalAudio && evt.type === 'output_audio_buffer.stopped') {
+    if (pendingAutoEndAfterGoodbyeAudio && evt.type === 'output_audio_buffer.stopped') {
+      logger.warn(
+        { callId: params.callId },
+        'auto_hangup_after_goodbye_final_audio',
+      );
+      fireOnEndCall();
+    } else if (pendingAutoEndAfterFinalAudio && evt.type === 'output_audio_buffer.stopped') {
       logger.warn(
         { callId: params.callId },
         'auto_hangup_after_booking_link_final_audio',
@@ -1670,6 +1739,9 @@ export function startOpenAiRealtimeSipSideband(
         );
         if (params.variant === 'shop' && params.initialResponseBridgeGate) {
           if (speaker === 'assistant') {
+            if (includesGoodbyeClosing(transcript)) {
+              armAutoEndAfterGoodbye('assistant_goodbye');
+            }
             if (mentionsBookingFlow(transcript)) {
               shopBookingFlowActive = true;
             }
@@ -1940,6 +2012,7 @@ export function startOpenAiRealtimeSipSideband(
     clearAllTranscriptionTimeouts();
     pendingHangupAfterAudio = false;
     pendingAutoEndAfterFinalAudio = false;
+    pendingAutoEndAfterGoodbyeAudio = false;
     releaseTurnState({ processQueue: false, clearQueue: true });
     cancelInitialTimer();
     clearTimeout(t);

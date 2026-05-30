@@ -7,6 +7,11 @@ import { fromBackendProviderKey, toBackendProviderKey } from '@/lib/integrations
 
 export type VagaroMode = 'link_only' | 'live_sync';
 export type VagaroConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error';
+export type IntegrationError = {
+  platform: 'square' | 'vagaro' | 'mindbody' | 'acuity' | null;
+  code: string;
+  message: string;
+};
 
 type ProviderSummary = {
   id: string;
@@ -109,6 +114,71 @@ export function integrationErrorMessage(error: string | undefined, fallback = GE
   if (error === 'unauthorized') return 'Please sign in and try again.';
   const message = error ?? fallback;
   return message.includes('_') ? GENERIC_INTEGRATION_ERROR : message;
+}
+
+export function normalizeIntegrationError(
+  platform: IntegrationError['platform'],
+  error: unknown,
+  fallbackCode = 'connection_failed',
+): IntegrationError {
+  const rawCode = typeof error === 'string'
+    ? error
+    : error instanceof Error
+      ? error.message
+      : fallbackCode;
+  const code = (rawCode || fallbackCode).trim() || fallbackCode;
+  const normalized = code.toLowerCase();
+  const isPlainMessage = /\s/.test(code) && !code.includes('_') && !/\b(?:401|403)\b/.test(normalized);
+
+  if (isPlainMessage) return { platform, code, message: code };
+
+  if (platform === 'square') {
+    if (normalized === 'access_denied') {
+      return { platform, code, message: 'Connection cancelled. Try again.' };
+    }
+    if (normalized === 'invalid_state' || normalized === 'invalid_oauth_state' || normalized === 'invalid_oauth_context') {
+      return { platform, code, message: 'Session expired. Please reconnect.' };
+    }
+    return { platform, code, message: 'Connection failed. Try again or contact support.' };
+  }
+
+  if (platform === 'vagaro') {
+    if (normalized === 'invalid_credentials') {
+      return { platform, code, message: 'Client ID or Secret is incorrect.' };
+    }
+    if (normalized === 'region_not_found') {
+      return { platform, code, message: 'No account found for this region.' };
+    }
+    if (normalized === 'missing_fields' || normalized === 'invalid_payload' || normalized === 'validation_error') {
+      return { platform, code, message: 'Please fill in all required fields.' };
+    }
+    if (normalized === 'connection_failed' || normalized.includes('network') || normalized.includes('fetch')) {
+      return { platform, code, message: 'Connection failed. Try again.' };
+    }
+    return { platform, code, message: 'Something went wrong. Try again.' };
+  }
+
+  if (platform === 'mindbody' || platform === 'acuity') {
+    if (
+      normalized.includes('401') ||
+      normalized.includes('403') ||
+      normalized.includes('unauthorized') ||
+      normalized.includes('forbidden') ||
+      normalized.includes('invalid_credentials')
+    ) {
+      return { platform, code, message: 'Invalid credentials. Check your API key.' };
+    }
+    if (normalized.includes('network') || normalized.includes('fetch') || normalized.includes('connection_failed') || normalized.includes('connect_failed')) {
+      return { platform, code, message: 'Connection failed. Try again.' };
+    }
+    return { platform, code, message: 'Something went wrong. Try again.' };
+  }
+
+  if (normalized === 'plan_feature_locked') return { platform, code, message: 'Upgrade required.' };
+  if (normalized === 'validation_error' || normalized === 'invalid_payload') {
+    return { platform, code, message: 'Please check required fields.' };
+  }
+  return { platform, code, message: 'Something went wrong. Try again.' };
 }
 
 function asVagaroMode(value: unknown): VagaroMode {
@@ -269,9 +339,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
         });
         const payload = (await response.json()) as { ok: boolean; error?: string };
         if (!response.ok || !payload.ok) {
-          const message = integrationErrorMessage(payload.error, 'booking_link_save_failed');
-          setError(message);
-          throw new Error(message);
+          const error = normalizeIntegrationError('vagaro', payload.error, 'booking_link_save_failed');
+          setError(error.message);
+          throw new Error(error.message);
         }
         const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
         applyPreferences(preferences);
@@ -285,9 +355,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = integrationErrorMessage(payload.error, 'booking_link_save_failed');
-        setError(message);
-        throw new Error(message);
+        const error = normalizeIntegrationError(null, payload.error, 'booking_link_save_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: provider });
       applyPreferences(preferences);
@@ -296,8 +366,8 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
     [applyPreferences, loadProviders, patchPreferences],
   );
 
-  const setVagaroMode = useCallback((mode: VagaroMode) => {
-    setVagaroModeState(mode);
+  const setVagaroMode = useCallback((_mode: VagaroMode) => {
+    // Mode changes are local drafts until the user saves/connects Vagaro.
   }, []);
 
   const saveVagaroBookingLink = useCallback(
@@ -310,9 +380,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       });
       const payload = (await response.json()) as { success: boolean; error?: string };
       if (!response.ok || !payload.success) {
-        const message = integrationErrorMessage(payload.error, 'booking_link_save_failed');
-        setError(message);
-        throw new Error(message);
+        const error = normalizeIntegrationError('vagaro', payload.error, 'booking_link_save_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       setVagaroModeState('link_only');
       const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
@@ -332,9 +402,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       });
       const payload = (await response.json()) as { success: boolean; error?: string };
       if (!response.ok || !payload.success) {
-        const message = integrationErrorMessage(payload.error, 'vagaro_settings_failed');
-        setError(message);
-        throw new Error(message);
+        const error = normalizeIntegrationError('vagaro', payload.error, 'vagaro_settings_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       if (settings.mode) setVagaroModeState(settings.mode);
       await loadProviders();
@@ -359,9 +429,10 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
         locations?: unknown;
       };
       if (!response.ok || !payload.success) {
-        const code = payload.error ?? 'connection_failed';
+        const error = normalizeIntegrationError('vagaro', payload.error, 'connection_failed');
         setVagaroConnectionStatus('error');
-        throw new Error(code);
+        setError(error.message);
+        throw new Error(error.message);
       }
       setVagaroModeState('live_sync');
       setVagaroConnectionStatus(asVagaroConnectionStatus(payload.connection_status));
@@ -382,9 +453,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
     });
     const payload = (await response.json()) as { success: boolean; webhook_token?: string; error?: string };
     if (!response.ok || !payload.success || !payload.webhook_token) {
-      const message = integrationErrorMessage(payload.error, 'vagaro_token_regenerate_failed');
-      setError(message);
-      throw new Error(message);
+      const error = normalizeIntegrationError('vagaro', payload.error, 'vagaro_token_regenerate_failed');
+      setError(error.message);
+      throw new Error(error.message);
     }
     setVagaroWebhookToken(payload.webhook_token);
     await loadProviders();
@@ -407,9 +478,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = integrationErrorMessage(payload.error, 'vagaro_connect_failed');
-        setError(message);
-        throw new Error(message);
+        const error = normalizeIntegrationError('vagaro', payload.error, 'vagaro_connect_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
       applyPreferences(preferences);
@@ -437,9 +508,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = integrationErrorMessage(payload.error, 'mindbody_connect_failed');
-        setError(message);
-        throw new Error(message);
+        const error = normalizeIntegrationError('mindbody', payload.error, 'mindbody_connect_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'mindbody' });
       applyPreferences(preferences);
@@ -470,9 +541,9 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = integrationErrorMessage(payload.error, 'acuity_connect_failed');
-        setError(message);
-        throw new Error(message);
+        const error = normalizeIntegrationError('acuity', payload.error, 'acuity_connect_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       const preferences = await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'acuity' });
       applyPreferences(preferences);
@@ -487,9 +558,10 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       const response = await fetch(`/api/backend/user/calendar/providers/${provider}/disconnect`, { method: 'POST' });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!response.ok || !payload.ok) {
-        const message = integrationErrorMessage(payload.error, 'disconnect_failed');
-        setError(message);
-        throw new Error(message);
+        const platform = provider === 'square_appointments' ? 'square' : provider === 'vagaro' || provider === 'mindbody' || provider === 'acuity' ? provider : null;
+        const error = normalizeIntegrationError(platform, payload.error, 'disconnect_failed');
+        setError(error.message);
+        throw new Error(error.message);
       }
       await load();
     },
@@ -502,17 +574,26 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
   }, []);
 
   // UI navigation only uses navigateBack(). goBack clears persisted preferences
-  // and is reserved for explicit reset actions such as changing a configured setup.
+  // only when there is no connected integration behind the current selection.
   const goBack = useCallback(async () => {
+    const selectedProviderId = selectedApp ? toBackendProviderKey(selectedApp) : null;
+    const currentIntegrationConnected = Boolean(
+      selectedProviderId && (
+        selectedProviderId === 'vagaro'
+          ? vagaroConnectionStatus === 'connected'
+          : providers.some((provider) => provider.id === selectedProviderId && provider.connected)
+      ),
+    );
     setSelectedAppState(null);
     setStep('question');
     setBookingMethodState(null);
+    if (currentIntegrationConnected) return;
     try {
       await patchPreferences({ bookingMethod: null, selectedIntegration: null });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'integrations_reset_failed');
     }
-  }, [patchPreferences]);
+  }, [patchPreferences, providers, selectedApp, vagaroConnectionStatus]);
 
   return {
     status: {

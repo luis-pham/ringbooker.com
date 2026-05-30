@@ -5,8 +5,11 @@ import type { AgentToolContext } from './types';
 const schema = z.object({
   reason: z.enum([
     'booking_completed',
+    'booking_created',
+    'booking_request_incomplete',
     'link_sent',
     'question_answered',
+    'informational',
     'callback_scheduled',
     'handoff_initiated',
     'other',

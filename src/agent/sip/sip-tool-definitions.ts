@@ -35,14 +35,24 @@ export const END_CALL_TOOL: OpenAiSipFunctionTool = {
   type: 'function',
   name: 'end_call',
   description:
-    'End the phone call after the caller\'s request is fully complete. Call this after: booking confirmed, booking link sent and acknowledged, question fully answered, callback scheduled, or handoff initiated. Always say a warm goodbye BEFORE calling this tool. Do NOT call end_call if a human handoff is actively connecting — the owner will close the call.',
+    'End the phone call immediately after a warm goodbye or final closing line. Use this for any completed ending: booking created, booking request incomplete, booking link sent, informational question answered, callback scheduled, or handoff initiated. Do not continue conversation after goodbye. Do NOT call end_call if a human handoff is actively connecting because the owner will close the call.',
   parameters: {
     type: 'object',
     additionalProperties: false,
     properties: {
       reason: {
         type: 'string',
-        enum: ['booking_completed', 'link_sent', 'question_answered', 'callback_scheduled', 'handoff_initiated', 'other'],
+        enum: [
+          'booking_completed',
+          'booking_created',
+          'booking_request_incomplete',
+          'link_sent',
+          'question_answered',
+          'informational',
+          'callback_scheduled',
+          'handoff_initiated',
+          'other',
+        ],
         description: 'Why the call is ending.',
       },
     },
