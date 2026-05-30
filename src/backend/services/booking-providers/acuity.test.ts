@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 import type { Shop } from '@/src/backend/domain/types';
 import { AcuityProvider, encodeAcuityCredentials, parseAcuityCredentials } from '@/src/backend/services/booking-providers/acuity';
 import { getCalendarProvider, getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
+import { encrypt } from '@/src/backend/services/crypto/encrypt';
+import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+
+applyRequiredTestEnv();
 
 function buildShop(overrides: Partial<Shop> = {}): Shop {
   return {
@@ -79,6 +83,28 @@ test('acuity fetches appointment types and calendars with basic auth', async () 
   assert.equal(options.calendars[0]?.name, 'Main calendar');
   assert.equal(options.directAppointmentCreation, 'not_enabled');
   assert.ok(requests.every((request) => request.auth?.startsWith('Basic ')));
+});
+
+test('acuity uses shop OAuth token before legacy basic auth credentials', async () => {
+  const requests: Array<{ auth: string | null }> = [];
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push({ auth: new Headers(init?.headers).get('authorization') });
+    if (String(input).endsWith('/appointment-types')) return jsonResponse([]);
+    if (String(input).endsWith('/calendars')) return jsonResponse([]);
+    return jsonResponse({}, 404);
+  }) as typeof fetch;
+
+  const provider = new AcuityProvider(
+    buildShop({
+      acuity_access_token_encrypted: encrypt('acuity-oauth-token'),
+      acuity_connection_status: 'connected',
+    }),
+    { baseUrl: 'https://acuity.test/api/v1', fetchImpl },
+  );
+  await provider.getConnectionOptions();
+
+  assert.ok(requests.length > 0);
+  assert.ok(requests.every((request) => request.auth === 'Bearer acuity-oauth-token'));
 });
 
 test('acuity auth failure surfaces API error', async () => {

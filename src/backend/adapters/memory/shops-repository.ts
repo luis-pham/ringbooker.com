@@ -5,7 +5,7 @@ import {
   GENERAL_SERVICE_CATEGORY_NAME,
   serviceCatalogToLegacyServices,
 } from '@/src/backend/domain/service-catalog';
-import type { Shop, VagaroSettings } from '@/src/backend/domain/types';
+import type { AcuityOAuthCredentialsUpdate, Shop, VagaroSettings } from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 
 const defaultShop: Shop = {
@@ -19,6 +19,7 @@ const defaultShop: Shop = {
   handoff_custom_hours: null,
   user_name: 'Demo User',
   address: '123 Main St, Garden Grove, CA',
+  email: 'hello@ringbooker.com',
   timezone: 'America/Los_Angeles',
   services: [
     { name: 'Manicure', duration_min: 30, price: 20 },
@@ -60,6 +61,9 @@ const defaultShop: Shop = {
   vagaro_business_name: null,
   vagaro_location_id: null,
   vagaro_locations: null,
+  acuity_access_token_encrypted: null,
+  acuity_user_id: null,
+  acuity_connection_status: 'disconnected',
   website_url: 'https://ringbooker.com/demo',
   languages: ['en', 'vi'],
   current_onboarding_step: 4,
@@ -182,6 +186,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       handoff_availability: 'business_hours',
       handoff_custom_hours: null,
       user_name: params.user_name ?? null,
+      email: null,
       timezone: params.timezone,
       services: [],
       not_offered_services: [],
@@ -256,6 +261,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'handoff_availability'
         | 'handoff_custom_hours'
         | 'address'
+        | 'email'
         | 'timezone'
         | 'services'
         | 'not_offered_services'
@@ -491,6 +497,20 @@ export class InMemoryShopsRepository implements ShopsRepository {
     const updated: Shop = {
       ...current,
       integration_credentials_encrypted: patch.integration_credentials_encrypted ?? null,
+    };
+    this.shops.set(shopId, updated);
+    return updated;
+  }
+
+  async updateAcuityOAuthCredentials(
+    shopId: string,
+    credentials: Partial<AcuityOAuthCredentialsUpdate>,
+  ): Promise<Shop | null> {
+    const current = this.shops.get(shopId);
+    if (!current) return null;
+    const updated: Shop = {
+      ...current,
+      ...credentials,
     };
     this.shops.set(shopId, updated);
     return updated;

@@ -856,8 +856,6 @@ function AcuityConfigPanel({
   onDisconnect: () => Promise<void>;
 }) {
   const details = provider?.details ?? {};
-  const [userId, setUserId] = useState(String(details.userId ?? ''));
-  const [apiKey, setApiKey] = useState('');
   const [appointmentTypeId, setAppointmentTypeId] = useState(String(details.appointmentTypeId ?? ''));
   const [defaultCalendarId, setDefaultCalendarId] = useState(String(details.defaultCalendarId ?? details.calendarId ?? ''));
   const [serviceMappingsText, setServiceMappingsText] = useState(stringifyMappings(details.serviceMappings));
@@ -869,7 +867,6 @@ function AcuityConfigPanel({
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setUserId(String(details.userId ?? ''));
     setAppointmentTypeId(String(details.appointmentTypeId ?? ''));
     setDefaultCalendarId(String(details.defaultCalendarId ?? details.calendarId ?? ''));
     setServiceMappingsText(stringifyMappings(details.serviceMappings));
@@ -882,16 +879,33 @@ function AcuityConfigPanel({
   const directAppointmentCreation = String(details.directAppointmentCreation ?? 'not_enabled');
   const bookingMode = String(details.bookingMode ?? 'capture_request_only');
   const missingMappings = Array.isArray(details.missingMappings) ? details.missingMappings.map(String) : [];
+  const accountLabel = String(details.userId ?? 'Acuity account');
+
+  if (!connected) {
+    return (
+      <div className="integration-config-body">
+        <div className="integration-info-box">
+          Connect Acuity securely with OAuth. RingBooker will use Acuity to sync appointment types, calendars, and availability after you configure mappings.
+        </div>
+        <button
+          type="button"
+          className="btn user-save integrations-primary-button"
+          onClick={() => { window.location.href = '/api/backend/user/calendar/providers/acuity/connect/start'; }}
+        >
+          Connect with Acuity
+        </button>
+        <div className="integrations-inline-actions">
+          <a className="user-link" href="https://developers.acuityscheduling.com/" target="_blank" rel="noreferrer">
+            Acuity developer docs →
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="integration-config-body">
-      {connected ? (
-        <div className="integration-success-box">Connected · User ID: {String(details.userId ?? userId)}</div>
-      ) : (
-        <div className="integration-info-box">
-          Acuity API credentials are stored server-side. RingBooker can sync appointment types and calendars, then use direct booking only when mappings and the direct booking flag are enabled.
-        </div>
-      )}
+      <div className="integration-success-box">Connected via Acuity · {accountLabel}</div>
       <div className="integration-info-box">
         <strong>Current Acuity mode: {bookingMode === 'direct_booking_with_fallback' ? 'direct booking with fallback' : 'capture request only'}.</strong>
         <br />
@@ -905,14 +919,6 @@ function AcuityConfigPanel({
         </div>
       ) : null}
       <div className="calendar-int-grid">
-        <div className="field integration-config-field">
-          <label>Acuity User ID</label>
-          <input value={userId} onChange={(event) => setUserId(event.target.value)} placeholder="12345678" />
-        </div>
-        <div className="field integration-config-field">
-          <label>API key</label>
-          <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Your Acuity API key" />
-        </div>
         <div className="field integration-config-field">
           <label>Legacy default appointment type ID optional</label>
           <input value={appointmentTypeId} onChange={(event) => setAppointmentTypeId(event.target.value)} placeholder="1001" />
@@ -959,14 +965,12 @@ function AcuityConfigPanel({
         <button
           type="button"
           className="btn user-save integrations-primary-button"
-          disabled={busy || !userId.trim() || !apiKey.trim()}
+          disabled={busy}
           onClick={async () => {
             setBusy(true);
             setMessage(null);
             try {
               await onConnect({
-                userId: userId.trim(),
-                apiKey: apiKey.trim(),
                 appointmentTypeId: appointmentTypeId.trim() || undefined,
                 calendarId: defaultCalendarId.trim() || undefined,
                 defaultCalendarId: defaultCalendarId.trim() || undefined,
@@ -976,7 +980,6 @@ function AcuityConfigPanel({
                 timezone: timezone.trim() || undefined,
                 bookingUrl: bookingUrl.trim() || undefined,
               });
-              setApiKey('');
               setMessage('Acuity settings saved.');
             } catch (err) {
               setMessage(err instanceof Error ? err.message : 'Unable to connect Acuity.');
@@ -985,21 +988,19 @@ function AcuityConfigPanel({
             }
           }}
         >
-          {busy ? 'Saving...' : connected ? 'Save Acuity settings' : 'Connect Acuity'}
+          {busy ? 'Saving...' : 'Save Acuity settings'}
         </button>
-        {connected ? (
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try { await onDisconnect(); } finally { setBusy(false); }
-            }}
-          >
-            Disconnect Acuity
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try { await onDisconnect(); } finally { setBusy(false); }
+          }}
+        >
+          Disconnect Acuity
+        </button>
         <a className="user-link" href="https://developers.acuityscheduling.com/" target="_blank" rel="noreferrer">
           Acuity developer docs →
         </a>

@@ -8,6 +8,7 @@ import {
   serviceCatalogToLegacyServices,
 } from '@/src/backend/domain/service-catalog';
 import type {
+  AcuityOAuthCredentialsUpdate,
   BusinessFaqItem,
   BusinessHours,
   ServiceCategory,
@@ -35,6 +36,7 @@ type ShopsRow = {
   handoff_custom_hours: unknown;
   user_name: string | null;
   address: string | null;
+  email: string | null;
   timezone: string;
   services: unknown;
   not_offered_services: string[] | null;
@@ -101,6 +103,9 @@ type ShopsRow = {
   google_cal_id: string | null;
   google_cal_credentials_encrypted: string | null;
   integration_credentials_encrypted: string | null;
+  acuity_access_token_encrypted: string | null;
+  acuity_user_id: string | null;
+  acuity_connection_status: Shop['acuity_connection_status'] | null;
   country_code: string | null;
 };
 
@@ -117,6 +122,7 @@ const SHOP_SELECT_COLUMNS = [
   'handoff_custom_hours',
   'user_name',
   'address',
+  'email',
   'timezone',
   'services',
   'not_offered_services',
@@ -183,6 +189,9 @@ const SHOP_SELECT_COLUMNS = [
   'google_cal_id',
   'google_cal_credentials_encrypted',
   'integration_credentials_encrypted',
+  'acuity_access_token_encrypted',
+  'acuity_user_id',
+  'acuity_connection_status',
   'country_code',
 ] as const;
 
@@ -458,6 +467,7 @@ function toShop(row: ShopsRow): Shop {
     handoff_custom_hours: (row.handoff_custom_hours as Shop['handoff_custom_hours']) ?? null,
     user_name: row.user_name,
     address: row.address,
+    email: row.email,
     timezone: row.timezone,
     services: normalizeServices(row.services),
     not_offered_services: Array.isArray(row.not_offered_services)
@@ -526,6 +536,9 @@ function toShop(row: ShopsRow): Shop {
     google_cal_id: row.google_cal_id,
     google_cal_credentials_encrypted: row.google_cal_credentials_encrypted,
     integration_credentials_encrypted: row.integration_credentials_encrypted,
+    acuity_access_token_encrypted: row.acuity_access_token_encrypted ?? null,
+    acuity_user_id: row.acuity_user_id ?? null,
+    acuity_connection_status: row.acuity_connection_status ?? 'disconnected',
     country_code: row.country_code ?? 'US',
   };
 }
@@ -566,6 +579,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -639,6 +653,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -735,6 +750,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -817,6 +833,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -885,6 +902,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'handoff_availability'
         | 'handoff_custom_hours'
         | 'address'
+        | 'email'
         | 'timezone'
         | 'services'
         | 'not_offered_services'
@@ -934,6 +952,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.handoff_availability !== undefined) payload.handoff_availability = patch.handoff_availability;
     if (patch.handoff_custom_hours !== undefined) payload.handoff_custom_hours = patch.handoff_custom_hours;
     if (patch.address !== undefined) payload.address = patch.address;
+    if (patch.email !== undefined) payload.email = patch.email;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
     if (patch.services !== undefined) payload.services = patch.services;
     if (patch.not_offered_services !== undefined) payload.not_offered_services = patch.not_offered_services;
@@ -1251,6 +1270,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -1377,6 +1397,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -1461,6 +1482,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -1542,6 +1564,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'handoff_custom_hours',
           'user_name',
           'address',
+          'email',
           'timezone',
           'services',
           'not_offered_services',
@@ -1613,6 +1636,40 @@ export class SupabaseShopsRepository implements ShopsRepository {
 
     if (error) {
       throw new Error(`shops_update_integration_connection_failed:${error.message}`);
+    }
+    return data ? toShop(data) : null;
+  }
+
+  async updateAcuityOAuthCredentials(
+    shopId: string,
+    credentials: Partial<AcuityOAuthCredentialsUpdate>,
+  ): Promise<Shop | null> {
+    const payload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (Object.prototype.hasOwnProperty.call(credentials, 'acuity_access_token_encrypted')) {
+      payload.acuity_access_token_encrypted = credentials.acuity_access_token_encrypted ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(credentials, 'acuity_user_id')) {
+      payload.acuity_user_id = credentials.acuity_user_id ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(credentials, 'acuity_connection_status')) {
+      payload.acuity_connection_status = credentials.acuity_connection_status ?? 'disconnected';
+    }
+    if (Object.keys(payload).length === 1) {
+      const current = await this.findById(shopId);
+      return current;
+    }
+
+    const { data, error } = await this.supabase
+      .from('shops')
+      .update(payload)
+      .eq('id', shopId)
+      .select(shopSelectColumns())
+      .maybeSingle<ShopsRow>();
+
+    if (error) {
+      throw new Error(`shops_update_acuity_oauth_credentials_failed:${error.message}`);
     }
     return data ? toShop(data) : null;
   }

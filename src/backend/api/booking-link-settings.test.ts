@@ -43,7 +43,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
     headers: {
       'content-type': 'application/json',
       'origin': 'http://localhost:3000',
-      'x-forwarded-for': uniqueTestIp,
+      'x-rb-remote-addr': uniqueTestIp,
     },
     body: JSON.stringify({
       email: 'user@ringbooker.local',

@@ -169,6 +169,9 @@ function createValidatedEnv() {
       SQUARE_API_VERSION: z.string().min(1).default('2026-01-22'),
       SQUARE_APPLICATION_ID: z.string().min(1).optional(),
       SQUARE_APPLICATION_SECRET: z.string().min(1).optional(),
+      ACUITY_CLIENT_ID: z.string().min(1).optional(),
+      ACUITY_CLIENT_SECRET: z.string().min(1).optional(),
+      ACUITY_REDIRECT_URI: z.string().url().optional(),
       VAGARO_REGION: z.string().min(1).default('us'),
       VAGARO_WEBHOOK_VERIFICATION_TOKEN: z.string().min(1).optional(),
 

@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon';
 
 import { getEnv } from '@/src/backend/config/env';
+import type { AcuityTokenResponse } from '@/src/backend/domain/types';
+import { logger } from '@/src/backend/observability/logger';
 import { decrypt, encrypt } from '@/src/backend/services/crypto/encrypt';
 
 export type CalendarConnectionProviderId = 'square_appointments' | 'google_calendar' | 'vagaro' | 'mindbody' | 'acuity' | 'booksy';
@@ -21,6 +23,20 @@ type SquareTokenResponse = {
   refresh_token?: string;
   expires_at?: string;
   merchant_id?: string;
+};
+
+type RawAcuityTokenResponse = {
+  access_token?: string;
+  token_type?: string;
+};
+
+export type AcuityCurrentUser = {
+  id?: string | number;
+  userID?: string | number;
+  userId?: string | number;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 type SquareLocation = {
@@ -96,6 +112,97 @@ export function encodeSquareConnectionCredentials(input: SquareConnectionCredent
 export function squareApiBaseUrl(): string {
   const env = getEnv().SQUARE_ENVIRONMENT;
   return env === 'sandbox' ? 'https://connect.squareupsandbox.com' : 'https://connect.squareup.com';
+}
+
+export function acuityAuthorizeUrl(params: {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+}): string {
+  if (!params.clientId.trim()) throw new Error('acuity_oauth_not_configured');
+  const url = new URL('https://acuityscheduling.com/oauth2/authorize');
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', 'api-v1');
+  url.searchParams.set('client_id', params.clientId);
+  url.searchParams.set('redirect_uri', params.redirectUri);
+  url.searchParams.set('state', params.state);
+  return url.toString();
+}
+
+export async function acuityExchangeAuthorizationCode(params: {
+  code: string;
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+}): Promise<AcuityTokenResponse> {
+  if (!params.clientId.trim() || !params.clientSecret.trim()) throw new Error('acuity_oauth_not_configured');
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: params.code,
+    redirect_uri: params.redirectUri,
+    client_id: params.clientId,
+    client_secret: params.clientSecret,
+  });
+  const response = await squareFetchWithTimeout('https://acuityscheduling.com/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => '');
+    throw new Error(`acuity_oauth_exchange_failed:${response.status}:${bodyText}`);
+  }
+
+  const payload = (await response.json()) as RawAcuityTokenResponse;
+  if (!payload.access_token) throw new Error('acuity_oauth_exchange_missing_access_token');
+  return {
+    access_token: payload.access_token,
+    token_type: 'Bearer',
+  };
+}
+
+export async function acuityRevokeToken(params: {
+  accessToken: string;
+  clientId: string;
+  clientSecret: string;
+}): Promise<void> {
+  if (!params.accessToken.trim() || !params.clientId.trim() || !params.clientSecret.trim()) {
+    logger.warn({ provider: 'acuity' }, 'acuity_oauth_revoke_skipped_missing_config');
+    return;
+  }
+  try {
+    const response = await squareFetchWithTimeout('https://acuityscheduling.com/oauth2/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        access_token: params.accessToken,
+        client_id: params.clientId,
+        client_secret: params.clientSecret,
+      }),
+    });
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      logger.warn({ provider: 'acuity', status: response.status, body: bodyText }, 'acuity_oauth_revoke_failed');
+    }
+  } catch (error) {
+    logger.warn({ err: error, provider: 'acuity' }, 'acuity_oauth_revoke_failed');
+  }
+}
+
+export async function acuityFetchCurrentUser(accessToken: string): Promise<AcuityCurrentUser> {
+  const response = await squareFetchWithTimeout('https://acuityscheduling.com/api/v1/me', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => '');
+    throw new Error(`acuity_current_user_failed:${response.status}:${bodyText}`);
+  }
+  return (await response.json()) as AcuityCurrentUser;
 }
 
 export function squareAuthorizeUrl(params: {

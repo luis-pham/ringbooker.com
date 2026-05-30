@@ -182,6 +182,10 @@ import { handleTelnyxCallControlWebhook } from '@/src/backend/webhooks/telnyx-ca
 import { handleTelnyxTexmlOpenAiInbound } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
 import { handleVagaroWebhook } from '@/src/backend/webhooks/vagaro';
 import {
+  acuityAuthorizeUrl,
+  acuityExchangeAuthorizationCode,
+  acuityFetchCurrentUser,
+  acuityRevokeToken,
   encodeSquareConnectionCredentials,
   parseSquareConnectionCredentials,
   squareAuthorizeUrl,
@@ -198,7 +202,7 @@ import {
   VagaroProvider,
   type VagaroCredentials,
 } from '@/src/backend/services/calendar/vagaro';
-import { encrypt } from '@/src/backend/services/crypto/encrypt';
+import { decrypt, encrypt } from '@/src/backend/services/crypto/encrypt';
 import {
   encodeMindbodyCredentials,
   parseMindbodyCredentials,
@@ -581,6 +585,7 @@ const userSettingsBaseSchema = z.object({
   user_phone: z.string().min(1).optional(),
   handoff_phone: z.string().min(1).nullable().optional(),
   address: z.string().min(1).nullable().optional(),
+  email: z.union([z.string().email(), z.literal(''), z.null()]).optional(),
   timezone: z.string().min(1).optional(),
   cancel_policy: z.string().min(1).optional(),
   promotions: z.string().min(1).nullable().optional(),
@@ -1073,6 +1078,17 @@ const acuityConnectSchema = z.object({
   message: 'Acuity User ID and API key, or OAuth access token, are required',
 });
 
+const acuitySettingsSchema = z.object({
+  appointmentTypeId: z.string().min(1).optional(),
+  calendarId: z.string().min(1).optional(),
+  defaultCalendarId: z.string().min(1).optional(),
+  serviceMappings: z.record(z.string(), z.string()).optional(),
+  staffMappings: z.record(z.string(), z.string()).optional(),
+  requiresCallerEmail: z.boolean().optional(),
+  timezone: z.string().min(1).optional(),
+  bookingUrl: z.string().optional(),
+});
+
 const blogPostStatusSchema = z.enum(['draft', 'published', 'archived']);
 
 const blogPostListQuerySchema = z.object({
@@ -1480,6 +1496,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   handoff_availability: 'edit_transfer_settings',
   handoff_custom_hours: 'edit_transfer_settings',
   address: 'edit_business_profile',
+  email: 'edit_business_profile',
   timezone: 'edit_business_profile',
   booking_url: 'edit_booking_url',
   booking_method: 'edit_booking_url',
@@ -1544,6 +1561,7 @@ function splitUserSettingsPatchByPlan(
       | 'handoff_availability'
       | 'handoff_custom_hours'
       | 'address'
+      | 'email'
       | 'timezone'
       | 'services'
       | 'not_offered_services'
@@ -1646,6 +1664,7 @@ function splitUserSettingsPatchByPlan(
         | 'handoff_availability'
         | 'handoff_custom_hours'
         | 'address'
+        | 'email'
         | 'timezone'
         | 'services'
       | 'not_offered_services'
@@ -2316,6 +2335,34 @@ function buildCalendarSettingsRedirect(params: { appBaseUrl: string; result: 'su
 
 function buildSquareCallbackUrl(appBaseUrl: string): string {
   return `${appBaseUrl.replace(/\/+$/, '')}/api/backend/user/calendar/providers/square_appointments/connect/callback`;
+}
+
+function buildAcuityCallbackUrl(appBaseUrl: string): string {
+  return process.env.ACUITY_REDIRECT_URI?.trim() || `${appBaseUrl.replace(/\/+$/, '')}/api/backend/user/calendar/providers/acuity/connect/callback`;
+}
+
+function getAcuityOAuthConfig() {
+  const clientId = process.env.ACUITY_CLIENT_ID?.trim();
+  const clientSecret = process.env.ACUITY_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) throw new Error('acuity_oauth_not_configured');
+  return { clientId, clientSecret };
+}
+
+function extractAcuityUserId(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const record = payload as Record<string, unknown>;
+  const candidates = [
+    record.id,
+    record.userID,
+    record.userId,
+    record.email,
+    [record.firstName, record.lastName].filter((value): value is string => typeof value === 'string' && value.trim().length > 0).join(' '),
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) return String(candidate);
+  }
+  return null;
 }
 
 function buildSquareConnectionPayload(current: SquareConnectionCredentials | null, patch: Partial<SquareConnectionCredentials>) {
@@ -7320,7 +7367,8 @@ export function createBackendApp(deps: {
           };
         }
         if (id === 'acuity') {
-          const connected = Boolean(acuityCredentials?.accessToken || (acuityCredentials?.userId && acuityCredentials?.apiKey));
+          const oauthConnected = shop.acuity_connection_status === 'connected' && Boolean(shop.acuity_access_token_encrypted);
+          const connected = Boolean(oauthConnected || acuityCredentials?.accessToken || (acuityCredentials?.userId && acuityCredentials?.apiKey));
           const serviceMappingCount = Object.keys(acuityCredentials?.serviceMappings ?? {}).length;
           const staffMappingCount = Object.keys(acuityCredentials?.staffMappings ?? {}).length;
           const defaultCalendarId = acuityCredentials?.defaultCalendarId ?? acuityCredentials?.calendarId ?? null;
@@ -7339,7 +7387,7 @@ export function createBackendApp(deps: {
             configured: connected,
             details: connected
               ? {
-                  userId: acuityCredentials?.userId ?? null,
+                  userId: shop.acuity_user_id ?? acuityCredentials?.userId ?? null,
                   appointmentTypeId: acuityCredentials?.appointmentTypeId ?? null,
                   calendarId: acuityCredentials?.calendarId ?? null,
                   defaultCalendarId,
@@ -7351,6 +7399,8 @@ export function createBackendApp(deps: {
                   missingMappings,
                   timezone: acuityCredentials?.timezone ?? shop.timezone ?? null,
                   bookingUrl: acuityCredentials?.bookingUrl ?? shop.booking_url ?? null,
+                  connectionStatus: shop.acuity_connection_status ?? 'disconnected',
+                  authMode: oauthConnected ? 'oauth' : 'legacy',
                   appointmentTypesSync: 'available',
                   calendarsSync: 'available',
                   availabilityCheck: serviceMappingCount > 0 ? 'available' : 'needs_mapping',
@@ -7817,6 +7867,67 @@ export function createBackendApp(deps: {
     });
   });
 
+  app.patch(path('/user/calendar/providers/acuity/settings'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_acuity_settings');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = acuitySettingsSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'invalid_payload' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
+
+    const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
+    if (parsed.data.bookingUrl && !bookingUrl) {
+      return c.json({ ok: false, error: 'bookingUrl must start with https://' }, 400);
+    }
+
+    const current =
+      parseAcuityCredentials(shop.integration_credentials_encrypted) ??
+      parseAcuityCredentials(shop.google_cal_credentials_encrypted);
+    const payload = buildAcuityConnectionPayload(current, {
+      provider: 'acuity',
+      appointmentTypeId: parsed.data.appointmentTypeId,
+      calendarId: parsed.data.calendarId,
+      defaultCalendarId: parsed.data.defaultCalendarId ?? parsed.data.calendarId,
+      serviceMappings: parsed.data.serviceMappings,
+      staffMappings: parsed.data.staffMappings,
+      requiresCallerEmail: parsed.data.requiresCallerEmail,
+      timezone: parsed.data.timezone,
+      bookingUrl: bookingUrl ?? undefined,
+    });
+
+    const updated = await deps.shopsRepository.updateIntegrationConnection(shop.id, {
+      integration_credentials_encrypted: encodeAcuityCredentials(payload),
+    });
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    await deps.shopsRepository.updateUserSettings(shop.id, {
+      ...(bookingUrl ? { booking_url: bookingUrl } : {}),
+      booking_method: 'app',
+      selected_integration: 'acuity',
+    });
+
+    return c.json({
+      ok: true,
+      provider: 'acuity',
+      configured: true,
+    });
+  });
+
   app.post(path('/user/calendar/providers/:provider/connect'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
@@ -7878,7 +7989,7 @@ export function createBackendApp(deps: {
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
     if (!provider) return c.json({ ok: false, error: 'provider_not_supported' }, 400);
 
-    if (provider !== 'square_appointments') {
+    if (provider !== 'square_appointments' && provider !== 'acuity') {
       return c.redirect(
         buildCalendarSettingsRedirect({
           appBaseUrl,
@@ -7945,11 +8056,18 @@ export function createBackendApp(deps: {
     });
 
     try {
-      const redirectUri = buildSquareCallbackUrl(appBaseUrl);
-      const authorizeUrl = squareAuthorizeUrl({
-        state,
-        redirectUri,
-      });
+      const redirectUri = provider === 'acuity' ? buildAcuityCallbackUrl(appBaseUrl) : buildSquareCallbackUrl(appBaseUrl);
+      const authorizeUrl =
+        provider === 'acuity'
+          ? acuityAuthorizeUrl({
+              clientId: getAcuityOAuthConfig().clientId,
+              redirectUri,
+              state,
+            })
+          : squareAuthorizeUrl({
+              state,
+              redirectUri,
+            });
       let authorizeHost = '';
       try {
         authorizeHost = new URL(authorizeUrl).host;
@@ -7958,22 +8076,25 @@ export function createBackendApp(deps: {
       }
       logger.info(
         {
-          event: 'square_oauth_start',
+          event: `${provider}_oauth_start`,
+          provider,
           authorize_host: authorizeHost,
-          redirect_uri_suffix: '/api/backend/user/calendar/providers/square_appointments/connect/callback',
+          redirect_uri_suffix: provider === 'acuity'
+            ? '/api/backend/user/calendar/providers/acuity/connect/callback'
+            : '/api/backend/user/calendar/providers/square_appointments/connect/callback',
           state_len: state.length,
         },
-        'square_oauth_authorize_redirect',
+        'calendar_provider_oauth_authorize_redirect',
       );
       return c.redirect(authorizeUrl);
     } catch (error) {
-      logger.error({ err: error }, 'square_oauth_start_failed');
+      logger.error({ err: error, provider }, 'calendar_provider_oauth_start_failed');
       return c.redirect(
         buildCalendarSettingsRedirect({
           appBaseUrl,
           result: 'error',
           provider,
-          message: 'square_oauth_not_configured',
+          message: provider === 'acuity' ? 'acuity_oauth_not_configured' : 'square_oauth_not_configured',
         }),
       );
     }
@@ -8010,14 +8131,14 @@ export function createBackendApp(deps: {
 
     logger.info(
       {
-        event: 'square_oauth_callback',
+        event: `${provider || 'unknown'}_oauth_callback`,
         provider: provider || undefined,
         oauth_error: oauthError || undefined,
         has_code: Boolean(code),
         has_state: Boolean(state),
         has_state_cookie: Boolean(cookieState),
       },
-      'square_oauth_callback_received',
+      'calendar_provider_oauth_callback_received',
     );
 
     deleteCookie(c, 'rb_calendar_provider_state', { path: '/' });
@@ -8057,7 +8178,7 @@ export function createBackendApp(deps: {
       );
     }
 
-    if (provider !== 'square_appointments') {
+    if (provider !== 'square_appointments' && provider !== 'acuity') {
       return c.redirect(
         buildCalendarSettingsRedirect({
           appBaseUrl,
@@ -8069,6 +8190,73 @@ export function createBackendApp(deps: {
     }
 
     try {
+      if (provider === 'acuity') {
+        const { clientId, clientSecret } = getAcuityOAuthConfig();
+        const redirectUri = buildAcuityCallbackUrl(appBaseUrl);
+        const exchanged = await acuityExchangeAuthorizationCode({
+          code,
+          clientId,
+          clientSecret,
+          redirectUri,
+        });
+        const existingShop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+        if (!existingShop) {
+          return c.redirect(
+            buildCalendarSettingsRedirect({
+              appBaseUrl,
+              result: 'error',
+              provider,
+              message: 'shop_not_found',
+            }),
+          );
+        }
+        if (!isCapabilityAllowed(existingShop.plan, 'third_party_integrations')) {
+          return c.redirect(
+            buildCalendarSettingsRedirect({
+              appBaseUrl,
+              result: 'error',
+              provider,
+              message: 'plan_feature_locked',
+            }),
+          );
+        }
+
+        let acuityUserId: string | null = null;
+        try {
+          const currentUser = await acuityFetchCurrentUser(exchanged.access_token);
+          acuityUserId = extractAcuityUserId(currentUser);
+        } catch (identityError) {
+          logger.warn({ err: identityError, provider, shop_id: existingShop.id }, 'acuity_oauth_identity_lookup_failed');
+        }
+
+        const updated = await deps.shopsRepository.updateAcuityOAuthCredentials(existingShop.id, {
+          acuity_access_token_encrypted: encrypt(exchanged.access_token),
+          acuity_user_id: acuityUserId,
+          acuity_connection_status: 'connected',
+        });
+        if (!updated) {
+          return c.redirect(
+            buildCalendarSettingsRedirect({
+              appBaseUrl,
+              result: 'error',
+              provider,
+              message: 'shop_not_found',
+            }),
+          );
+        }
+        await deps.shopsRepository.updateUserSettings(existingShop.id, {
+          booking_method: 'app',
+          selected_integration: 'acuity',
+        });
+        return c.redirect(
+          buildCalendarSettingsRedirect({
+            appBaseUrl,
+            result: 'success',
+            provider,
+          }),
+        );
+      }
+
       const exchanged = await squareExchangeAuthorizationCode({
         code,
         redirectUri: buildSquareCallbackUrl(appBaseUrl),
@@ -8240,7 +8428,8 @@ export function createBackendApp(deps: {
       const credentials =
         parseAcuityCredentials(shop.integration_credentials_encrypted) ??
         parseAcuityCredentials(shop.google_cal_credentials_encrypted);
-      if (!credentials?.accessToken && (!credentials?.userId || !credentials?.apiKey)) {
+      const oauthConnected = shop.acuity_connection_status === 'connected' && Boolean(shop.acuity_access_token_encrypted);
+      if (!oauthConnected && !credentials?.accessToken && (!credentials?.userId || !credentials?.apiKey)) {
         return c.json({ ok: false, error: 'provider_not_connected' }, 400);
       }
 
@@ -8460,10 +8649,25 @@ export function createBackendApp(deps: {
       return c.json({ ok: true, disconnected: true, provider });
     }
 
-    const acuity =
-      parseAcuityCredentials(shop.integration_credentials_encrypted) ??
-      parseAcuityCredentials(shop.google_cal_credentials_encrypted);
-    if (provider === 'acuity' && acuity?.provider === 'acuity') {
+    if (provider === 'acuity') {
+      if (shop.acuity_access_token_encrypted) {
+        try {
+          const { clientId, clientSecret } = getAcuityOAuthConfig();
+          await acuityRevokeToken({
+            accessToken: decrypt(shop.acuity_access_token_encrypted),
+            clientId,
+            clientSecret,
+          });
+        } catch (error) {
+          logger.warn({ err: error, provider: 'acuity', shop_id: shop.id }, 'acuity_oauth_revoke_skipped');
+        }
+      }
+      const oauthUpdated = await deps.shopsRepository.updateAcuityOAuthCredentials(shop.id, {
+        acuity_access_token_encrypted: null,
+        acuity_user_id: null,
+        acuity_connection_status: 'disconnected',
+      });
+      if (!oauthUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
       const updated = await deps.shopsRepository.updateIntegrationConnection(shop.id, {
         integration_credentials_encrypted: null,
       });
@@ -9895,6 +10099,11 @@ export function createBackendApp(deps: {
       );
     }
     const settingsPatch = { ...parsed.data };
+    if (settingsPatch.email === '') {
+      settingsPatch.email = null;
+    } else if (typeof settingsPatch.email === 'string') {
+      settingsPatch.email = settingsPatch.email.trim().toLowerCase();
+    }
     if (settingsPatch.booking_url !== undefined && settingsPatch.booking_url !== null) {
       const bookingUrl = normalizeHttpsBookingUrl(settingsPatch.booking_url);
       if (!bookingUrl) {

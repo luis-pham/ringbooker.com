@@ -1,6 +1,7 @@
 import type { HandoffSessionRecord, HandoffSessionStatus } from '@/src/backend/domain/handoff';
 import type { VoiceCallLegPurpose, VoiceCallLegRecord } from '@/src/backend/domain/voice-call-leg';
 import type {
+  AcuityOAuthCredentialsUpdate,
   BlogPost,
   BlogPostStatus,
   Customer,
@@ -465,6 +466,7 @@ export interface ShopsRepository {
         | 'handoff_availability'
         | 'handoff_custom_hours'
         | 'address'
+        | 'email'
         | 'timezone'
         | 'services'
         | 'not_offered_services'
@@ -545,6 +547,10 @@ export interface ShopsRepository {
   updateIntegrationConnection(
     shopId: string,
     patch: Pick<Shop, 'integration_credentials_encrypted'>,
+  ): Promise<Shop | null>;
+  updateAcuityOAuthCredentials(
+    shopId: string,
+    credentials: Partial<AcuityOAuthCredentialsUpdate>,
   ): Promise<Shop | null>;
   updateVagaroSettings(shopId: string, settings: Partial<VagaroSettings>): Promise<void>;
   getShopByWebhookToken(token: string): Promise<Shop | null>;

@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 
 import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
 import { logger } from '@/src/backend/observability/logger';
+import { decrypt } from '@/src/backend/services/crypto/encrypt';
 import type { CalendarProvider } from '@/src/backend/services/calendar/types';
 
 export type AcuityCredentials = {
@@ -185,7 +186,15 @@ function resolveAcuityCredentials(shop: Shop): AcuityCredentials {
   const parsed =
     parseAcuityCredentials(shop.integration_credentials_encrypted) ??
     parseAcuityCredentials(shop.google_cal_credentials_encrypted);
-  const accessToken = parsed?.accessToken?.trim() || process.env.ACUITY_ACCESS_TOKEN?.trim();
+  let shopOAuthToken: string | undefined;
+  if (shop.acuity_access_token_encrypted?.trim()) {
+    try {
+      shopOAuthToken = decrypt(shop.acuity_access_token_encrypted).trim();
+    } catch (error) {
+      logger.warn({ err: error, provider: 'acuity', shopId: shop.id }, 'acuity_oauth_token_decrypt_failed');
+    }
+  }
+  const accessToken = shopOAuthToken || parsed?.accessToken?.trim() || process.env.ACUITY_ACCESS_TOKEN?.trim();
   const userId = parsed?.userId?.trim() || process.env.ACUITY_USER_ID?.trim();
   const apiKey = parsed?.apiKey?.trim() || process.env.ACUITY_API_KEY?.trim();
   if (!accessToken && (!userId || !apiKey)) {

@@ -16,6 +16,12 @@ export type BillingSubscriptionStatus =
 export type BillingPaymentMethodStatus = 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
 export type VagaroMode = 'link_only' | 'live_sync';
 export type VagaroConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error';
+export type AcuityConnectionStatus = 'disconnected' | 'connected' | 'error';
+
+export type AcuityTokenResponse = {
+  access_token: string;
+  token_type: 'Bearer';
+};
 
 export type BookingStatus =
   | 'pending'
@@ -251,6 +257,7 @@ export interface Shop {
   handoff_custom_hours?: BusinessHours | null;
   user_name?: string | null;
   address?: string | null;
+  email?: string | null;
   timezone: string;
   services: ServiceItem[];
   service_catalog?: ShopServiceCatalog;
@@ -321,9 +328,17 @@ export interface Shop {
   google_cal_credentials_encrypted?: string | null;
   /** Provider-neutral credentials for booking/calendar integrations such as Mindbody. */
   integration_credentials_encrypted?: string | null;
+  acuity_access_token_encrypted?: string | null;
+  acuity_user_id?: string | null;
+  acuity_connection_status?: AcuityConnectionStatus;
   /** ISO 3166-1 alpha-2 country code for the business location (e.g. 'US', 'AU', 'GB'). Defaults to 'US'. */
   country_code?: string | null;
 }
+
+export type AcuityOAuthCredentialsUpdate = Pick<
+  Shop,
+  'acuity_access_token_encrypted' | 'acuity_user_id' | 'acuity_connection_status'
+>;
 
 export type VagaroSettings = Pick<
   Shop,

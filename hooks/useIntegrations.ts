@@ -48,6 +48,8 @@ type ProviderSummary = {
     vagaroConnectionStatus?: VagaroConnectionStatus | null;
     fallbackUrl?: string | null;
     locations?: unknown;
+    connectionStatus?: string | null;
+    authMode?: string | null;
     capabilityNote?: string | null;
     type?: string | null;
   } | null;
@@ -461,8 +463,8 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       bookingUrl?: string;
     }) => {
       setError(null);
-      const response = await fetch('/api/backend/user/calendar/providers/acuity/connect', {
-        method: 'POST',
+      const response = await fetch('/api/backend/user/calendar/providers/acuity/settings', {
+        method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(creds),
       });

@@ -83,8 +83,17 @@ function hasVagaroLiveSyncConfig(shop: Shop): boolean {
   );
 }
 
+function hasAcuityOAuthConfig(shop: Shop): boolean {
+  return (
+    shop.selected_integration === 'acuity' &&
+    shop.acuity_connection_status === 'connected' &&
+    Boolean(shop.acuity_access_token_encrypted?.trim())
+  );
+}
+
 function resolveShopCalendarProviderId(shop: Shop): CalendarProviderId {
   if (hasVagaroLiveSyncConfig(shop)) return 'vagaro';
+  if (hasAcuityOAuthConfig(shop)) return 'acuity';
   const hinted = parseShopCalendarProviderHint(shop);
   if (hinted) return hinted;
   if (shop.google_cal_id) return 'google_calendar';

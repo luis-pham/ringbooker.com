@@ -224,8 +224,8 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
   border-top:1px solid var(--border);
 }
 .hero-stats-footnote{
-  margin:10px 0 0;
-  padding:0 16px;
+  margin:6px 0 0;
+  padding:0;
   font-size:11px;
   line-height:1.45;
   color:var(--text-desc);
@@ -1035,7 +1035,6 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .hero-btns{justify-content:flex-start}
   .hero-stats-block{margin-top:4px}
   .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .hero-stats-footnote{text-align:center;padding:0 8px}
   .hero-stat{border-bottom:1px solid var(--border)}
   .hero-stat:nth-child(2n){border-right:none}
   .hero-stat:nth-last-child(-n+2){border-bottom:none}
@@ -1580,11 +1579,11 @@ export function MarketingHomeTemplate() {
                   response on live calls
                   <a href="#hero-stat-response-footnote" className="hero-stat-footnote-mark" aria-label="Response time footnote">*</a>
                 </div>
+                <p className="hero-stats-footnote" id="hero-stat-response-footnote">
+                  * Median ~1.0s measured end-to-end on real phone calls.
+                </p>
               </div>
             </div>
-            <p className="hero-stats-footnote" id="hero-stat-response-footnote">
-              * Median ~1.0s measured end-to-end on real phone calls.
-            </p>
             </div>
           </div>
         </section>

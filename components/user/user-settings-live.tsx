@@ -135,6 +135,7 @@ type ShopSettings = {
   handoff_availability?: 'business_hours' | 'always' | 'custom' | null;
   handoff_custom_hours?: Record<string, BusinessHoursEntry> | null;
   address?: string | null;
+  email?: string | null;
   timezone: string;
   services: ServiceItem[];
   service_catalog?: ShopServiceCatalog | null;
@@ -257,6 +258,7 @@ type SettingsState = {
   handoff_availability: 'business_hours' | 'always' | 'custom';
   handoff_custom_hours: Record<string, BusinessHoursEntry>;
   address: string;
+  email: string;
   timezone: string;
   booking_url: string;
   website_url: string;
@@ -643,6 +645,7 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     handoff_availability: (shop.handoff_availability ?? 'business_hours') as 'business_hours' | 'always' | 'custom',
     handoff_custom_hours: cloneHours((shop.handoff_custom_hours as Record<string, BusinessHoursEntry> | null | undefined) ?? {}),
     address: shop.address ?? '',
+    email: shop.email ?? '',
     timezone: shop.timezone,
     booking_url: shop.booking_url ?? '',
     website_url: shop.website_url ?? '',
@@ -687,6 +690,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   handoff_availability: 'business_hours',
   handoff_custom_hours: {},
   address: '',
+  email: '',
   timezone: 'America/Los_Angeles',
   services: [],
   service_catalog: { categories: [], services: [] },
@@ -2235,6 +2239,7 @@ export function UserSettingsLive({
                     ...(currentForm.user_phone.trim() ? { user_phone: currentForm.user_phone } : {}),
                     handoff_phone: currentForm.handoff_phone || null,
                     address: currentForm.address || null,
+                    email: currentForm.email.trim() ? currentForm.email.trim() : null,
 	                    timezone: currentForm.timezone,
 	                    website_url: currentForm.website_url.trim() ? currentForm.website_url.trim() : '',
 	                  });
@@ -2264,6 +2269,7 @@ export function UserSettingsLive({
                       <input value={currentForm.vertical_detail} onChange={(event) => patchState('vertical_detail', event.target.value)} placeholder="also offers spa services" />
                     </div>
 	                    <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
+	                    <div className="field"><label>Business email</label><input type="email" value={currentForm.email} onChange={(event) => patchState('email', event.target.value)} placeholder="hello@example.com" /></div>
 	                    <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
 	                    <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
 	                    <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
@@ -2307,6 +2313,7 @@ export function UserSettingsLive({
                     ...(currentForm.user_phone.trim() ? { user_phone: currentForm.user_phone } : {}),
                     handoff_phone: currentForm.handoff_phone || null,
                     address: currentForm.address || null,
+                    email: currentForm.email.trim() ? currentForm.email.trim() : null,
                     timezone: currentForm.timezone,
                     booking_url: currentForm.booking_url.trim() ? currentForm.booking_url.trim() : null,
                   });
@@ -2330,6 +2337,7 @@ export function UserSettingsLive({
                       <input value={currentForm.vertical_detail} onChange={(event) => patchState('vertical_detail', event.target.value)} placeholder="also offers spa services" />
                     </div>
                     <div className="field"><label>Business Phone Number</label><input value={currentForm.phone_number} onChange={(event) => patchState('phone_number', event.target.value)} /></div>
+                    <div className="field"><label>Business email</label><input type="email" value={currentForm.email} onChange={(event) => patchState('email', event.target.value)} placeholder="hello@example.com" /></div>
                     <div className="field"><label>Owner Phone (optional)</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} placeholder="Owner or manager phone" /></div>
                     <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
                     <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
