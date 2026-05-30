@@ -213,14 +213,30 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .hero-sub a.hero-sub-link:hover{color:#5b21b6;text-decoration:none}
 	.hero-btns{display:flex;align-items:center;justify-content:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:0}
 .hero-stats{
-  grid-column:1/-1;
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
   gap:0;
+}
+.hero-stats-block{
+  grid-column:1/-1;
   margin-top:8px;
   padding-top:28px;
   border-top:1px solid var(--border);
 }
+.hero-stats-footnote{
+  margin:10px 0 0;
+  padding:0 16px;
+  font-size:11px;
+  line-height:1.45;
+  color:var(--text-desc);
+  font-weight:400;
+}
+.hero-stat-footnote-mark{
+  color:inherit;
+  text-decoration:none;
+  font-weight:500;
+}
+.hero-stat-footnote-mark:hover{text-decoration:underline}
 .hero-stat{padding:8px 16px 4px;text-align:left;border-right:1px solid var(--border)}
 .hero-stat:last-child{border-right:none}
 .hero-stat-num{font-size:clamp(1.75rem,3vw,2.25rem);font-weight:600;color:var(--text-dark);letter-spacing:-.04em;line-height:1.1;font-variant-numeric:tabular-nums;margin-bottom:4px}
@@ -1017,7 +1033,9 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   h1.hero-h,.hero-sub{text-align:left}
   .hero-sub{margin-left:0;margin-right:0}
   .hero-btns{justify-content:flex-start}
-  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:4px}
+  .hero-stats-block{margin-top:4px}
+  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero-stats-footnote{text-align:center;padding:0 8px}
   .hero-stat{border-bottom:1px solid var(--border)}
   .hero-stat:nth-child(2n){border-right:none}
   .hero-stat:nth-last-child(-n+2){border-bottom:none}
@@ -1542,6 +1560,7 @@ export function MarketingHomeTemplate() {
             <div className="hero-visual" data-home-phone-float>
               <HomeHeroPhoneMockup />
             </div>
+            <div className="hero-stats-block">
             <div className="hero-stats" aria-label="Key product facts">
               <div className="hero-stat">
                 <div className="hero-stat-num" data-count="24" data-suffix="/7">24/7</div>
@@ -1557,8 +1576,15 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="hero-stat">
                 <div className="hero-stat-num" data-fade-only="true" data-display="&lt;1s">&lt;1s</div>
-                <div className="hero-stat-label">AI response</div>
+                <div className="hero-stat-label">
+                  response on live calls
+                  <a href="#hero-stat-response-footnote" className="hero-stat-footnote-mark" aria-label="Response time footnote">*</a>
+                </div>
               </div>
+            </div>
+            <p className="hero-stats-footnote" id="hero-stat-response-footnote">
+              * Median ~1.0s measured end-to-end on real phone calls.
+            </p>
             </div>
           </div>
         </section>
