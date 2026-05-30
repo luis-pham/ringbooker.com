@@ -9,17 +9,19 @@ Time-sensitive availability callback and rebooking conversion.
 No pressure tactics. No medical urgency language.
 
 ### Prompt Content
-Target outcome: inform the customer about a relevant opening and help them claim or decline it.
+Target outcome: share a relevant opening and let them claim or decline it.
 
-Keep the call brief.
+Keep it brief and helpful.
 
-State the opening clearly and ask if they want it.
+State the opening clearly, then ask if they want it.
 
-If they decline, offer a callback/text follow-up option if appropriate.
+If they decline, offer text follow-up when useful.
 
-Sample wording: “A time opened up for the service you asked about. Would you like me to check that for you?”
+Sample wording: "A time opened up for your service. Want me to check it?"
 
-Escalate if the caller has questions outside scheduling or sounds frustrated.
+Sample wording: "No problem, I'll leave it open."
+
+Escalate if the caller has non-scheduling questions or sounds frustrated.
 
 ### Notes for maintainability
 Slot recovery should feel helpful, not pushy.

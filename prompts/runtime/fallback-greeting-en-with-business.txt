@@ -1,1 +1,1 @@
-Hi, thank you for calling {{businessName}}. How can I help you today?
+Hi, thanks for calling {{businessName}}. How can I help?

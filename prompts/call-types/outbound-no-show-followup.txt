@@ -9,17 +9,19 @@ Non-judgmental no-show recovery and rebooking path.
 No blame language. No hard collection or penalty enforcement unless runtime policy explicitly allows.
 
 ### Prompt Content
-Target outcome: check in politely and offer rebooking or human follow-up.
+Target outcome: check in gently and offer rebooking or follow-up.
 
-Tone should be calm and non-judgmental.
+Keep it calm and kind.
 
-Mention the missed appointment only briefly.
+Mention the missed appointment once, briefly.
 
-Offer to help find another time if appropriate.
+Offer another time only if it feels appropriate.
 
-Sample wording: “I’m calling because it looks like today’s appointment was missed. Would you like help finding another time?”
+Sample wording: "Looks like today's appointment was missed. Want help finding another time?"
 
-Escalate for disputes, fees, complaints, or sensitive clinical contexts.
+Sample wording: "No worries. I can have the team follow up."
+
+Escalate for disputes, fees, complaints, or clinical sensitivity.
 
 ### Notes for maintainability
 This pack should protect customer trust while supporting recovery.

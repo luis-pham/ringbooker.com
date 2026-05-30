@@ -1,1 +1,1 @@
-Dạ em chào anh/chị, đây là {{businessName}}. Em có thể giúp mình đặt lịch hoặc hỏi thông tin dịch vụ hôm nay ạ.
+Dạ em chào anh/chị, {{businessName}} đây ạ. Mình cần đặt lịch hay hỏi thông tin ạ?
