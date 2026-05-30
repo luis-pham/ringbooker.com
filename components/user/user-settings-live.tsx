@@ -3719,19 +3719,38 @@ export function UserSettingsLive({
                     </div>
                     <p className="sub" style={{ marginTop: 8 }}>{bilingualAnsweringUx.description}</p>
                     {effectiveShop.plan === 'professional' ? (
-                      <div className="preset-pills" style={{ marginTop: 12 }}>
-                        {USER_LANGUAGE_OPTIONS.map((language) => (
-                          <label key={language.code} className={`preset-pill ${currentForm.languages.includes(language.code) ? 'active' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={currentForm.languages.includes(language.code)}
-                              disabled={language.code === 'en'}
-                              onChange={(event) => toggleLanguage(language.code, event.target.checked)}
-                              style={{ marginRight: 8 }}
-                            />
-                            {language.label}
-                          </label>
-                        ))}
+                      <div className="knowledge-lang-chips" role="group" aria-label="Call languages">
+                        {USER_LANGUAGE_OPTIONS.map((language) => {
+                          const selected = currentForm.languages.includes(language.code);
+                          const isEnglish = language.code === 'en';
+                          return (
+                            <button
+                              key={language.code}
+                              type="button"
+                              className={`knowledge-lang-chip${selected ? ' active' : ''}${isEnglish ? ' required' : ''}`}
+                              disabled={isEnglish}
+                              aria-pressed={selected}
+                              onClick={() => {
+                                if (!isEnglish) toggleLanguage(language.code, !selected);
+                              }}
+                            >
+                              <span className="knowledge-lang-chip-check" aria-hidden="true">
+                                {selected ? (
+                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                    <path
+                                      d="M1 4.2L3.6 6.8L9 1.2"
+                                      stroke="#fff"
+                                      strokeWidth="1.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                ) : null}
+                              </span>
+                              {language.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="sub" style={{ marginTop: 8 }}>

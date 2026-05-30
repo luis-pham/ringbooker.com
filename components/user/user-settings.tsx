@@ -137,6 +137,27 @@ html[data-user-theme="dark"]{
 }
 .preset-pill.active{background:#111827;color:#fff;border-color:#111827}
 .preset-pill.locked{opacity:.58;cursor:not-allowed}
+.knowledge-lang-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.knowledge-lang-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1.5px solid var(--color-border-tertiary,#e2e8f0);border-radius:20px;
+  padding:7px 14px;background:transparent;
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:13px;font-weight:400;cursor:pointer;font:inherit;
+  transition:border-color .15s ease,color .15s ease;
+}
+.knowledge-lang-chip.active{
+  border-color:#534AB7;color:#3C3489;font-weight:500;background:transparent;
+}
+.knowledge-lang-chip.required:disabled{opacity:1;cursor:default}
+.knowledge-lang-chip-check{
+  width:14px;height:14px;border-radius:3px;flex-shrink:0;
+  border:1.5px solid var(--color-border-secondary,#d1d5db);
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+}
+.knowledge-lang-chip.active .knowledge-lang-chip-check{
+  border-color:#534AB7;background:#534AB7;border-width:0;
+}
 .switch-list{display:grid;gap:12px}
 .switch-row{
   display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
@@ -1572,6 +1593,12 @@ html[data-user-theme="dark"] .option-card--bare{background:transparent}
 html[data-user-theme="dark"] .option-card--bare:hover{border-color:transparent}
 html[data-user-theme="dark"] .preset-pill{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .preset-pill.active{background:#58a6ff;color:#fff;border-color:#58a6ff}
+html[data-user-theme="dark"] .knowledge-lang-chip.active{
+  border-color:#AFA9EC;color:#AFA9EC;background:transparent;
+}
+html[data-user-theme="dark"] .knowledge-lang-chip.active .knowledge-lang-chip-check{
+  background:#534AB7;border-color:#534AB7;
+}
 html[data-user-theme="dark"] .switch-row{border-color:var(--border);background:var(--surface-card)}
 html[data-user-theme="dark"] .switch{background:#30363d}
 html[data-user-theme="dark"] .switch::after{background:#f0f6fc}
