@@ -5,6 +5,7 @@ import {
 import type { Shop } from '@/src/backend/domain/types';
 
 export type BookingDraftIntent = 'unknown' | 'book_appointment';
+export type BookingDraftIntentSource = 'transcript' | 'tool_call' | null;
 
 export type BookingDraftConfidence = {
   intent?: number;
@@ -17,6 +18,7 @@ export type BookingDraftConfidence = {
 
 export type BookingDraft = {
   intent: BookingDraftIntent;
+  intentSource: BookingDraftIntentSource;
   serviceCandidates: string[];
   dateCandidates: string[];
   timeCandidates: string[];
@@ -28,6 +30,7 @@ export type BookingDraft = {
   lastUpdatedAt: string;
   phoneCaptureActive: boolean;
   phoneConfirmed: boolean;
+  callerRequestedNewPhone: boolean;
 };
 
 export type BookingDraftUpdateOptions = {
@@ -94,6 +97,8 @@ const BOOKING_INTENT_RE =
   /\b(?:book|booking|appointment|appoint(?:ment)?|schedule|scheduled|reserve|reservation|get\s+(?:me\s+)?in|come\s+in|make\s+(?:an\s+)?appointment)\b/i;
 const NON_BOOKING_INTENT_RE = /\b(?:cancel|cancellation|reschedule|move\s+my\s+appointment|change\s+my\s+appointment)\b/i;
 const PHONE_CUE_RE = /\b(?:phone|number|cell|mobile|reach\s+me|call\s+me|text\s+me|contact)\b/i;
+const NEW_PHONE_REQUEST_RE =
+  /\b(?:my|new|different|another|best|preferred|use\s+(?:this|that)|reach\s+me|call\s+me|text\s+me|contact\s+me)\b.{0,40}\b(?:phone|number|cell|mobile)\b|\b(?:phone|number|cell|mobile)\b.{0,40}\b(?:is|new|different|another|best|preferred|instead|use\s+(?:this|that)|reach\s+me|call\s+me|text\s+me)\b/i;
 
 const FALLBACK_SERVICE_RE =
   /\b(?:color|colour|hair\s*color|haircut|hair\s*cut|blowout|manicure|pedicure|mani|pedi|massage|facial|wax(?:ing)?|lash(?:es)?|brow(?:s)?|botox|filler|consultation|cleaning)\b/i;
@@ -131,6 +136,10 @@ function tokenizeWords(text: string): string[] {
 
 function hasPhoneCue(text: string): boolean {
   return PHONE_CUE_RE.test(text);
+}
+
+function callerRequestedNewPhone(text: string): boolean {
+  return NEW_PHONE_REQUEST_RE.test(text);
 }
 
 function textFromPhoneCue(text: string): string {
@@ -333,6 +342,7 @@ function missingFieldsFor(
 export function createBookingDraft(now: Date = new Date()): BookingDraft {
   return {
     intent: 'unknown',
+    intentSource: null,
     serviceCandidates: [],
     dateCandidates: [],
     timeCandidates: [],
@@ -344,6 +354,7 @@ export function createBookingDraft(now: Date = new Date()): BookingDraft {
     lastUpdatedAt: now.toISOString(),
     phoneCaptureActive: false,
     phoneConfirmed: false,
+    callerRequestedNewPhone: false,
   };
 }
 
@@ -386,6 +397,7 @@ export function updateBookingDraftFromTranscript(
 
   if (hasBookingIntent) {
     next.intent = 'book_appointment';
+    if (next.intentSource !== 'tool_call') next.intentSource = 'transcript';
     next.confidence = setMaxConfidence(next.confidence, 'intent', 0.8);
   }
 
@@ -410,8 +422,10 @@ export function updateBookingDraftFromTranscript(
     next.phoneCaptureActive = next.phoneDigits.length > 0 && next.phoneDigits.length < 10;
     const confidence = phoneConfidence(next.phoneDigits.length);
     if (confidence !== undefined) next.confidence = setMaxConfidence(next.confidence, 'phone', confidence);
+    if (callerRequestedNewPhone(text)) next.callerRequestedNewPhone = true;
   } else if (phoneCue) {
     next.phoneCaptureActive = true;
+    if (callerRequestedNewPhone(text)) next.callerRequestedNewPhone = true;
   }
 
   if (next.phoneDigits.length >= 10) {
@@ -472,6 +486,7 @@ export function summarizeBookingDraftForLog(draft: BookingDraft | null | undefin
   const phoneText = draft.phoneDigits.join('');
   return {
     intent: draft.intent,
+    intentSource: draft.intentSource,
     serviceCandidates: draft.serviceCandidates,
     dateCandidates: draft.dateCandidates,
     timeCandidates: draft.timeCandidates,
@@ -481,6 +496,7 @@ export function summarizeBookingDraftForLog(draft: BookingDraft | null | undefin
     phoneComplete: draft.phoneDigits.length >= 10,
     phoneCaptureActive: draft.phoneCaptureActive,
     phoneConfirmed: draft.phoneConfirmed,
+    callerRequestedNewPhone: draft.callerRequestedNewPhone,
     confidence: draft.confidence,
     missingFields: draft.missingFields,
     evidenceCount: draft.rawTranscriptEvidence.length,

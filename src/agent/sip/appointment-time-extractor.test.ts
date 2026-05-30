@@ -87,6 +87,13 @@ test('extractAppointmentDateTime: "tomorrow at 9 AM"', () => {
   assert.equal(r.time, '09:00');
 });
 
+test('extractAppointmentDateTime: "day after tomorrow" beats "tomorrow"', () => {
+  const r = extractAppointmentDateTime('day after tomorrow at 9 AM', LA_SHOP, REF_NOW);
+  assert.ok(r);
+  assert.equal(r.date, '2026-05-29'); // Friday
+  assert.equal(r.time, '09:00');
+});
+
 test('extractAppointmentDateTime: "today at noon"', () => {
   const r = extractAppointmentDateTime('today at noon', LA_SHOP, REF_NOW);
   assert.ok(r);

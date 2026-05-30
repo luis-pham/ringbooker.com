@@ -53,6 +53,7 @@ test('action guard blocks create_booking when booking draft is missing required 
   assert.equal(parsed.reason, 'booking_required_fields_missing');
   assert.deepEqual(parsed.missingFields, ['callerName']);
   assert.equal(ctx.actionGuard?.lastBlockedAction?.toolName, 'create_booking');
+  assert.equal(ctx.bookingDraft?.intentSource, 'tool_call');
 });
 
 test('action guard allows create_booking without collected phone when caller ID is present', async () => {
@@ -147,6 +148,33 @@ test('action guard allows create_booking after required fields and phone confirm
   assert.equal(typeof parsed.bookingId, 'string');
   assert.equal(ctx.actionGuard?.createBookingCompleted, true);
   assert.equal(ctx.callerPhone, '+15123456789');
+});
+
+test('action guard does not overwrite caller ID from confirmed digits unless caller asked to use a new number', async () => {
+  const ctx = await createCtx({ bookingUrl: null });
+  updateSipBookingDraftFromTranscript(
+    ctx,
+    'I want to book manicure June 1 at two PM. My name is Maya. five one two three four five six seven eight nine.',
+  );
+  updateSipBookingDraftFromTranscript(ctx, "Yes, that's correct.");
+
+  const validation = JSON.parse(await executeSipShopToolCall(ctx, 'validate_appointment_time', {
+    date: '2026-06-01',
+    time: '14:00',
+  })) as { valid?: boolean };
+  assert.equal(validation.valid, true);
+
+  const json = await executeSipShopToolCall(ctx, 'create_booking', {
+    date: '2026-06-01',
+    time: '14:00',
+    service: 'Manicure',
+    customerName: 'Maya',
+  });
+  const parsed = JSON.parse(json) as { success?: boolean; bookingId?: string };
+
+  assert.equal(parsed.success, true);
+  assert.equal(typeof parsed.bookingId, 'string');
+  assert.equal(ctx.callerPhone, '+15550001111');
 });
 
 test('action guard blocks send_booking_link when caller has not expressed booking intent', async () => {

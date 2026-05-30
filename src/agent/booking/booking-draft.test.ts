@@ -19,6 +19,7 @@ test('accumulates booking slots from Vietnamese-accent English booking request',
   );
 
   assert.equal(draft.intent, 'book_appointment');
+  assert.equal(draft.intentSource, 'transcript');
   assert.deepEqual(draft.serviceCandidates, ['color']);
   assert.deepEqual(draft.dateCandidates, ['tomorrow']);
   assert.deepEqual(draft.timeCandidates, ['9 AM']);
@@ -49,6 +50,7 @@ test('accumulates slowly spoken phone digits across multiple caller turns', () =
 
   assert.equal(draft.phoneDigits.join(''), '5123456789');
   assert.equal(draft.phoneCaptureActive, false);
+  assert.equal(draft.callerRequestedNewPhone, true);
   assert.equal(draft.confidence.phone, 0.85);
   assert.equal(draft.missingFields.includes('phone'), false);
 });

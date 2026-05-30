@@ -77,7 +77,7 @@ function stringField(input: ToolInputRecord, field: string): string {
 }
 
 function hasDraftEvidence(draft: BookingDraft | null | undefined): draft is BookingDraft {
-  return Boolean(draft && draft.rawTranscriptEvidence.length > 0);
+  return Boolean(draft && (draft.rawTranscriptEvidence.length > 0 || draft.intentSource === 'tool_call'));
 }
 
 function hasUsableCallerPhone(ctx: AgentToolContext): boolean {
@@ -87,11 +87,42 @@ function hasUsableCallerPhone(ctx: AgentToolContext): boolean {
   return digits.length >= 8;
 }
 
+function normalizedDigitCount(phone: string): number {
+  return phone.replace(/\D/g, '').length;
+}
+
+function shouldUseDraftPhone(ctx: AgentToolContext, draft: BookingDraft): boolean {
+  if (draft.phoneDigits.length === 0) return false;
+  if (hasUsableCallerPhone(ctx) && !draft.callerRequestedNewPhone) return false;
+  return true;
+}
+
 function hasCompleteOrTrustedPhone(ctx: AgentToolContext, draft: BookingDraft): boolean {
+  if (hasUsableCallerPhone(ctx) && !draft.callerRequestedNewPhone) return true;
   if (draft.phoneCaptureActive) return false;
   if (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10) return false;
   if (draft.phoneDigits.length >= 10) return draft.phoneConfirmed;
   return hasUsableCallerPhone(ctx);
+}
+
+function hasStructuredToolBookingSignal(toolName: string, input: ToolInputRecord): boolean {
+  if (toolName === 'create_booking') {
+    return Boolean(stringField(input, 'service') || stringField(input, 'date') || stringField(input, 'time'));
+  }
+  if (toolName === 'send_booking_link') {
+    return Boolean(stringField(input, 'callerName') && stringField(input, 'serviceInterest'));
+  }
+  return false;
+}
+
+function promoteToolCallIntent(draft: BookingDraft, toolName: string, input: ToolInputRecord): void {
+  if (!hasStructuredToolBookingSignal(toolName, input)) return;
+  draft.intent = 'book_appointment';
+  draft.intentSource = 'tool_call';
+  draft.confidence = {
+    ...draft.confidence,
+    intent: Math.max(draft.confidence.intent ?? 0, 0.9),
+  };
 }
 
 function hasCallerNameEvidence(draft: BookingDraft, input: ToolInputRecord): boolean {
@@ -181,7 +212,7 @@ function guardCreateBooking(ctx: AgentToolContext, draft: BookingDraft, input: T
     );
   }
 
-  if (draft.phoneDigits.length >= 10 && !draft.phoneConfirmed) {
+  if (shouldUseDraftPhone(ctx, draft) && draft.phoneDigits.length >= 10 && !draft.phoneConfirmed) {
     return blocked(
       'confirmation_required',
       'confirmation_required',
@@ -191,7 +222,7 @@ function guardCreateBooking(ctx: AgentToolContext, draft: BookingDraft, input: T
   }
 
   const missingFields = bookingMissingFields(ctx, draft, input);
-  if (draft.phoneCaptureActive || (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10)) {
+  if (shouldUseDraftPhone(ctx, draft) && (draft.phoneCaptureActive || (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10))) {
     return blocked(
       'confirmation_required',
       'phone_incomplete',
@@ -222,7 +253,7 @@ function guardSendBookingLink(ctx: AgentToolContext, draft: BookingDraft, input:
     );
   }
 
-  if (draft.phoneCaptureActive || (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10)) {
+  if (shouldUseDraftPhone(ctx, draft) && (draft.phoneCaptureActive || (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10))) {
     return blocked(
       'confirmation_required',
       'phone_incomplete',
@@ -231,7 +262,7 @@ function guardSendBookingLink(ctx: AgentToolContext, draft: BookingDraft, input:
     );
   }
 
-  if (draft.phoneDigits.length >= 10 && !draft.phoneConfirmed) {
+  if (shouldUseDraftPhone(ctx, draft) && draft.phoneDigits.length >= 10 && !draft.phoneConfirmed) {
     return blocked(
       'confirmation_required',
       'confirmation_required',
@@ -253,7 +284,7 @@ function guardSendBookingLink(ctx: AgentToolContext, draft: BookingDraft, input:
 }
 
 function guardScheduleCallback(ctx: AgentToolContext, draft: BookingDraft): BookingActionGuardDecision {
-  if (draft.phoneCaptureActive || (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10)) {
+  if (shouldUseDraftPhone(ctx, draft) && (draft.phoneCaptureActive || (draft.phoneDigits.length > 0 && draft.phoneDigits.length < 10))) {
     return blocked(
       'confirmation_required',
       'phone_incomplete',
@@ -262,7 +293,7 @@ function guardScheduleCallback(ctx: AgentToolContext, draft: BookingDraft): Book
     );
   }
 
-  if (draft.phoneDigits.length >= 10 && !draft.phoneConfirmed) {
+  if (shouldUseDraftPhone(ctx, draft) && draft.phoneDigits.length >= 10 && !draft.phoneConfirmed) {
     return blocked(
       'confirmation_required',
       'confirmation_required',
@@ -364,9 +395,11 @@ export function evaluateBookingActionGuard(
   if (!SENSITIVE_BOOKING_TOOLS.has(toolName)) return allowed();
 
   const draft = ctx.bookingDraft;
+  const input = asRecord(toolInput);
+  // transcript-derived draft is advisory only for hard guards
+  if (draft) promoteToolCallIntent(draft, toolName, input);
   if (!hasDraftEvidence(draft)) return allowed('no_booking_draft_evidence');
 
-  const input = asRecord(toolInput);
   switch (toolName) {
     case 'create_booking':
       return guardCreateBooking(ctx, draft, input);
@@ -431,6 +464,8 @@ export function applyConfirmedBookingDraftPhone(ctx: AgentToolContext): string |
 
   const rawDigits = draft.phoneDigits.join('');
   const normalized = normalizePhoneForStorage(rawDigits, ctx.shop.country_code) ?? rawDigits;
+  if (normalizedDigitCount(normalized) < 10) return null;
+  if (ctx.callerPhone?.trim() && !draft.callerRequestedNewPhone) return null;
   if (!normalized || normalized === ctx.callerPhone) return null;
 
   ctx.callerPhone = normalized;

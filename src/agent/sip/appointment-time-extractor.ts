@@ -79,8 +79,9 @@ function extractDate(text: string, nowDt: DateTime): string | null {
   const lower = text.toLowerCase();
 
   if (/\btoday\b/.test(lower)) return nowDt.toFormat('yyyy-MM-dd');
-  if (/\btomorrow\b/.test(lower)) return nowDt.plus({ days: 1 }).toFormat('yyyy-MM-dd');
+  // Check specific multi-word phrases first so "day after tomorrow" is not caught by "tomorrow".
   if (/\bday after tomorrow\b/.test(lower)) return nowDt.plus({ days: 2 }).toFormat('yyyy-MM-dd');
+  if (/\btomorrow\b/.test(lower)) return nowDt.plus({ days: 1 }).toFormat('yyyy-MM-dd');
 
   // Day-of-week: "Monday", "next Monday", "this Monday"
   const dayNames = Object.keys(DOW_MAP).join('|');
