@@ -8104,13 +8104,52 @@ export function createBackendApp(deps: {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_connect_callback');
     if (limited) return limited;
     const appBaseUrl = getAppBaseUrl(c.req);
+    const rawProviderParam = c.req.param('provider') ?? '';
+    const requestUrl = new URL(c.req.url);
+    const logSquareCallback = (message: string, details: Record<string, unknown> = {}) => {
+      if (rawProviderParam !== 'square_appointments') return;
+      logger.info(
+        {
+          provider: rawProviderParam,
+          url_path: requestUrl.pathname,
+          query_keys: [...requestUrl.searchParams.keys()],
+          ...details,
+        },
+        message,
+      );
+    };
+
+    logSquareCallback('square_oauth_callback_start', {
+      has_code_param: requestUrl.searchParams.has('code'),
+      code_length: requestUrl.searchParams.get('code')?.length ?? 0,
+      has_state_param: requestUrl.searchParams.has('state'),
+      state_length: requestUrl.searchParams.get('state')?.length ?? 0,
+      has_error_param: requestUrl.searchParams.has('error'),
+      has_state_cookie: Boolean(getCookie(c, 'rb_calendar_provider_state')),
+      has_provider_cookie: Boolean(getCookie(c, 'rb_calendar_provider_name')),
+      has_shop_cookie: Boolean(getCookie(c, 'rb_calendar_provider_shop')),
+    });
+
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) {
       logger.warn({ path: c.req.path }, 'square_oauth_callback_unauthenticated');
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'calendar_oauth_login_required',
+        redirect_path: '/user/login',
+      });
       return c.redirect(`${appBaseUrl}/user/login?error=calendar_oauth_login_required`, 302);
     }
     if (!deps.shopsRepository) {
       logger.error({ path: c.req.path }, 'square_oauth_callback_shops_repository_unavailable');
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'user_dependencies_unavailable',
+        redirect: buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider: 'square_appointments',
+          message: 'user_dependencies_unavailable',
+        }),
+      });
       return c.redirect(
         buildCalendarSettingsRedirect({
           appBaseUrl,
@@ -8146,46 +8185,93 @@ export function createBackendApp(deps: {
     deleteCookie(c, 'rb_calendar_provider_shop', { path: '/' });
 
     if (!provider || provider !== cookieProvider || cookieShopId !== (sessionResult.shopId ?? '')) {
+      logSquareCallback('square_oauth_callback_state_verification_failed', {
+        reason: 'invalid_oauth_context',
+        parsed_provider: provider,
+        cookie_provider: cookieProvider || null,
+        cookie_shop_matches_session: cookieShopId === (sessionResult.shopId ?? ''),
+        has_cookie_shop: Boolean(cookieShopId),
+      });
+      const redirect = buildCalendarSettingsRedirect({
+        appBaseUrl,
+        result: 'error',
+        provider: provider ?? 'unknown',
+        message: 'invalid_oauth_context',
+      });
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'invalid_oauth_context',
+        redirect,
+      });
       return c.redirect(
-        buildCalendarSettingsRedirect({
-          appBaseUrl,
-          result: 'error',
-          provider: provider ?? 'unknown',
-          message: 'invalid_oauth_context',
-        }),
+        redirect,
       );
     }
 
     if (oauthError) {
+      logSquareCallback('square_oauth_callback_state_verification_failed', {
+        reason: 'provider_oauth_error',
+        oauth_error: oauthError,
+      });
+      const redirect = buildCalendarSettingsRedirect({
+        appBaseUrl,
+        result: 'error',
+        provider,
+        message: oauthError,
+      });
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: oauthError,
+        redirect,
+      });
       return c.redirect(
-        buildCalendarSettingsRedirect({
-          appBaseUrl,
-          result: 'error',
-          provider,
-          message: oauthError,
-        }),
+        redirect,
       );
     }
 
     if (!state || !cookieState || state !== cookieState || !code) {
+      logSquareCallback('square_oauth_callback_state_verification_failed', {
+        reason: 'invalid_oauth_state',
+        has_state: Boolean(state),
+        has_cookie_state: Boolean(cookieState),
+        state_matches_cookie: Boolean(state && cookieState && state === cookieState),
+        has_code: Boolean(code),
+      });
+      const redirect = buildCalendarSettingsRedirect({
+        appBaseUrl,
+        result: 'error',
+        provider,
+        message: 'invalid_oauth_state',
+      });
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'invalid_oauth_state',
+        redirect,
+      });
       return c.redirect(
-        buildCalendarSettingsRedirect({
-          appBaseUrl,
-          result: 'error',
-          provider,
-          message: 'invalid_oauth_state',
-        }),
+        redirect,
       );
     }
 
+    logSquareCallback('square_oauth_callback_state_verified', {
+      decoded_state: {
+        provider,
+        shop_id: cookieShopId,
+      },
+      state_length: state.length,
+      code_length: code.length,
+    });
+
     if (provider !== 'square_appointments' && provider !== 'acuity') {
+      const redirect = buildCalendarSettingsRedirect({
+        appBaseUrl,
+        result: 'error',
+        provider,
+        message: 'provider_not_implemented_yet',
+      });
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'provider_not_implemented_yet',
+        redirect,
+      });
       return c.redirect(
-        buildCalendarSettingsRedirect({
-          appBaseUrl,
-          result: 'error',
-          provider,
-          message: 'provider_not_implemented_yet',
-        }),
+        redirect,
       );
     }
 
@@ -8261,25 +8347,42 @@ export function createBackendApp(deps: {
         code,
         redirectUri: buildSquareCallbackUrl(appBaseUrl),
       });
+      logSquareCallback('square_oauth_code_exchange_success', {
+        has_access_token: Boolean(exchanged.access_token),
+        has_refresh_token: Boolean(exchanged.refresh_token),
+        has_merchant_id: Boolean(exchanged.merchant_id),
+        has_expires_at: Boolean(exchanged.expires_at),
+      });
       const existingShop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
       if (!existingShop) {
+        const redirect = buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'shop_not_found',
+        });
+        logSquareCallback('square_oauth_callback_redirect', {
+          reason: 'shop_not_found',
+          redirect,
+        });
         return c.redirect(
-          buildCalendarSettingsRedirect({
-            appBaseUrl,
-            result: 'error',
-            provider,
-            message: 'shop_not_found',
-          }),
+          redirect,
         );
       }
       if (!isCapabilityAllowed(existingShop.plan, 'third_party_integrations')) {
+        const redirect = buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'plan_feature_locked',
+        });
+        logSquareCallback('square_oauth_callback_redirect', {
+          reason: 'plan_feature_locked',
+          shop_id: existingShop.id,
+          redirect,
+        });
         return c.redirect(
-          buildCalendarSettingsRedirect({
-            appBaseUrl,
-            result: 'error',
-            provider,
-            message: 'plan_feature_locked',
-          }),
+          redirect,
         );
       }
       const current = parseSquareConnectionCredentials(existingShop.google_cal_credentials_encrypted);
@@ -8290,35 +8393,66 @@ export function createBackendApp(deps: {
         google_cal_credentials_encrypted: encodeSquareConnectionCredentials(payload),
       });
       if (!updated) {
+        const redirect = buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'shop_not_found',
+        });
+        logSquareCallback('square_oauth_callback_db_write_failed', {
+          reason: 'shop_not_found_after_calendar_update',
+          shop_id: existingShop.id,
+        });
+        logSquareCallback('square_oauth_callback_redirect', {
+          reason: 'shop_not_found',
+          redirect,
+        });
         return c.redirect(
-          buildCalendarSettingsRedirect({
-            appBaseUrl,
-            result: 'error',
-            provider,
-            message: 'shop_not_found',
-          }),
+          redirect,
         );
       }
+      logSquareCallback('square_oauth_callback_db_write_success', {
+        shop_id: existingShop.id,
+        wrote_google_cal_credentials_encrypted: true,
+        wrote_google_cal_id: Boolean(existingShop.google_cal_id),
+        merchant_id_present: Boolean(payload.merchant_id),
+      });
       await deps.shopsRepository.updateUserSettings(existingShop.id, {
         booking_method: 'app',
         selected_integration: 'square_appointments',
       });
-      return c.redirect(
-        buildCalendarSettingsRedirect({
-          appBaseUrl,
-          result: 'success',
-          provider,
-        }),
-      );
+      logSquareCallback('square_oauth_callback_db_write_success', {
+        shop_id: existingShop.id,
+        wrote_booking_method: 'app',
+        wrote_selected_integration: 'square_appointments',
+      });
+      const redirect = buildCalendarSettingsRedirect({
+        appBaseUrl,
+        result: 'success',
+        provider,
+      });
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'success',
+        redirect,
+      });
+      return c.redirect(redirect);
     } catch (error) {
       logger.error({ err: error, provider }, 'calendar_provider_oauth_callback_failed');
+      logSquareCallback('square_oauth_callback_error', {
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      const redirect = buildCalendarSettingsRedirect({
+        appBaseUrl,
+        result: 'error',
+        provider,
+        message: 'oauth_exchange_failed',
+      });
+      logSquareCallback('square_oauth_callback_redirect', {
+        reason: 'oauth_exchange_failed',
+        redirect,
+      });
       return c.redirect(
-        buildCalendarSettingsRedirect({
-          appBaseUrl,
-          result: 'error',
-          provider,
-          message: 'oauth_exchange_failed',
-        }),
+        redirect,
       );
     }
   });
