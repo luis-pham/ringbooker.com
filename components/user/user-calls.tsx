@@ -8,11 +8,7 @@ const callsPortalStyles = String.raw`
 .calls-metric-card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;min-height:92px}
 .calls-metric-card p{margin:0 0 4px;font-size:13px;color:var(--text-gray);line-height:1.35}
 .calls-metric-card strong{display:block;font-size:28px;line-height:1;font-weight:650;letter-spacing:-.03em;color:var(--text-dark)}
-.calls-stat-icon{width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;color:#111}
-.calls-stat-icon--blue{background:#dbeafe}
-.calls-stat-icon--purple{background:#f5f3ff}
-.calls-stat-icon--amber{background:#fef3c7}
-.calls-stat-icon--red{background:#fee2e2}
+.calls-stat-icon{width:44px;height:44px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;color:var(--purple-dark)}
 .calls-filter-bar{border-bottom:1.5px solid var(--border);margin-bottom:32px}
 .calls-filter-tabs{
   display:flex;align-items:flex-end;flex-wrap:nowrap;gap:24px;
@@ -106,11 +102,7 @@ const callsPortalStyles = String.raw`
 .recording-panel p{margin:0;color:var(--text-gray);font-size:13px}
 .recording-panel audio{display:block;width:100%;height:38px}
 .transcript-toggle{margin-bottom:12px}
-html[data-user-theme="dark"] .calls-stat-icon{color:var(--text-dark)}
-html[data-user-theme="dark"] .calls-stat-icon--blue{background:rgba(56,139,253,.2);color:#79c0ff}
-html[data-user-theme="dark"] .calls-stat-icon--purple{background:rgba(163,113,247,.18);color:#d2a8ff}
-html[data-user-theme="dark"] .calls-stat-icon--amber{background:rgba(210,153,34,.2);color:#e3b341}
-html[data-user-theme="dark"] .calls-stat-icon--red{background:rgba(248,81,73,.16);color:#f85149}
+html[data-user-theme="dark"] .calls-stat-icon{color:var(--purple-dark)}
 html[data-user-theme="dark"] .calls-caller-avatar{background:rgba(163,113,247,.15);color:#d2a8ff}
 html[data-user-theme="dark"] .calls-repeat-badge{background:rgba(163,113,247,.15);color:#d2a8ff}
 html[data-user-theme="dark"] .calls-outcome{background:#21262d;color:var(--text-gray)}
@@ -138,7 +130,7 @@ html[data-user-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.55)}
 @media (max-width:640px){
   .calls-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .calls-metric-card{min-height:86px;padding:12px;gap:10px}
-  .calls-stat-icon{width:38px;height:38px;border-radius:11px;font-size:18px}
+  .calls-stat-icon{width:32px;height:32px;border-radius:10px}
   .calls-metric-card p{font-size:12px}
   .calls-metric-card strong{font-size:26px}
   .modal-backdrop{padding:10px}

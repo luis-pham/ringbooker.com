@@ -50,7 +50,7 @@ function AppLogo({ app }: { app: IntegrationApp }) {
 function GenericLinkLogo() {
   return (
     <span className="integration-app-logo integration-app-logo--generic" aria-hidden="true">
-      <IconLink size={20} stroke={2} />
+      <IconLink size={26} stroke={2} />
     </span>
   );
 }
@@ -141,7 +141,7 @@ function BookingMethodQuestion({
       <div className="integrations-method-grid">
         <button type="button" className="integration-method-card" style={methodCardStyle('app')} aria-pressed={selectedMethod === 'app'} disabled={disabled} onClick={() => onChoose('app')}>
           <span className="integration-method-icon" style={methodIconStyle('app')} aria-hidden="true">
-            <IconDeviceMobile size={20} stroke={2} />
+            <IconDeviceMobile size={26} stroke={2} />
           </span>
           <span>
             <strong>I use a booking app</strong>
@@ -151,7 +151,7 @@ function BookingMethodQuestion({
         </button>
         <button type="button" className="integration-method-card" style={methodCardStyle('direct')} aria-pressed={selectedMethod === 'direct'} disabled={disabled} onClick={() => onChoose('direct')}>
           <span className="integration-method-icon" style={methodIconStyle('direct')} aria-hidden="true">
-            <IconPhoneCall size={20} stroke={2} />
+            <IconPhoneCall size={26} stroke={2} />
           </span>
           <span>
             <strong>Clients call or message me directly</strong>
@@ -1166,7 +1166,7 @@ function StarterUpgradeBanner() {
       <div className="integration-upgrade-banner-inner">
         <div className="integrations-inline-actions integration-upgrade-banner-row">
           <span aria-hidden="true" className="integration-method-icon">
-            <IconBolt size={20} stroke={2} />
+            <IconBolt size={26} stroke={2} />
           </span>
           <div className="integration-upgrade-banner-copy">
             <strong>Live sync with Square, Mindbody & more</strong>

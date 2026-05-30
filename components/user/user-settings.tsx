@@ -247,8 +247,9 @@ html[data-user-theme="dark"]{
 .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 .integration-method-card:disabled{cursor:not-allowed;opacity:.72}
 .integration-method-icon{
-  width:36px;height:36px;border-radius:10px;background:#dcfce7;display:inline-flex;
-  align-items:center;justify-content:center;flex-shrink:0;
+  width:44px;height:44px;border-radius:14px;background:transparent;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  color:var(--purple-dark);
 }
 .integration-method-loading{margin-left:auto;animation:integration-spin .9s linear infinite;color:var(--text-gray)}
 @keyframes integration-spin{to{transform:rotate(360deg)}}
@@ -382,8 +383,9 @@ html[data-user-theme="dark"]{
   min-width:0;
 }
 .integration-app-logo--generic{
-  background:var(--bg-gray);
-  color:var(--text-gray);
+  background:transparent;
+  color:var(--purple-dark);
+  width:44px;height:44px;border-radius:14px;
 }
 .integration-upgrade-banner{
   padding:0;
@@ -1557,8 +1559,8 @@ html[data-user-theme="dark"] .integration-configured-url-row{
   border-top-color:var(--border);
 }
 html[data-user-theme="dark"] .integration-app-logo--generic{
-  background:var(--surface-card);
-  color:var(--text-gray);
+  background:transparent;
+  color:var(--purple-dark);
 }
 html[data-user-theme="dark"] .integration-success-box,
 html[data-user-theme="dark"] .integration-confirm-card.success,
@@ -1572,7 +1574,6 @@ html[data-user-theme="dark"] .integration-app-badge{
   border-color:var(--border);
   color:var(--text-gray);
 }
-html[data-user-theme="dark"] .integration-method-icon{background:#e3b341}
 html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-logo--image{background:#0d1117;border-color:var(--border)}
