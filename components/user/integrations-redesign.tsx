@@ -254,7 +254,7 @@ function AppPicker({ selectedApp, providers, vagaroMode, vagaroConnectionStatus,
             Booking link <SectionBadge icon="link" label="SMS to caller" variant="gray" />
           </h4>
         </div>
-        <div className="integrations-app-grid integrations-app-grid--link" style={{ gridTemplateColumns: 'repeat(5,minmax(0,1fr))' }}>
+        <div className="integrations-app-grid integrations-app-grid--link">
           {visibleBookingLinkApps.map((app) => (
             <AppCard
               key={app.key}

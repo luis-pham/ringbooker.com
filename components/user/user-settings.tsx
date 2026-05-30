@@ -269,6 +269,7 @@ html[data-user-theme="dark"]{
 .integration-section-badge--teal{background:#9FE1CB;color:#085041}
 .integration-section-badge--gray{background:#D3D1C7;color:#444441}
 .integrations-app-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.integrations-app-grid--link{grid-template-columns:repeat(5,minmax(0,1fr))}
 .integration-app-card{
   position:relative;min-height:104px;border:1px solid var(--border);background:var(--surface-card);
   border-radius:12px;padding:12px;display:grid;gap:10px;text-align:left;cursor:pointer;font:inherit;
@@ -1950,7 +1951,7 @@ html[data-user-theme="dark"] .plan-chip{
   }
   .integrations-method-grid{grid-template-columns:1fr}
   .integrations-app-grid--sync{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .integrations-app-grid--link{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .integrations-app-grid--link{grid-template-columns:repeat(2,minmax(0,1fr))}
   .integration-app-card{min-height:92px;padding:10px}
   .integration-app-logo{width:32px;height:32px;border-radius:8px;font-size:11px}
   .integration-app-logo--image img{padding:4px}
