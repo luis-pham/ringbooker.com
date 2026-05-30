@@ -128,9 +128,6 @@ function BookingMethodQuestion({
         border: '0.5px solid var(--color-border-tertiary, var(--border))',
         background: 'var(--color-background-primary, var(--surface-card))',
       };
-  const methodIconStyle = (method: 'app' | 'direct') => ({
-    color: selectedMethod === method ? 'var(--starter-method-selected-icon)' : 'var(--color-text-secondary, var(--text-gray))',
-  });
 
   return (
     <div className="integrations-flow-stack">
@@ -140,7 +137,7 @@ function BookingMethodQuestion({
       </div>
       <div className="integrations-method-grid">
         <button type="button" className="integration-method-card" style={methodCardStyle('app')} aria-pressed={selectedMethod === 'app'} disabled={disabled} onClick={() => onChoose('app')}>
-          <span className="integration-method-icon" style={methodIconStyle('app')} aria-hidden="true">
+          <span className="integration-method-icon" aria-hidden="true">
             <IconDeviceMobile size={26} stroke={2} />
           </span>
           <span>
@@ -150,7 +147,7 @@ function BookingMethodQuestion({
           {savingMethod === 'app' ? <IconLoader2 className="integration-method-loading" size={16} stroke={2} aria-label="Saving" /> : null}
         </button>
         <button type="button" className="integration-method-card" style={methodCardStyle('direct')} aria-pressed={selectedMethod === 'direct'} disabled={disabled} onClick={() => onChoose('direct')}>
-          <span className="integration-method-icon" style={methodIconStyle('direct')} aria-hidden="true">
+          <span className="integration-method-icon" aria-hidden="true">
             <IconPhoneCall size={26} stroke={2} />
           </span>
           <span>

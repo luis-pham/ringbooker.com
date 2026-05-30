@@ -249,7 +249,10 @@ html[data-user-theme="dark"]{
 .integration-method-icon{
   width:44px;height:44px;border-radius:14px;background:transparent;
   display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
-  color:var(--purple-dark);
+  color:var(--color-text-secondary,var(--text-gray));
+}
+.integration-method-card[aria-pressed="true"] .integration-method-icon{
+  color:var(--starter-method-selected-icon,#534AB7);
 }
 .integration-method-loading{margin-left:auto;animation:integration-spin .9s linear infinite;color:var(--text-gray)}
 @keyframes integration-spin{to{transform:rotate(360deg)}}
@@ -1560,6 +1563,10 @@ html[data-user-theme="dark"] .integration-configured-url-row{
 }
 html[data-user-theme="dark"] .integration-app-logo--generic{
   background:transparent;
+  color:var(--purple-dark);
+}
+html[data-user-theme="dark"] .integration-method-icon,
+html[data-user-theme="dark"] .integration-method-card[aria-pressed="true"] .integration-method-icon{
   color:var(--purple-dark);
 }
 html[data-user-theme="dark"] .integration-success-box,
