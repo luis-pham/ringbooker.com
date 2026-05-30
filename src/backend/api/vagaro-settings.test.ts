@@ -329,6 +329,11 @@ test('vagaro connect rejects invalid bookingUrl', async () => {
 test('vagaro verify stores live sync settings and returns webhook token only once', async () => {
   const { app, shopsRepository } = createUserCalendarTestApp();
   const cookie = await loginUser(app);
+  await shopsRepository.updateUserSettings('demo-shop', {
+    booking_url: 'https://vagaro.com/old-link',
+    booking_method: 'app',
+    selected_integration: 'vagaro',
+  });
   const restoreFetch = mockVagaroVerifyFetch();
   try {
     const first = await app.request('/user/calendar/providers/vagaro/verify', {
@@ -360,6 +365,9 @@ test('vagaro verify stores live sync settings and returns webhook token only onc
     assert.equal(shop?.vagaro_business_id, 'vagaro-business-id');
     assert.equal(shop?.vagaro_business_name, 'Avalon Salon and Spa');
     assert.equal(shop?.vagaro_location_id, 'vagaro-location-id');
+    assert.equal(shop?.booking_url, 'https://vagaro.com/old-link');
+    assert.equal(shop?.booking_method, 'app');
+    assert.equal(shop?.selected_integration, 'vagaro');
     assert.ok(shop?.vagaro_client_secret_encrypted);
     const providersResponse = await app.request('/user/calendar/providers', {
       headers: userApiHeaders(cookie),

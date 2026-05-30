@@ -15,6 +15,7 @@ export type SquareConnectionCredentials = {
   merchant_id?: string;
   location_id?: string;
   service_variation_id?: string;
+  service_variation_version?: number;
   team_member_id?: string;
 };
 
@@ -49,10 +50,15 @@ type SquareLocation = {
 type SquareCatalogObject = {
   id?: string;
   type?: string;
+  version?: number;
   is_deleted?: boolean;
+  item_data?: {
+    name?: string;
+  };
   item_variation_data?: {
     name?: string;
     item_id?: string;
+    available_for_booking?: boolean;
     service_duration?: number;
     pricing_type?: string;
     price_money?: { amount?: number; currency?: string };
@@ -61,7 +67,17 @@ type SquareCatalogObject = {
 
 export type SquareConnectionOptions = {
   locations: Array<{ id: string; name: string; status?: string }>;
-  serviceVariations: Array<{ id: string; name: string; durationMin?: number; amount?: number; currency?: string }>;
+  serviceVariations: Array<{
+    id: string;
+    name: string;
+    itemName?: string;
+    variationName?: string;
+    version?: number;
+    durationMs?: number;
+    durationMin?: number;
+    amount?: number;
+    currency?: string;
+  }>;
 };
 
 export function parseCalendarConnectionCredentials(raw: string | null | undefined): Record<string, unknown> | null {
@@ -101,6 +117,12 @@ export function parseSquareConnectionCredentials(raw: string | null | undefined)
     merchant_id: typeof parsed.merchant_id === 'string' ? parsed.merchant_id : undefined,
     location_id: typeof parsed.location_id === 'string' ? parsed.location_id : undefined,
     service_variation_id: typeof parsed.service_variation_id === 'string' ? parsed.service_variation_id : undefined,
+    service_variation_version:
+      typeof parsed.service_variation_version === 'number'
+        ? parsed.service_variation_version
+        : typeof parsed.serviceVariationVersion === 'number'
+          ? parsed.serviceVariationVersion
+          : undefined,
     team_member_id: typeof parsed.team_member_id === 'string' ? parsed.team_member_id : undefined,
   };
 }
@@ -351,22 +373,46 @@ async function squareFetchAllCatalogItems(accessToken: string): Promise<SquareCa
   let cursor: string | undefined;
   const MAX_PAGES = 20;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const response = await squareJsonRequest<{ objects?: SquareCatalogObject[]; cursor?: string }>({
+    const response = await squareJsonRequest<{
+      objects?: SquareCatalogObject[];
+      related_objects?: SquareCatalogObject[];
+      cursor?: string;
+    }>({
       path: '/v2/catalog/search',
       accessToken,
       method: 'POST',
       body: {
-        include_related_objects: false,
+        include_related_objects: true,
         object_types: ['ITEM_VARIATION'],
         limit: 100,
         ...(cursor ? { cursor } : {}),
       },
     });
     items.push(...(response.objects ?? []));
+    items.push(...(response.related_objects ?? []));
     cursor = response.cursor;
     if (!cursor) break;
   }
   return items;
+}
+
+function squareCatalogServiceName(
+  item: SquareCatalogObject,
+  parentItemsById: Map<string, SquareCatalogObject>,
+): { name: string; itemName?: string; variationName?: string } {
+  const variationName = item.item_variation_data?.name?.trim();
+  const parentItemId = item.item_variation_data?.item_id;
+  const itemName = parentItemId ? parentItemsById.get(parentItemId)?.item_data?.name?.trim() : undefined;
+  const genericVariation = variationName && /^(regular|standard|default)$/i.test(variationName);
+  const name =
+    itemName && variationName && !genericVariation && itemName.toLowerCase() !== variationName.toLowerCase()
+      ? `${itemName} ${variationName}`
+      : itemName || variationName || item.id || 'Service';
+  return {
+    name,
+    ...(itemName ? { itemName } : {}),
+    ...(variationName ? { variationName } : {}),
+  };
 }
 
 export async function squareFetchConnectionOptions(
@@ -386,6 +432,12 @@ export async function squareFetchConnectionOptions(
     squareFetchAllCatalogItems(freshCredentials.access_token),
   ]);
 
+  const parentItemsById = new Map(
+    allCatalogItems
+      .filter((item) => item.type === 'ITEM' && item.id)
+      .map((item) => [item.id as string, item]),
+  );
+
   const options: SquareConnectionOptions = {
     locations: (locationsResponse.locations ?? []).map((location) => ({
       id: location.id,
@@ -393,17 +445,30 @@ export async function squareFetchConnectionOptions(
       status: location.status,
     })),
     serviceVariations: allCatalogItems
-      .filter((item) => item.type === 'ITEM_VARIATION' && item.id && !item.is_deleted)
-      .map((item) => ({
-        id: item.id as string,
-        name: item.item_variation_data?.name || item.id || 'Service',
-        durationMin:
-          typeof item.item_variation_data?.service_duration === 'number'
-            ? Math.round(item.item_variation_data.service_duration / 60000)
-            : undefined,
-        amount: item.item_variation_data?.price_money?.amount,
-        currency: item.item_variation_data?.price_money?.currency,
-      })),
+      .filter(
+        (item) =>
+          item.type === 'ITEM_VARIATION' &&
+          item.id &&
+          !item.is_deleted &&
+          item.item_variation_data?.available_for_booking === true,
+      )
+      .map((item) => {
+        const nameParts = squareCatalogServiceName(item, parentItemsById);
+        const durationMs = item.item_variation_data?.service_duration;
+        return {
+          id: item.id as string,
+          ...nameParts,
+          ...(typeof item.version === 'number' ? { version: item.version } : {}),
+          ...(typeof durationMs === 'number'
+            ? {
+                durationMs,
+                durationMin: Math.round(durationMs / 60000),
+              }
+            : {}),
+          amount: item.item_variation_data?.price_money?.amount,
+          currency: item.item_variation_data?.price_money?.currency,
+        };
+      }),
   };
 
   return {

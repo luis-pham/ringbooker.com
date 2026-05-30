@@ -1,7 +1,10 @@
+import type { Shop } from '@/src/backend/domain/types';
+
 export interface TestScenario {
   id: string;
   category: 'answer_first' | 'booking_flow' | 'edge_case' | 'tone';
   callerUtterance: string;
+  shopOverride?: Partial<Shop>;
   rules: EvalRule[];
 }
 
@@ -21,7 +24,8 @@ export const hairSalonInboundScenarios: TestScenario[] = [
       {
         description: 'Must include multiple days of the week',
         check: 'llm_judge',
-        prompt: 'Does this response give a full weekly schedule with at least 4 days mentioned? Answer YES or NO only.',
+        prompt:
+          'Does this response give a full weekly schedule starting from Monday or Tuesday, in AM/PM format (e.g. 9 AM, 7 PM), with at least 4 days mentioned? Answer YES or NO only.',
       },
       {
         description: 'Must NOT ask what service caller wants',
@@ -36,7 +40,8 @@ export const hairSalonInboundScenarios: TestScenario[] = [
       {
         description: 'Must NOT ask booking question before answering',
         check: 'llm_judge',
-        prompt: 'Does this response ask about booking BEFORE giving the hours? Answer YES or NO only. YES means FAIL.',
+        prompt:
+          'Before giving the weekly hours, does this response ask for a booking detail like service, appointment, date, or time? Generic follow-up questions after the hours do not count. Answer YES or NO only. YES means FAIL.',
       },
     ],
   },
@@ -173,6 +178,55 @@ export const hairSalonInboundScenarios: TestScenario[] = [
         description: 'Response must be concise',
         check: 'llm_judge',
         prompt: 'Is this response under 30 words? Answer YES or NO only.',
+      },
+    ],
+  },
+  {
+    id: 'square-creates-booking-not-link',
+    category: 'booking_flow',
+    callerUtterance: 'I want to book a haircut Saturday at 10am, my name is Sarah',
+    shopOverride: {
+      selected_integration: 'square_appointments',
+      booking_method: 'app',
+      booking_url: 'https://legacy-booking.example/salon',
+      google_cal_credentials_encrypted: JSON.stringify({
+        provider: 'square_appointments',
+        access_token: 'square-access-token',
+        refresh_token: 'square-refresh-token',
+        merchant_id: 'square-merchant-id',
+        location_id: 'square-location-id',
+        service_variation_id: 'square-service-variation-id',
+      }),
+    },
+    rules: [
+      {
+        description: 'Must attempt create_booking not send link',
+        check: 'llm_judge',
+        prompt:
+          'The shop has Square Appointments connected with full sync. The AI response mentions confirming a booking or says "you are booked" or "all set". Does it sound like a direct booking was made rather than just sending a link? Answer YES or NO only.',
+      },
+      {
+        description: 'Must NOT say "booking link sent"',
+        check: 'not_contains',
+        value: 'booking link',
+      },
+    ],
+  },
+  {
+    id: 'link-only-sends-booking-link',
+    category: 'booking_flow',
+    callerUtterance: 'I want to book a balayage next Friday',
+    shopOverride: {
+      selected_integration: 'fresha',
+      booking_method: 'app',
+      booking_url: 'https://fresha.com/test',
+    },
+    rules: [
+      {
+        description: 'Must send booking link for link-only provider',
+        check: 'llm_judge',
+        prompt:
+          'The shop uses Fresha link-only (no direct booking API). Does the AI response mention sending a booking link or texting a link to the caller? Answer YES or NO only.',
       },
     ],
   },

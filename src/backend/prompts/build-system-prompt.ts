@@ -4,6 +4,7 @@ import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/prod
 import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
 import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
+import { formatHour } from '@/src/backend/utils/time-format';
 import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
@@ -17,6 +18,25 @@ type PromptMode = 'inbound' | 'outbound_reminder' | 'callback';
 const MAX_LINE_CHARS = 260;
 const MANUAL_BOOKING_REQUEST_INSTRUCTION =
   'Silently call validate_appointment_time when time is given. Do not claim availability. Capture service, name, and preferred date/time before noting a request. Use caller ID for phone; ask only if caller ID is missing or caller wants another number. No booking window: accept approved future times.';
+const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LABEL: Record<(typeof DAY_ORDER)[number], string> = {
+  mon: 'Monday',
+  tue: 'Tuesday',
+  wed: 'Wednesday',
+  thu: 'Thursday',
+  fri: 'Friday',
+  sat: 'Saturday',
+  sun: 'Sunday',
+};
+const DAY_SOURCE_KEYS: Record<(typeof DAY_ORDER)[number], string[]> = {
+  mon: ['mon', 'monday'],
+  tue: ['tue', 'tuesday'],
+  wed: ['wed', 'wednesday'],
+  thu: ['thu', 'thursday'],
+  fri: ['fri', 'friday'],
+  sat: ['sat', 'saturday'],
+  sun: ['sun', 'sunday'],
+};
 
 function compactLine(input: string, maxChars = MAX_LINE_CHARS): string {
   const normalized = input
@@ -28,15 +48,16 @@ function compactLine(input: string, maxChars = MAX_LINE_CHARS): string {
 }
 
 function renderHours(shop: Shop): string {
-  const hoursList = Object.entries(shop.hours)
-    .map(([day, value]) => {
-      if ('open' in value && 'close' in value) {
-        return compactLine(`${day}: ${value.open}-${value.close}`);
+  return DAY_ORDER
+    .filter((day) => DAY_SOURCE_KEYS[day].some((key) => shop.hours[key] !== undefined))
+    .map((day) => {
+      const value = DAY_SOURCE_KEYS[day].map((key) => shop.hours[key]).find((entry) => entry !== undefined);
+      if (!value || !('open' in value) || !('close' in value)) {
+        return `${DAY_LABEL[day]}: closed`;
       }
-      return `${day}: closed`;
+      return `${DAY_LABEL[day]}: ${formatHour(value.open)} to ${formatHour(value.close)}`;
     })
     .join(', ');
-  return hoursList;
 }
 
 function renderHandoffPolicy(shop: Shop): string | null {
@@ -162,6 +183,7 @@ function buildProductionBusinessConfig(
   const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
   const providerMeta = getShopCalendarProviderMetadata(shop);
   const timeContext = resolveShopTimeContext(shop, new Date());
+  const hasBookingIntegration = Boolean(shop.selected_integration?.trim() || shop.booking_url?.trim());
   const businessType = shop.vertical
     ? shop.vertical.replace(/_/g, ' ')
     : 'service business';
@@ -190,8 +212,12 @@ function buildProductionBusinessConfig(
       }),
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
+    bookingMethod: shop.booking_method ?? null,
+    selectedIntegration: shop.selected_integration ?? null,
+    vagaroMode: shop.vagaro_mode ?? null,
+    vagaroConnectionStatus: shop.vagaro_connection_status ?? null,
     bookingUrl: shop.booking_url ?? null,
-    bookingRequestInstruction: providerMeta.id === 'manual' ? MANUAL_BOOKING_REQUEST_INSTRUCTION : null,
+    bookingRequestInstruction: providerMeta.id === 'manual' && !hasBookingIntegration ? MANUAL_BOOKING_REQUEST_INSTRUCTION : null,
     welcomeMessage: compactLine(effectiveRuntimeConfig.aiWelcomeMessage, 240),
     customInstructions: renderProductionCustomInstructions({
       voiceStyle: effectiveRuntimeConfig.aiVoice,

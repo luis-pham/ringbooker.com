@@ -93,7 +93,7 @@ export function resolveRuntimeService(
   shop: Shop,
   serviceName: string,
 ):
-  | { ok: true; serviceName: string; durationMin: number }
+  | { ok: true; serviceName: string; durationMin: number; matchedServiceId?: string | null; matchedServiceConfidence?: number | null }
   | { ok: false; reason: 'unknown_service' | 'service_needs_clarification' | 'service_not_bookable'; message: string } {
   const requested = serviceName.trim();
   if (!requested) {
@@ -148,6 +148,8 @@ export function resolveRuntimeService(
       ok: true,
       serviceName: service?.name ?? match.matchedName,
       durationMin: service?.durationMinutes ?? service?.variants?.find((variant) => typeof variant.durationMinutes === 'number')?.durationMinutes ?? 60,
+      matchedServiceId: match.matchedServiceId,
+      matchedServiceConfidence: match.confidence,
     };
   }
 
@@ -175,6 +177,8 @@ export function resolveRuntimeService(
     ok: true,
     serviceName: service.name,
     durationMin: service.duration_min ?? 60,
+    matchedServiceId: null,
+    matchedServiceConfidence: null,
   };
 }
 

@@ -108,9 +108,10 @@ async function callOpenAiChat(input: {
   return content;
 }
 
-function getSystemPrompt(): string {
+function getSystemPrompt(scenario?: TestScenario): string {
+  const shop = scenario?.shopOverride ? { ...testShop, ...scenario.shopOverride } : testShop;
   return buildSystemPrompt({
-    shop: testShop,
+    shop,
     customer: null,
     mode: 'inbound',
     callerPhone: EVAL_CALLER_PHONE,
@@ -210,13 +211,13 @@ async function runScenario(input: {
   apiKey: string;
   model: string;
   judgeModel: string;
-  systemPrompt: string;
   scenario: TestScenario;
 }): Promise<ScenarioResult> {
+  const systemPrompt = getSystemPrompt(input.scenario);
   const aiResponse = await getAIResponse({
     apiKey: input.apiKey,
     model: input.model,
-    systemPrompt: input.systemPrompt,
+    systemPrompt,
     callerUtterance: input.scenario.callerUtterance,
   });
 
@@ -259,7 +260,6 @@ async function runEval(): Promise<void> {
       apiKey,
       model,
       judgeModel,
-      systemPrompt,
       scenario,
     });
     process.stdout.write(result.passed ? 'PASS\n' : 'FAIL\n');

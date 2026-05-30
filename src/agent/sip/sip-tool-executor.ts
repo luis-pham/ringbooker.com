@@ -84,6 +84,7 @@ type AvailabilityCheckRequest = {
   time: string;
   durationMin: number;
   techName?: string;
+  matchedServiceId?: string | null;
   key: string;
 };
 
@@ -157,6 +158,7 @@ function buildAvailabilityRequestFromDraft(ctx: AgentToolContext): AvailabilityC
     date: validation.date,
     time: validation.time,
     durationMin: service.durationMin,
+    matchedServiceId: service.matchedServiceId,
     key,
   };
 }
@@ -198,6 +200,7 @@ function buildAvailabilityRequestFromToolInput(
     time,
     durationMin: service.durationMin,
     techName,
+    matchedServiceId: service.matchedServiceId,
     key: availabilityCacheKey({
       providerId: providerMeta.id,
       service: service.serviceName,
@@ -435,6 +438,7 @@ export async function prePopulateAvailabilityFromDraft(
       durationMin: request.durationMin,
       techName: request.techName,
       timezone: ctx.shop.timezone,
+      matchedServiceId: request.matchedServiceId,
     });
     const parsedResult = availabilityToolResult(result);
     if (!parsedResult) return null;

@@ -193,6 +193,7 @@ import {
   squareFetchConnectionOptions,
   type SquareConnectionCredentials,
 } from '@/src/backend/services/calendar/provider-connections';
+import { syncSquareCatalogToShopServices } from '@/src/backend/services/calendar/square-catalog-sync';
 import {
   encodeVagaroCredentials,
   generateWebhookToken,
@@ -1010,7 +1011,7 @@ const integrationsPreferencesSchema = z.object({
 
 const squareConfigureSchema = z.object({
   locationId: z.string().min(1),
-  serviceVariationId: z.string().min(1),
+  serviceVariationId: z.string().min(1).optional(),
   teamMemberId: z.string().min(1).optional(),
 });
 
@@ -2374,8 +2375,13 @@ function buildSquareConnectionPayload(current: SquareConnectionCredentials | nul
     merchant_id: patch.merchant_id ?? current?.merchant_id,
     location_id: patch.location_id ?? current?.location_id,
     service_variation_id: patch.service_variation_id ?? current?.service_variation_id,
+    service_variation_version: patch.service_variation_version ?? current?.service_variation_version,
     team_member_id: patch.team_member_id ?? current?.team_member_id,
   };
+}
+
+function selectSquareLocationId(locations: Array<{ id: string; status?: string }>): string | undefined {
+  return locations.find((location) => location.status === 'ACTIVE')?.id ?? locations[0]?.id;
 }
 
 function buildVagaroConnectionPayload(current: Partial<VagaroCredentials> | null, patch: Partial<VagaroCredentials>): VagaroCredentials {
@@ -7274,7 +7280,7 @@ export function createBackendApp(deps: {
         const meta = CALENDAR_PROVIDER_CATALOG[id];
         if (id === 'square_appointments') {
           const connected = Boolean(squareCredentials?.access_token && squareCredentials?.refresh_token);
-          const configured = Boolean(squareCredentials?.location_id && squareCredentials?.service_variation_id);
+          const configured = Boolean(squareCredentials?.location_id);
           return {
             id,
             label: meta.label,
@@ -7494,6 +7500,11 @@ export function createBackendApp(deps: {
       vagaro_location_id: verification.locations[0]?.locationId ?? null,
       vagaro_locations: verification.locations,
     });
+    const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
+      booking_method: 'app',
+      selected_integration: 'vagaro',
+    });
+    if (!settingsUpdated) return c.json({ success: false, error: 'shop_not_found' }, 404);
 
     return c.json({
       success: true,
@@ -7760,7 +7771,7 @@ export function createBackendApp(deps: {
     if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     await deps.shopsRepository.updateUserSettings(shop.id, {
-      ...(bookingUrl ? { booking_url: bookingUrl } : {}),
+      booking_url: null,
       booking_method: 'app',
       selected_integration: 'mindbody',
     });
@@ -8245,6 +8256,7 @@ export function createBackendApp(deps: {
           );
         }
         await deps.shopsRepository.updateUserSettings(existingShop.id, {
+          booking_url: null,
           booking_method: 'app',
           selected_integration: 'acuity',
         });
@@ -8283,7 +8295,18 @@ export function createBackendApp(deps: {
         );
       }
       const current = parseSquareConnectionCredentials(existingShop.google_cal_credentials_encrypted);
-      const payload = buildSquareConnectionPayload(current, exchanged);
+      let payload = buildSquareConnectionPayload(current, exchanged);
+      let squareOptions: Awaited<ReturnType<typeof squareFetchConnectionOptions>>['options'] | null = null;
+      try {
+        const optionsResult = await squareFetchConnectionOptions(payload);
+        squareOptions = optionsResult.options;
+        payload = buildSquareConnectionPayload(payload, {
+          ...optionsResult.credentials,
+          location_id: selectSquareLocationId(optionsResult.options.locations) ?? payload.location_id,
+        });
+      } catch (catalogError) {
+        logger.warn({ err: catalogError, provider, shop_id: existingShop.id }, 'square_oauth_catalog_prefetch_failed');
+      }
 
       const updated = await deps.shopsRepository.updateCalendarConnection(existingShop.id, {
         google_cal_id: existingShop.google_cal_id ?? null,
@@ -8300,9 +8323,31 @@ export function createBackendApp(deps: {
         );
       }
       await deps.shopsRepository.updateUserSettings(existingShop.id, {
+        booking_url: null,
         booking_method: 'app',
         selected_integration: 'square_appointments',
       });
+      if (squareOptions) {
+        try {
+          const syncResult = await syncSquareCatalogToShopServices({
+            shopsRepository: deps.shopsRepository,
+            shop: existingShop,
+            serviceVariations: squareOptions.serviceVariations,
+            locationId: payload.location_id,
+          });
+          logger.info(
+            {
+              matched: syncResult.matched,
+              unmatched: syncResult.unmatched,
+              skippedDuplicate: syncResult.skippedDuplicate,
+              shop_id: existingShop.id,
+            },
+            'square_catalog_synced',
+          );
+        } catch (syncError) {
+          logger.warn({ err: syncError, provider, shop_id: existingShop.id }, 'square_catalog_sync_failed');
+        }
+      }
       return c.redirect(
         buildCalendarSettingsRedirect({
           appBaseUrl,

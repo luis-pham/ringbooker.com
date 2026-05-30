@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isWithinBusinessHours, parseBusinessTimeMinutes } from './business-hours';
+import { isWithinBusinessHours, parseBusinessTimeMinutes, resolveShopTimeContext } from './business-hours';
 import type { BusinessHours } from '@/src/backend/domain/types';
 
 const TZ = 'America/New_York'; // UTC-4 during EDT (summer)
@@ -80,4 +80,10 @@ test('parseBusinessTimeMinutes: falls back on malformed input', () => {
   assert.equal(parseBusinessTimeMinutes('9:30', '08:00'), 8 * 60);
   assert.equal(parseBusinessTimeMinutes('bad', '08:00'), 8 * 60);
   assert.equal(parseBusinessTimeMinutes('25:00', '08:00'), 8 * 60);
+});
+
+test('resolveShopTimeContext: formats today hours in natural AM/PM wording', () => {
+  const context = resolveShopTimeContext(shop({ monday: { open: '09:00', close: '17:30' } }), MON_14_00_UTC);
+
+  assert.equal(context.todayHours, '9 AM to 5:30 PM');
 });

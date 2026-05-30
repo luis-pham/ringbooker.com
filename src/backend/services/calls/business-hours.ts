@@ -1,5 +1,6 @@
 import type { Shop } from '@/src/backend/domain/types';
 import { normalizeDayKey } from '@/src/backend/services/calls/day-key-utils';
+import { formatHour } from '@/src/backend/utils/time-format';
 
 export function parseBusinessTimeMinutes(value: string | null | undefined, fallback: string): number {
   const match = /^(\d{2}):(\d{2})$/.exec(value ?? fallback);
@@ -48,7 +49,7 @@ export function resolveShopTimeContext(
   }).format(ref);
   const normalizedHours = normalizeBusinessHours(shop.hours);
   const entry = normalizedHours[day];
-  const todayHours = entry ? ('closed' in entry ? 'Closed' : `${formatBusinessTime(entry.open)} - ${formatBusinessTime(entry.close)}`) : null;
+  const todayHours = entry ? ('closed' in entry ? 'Closed' : `${formatHour(entry.open)} to ${formatHour(entry.close)}`) : null;
 
   return {
     currentLocalTime,
@@ -63,13 +64,4 @@ function normalizeBusinessHours(shopHours: Pick<Shop, 'hours'>['hours'] | null |
     normalized[normalizeDayKey(key)] = value;
   }
   return normalized;
-}
-
-function formatBusinessTime(value: string): string {
-  const minutes = parseBusinessTimeMinutes(value, '09:00');
-  const hours24 = Math.floor(minutes / 60);
-  const minutesPart = minutes % 60;
-  const period = hours24 >= 12 ? 'PM' : 'AM';
-  const hours12 = hours24 % 12 || 12;
-  return `${hours12}:${String(minutesPart).padStart(2, '0')} ${period}`;
 }

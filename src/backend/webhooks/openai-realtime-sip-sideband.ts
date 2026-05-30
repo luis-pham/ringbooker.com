@@ -151,6 +151,8 @@ const BOOKING_LINK_FINAL_RESPONSE_INSTRUCTION =
   "The booking link was sent successfully.\nDeliver ONE final message combining confirmation and goodbye. Example:\n'Perfect — booking link sent to your phone. The team will confirm shortly. Thanks for calling, have a great day!'\nThen call end_call immediately.\nDo not say 'One moment' or any separate filler.\nDo not send another message after this one.";
 const SIDE_BAND_QUEUE_LIMIT = 3;
 const TRANSCRIPTION_TIMEOUT_MS = 2_000;
+const END_CALL_AUDIO_STOP_FALLBACK_MS = 5_000;
+const END_CALL_AUDIO_STOP_HARD_FALLBACK_MS = 30_000;
 
 type SidebandTurnState =
   | 'idle'
@@ -294,6 +296,7 @@ export function startOpenAiRealtimeSipSideband(
   let lastToolResultSentAtMs: number | null = null;
   let lastAudioResponseStartAtMs: number | null = null;
   let lastOutputAudioBufferStartedAtMs: number | null = null;
+  let outputAudioBufferActive = false;
   let waitingForAudioResponseStart = false;
   let sidebandTurnState: SidebandTurnState = 'idle';
   let sidebandTurnMode: SidebandTurnMode = null;
@@ -316,14 +319,64 @@ export function startOpenAiRealtimeSipSideband(
   let hangupInitiated = false;
   /** Fallback: fire onEndCall after this many ms if output_audio_buffer.stopped never arrives. */
   let pendingHangupFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingHangupFallbackStartedAtMs: number | null = null;
 
   function fireOnEndCall(): void {
     if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
+    pendingHangupFallbackStartedAtMs = null;
     pendingHangupAfterAudio = false;
     pendingAutoEndAfterFinalAudio = false;
     if (hangupInitiated) return;
     hangupInitiated = true;
     params.onEndCall?.();
+  }
+
+  function schedulePendingHangupFallback(delayMs = END_CALL_AUDIO_STOP_FALLBACK_MS): void {
+    if (pendingHangupFallbackTimer) {
+      clearTimeout(pendingHangupFallbackTimer);
+      pendingHangupFallbackTimer = null;
+    }
+    const startedAt = pendingHangupFallbackStartedAtMs ?? Date.now();
+    pendingHangupFallbackStartedAtMs = startedAt;
+    pendingHangupFallbackTimer = setTimeout(() => {
+      pendingHangupFallbackTimer = null;
+      if (!pendingHangupAfterAudio && !pendingAutoEndAfterFinalAudio) {
+        pendingHangupFallbackStartedAtMs = null;
+        return;
+      }
+
+      const elapsedMs = Date.now() - startedAt;
+      if (outputAudioBufferActive && elapsedMs < END_CALL_AUDIO_STOP_HARD_FALLBACK_MS) {
+        const nextDelayMs = Math.min(
+          END_CALL_AUDIO_STOP_FALLBACK_MS,
+          END_CALL_AUDIO_STOP_HARD_FALLBACK_MS - elapsedMs,
+        );
+        logger.warn(
+          {
+            callId: params.callId,
+            elapsedMs,
+            nextDelayMs,
+            hardFallbackMs: END_CALL_AUDIO_STOP_HARD_FALLBACK_MS,
+          },
+          'openai_sip_end_call_audio_still_active_fallback_deferred',
+        );
+        schedulePendingHangupFallback(nextDelayMs);
+        return;
+      }
+
+      if (outputAudioBufferActive) {
+        logger.warn(
+          {
+            callId: params.callId,
+            elapsedMs,
+            hardFallbackMs: END_CALL_AUDIO_STOP_HARD_FALLBACK_MS,
+          },
+          'openai_sip_end_call_audio_active_hard_fallback',
+        );
+      }
+      fireOnEndCall();
+    }, delayMs);
+    pendingHangupFallbackTimer.unref?.();
   }
 
   const needsDemoVadResumeAfterWelcome =
@@ -1447,6 +1500,13 @@ export function startOpenAiRealtimeSipSideband(
       logRealtimeTiming('response_done', evt);
     }
 
+    if (evt.type === 'output_audio_buffer.started') {
+      outputAudioBufferActive = true;
+    }
+    if (evt.type === 'output_audio_buffer.stopped') {
+      outputAudioBufferActive = false;
+    }
+
     if (
       needsDemoVadResumeAfterWelcome &&
       (evt.type === 'response.done' || evt.type === 'output_audio_buffer.stopped')
@@ -1689,7 +1749,7 @@ export function startOpenAiRealtimeSipSideband(
         if (params.onEndCall) {
           pendingAutoEndAfterFinalAudio = false;
           pendingHangupAfterAudio = true;
-          pendingHangupFallbackTimer = setTimeout(fireOnEndCall, 5_000);
+          schedulePendingHangupFallback();
         }
         return;
       }
@@ -1749,8 +1809,9 @@ export function startOpenAiRealtimeSipSideband(
         pendingAutoEndAfterFinalAudio = false;
         pendingHangupAfterAudio = true;
         // Fallback: if output_audio_buffer.stopped never arrives (e.g., SIP path doesn't emit it),
-        // fire onEndCall after 5 s so the call isn't left open indefinitely.
-        pendingHangupFallbackTimer = setTimeout(fireOnEndCall, 5_000);
+        // fire onEndCall after a short delay only when no audio is active. If the final
+        // goodbye is still playing, wait for stopped or a longer hard cap.
+        schedulePendingHangupFallback();
       }
       releaseTurnState({ processQueue: false, clearQueue: true });
       return;

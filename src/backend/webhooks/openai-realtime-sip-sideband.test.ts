@@ -1081,6 +1081,10 @@ function makeAudioStoppedEvent() {
   return JSON.stringify({ type: 'output_audio_buffer.stopped' });
 }
 
+function makeAudioStartedEvent() {
+  return JSON.stringify({ type: 'output_audio_buffer.started' });
+}
+
 // ---------------------------------------------------------------------------
 // Test 5: onEndCall fires after end_call tool + output_audio_buffer.stopped
 // ---------------------------------------------------------------------------
@@ -1150,6 +1154,46 @@ test('onEndCall fires via 5s fallback when output_audio_buffer.stopped never arr
   t.mock.timers.tick(5_001);
 
   assert.equal(endCallFired, true, 'onEndCall must fire after 5s fallback timer');
+
+  srv.close(1000);
+  t.mock.timers.reset();
+});
+
+test('end_call fallback waits while final audio buffer is still active', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+
+  const serverSocket = nextServerSocket();
+
+  let endCallFired = false;
+  startOpenAiRealtimeSipSideband(
+    {
+      variant: 'shop',
+      callId: 'end-call-active-audio-test',
+      apiKey: 'sk-test',
+      executeBusinessTool: TOOL_IMPL,
+      onEndCall: () => { endCallFired = true; },
+      initialResponseBridgeGate: {
+        parentCallControlId: 'cc_parent_active_audio',
+        openaiLegCallControlId: 'cc_openai_active_audio',
+      },
+    },
+    { wsUrlOverride: sidebandUrl('end-call-active-audio-test'), greetingDelayMs: 0 },
+  );
+
+  const srv = await serverSocket;
+  await flushIO(30);
+
+  srv.send(makeAudioStartedEvent());
+  srv.send(makeEndCallEvent('tool-call-active-audio'));
+  await flushIO(50);
+
+  t.mock.timers.tick(5_001);
+  assert.equal(endCallFired, false, '5s fallback must not hang up while output audio is active');
+
+  srv.send(makeAudioStoppedEvent());
+  await flushIO(50);
+
+  assert.equal(endCallFired, true, 'onEndCall should fire once final audio stops');
 
   srv.close(1000);
   t.mock.timers.reset();

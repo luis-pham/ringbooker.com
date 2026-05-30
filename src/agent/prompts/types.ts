@@ -48,6 +48,10 @@ export type RuntimeBusinessConfig = {
   providers?: string[];
   promotions?: string | null;
   cancellationPolicy?: string | null;
+  bookingMethod?: string | null;
+  selectedIntegration?: string | null;
+  vagaroMode?: string | null;
+  vagaroConnectionStatus?: string | null;
   bookingUrl?: string | null;
   bookingRequestInstruction?: string | null;
   welcomeMessage?: string | null;

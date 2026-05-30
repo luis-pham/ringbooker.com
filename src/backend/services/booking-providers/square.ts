@@ -1,15 +1,18 @@
 import { DateTime } from 'luxon';
 
 import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
+import { matchServiceFromCallerText } from '@/src/backend/domain/service-catalog';
 import { logger } from '@/src/backend/observability/logger';
 import type { BookingProvider } from '@/src/backend/services/booking-providers/types';
+import { decrypt } from '@/src/backend/services/crypto/encrypt';
 
 type SquareCredentials = {
   accessToken: string;
   refreshToken: string;
   expiresAt?: string;
   locationId: string;
-  serviceVariationId: string;
+  serviceVariationId?: string;
+  serviceVariationVersion?: number;
   teamMemberId?: string;
 };
 
@@ -97,9 +100,43 @@ type SquareTeamMembersResponse = {
   errors?: SquareErrorItem[];
 };
 
+type SquareCatalogObject = {
+  id?: string;
+  type?: string;
+  version?: number;
+  is_deleted?: boolean;
+  item_data?: {
+    name?: string;
+  };
+  item_variation_data?: {
+    name?: string;
+    item_id?: string;
+    available_for_booking?: boolean;
+    service_duration?: number;
+    price_money?: { amount?: number; currency?: string };
+  };
+};
+
+type SquareCatalogSearchResponse = {
+  objects?: SquareCatalogObject[];
+  related_objects?: SquareCatalogObject[];
+  cursor?: string;
+  errors?: SquareErrorItem[];
+};
+
+type SquareResolvedVariation = {
+  variationId: string;
+  version?: number;
+};
+
 function parseSquareCredentials(raw: string | null | undefined): Partial<SquareCredentials> {
   if (!raw) return {};
   const candidates = [raw];
+  try {
+    candidates.push(decrypt(raw));
+  } catch {
+    // ignore encrypted credentials if the key is unavailable in this process
+  }
   try {
     candidates.push(Buffer.from(raw, 'base64').toString('utf-8'));
   } catch {
@@ -142,6 +179,12 @@ function parseSquareCredentials(raw: string | null | undefined): Partial<SquareC
             : typeof parsed.serviceVariationId === 'string'
               ? parsed.serviceVariationId
               : undefined,
+        serviceVariationVersion:
+          typeof parsed.service_variation_version === 'number'
+            ? parsed.service_variation_version
+            : typeof parsed.serviceVariationVersion === 'number'
+              ? parsed.serviceVariationVersion
+              : undefined,
         teamMemberId:
           typeof parsed.team_member_id === 'string'
             ? parsed.team_member_id
@@ -162,8 +205,7 @@ function resolveSquareCredentials(shop: Shop): SquareCredentials {
   if (
     !fromShop.accessToken ||
     !fromShop.refreshToken ||
-    !fromShop.locationId ||
-    !fromShop.serviceVariationId
+    !fromShop.locationId
   ) {
     throw new Error('square_calendar_missing_credentials');
   }
@@ -173,6 +215,7 @@ function resolveSquareCredentials(shop: Shop): SquareCredentials {
     expiresAt: fromShop.expiresAt,
     locationId: fromShop.locationId,
     serviceVariationId: fromShop.serviceVariationId,
+    serviceVariationVersion: fromShop.serviceVariationVersion,
     teamMemberId: fromShop.teamMemberId,
   };
 }
@@ -215,6 +258,33 @@ function normalizeTeamMemberName(name: string): string {
   return name.trim().toLowerCase();
 }
 
+function isSquareExternalProvider(provider?: string | null): boolean {
+  return provider === 'square' || provider === 'square_appointments';
+}
+
+function coercePositiveVersion(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.floor(value);
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.floor(parsed);
+  }
+  return undefined;
+}
+
+function squareCatalogServiceName(
+  item: SquareCatalogObject,
+  parentItemsById: Map<string, SquareCatalogObject>,
+): string {
+  const variationName = item.item_variation_data?.name?.trim();
+  const parentItemId = item.item_variation_data?.item_id;
+  const itemName = parentItemId ? parentItemsById.get(parentItemId)?.item_data?.name?.trim() : undefined;
+  const genericVariation = variationName && /^(regular|standard|default)$/i.test(variationName);
+  if (itemName && variationName && !genericVariation && itemName.toLowerCase() !== variationName.toLowerCase()) {
+    return `${itemName} ${variationName}`;
+  }
+  return itemName || variationName || item.id || 'Service';
+}
+
 // H1: encode refreshed credentials so the caller can persist them to the DB
 function encodeRefreshedCredentials(c: SquareCredentials): string {
   return Buffer.from(
@@ -223,6 +293,10 @@ function encodeRefreshedCredentials(c: SquareCredentials): string {
       access_token: c.accessToken,
       refresh_token: c.refreshToken,
       expires_at: c.expiresAt,
+      location_id: c.locationId,
+      service_variation_id: c.serviceVariationId,
+      service_variation_version: c.serviceVariationVersion,
+      team_member_id: c.teamMemberId,
     }),
   ).toString('base64');
 }
@@ -422,6 +496,136 @@ export class SquareAppointmentsProvider implements BookingProvider {
     throw new Error(`square_customer_create_failed:${extractSquareError(create.errors)}`);
   }
 
+  private resolveMappedServiceVariation(matchedServiceId?: string | null): SquareResolvedVariation | null {
+    if (!matchedServiceId) return null;
+    const service = this.shop.service_catalog?.services.find((item) => item.id === matchedServiceId);
+    if (!service?.externalServiceId || !isSquareExternalProvider(service.externalProvider)) return null;
+
+    return {
+      variationId: service.externalServiceId,
+      version: coercePositiveVersion(
+        service.externalMetadata?.variation_version ??
+          service.externalMetadata?.service_variation_version ??
+          service.externalMetadata?.version,
+      ),
+    };
+  }
+
+  private async fetchBookableServiceVariations(): Promise<Array<SquareResolvedVariation & { name: string }>> {
+    const items: SquareCatalogObject[] = [];
+    let cursor: string | undefined;
+    const maxPages = 20;
+
+    for (let page = 0; page < maxPages; page++) {
+      const response = await this.squareJsonRequest<SquareCatalogSearchResponse>({
+        path: '/v2/catalog/search',
+        method: 'POST',
+        body: {
+          include_related_objects: true,
+          object_types: ['ITEM_VARIATION'],
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        },
+      });
+
+      if (response.errors?.length) {
+        throw new Error(`square_catalog_search_failed:${extractSquareError(response.errors)}`);
+      }
+
+      items.push(...(response.objects ?? []), ...(response.related_objects ?? []));
+      cursor = response.cursor;
+      if (!cursor) break;
+    }
+
+    const parentItemsById = new Map(
+      items
+        .filter((item) => item.type === 'ITEM' && item.id)
+        .map((item) => [item.id as string, item]),
+    );
+
+    return items
+      .filter(
+        (item) =>
+          item.type === 'ITEM_VARIATION' &&
+          item.id &&
+          !item.is_deleted &&
+          item.item_variation_data?.available_for_booking === true,
+      )
+      .map((item) => ({
+        variationId: item.id as string,
+        version: coercePositiveVersion(item.version),
+        name: squareCatalogServiceName(item, parentItemsById),
+      }));
+  }
+
+  private async fetchAndMatchVariation(
+    matchedServiceId?: string | null,
+    serviceName?: string,
+  ): Promise<SquareResolvedVariation | null> {
+    if (!matchedServiceId || !this.shop.service_catalog?.services.length) return null;
+
+    const variations = await this.fetchBookableServiceVariations();
+    for (const variation of variations) {
+      const match = matchServiceFromCallerText({
+        shopServiceCatalog: this.shop.service_catalog,
+        callerText: variation.name,
+        vertical: this.shop.vertical ?? null,
+      });
+      if (match.matchedServiceId === matchedServiceId && match.confidence >= 0.72) {
+        return {
+          variationId: variation.variationId,
+          version: variation.version,
+        };
+      }
+    }
+
+    if (serviceName) {
+      const direct = variations.find((variation) => variation.name.trim().toLowerCase() === serviceName.trim().toLowerCase());
+      if (direct) {
+        return {
+          variationId: direct.variationId,
+          version: direct.version,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private async resolveSquareVariationId(
+    matchedServiceId?: string | null,
+    serviceName?: string,
+  ): Promise<SquareResolvedVariation | null> {
+    const mapped = this.resolveMappedServiceVariation(matchedServiceId);
+    if (mapped) return mapped;
+
+    if (this.credentials.serviceVariationId) {
+      return {
+        variationId: this.credentials.serviceVariationId,
+        version: this.credentials.serviceVariationVersion,
+      };
+    }
+
+    return this.fetchAndMatchVariation(matchedServiceId, serviceName);
+  }
+
+  private async requireSquareVariationId(
+    matchedServiceId?: string | null,
+    serviceName?: string,
+  ): Promise<SquareResolvedVariation> {
+    const resolved = await this.resolveSquareVariationId(matchedServiceId, serviceName);
+    if (resolved) return resolved;
+
+    logger.warn(
+      {
+        matchedServiceId: matchedServiceId ?? null,
+        shopId: this.shop.id,
+      },
+      'square_variation_missing',
+    );
+    throw new Error('square_service_variation_not_found');
+  }
+
   async getTeamMembers(): Promise<SquareTeamMember[]> {
     const now = Date.now();
     if (this.teamMembersCache && now - this.teamMembersCache.fetchedAtMs < 5 * 60 * 1000) {
@@ -500,6 +704,8 @@ export class SquareAppointmentsProvider implements BookingProvider {
   }
 
   async prefetchAvailability(params: { date: string; timezone: string }): Promise<void> {
+    if (!this.credentials.serviceVariationId) return;
+
     const window = this.buildAvailabilityWindow(params.date, params.timezone);
     const resolvedTeamMemberId = this.credentials.teamMemberId;
     await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
@@ -538,6 +744,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
     techName?: string;
     teamMemberId?: string;
     timezone: string;
+    matchedServiceId?: string | null;
   }): Promise<{ available: boolean; suggestions?: TimeSlot[] }> {
     const requestedStart = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
     if (!requestedStart.isValid) {
@@ -546,6 +753,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
 
     const window = this.buildAvailabilityWindow(params.date, params.timezone);
     const resolvedTeamMemberId = params.teamMemberId ?? this.credentials.teamMemberId;
+    const variation = await this.requireSquareVariationId(params.matchedServiceId);
     const response = await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
       path: '/v2/bookings/availability/search',
       method: 'POST',
@@ -559,7 +767,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
             location_id: this.credentials.locationId,
             segment_filters: [
               {
-                service_variation_id: this.credentials.serviceVariationId,
+                service_variation_id: variation.variationId,
                 ...(resolvedTeamMemberId
                   ? {
                       team_member_id_filter: {
@@ -604,6 +812,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
   }
 
   async createBooking(input: BookingInput): Promise<BookingResult> {
+    const variation = await this.requireSquareVariationId(input.matchedServiceId, input.service);
     // C2: pass idempotencyKey so customer creation is idempotency-safe
     const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName, input.idempotencyKey);
     const resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
@@ -620,7 +829,8 @@ export class SquareAppointmentsProvider implements BookingProvider {
           appointment_segments: [
             {
               duration_minutes: input.durationMin,
-              service_variation_id: this.credentials.serviceVariationId,
+              service_variation_id: variation.variationId,
+              ...(variation.version ? { service_variation_version: variation.version } : {}),
               ...(resolvedTeamMemberId ? { team_member_id: resolvedTeamMemberId } : {}),
             },
           ],

@@ -345,6 +345,8 @@ test('uses canonical service from service catalog when creating booking', async 
   assert.equal('success' in result && result.success, true);
   assert.equal(harness.createdInputs[0]?.service, 'Balayage Color');
   assert.equal(harness.createdInputs[0]?.durationMin, 120);
+  assert.equal(harness.createdInputs[0]?.matchedServiceId, 'svc-balayage');
+  assert.equal(harness.createdInputs[0]?.matchedServiceConfidence, 0.96);
 });
 
 test('rejects unknown service before provider call', async () => {

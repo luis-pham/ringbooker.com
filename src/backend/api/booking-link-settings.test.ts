@@ -10,6 +10,7 @@ import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repos
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
+import { parseMindbodyCredentials } from '@/src/backend/services/booking-providers/mindbody';
 import { parseAcuityCredentials } from '@/src/backend/services/booking-providers/acuity';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
@@ -255,8 +256,10 @@ test('mindbody connect stores API credentials and app selection', async () => {
   const shop = await shopsRepository.findById('demo-shop');
   assert.equal(shop?.booking_method, 'app');
   assert.equal(shop?.selected_integration, 'mindbody');
-  assert.equal(shop?.booking_url, 'https://clients.mindbodyonline.com/test');
+  assert.equal(shop?.booking_url, null);
   assert.match(shop?.integration_credentials_encrypted ?? '', /mindbody/);
+  const stored = parseMindbodyCredentials(shop?.integration_credentials_encrypted);
+  assert.equal(stored?.bookingUrl, 'https://clients.mindbodyonline.com/test');
 });
 
 test('mindbody disconnect clears provider credentials', async () => {

@@ -63,6 +63,7 @@ export async function checkAvailabilityTool(
       durationMin: service.durationMin,
       techName: parsed.data.techName,
       timezone: ctx.shop.timezone,
+      matchedServiceId: service.matchedServiceId,
     });
   } catch {
     return toToolError('I am having trouble checking the schedule right now. Let me have the user follow up.', {

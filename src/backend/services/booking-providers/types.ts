@@ -10,6 +10,7 @@ export interface BookingProvider {
     techName?: string;
     teamMemberId?: string;
     timezone: string;
+    matchedServiceId?: string | null;
   }): Promise<{ available: boolean; suggestions?: TimeSlot[] }>;
   getTeamMembers?(): Promise<Array<{ id: string; displayName: string; givenName?: string; familyName?: string }>>;
   findTeamMemberByName?(name: string): Promise<string | null>;

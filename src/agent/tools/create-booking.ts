@@ -119,6 +119,7 @@ export async function createBookingTool(
             techName: parsed.data.techName,
             teamMemberId: foundTeamMemberId,
             timezone: ctx.shop.timezone,
+            matchedServiceId: service.matchedServiceId,
           });
 
           if (!availability.available) {
@@ -162,6 +163,8 @@ export async function createBookingTool(
         durationMin,
         source: 'inbound_call',
         notes: parsed.data.notes,
+        matchedServiceId: service.matchedServiceId,
+        matchedServiceConfidence: service.matchedServiceConfidence,
         idempotencyKey,
       });
     } catch (error) {
