@@ -11,7 +11,7 @@ import { withLogContext } from '@/src/backend/observability/logger';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { resolveProductionRealtimeTranscriptionDefaultLanguage } from '@/src/backend/prompts/production-language-policy';
 
-const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 18000;
+const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 24000;
 const DEFAULT_MAX_TOOL_RESPONSE_CHARS = 3000;
 const DEFAULT_OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime';
 

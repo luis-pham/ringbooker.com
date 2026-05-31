@@ -34,7 +34,7 @@ import type { ToolError } from '@/src/backend/domain/types';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 18000;
+const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 24000;
 const DEFAULT_MAX_TOOL_RESPONSE_CHARS = 3000;
 
 // ─── Utility: system prompt ─────────────────────────────────────────────────

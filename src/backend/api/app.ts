@@ -83,6 +83,8 @@ import type {
   OutboundMessageRecord,
   OutboundMessagesRepository,
   ProviderEventsRepository,
+  ShopStaffRepository,
+  ShopStaffServicesRepository,
   ShopsRepository,
   AuthUsersRepository,
   ContactRequestsRepository,
@@ -193,7 +195,8 @@ import {
   squareFetchConnectionOptions,
   type SquareConnectionCredentials,
 } from '@/src/backend/services/calendar/provider-connections';
-import { syncSquareCatalogToShopServices } from '@/src/backend/services/calendar/square-catalog-sync';
+import { runPlatformSync, triggerPlatformSync } from '@/src/backend/services/platform-sync';
+import type { PlatformSyncDeps } from '@/src/backend/services/platform-sync';
 import { resolveBookingProviderReadinessForId } from '@/src/backend/services/calendar/provider-readiness';
 import {
   encodeVagaroCredentials,
@@ -2845,6 +2848,8 @@ export function createBackendApp(deps: {
 	  outboundMessagesRepository?: OutboundMessagesRepository;
 	  handoffSessionsRepository?: HandoffSessionsRepository;
   voiceCallLegsRepository?: VoiceCallLegsRepository;
+  shopStaffRepository?: ShopStaffRepository;
+  shopStaffServicesRepository?: ShopStaffServicesRepository;
   authUsersRepository?: AuthUsersRepository;
   billingProvider?: BillingProviderAdapter;
   basePath?: string;
@@ -2863,6 +2868,16 @@ export function createBackendApp(deps: {
 }) {
   const app = new Hono();
   const path = (route: string) => `${deps.basePath ?? ''}${route}`;
+  const platformSyncLastRunByShop = new Map<string, number>();
+  const getPlatformSyncDeps = (): PlatformSyncDeps | null => {
+    if (!deps.shopsRepository) return null;
+    return {
+      shopsRepository: deps.shopsRepository,
+      shopStaffRepository: deps.shopStaffRepository,
+      shopStaffServicesRepository: deps.shopStaffServicesRepository,
+      logger,
+    };
+  };
   const enqueueLifecycleEmail = async (params: {
     shopId: string;
     kind: string;
@@ -3285,6 +3300,7 @@ export function createBackendApp(deps: {
         billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         shopRoutingRulesRepository: deps.shopRoutingRulesRepository,
+        shopStaffRepository: deps.shopStaffRepository,
         jobsRepository: deps.jobsRepository,
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
@@ -7648,6 +7664,10 @@ export function createBackendApp(deps: {
       selected_integration: 'vagaro',
     });
     if (!settingsUpdated) return c.json({ success: false, error: 'shop_not_found' }, 404);
+    const syncDeps = getPlatformSyncDeps();
+    if (syncDeps) {
+      void triggerPlatformSync(settingsUpdated, syncDeps);
+    }
 
     return c.json({
       success: true,
@@ -7913,11 +7933,16 @@ export function createBackendApp(deps: {
     });
     if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
-    await deps.shopsRepository.updateUserSettings(shop.id, {
+    const connectedShop = await deps.shopsRepository.updateUserSettings(shop.id, {
       booking_url: null,
       booking_method: 'app',
       selected_integration: 'mindbody',
     });
+    if (!connectedShop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const syncDeps = getPlatformSyncDeps();
+    if (syncDeps) {
+      void triggerPlatformSync(connectedShop, syncDeps);
+    }
 
     logger.info(
       {
@@ -8398,11 +8423,17 @@ export function createBackendApp(deps: {
             }),
           );
         }
-        await deps.shopsRepository.updateUserSettings(existingShop.id, {
+        const connectedShop = await deps.shopsRepository.updateUserSettings(existingShop.id, {
           booking_url: null,
           booking_method: 'app',
           selected_integration: 'acuity',
         });
+        if (connectedShop) {
+          const syncDeps = getPlatformSyncDeps();
+          if (syncDeps) {
+            void triggerPlatformSync(connectedShop, syncDeps);
+          }
+        }
         return c.redirect(
           buildCalendarSettingsRedirect({
             appBaseUrl,
@@ -8465,30 +8496,15 @@ export function createBackendApp(deps: {
           }),
         );
       }
-      await deps.shopsRepository.updateUserSettings(existingShop.id, {
+      const connectedShop = await deps.shopsRepository.updateUserSettings(existingShop.id, {
         booking_url: null,
         booking_method: 'app',
         selected_integration: 'square_appointments',
       });
-      if (squareOptions) {
-        try {
-          const syncResult = await syncSquareCatalogToShopServices({
-            shopsRepository: deps.shopsRepository,
-            shop: existingShop,
-            serviceVariations: squareOptions.serviceVariations,
-            locationId: payload.location_id,
-          });
-          logger.info(
-            {
-              matched: syncResult.matched,
-              unmatched: syncResult.unmatched,
-              skippedDuplicate: syncResult.skippedDuplicate,
-              shop_id: existingShop.id,
-            },
-            'square_catalog_synced',
-          );
-        } catch (syncError) {
-          logger.warn({ err: syncError, provider, shop_id: existingShop.id }, 'square_catalog_sync_failed');
+      if (connectedShop) {
+        const syncDeps = getPlatformSyncDeps();
+        if (syncDeps) {
+          void triggerPlatformSync(connectedShop, syncDeps);
         }
       }
       return c.redirect(
@@ -8511,7 +8527,7 @@ export function createBackendApp(deps: {
     }
   });
 
-  app.get(path('/user/calendar/providers/:provider/options'), async (c) => {
+	  app.get(path('/user/calendar/providers/:provider/options'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_options');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
@@ -8677,6 +8693,47 @@ export function createBackendApp(deps: {
       logger.error({ err: error, provider }, 'calendar_provider_options_failed');
       return c.json({ ok: false, error: 'provider_options_failed' }, 502);
     }
+  });
+
+  app.post(path('/user/platform-sync/trigger'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_platform_sync_trigger');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ success: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ success: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+      return planFeatureLockedJson(c, 'third_party_integrations');
+    }
+
+    const now = Date.now();
+    const lastSync = platformSyncLastRunByShop.get(shop.id);
+    const minIntervalMs = 5 * 60 * 1000;
+    if (lastSync && now - lastSync < minIntervalMs) {
+      return c.json(
+        {
+          success: false,
+          error: 'rate_limited',
+          retryAfterMs: minIntervalMs - (now - lastSync),
+        },
+        429,
+      );
+    }
+
+    const syncDeps = getPlatformSyncDeps();
+    if (!syncDeps) return c.json({ success: false, error: 'sync_dependencies_unavailable' }, 500);
+
+    const result = await runPlatformSync(shop, syncDeps);
+    if (!result) return c.json({ success: false, error: 'no_sync_adapter' }, 400);
+
+    platformSyncLastRunByShop.set(shop.id, now);
+    return c.json({ success: true, result });
   });
 
   app.post(path('/user/calendar/providers/:provider/configure'), async (c) => {

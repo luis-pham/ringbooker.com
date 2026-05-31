@@ -1,6 +1,6 @@
 import { RUNTIME_PROMPT_TEMPLATES } from './generated-prompt-packs';
 
-const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 18000;
+const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 24000;
 
 export type RealtimePolicyKind = 'default' | 'native_openai';
 

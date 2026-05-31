@@ -62,6 +62,7 @@ type SquareCatalogObject = {
     service_duration?: number;
     pricing_type?: string;
     price_money?: { amount?: number; currency?: string };
+    team_member_ids?: string[];
   };
 };
 
@@ -77,6 +78,7 @@ export type SquareConnectionOptions = {
     durationMin?: number;
     amount?: number;
     currency?: string;
+    teamMemberIds?: string[];
   }>;
 };
 
@@ -467,6 +469,7 @@ export async function squareFetchConnectionOptions(
             : {}),
           amount: item.item_variation_data?.price_money?.amount,
           currency: item.item_variation_data?.price_money?.currency,
+          teamMemberIds: item.item_variation_data?.team_member_ids?.filter((id): id is string => typeof id === 'string' && id.trim().length > 0),
         };
       }),
   };

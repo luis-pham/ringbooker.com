@@ -1,7 +1,11 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-import { type VoicePromptVertical, openAiRealtimeVoiceForVertical } from '@/src/agent/prompts';
+import {
+  VOICE_PROMPT_COMPACTED_MARKER,
+  type VoicePromptVertical,
+  openAiRealtimeVoiceForVertical,
+} from '@/src/agent/prompts';
 import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definitions';
 import {
   createSipAgentToolContext,
@@ -49,6 +53,7 @@ import type {
   ProviderEventsRepository,
   ShopAccessStatesRepository,
   ShopActiveCallSessionsRepository,
+  ShopStaffRepository,
   ShopRoutingRulesRepository,
   ShopsRepository,
   SipDemoSessionEnrichment,
@@ -497,6 +502,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     shopRoutingRulesRepository?: ShopRoutingRulesRepository;
+    shopStaffRepository?: ShopStaffRepository;
     jobsRepository?: JobsRepository;
     bookingsRepository?: BookingsRepository;
     callbacksRepository?: CallbacksRepository;
@@ -939,6 +945,12 @@ export async function handleOpenAiRealtimeSipWebhook(
           return [];
       })
       : [];
+    const shopStaff = deps.shopStaffRepository
+      ? await deps.shopStaffRepository.findByShopId(route.shop.id).catch((error) => {
+          logger.warn({ err: error, shopId: route.shop.id }, 'openai_sip_staff_lookup_failed');
+          return undefined;
+        })
+      : undefined;
     try {
       instructions = buildSystemPrompt({
         shop: route.shop,
@@ -947,6 +959,7 @@ export async function handleOpenAiRealtimeSipWebhook(
         vertical: demoVertical,
         routingRules,
         callerPhone: callerPhoneForPrompt,
+        shopStaff,
       });
     } catch (err) {
       instructions = buildFallbackProductionSipPrompt({
@@ -963,6 +976,7 @@ export async function handleOpenAiRealtimeSipWebhook(
       });
     }
   }
+  const isPromptCompacted = instructions.includes(VOICE_PROMPT_COMPACTED_MARKER.trim());
   logger.info(
     {
       callId,
@@ -970,9 +984,20 @@ export async function handleOpenAiRealtimeSipWebhook(
       shopId: route.kind === 'shop' ? route.shop.id : null,
       chars: instructions.length,
       estimatedTokens: Math.round(instructions.length / 4),
+      compacted: isPromptCompacted,
     },
     'prompt_size',
   );
+  if (isPromptCompacted) {
+    logger.warn(
+      {
+        shopId: route.kind === 'shop' ? route.shop.id : null,
+        finalChars: instructions.length,
+        limit: 24000,
+      },
+      'voice_prompt_compacted',
+    );
+  }
 
   const acceptEnabled = env.OPENAI_SIP_ACCEPT_ENABLED && !!apiKey;
   if (!acceptEnabled) {

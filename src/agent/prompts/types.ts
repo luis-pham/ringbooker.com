@@ -74,6 +74,8 @@ export type VoicePromptInput = {
   callType: VoicePromptCallType;
   mode: VoicePromptMode;
   business: RuntimeBusinessConfig;
+  runtimeEssentials?: string;
+  runtimeOptional?: string;
   /** Production shop plan: core + vertical language strips for Starter / paid English-only */
   shopPlan?: ShopPlan;
   shopLanguages?: string[];

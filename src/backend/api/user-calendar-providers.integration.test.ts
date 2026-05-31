@@ -46,6 +46,17 @@ function withCalendarOAuthCookies(sessionCookie: string, provider: 'square_appoi
   return `${sessionCookie}; rb_calendar_provider_state=${state}; rb_calendar_provider_name=${provider}; rb_calendar_provider_shop=demo-shop`;
 }
 
+async function waitForSquareCatalogSync(shopsRepository: InMemoryShopsRepository) {
+  const deadline = Date.now() + 1000;
+  while (Date.now() < deadline) {
+    const shop = await shopsRepository.findById('demo-shop');
+    const manicure = shop?.service_catalog?.services.find((service) => service.name === 'Manicure');
+    if (manicure?.externalProvider === 'square') return shop;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  return shopsRepository.findById('demo-shop');
+}
+
 function mockOAuthFetch() {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -258,7 +269,7 @@ test('square oauth callback clears prior booking url on successful connect', asy
 
     assert.equal(response.status, 302);
     assert.match(response.headers.get('location') ?? '', /calendar_connect=success/);
-    const shop = await shopsRepository.findById('demo-shop');
+    const shop = await waitForSquareCatalogSync(shopsRepository);
     assert.equal(shop?.booking_url, null);
     assert.equal(shop?.booking_method, 'app');
     assert.equal(shop?.selected_integration, 'square_appointments');

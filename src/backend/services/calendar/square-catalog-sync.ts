@@ -68,6 +68,7 @@ function updateCatalogWithSquareMappings(params: {
         ...(typeof variation.durationMs === 'number' ? { duration_ms: variation.durationMs } : {}),
         ...(variation.itemName ? { square_item_name: variation.itemName } : {}),
         ...(variation.variationName ? { square_variation_name: variation.variationName } : {}),
+        ...(variation.teamMemberIds?.length ? { teamMemberIds: variation.teamMemberIds } : {}),
         square_synced_at: syncedAt,
       },
     };

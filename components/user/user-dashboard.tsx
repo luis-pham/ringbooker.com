@@ -1470,6 +1470,15 @@ html[data-user-theme="dark"] .user-portal-sidebar-tooltip{
   .brand{width:100%;margin-bottom:0}
   .brand-title,.brand-tagline{display:block}
   .brand-mobile-actions{display:flex}
+  .portal-notif-panel{
+    position:fixed;
+    left:10px;
+    right:10px;
+    width:auto;
+    max-width:none;
+    top:calc(env(safe-area-inset-top, 0px) + 72px);
+    z-index:200;
+  }
   .user-app-shell .nav-section{display:none !important}
 }
 @media (max-width:860px){

@@ -1,5 +1,5 @@
-import type { Customer, Shop, ShopRoutingRule } from '@/src/backend/domain/types';
-import { canUseReturningCallerContext } from '@/src/backend/domain/shop-plan-capabilities';
+import type { Customer, Shop, ShopRoutingRule, ShopStaff } from '@/src/backend/domain/types';
+import { canUseReturningCallerContext, isCapabilityAllowed } from '@/src/backend/domain/shop-plan-capabilities';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
 import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
@@ -9,6 +9,8 @@ import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
   renderProductionCustomInstructions,
+  renderRuntimeEssentials,
+  renderRuntimeOptional,
   type RuntimeBusinessConfig,
   type VoicePromptCallType,
   type VoicePromptVertical,
@@ -172,11 +174,42 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
   }));
 }
 
+function buildStaffForPrompt(shop: Shop, shopStaff?: ShopStaff[]): string[] {
+  if (isCapabilityAllowed(shop.plan, 'provider_context') && shopStaff && shopStaff.length > 0) {
+    return shopStaff
+      .filter((staff) => staff.active !== false)
+      .slice(0, 12)
+      .map((staff) => {
+        const parts = [
+          staff.name,
+          staff.role ?? null,
+          staff.specialties?.length ? `specialties: ${staff.specialties.join(', ')}` : null,
+          staff.notes ?? null,
+        ].filter(Boolean);
+        return compactLine(parts.join(' | '), 180);
+      });
+  }
+
+  const effectiveConfig = resolveEffectiveRuntimeConfig(shop);
+  return (effectiveConfig.staff ?? [])
+    .filter((member) => member.active !== false)
+    .map((member) => {
+      const parts = [
+        member.name,
+        member.role ?? null,
+        member.specialties?.length ? `specialties: ${member.specialties.join(', ')}` : null,
+        member.notes ?? null,
+      ].filter(Boolean);
+      return compactLine(parts.join(' | '), 180);
+    });
+}
+
 function buildProductionBusinessConfig(
   shop: Shop,
   customer: Customer | null,
   routingRules?: ShopRoutingRule[],
   callerPhone?: string | null,
+  shopStaff?: ShopStaff[],
 ): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
@@ -199,17 +232,7 @@ function buildProductionBusinessConfig(
     hours: renderHours(shop),
     services: buildRuntimeServices(shop),
     notOfferedServices: (shop.not_offered_services ?? []).filter((service) => service.trim().length > 0),
-    providers: (effectiveRuntimeConfig.staff ?? [])
-      .filter((member) => member.active !== false)
-      .map((member) => {
-        const parts = [
-          member.name,
-          member.role ?? null,
-          member.specialties?.length ? `specialties: ${member.specialties.join(', ')}` : null,
-          member.notes ?? null,
-        ].filter(Boolean);
-        return compactLine(parts.join(' | '), 180);
-      }),
+    providers: buildStaffForPrompt(shop, shopStaff ?? shop.shopStaff),
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
     bookingMethod: shop.booking_method ?? null,
@@ -243,13 +266,22 @@ export function buildSystemPrompt(input: {
   vertical?: VoicePromptVertical;
   routingRules?: ShopRoutingRule[];
   callerPhone?: string | null;
+  shopStaff?: ShopStaff[];
 }): string {
-  const business = buildProductionBusinessConfig(input.shop, input.customer, input.routingRules, input.callerPhone);
+  const business = buildProductionBusinessConfig(
+    input.shop,
+    input.customer,
+    input.routingRules,
+    input.callerPhone,
+    input.shopStaff,
+  );
   return composeVoicePrompt({
     vertical: input.vertical ?? inferVerticalFromBusinessConfig(business),
     callType: mapPromptModeToCallType(input.mode),
     mode: 'production',
     business,
+    runtimeEssentials: renderRuntimeEssentials(business),
+    runtimeOptional: renderRuntimeOptional(business),
     shopPlan: input.shop.plan,
     shopLanguages: input.shop.languages,
   });

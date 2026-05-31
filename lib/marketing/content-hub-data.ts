@@ -106,7 +106,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'The 5 Loss Scenarios' },
-      heading: mkSectionTitle('Where beauty businesses', 'lose bookings', 'by phone'),
+      heading: mkSectionTitle('Where', 'beauty businesses lose bookings by phone'),
       sub: 'Five situations where booking loss happens most often — and where missed booking protection makes the biggest difference.',
       items: [
         {
@@ -149,7 +149,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'intent_stats',
       html: { eyebrow: 'What Callers Want' },
-      heading: mkSectionTitle('Common caller intents', 'that get lost'),
+      heading: mkSectionTitle('Common', 'caller intents that get lost'),
       sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The stats row cites third-party research on caller and salon behavior.',
       intents: [
         { emoji: '📅', label: 'New appointment booking' },
@@ -183,7 +183,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
         eyebrowTone: 'dark',
         compareStripGridCols4: true,
       },
-      heading: mkSectionTitle('Why missed-call handling alone', 'is not enough'),
+      heading: mkSectionTitle('Why missed-call', 'handling alone is not enough'),
       sub: 'Voicemail, text-back tools, and generic answering services each address part of the problem. None fully solve missed booking protection.',
       cards: [
         {
@@ -212,7 +212,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'feature_scenarios',
       html: { eyebrow: 'The RingBooker Approach', scenarioGrid2x2: true },
-      heading: mkSectionTitle('How RingBooker fits into', 'missed booking protection'),
+      heading: mkSectionTitle('How RingBooker', 'fits into missed booking protection'),
       sub: 'RingBooker sits alongside your operations — not replacing them. It handles calls your team cannot reach so intent is not lost.',
       items: [
         {
@@ -241,7 +241,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     },
   ],
   industryEyebrow: 'Explore by Industry',
-  industryHeading: mkSectionTitle('Missed booking protection', 'by business type'),
+  industryHeading: mkSectionTitle('Missed booking', 'protection by business type'),
   industrySub:
     'Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how missed booking protection applies to your specific business.',
   industryCards: [
@@ -394,7 +394,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'Common Questions' },
-      heading: mkSectionTitle('Real concerns owners have', 'about numbers'),
+      heading: mkSectionTitle('Real concerns', 'owners have about numbers'),
       sub: 'Common objections from salon and spa owners — and how keeping your current number addresses each one.',
       items: [
         {
@@ -473,7 +473,7 @@ export const currentNumberHub: ContentHubPageConfig = {
   ],
   /** Single industry section (linked cards) — avoids duplicating the same five verticals as a separate “By Business Type” grid above. */
   industryEyebrow: 'By business type',
-  industryHeading: mkSectionTitle('Same number — different call pressures', 'by vertical'),
+  industryHeading: mkSectionTitle('Same number', 'different call pressures by vertical'),
   industrySub: 'Why continuity matters varies by vertical — explore how setup and call patterns differ.',
   industryCards: [
     { emoji: '💅', title: 'Nail salon', body: 'High weekend call volume; overflow is common.', href: '/industries/nail-salon' },
@@ -535,7 +535,7 @@ export const worksWithHub: ContentHubPageConfig = {
     {
       kind: 'card_grid',
       html: { eyebrow: 'Clarity First', cardGridStyle: 'leak', leakGridColumns: 4 },
-      heading: mkSectionTitle('Four layers of', 'compatibility'),
+      heading: mkSectionTitle('Four', 'layers of compatibility'),
       sub: 'RingBooker is designed to fit how beauty businesses already operate — phone, booking tools, front desk, and rollout pace.',
       cards: [
         {
@@ -563,7 +563,7 @@ export const worksWithHub: ContentHubPageConfig = {
     {
       kind: 'tool_strip',
       html: { eyebrow: 'Booking Tool Compatibility' },
-      heading: mkSectionTitle('Tools beauty businesses', 'already use'),
+      heading: mkSectionTitle('Tools beauty', 'businesses already use'),
       sub: 'Square Appointments, Mindbody, and Acuity Scheduling connect directly today. Other booking tools can still work with RingBooker through booking-link SMS, call capture, summaries, and handoff.',
       tools: [
         {
@@ -640,7 +640,7 @@ export const worksWithHub: ContentHubPageConfig = {
         stepsCentered4: true,
         stepTrackHideNumbers: true,
       },
-      heading: mkSectionTitle('How businesses', 'usually start'),
+      heading: mkSectionTitle('How', 'businesses usually start'),
       sub: 'Most teams adopt in stages — starting where booking loss is clearest.',
       steps: [
         {
@@ -664,7 +664,7 @@ export const worksWithHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'Common Questions' },
-      heading: mkSectionTitle('Common compatibility', 'concerns'),
+      heading: mkSectionTitle('Common', 'compatibility concerns'),
       sub: 'Typical questions from owners and managers — and how RingBooker fits alongside the tools you already use.',
       items: [
         {
@@ -774,7 +774,7 @@ export const compareHub: ContentHubPageConfig = {
         leakGridColumns: 3,
         hubGridCols3: true,
       },
-      heading: mkSectionTitle('Voicemail, answering services,', 'hiring, or AI?'),
+      heading: mkSectionTitle('Voicemail,', 'answering services, hiring, or AI?'),
       sub: 'Most salons are not choosing between “AI or nothing.” They are choosing between voicemail, text-back, services, headcount, generic AI — or a beauty-specific layer.',
       cards: [
         {
@@ -933,7 +933,7 @@ export const compareHub: ContentHubPageConfig = {
     {
       kind: 'alt_link_grid',
       html: { eyebrow: 'Deep Comparisons', hubGridCols3: true },
-      heading: mkSectionTitle('Compare RingBooker', 'by Alternative'),
+      heading: mkSectionTitle('Compare', 'RingBooker by Alternative'),
       sub: 'Each comparison goes deeper into the specific trade-offs, use cases, and who each option is actually right for.',
       links: [
         {
@@ -1025,7 +1025,7 @@ export const compareHub: ContentHubPageConfig = {
     {
       kind: 'compare_strip',
       html: { eyebrow: 'Industry Context', eyebrowTone: 'dark' },
-      heading: mkSectionTitle('Why beauty businesses need', 'a different comparison lens'),
+      heading: mkSectionTitle('Why beauty businesses', 'need a different comparison lens'),
       sub: 'Salons and spas are not generic local businesses. The right comparison has to be operational — not just feature-based.',
       cards: [
         {
@@ -1111,7 +1111,7 @@ export const trustHub: ContentHubPageConfig = {
         cardGridStyle: 'leak',
         leakGridColumns: 4,
       },
-      heading: mkSectionTitle('Trust in the context of', 'AI call handling'),
+      heading: mkSectionTitle('Trust in', 'the context of AI call handling'),
       sub: 'For beauty businesses, trust means four specific things — none of them are AI hype.',
       cards: [
         {
@@ -1146,7 +1146,7 @@ export const trustHub: ContentHubPageConfig = {
         featureLayout: 'principles',
         eyebrow: 'How It Works in Practice',
       },
-      heading: mkSectionTitle('Reliability principles', 'behind RingBooker'),
+      heading: mkSectionTitle('Reliability', 'principles behind RingBooker'),
       sub: 'Design choices — not slogans — that define behavior on every call.',
       items: [
         {
@@ -1249,7 +1249,7 @@ export const trustHub: ContentHubPageConfig = {
         eyebrow: 'Phased Adoption',
         eyebrowTone: 'green',
       },
-      heading: mkSectionTitle('What a low-risk rollout', 'looks like'),
+      heading: mkSectionTitle('What a', 'low-risk rollout looks like'),
       sub: 'You do not have to do everything at once.',
       steps: [
         {

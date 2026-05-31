@@ -143,7 +143,8 @@ export const hairSalonInboundScenarios: TestScenario[] = [
       {
         description: 'Must NOT give a long info response first',
         check: 'llm_judge',
-        prompt: 'Does the response immediately help with booking rather than giving a long informational answer? Answer YES or NO only.',
+        prompt:
+          'The caller said they want to book a haircut. Does the AI response ask about date, time, service, or any booking detail — rather than giving a long explanation or ignoring the booking intent? Answer YES or NO only.',
       },
     ],
   },
@@ -226,7 +227,7 @@ export const hairSalonInboundScenarios: TestScenario[] = [
         description: 'Must send booking link for link-only provider',
         check: 'llm_judge',
         prompt:
-          'The shop uses Fresha link-only (no direct booking API). Does the AI response mention sending a booking link or texting a link to the caller? Answer YES or NO only.',
+          'The shop uses Fresha link-only (no direct booking API). Answer YES if the AI response either mentions sending/texting a booking link OR asks for date, time, or name to collect before sending the link. A response like "What time were you hoping for next Friday?" is YES. Answer NO only if it says "you are booked", "appointment confirmed", attempts direct booking, or ignores booking intent. Answer YES or NO only.',
       },
     ],
   },

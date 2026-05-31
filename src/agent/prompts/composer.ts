@@ -11,16 +11,20 @@ import {
   filterVerticalPackForNailDemo,
   filterVerticalPackForProductionPlan,
 } from './production-plan-prompt-filter';
-import { renderRuntimeBusinessConfig, STATIC_SERVICE_SCOPE_RULES } from './runtime-config';
+import {
+  renderRuntimeEssentials,
+  renderRuntimeOptional,
+  STATIC_SERVICE_SCOPE_RULES,
+} from './runtime-config';
 import type { VoicePromptInput } from './types';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 
-const MAX_PROMPT_CHARS = 18000;
+const MAX_PROMPT_CHARS = 24000;
 
 const COMPOSITION_NOTE =
   'COMPOSITION NOTE: Core and guardrails first, then vertical, call-type, runtime. Safety and runtime facts win conflicts.';
 
-const COMPACTED_MARKER = '\n\n[Prompt compacted to fit latency/context budget]';
+export const VOICE_PROMPT_COMPACTED_MARKER = '\n\n[Prompt compacted to fit latency/context budget]';
 
 const NAIL_DEMO_ENGLISH_ONLY_PROMPT =
   'NAIL DEMO LANGUAGE OVERRIDE: This nail salon demo must stay in English only. Do not switch to another language, and do not use non-English wording, even if another prompt section or the caller asks for it.';
@@ -34,9 +38,26 @@ function renderDemoGuardrailPrompt(input: VoicePromptInput): string | null {
   );
 }
 
-export function composeVoicePrompt(input: VoicePromptInput): string {
+type VoicePromptParts = {
+  fullPrompt: string;
+  promptWithoutOptional: string;
+  optionalTail: string;
+  prefixLen: number;
+  essentialsLen: number;
+};
+
+export type VoicePromptComposeResult = {
+  prompt: string;
+  compacted: boolean;
+  originalChars: number;
+  finalChars: number;
+  droppedSections: string[];
+};
+
+function buildVoicePromptParts(input: VoicePromptInput): VoicePromptParts {
   const verticalPack = VERTICAL_PROMPT_PACKS[input.vertical];
   const callTypePack = CALL_TYPE_PROMPT_PACKS[input.callType];
+  const separator = '\n\n---\n\n';
 
   let coreText = CORE_VOICE_PROMPT;
   let verticalText = verticalPack.content;
@@ -66,9 +87,17 @@ export function composeVoicePrompt(input: VoicePromptInput): string {
     verticalText = filterVerticalPackForNailDemo(verticalText, input.mode, input.vertical);
   }
 
-  const runtimeText = renderRuntimeBusinessConfig(businessForRuntime);
+  const usePreRenderedRuntime = businessForRuntime === input.business;
+  const runtimeEssentials =
+    usePreRenderedRuntime && input.runtimeEssentials !== undefined
+      ? input.runtimeEssentials
+      : renderRuntimeEssentials(businessForRuntime);
+  const runtimeOptional =
+    usePreRenderedRuntime && input.runtimeOptional !== undefined
+      ? input.runtimeOptional
+      : renderRuntimeOptional(businessForRuntime);
 
-  const prefixSections = [
+  const neverCutSections = [
     coreText,
     UNIVERSAL_GUARDRAIL_PROMPT,
     renderDemoGuardrailPrompt(input),
@@ -77,18 +106,57 @@ export function composeVoicePrompt(input: VoicePromptInput): string {
     callTypePack.content,
     COMPOSITION_NOTE,
   ];
-  const prefix = prefixSections.filter(Boolean).join('\n\n---\n\n').trim();
-  const separator = '\n\n---\n\n';
-  const tail = [STATIC_SERVICE_SCOPE_RULES, runtimeText].join(separator);
-  const prompt = `${prefix}${separator}${tail}`.trim();
-  if (prompt.length <= MAX_PROMPT_CHARS) return prompt;
+  const prefix = neverCutSections.filter(Boolean).join(separator).trim();
+  const alwaysKeepTail = [STATIC_SERVICE_SCOPE_RULES, runtimeEssentials].filter(Boolean).join(separator).trim();
+  const optionalTail = runtimeOptional.trim();
+  const fullTail = [alwaysKeepTail, optionalTail].filter(Boolean).join(separator).trim();
+  const fullPrompt = [prefix, fullTail].filter(Boolean).join(separator).trim();
+  const promptWithoutOptional = [prefix, alwaysKeepTail].filter(Boolean).join(separator).trim();
 
-  /** Keep the tail (runtime business facts); trim from the end of prefix packs only. */
-  const tailBytes = tail.length + separator.length + COMPACTED_MARKER.length;
-  const maxPrefix = MAX_PROMPT_CHARS - tailBytes;
-  if (maxPrefix <= 0) {
-    return `${tail.slice(0, MAX_PROMPT_CHARS - COMPACTED_MARKER.length)}${COMPACTED_MARKER}`.trim();
+  return {
+    fullPrompt,
+    promptWithoutOptional,
+    optionalTail,
+    prefixLen: prefix.length,
+    essentialsLen: alwaysKeepTail.length,
+  };
+}
+
+export function composeVoicePromptWithMeta(input: VoicePromptInput): VoicePromptComposeResult {
+  const parts = buildVoicePromptParts(input);
+  const originalChars = parts.fullPrompt.length;
+
+  if (originalChars <= MAX_PROMPT_CHARS) {
+    return {
+      prompt: parts.fullPrompt,
+      compacted: false,
+      originalChars,
+      finalChars: originalChars,
+      droppedSections: [],
+    };
   }
-  const trimmedPrefix = prefix.slice(0, maxPrefix).trimEnd();
-  return `${trimmedPrefix}${COMPACTED_MARKER}${separator}${tail}`.trim();
+
+  const droppedSections = parts.optionalTail.length > 0 ? ['runtime_optional'] : [];
+  const prompt = `${parts.promptWithoutOptional}${VOICE_PROMPT_COMPACTED_MARKER}`.trim();
+
+  if (parts.promptWithoutOptional.length > MAX_PROMPT_CHARS) {
+    console.error('[composeVoicePrompt] prompt_exceeds_max_after_compaction', {
+      prefixLen: parts.prefixLen,
+      essentialsLen: parts.essentialsLen,
+      total: parts.promptWithoutOptional.length,
+      limit: MAX_PROMPT_CHARS,
+    });
+  }
+
+  return {
+    prompt,
+    compacted: true,
+    originalChars,
+    finalChars: prompt.length,
+    droppedSections,
+  };
+}
+
+export function composeVoicePrompt(input: VoicePromptInput): string {
+  return composeVoicePromptWithMeta(input).prompt;
 }

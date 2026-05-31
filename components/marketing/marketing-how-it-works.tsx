@@ -91,7 +91,16 @@ a{text-decoration:none;color:inherit}
 .hiw-summary:hover{transform:translateY(-1px);box-shadow:var(--mk-card-shadow-hover,var(--shadow));border-color:rgba(139,92,246,.28)}
 .hiw-summary::before{content:"";position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:rgba(139,92,246,.08)}
 .hiw-summary-label{font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:#5B21B6;margin-bottom:12px;position:relative}
-.hiw-summary h2{font-size:var(--mk-article-h2);font-weight:500;line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);margin-bottom:14px;position:relative}
+.hiw-summary h2{
+  font-size:var(--mk-article-h2);
+  font-weight:500;
+  line-height:var(--mk-article-h2-lh);
+  letter-spacing:var(--mk-article-h2-track);
+  margin-bottom:14px;
+  position:relative;
+}
+.hiw-summary h2 em,.hiw-cta-box h2 em,.hiw-no-replace h2 em{font-style:italic;font-weight:500;color:#7c3aed}
+.hiw-cta-box h2 em,.hiw-no-replace h2 em{color:#c4b5fd}
 .hiw-summary-list{display:grid;gap:11px;position:relative}
 .hiw-summary-item{display:flex;gap:10px;align-items:flex-start;font-size:var(--mk-body);color:#374151;line-height:1.55}
 .hiw-summary-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;background:transparent;border:none;box-shadow:none}
@@ -458,7 +467,7 @@ export function MarketingHowItWorksTemplate() {
               </div>
               <aside className="hiw-summary" aria-label="RingBooker summary">
                 <div className="hiw-summary-label">Plain-language summary</div>
-                <h2>Keep your number. Stop revenue leaking to voicemail.</h2>
+                <h2>{mkSectionTitle('Keep your number.', 'Stop revenue leaking to voicemail.')}</h2>
                 <div className="hiw-summary-list">
                   <div className="hiw-summary-item"><span className="hiw-summary-icon">1</span><span>Most businesses forward their current line to RingBooker for after-hours, overflow, or missed-call coverage.</span></div>
                   <div className="hiw-summary-item"><span className="hiw-summary-icon">2</span><span>A dedicated RingBooker number is available if you want a separate booking line.</span></div>
@@ -471,7 +480,7 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section">
             <div className="hiw-container">
               <div className="hiw-label">Setup paths</div>
-              <h2 className="hiw-title">{mkSectionTitle('Choose how RingBooker', 'starts.')}</h2>
+              <h2 className="hiw-title">{mkSectionTitle('Choose how', 'RingBooker starts.')}</h2>
               <p className="hiw-sub">Current number is the primary path. A new dedicated line is optional for businesses that want a separate number for campaigns, overflow, or testing.</p>
               <div className="hiw-grid-2 hiw-setup-grid">
                 <article className="hiw-card recommended">
@@ -508,7 +517,9 @@ export function MarketingHowItWorksTemplate() {
             <div className="hiw-container">
               <div className="hiw-label">3-step flow</div>
               <h2 className="hiw-title">
-                {mkSectionTitle('A phone-first workflow', 'your team can', 'understand quickly.')}
+                A phone-first <em>workflow</em>
+                <br />
+                your team can understand quickly.
               </h2>
               <p className="hiw-sub">RingBooker sits between the caller and your team: it captures intent and summaries so you recover bookings faster — without migrating calendars or changing the number clients already dial.</p>
               <div className="hiw-steps-mobile-nav" role="tablist" aria-label="How it works steps">
@@ -551,7 +562,11 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section">
             <div className="hiw-container">
               <div className="hiw-label">What it handles</div>
-              <h2 className="hiw-title">{mkSectionTitle('Built for the calls', 'that usually', 'leak bookings.')}</h2>
+              <h2 className="hiw-title">
+                Built for the calls
+                <br />
+                that usually <em>leak</em> bookings.
+              </h2>
               <p className="hiw-sub">RingBooker targets the phone moments that cost salons and clinics revenue: busy service windows, after-hours buying intent, peak overflow, reschedules, cancellations, and callers who hang up instead of leaving voicemail.</p>
               <div className="hiw-handle-grid">
                 <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>After-hours calls</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
@@ -569,7 +584,7 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-label hiw-label-trust">Trust boundary</div>
               <div className="hiw-no-replace">
                 <div>
-                  <h2 className="hiw-title">{mkSectionTitle('What RingBooker does', 'not replace.')}</h2>
+                  <h2 className="hiw-title">{mkSectionTitle('What RingBooker', 'does not replace.')}</h2>
                   <p>This page is intentionally clear because phone routing and booking workflows are sensitive. RingBooker is a recovery layer, not a forced migration.</p>
                 </div>
                 <div className="hiw-trust-list">
@@ -608,7 +623,7 @@ export function MarketingHowItWorksTemplate() {
               />
               <div className="hiw-cta-box">
                 <div>
-                  <h2>See the revenue recovery flow on a real call.</h2>
+                  <h2>{mkSectionTitle('See the', 'revenue recovery flow on a real call.')}</h2>
                   <p>Try a live demo or talk through how RingBooker covers after-hours intent, peak-hour overflow, reschedules, cancellations, and missed-call text back on your line — still the number clients already use.</p>
                 </div>
                 <div className="hiw-actions">

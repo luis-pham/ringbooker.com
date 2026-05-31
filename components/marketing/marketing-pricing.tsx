@@ -1,6 +1,5 @@
 import { Fragment } from 'react';
 
-import { mkSectionTitle } from '@/lib/marketing/section-title';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -428,7 +427,11 @@ export function MarketingPricingTemplate() {
 
               <div className="pricing-plans-inner">
                 <div className="sec-label">Plans</div>
-                <h2 className="sec-title">{mkSectionTitle('Choose the right', 'level of', 'call recovery.')}</h2>
+                <h2 className="sec-title">
+                  Choose the <em>right</em>
+                  <br />
+                  <em>level</em> of call recovery.
+                </h2>
                 <p className="sec-sub">
                   From after-hours coverage to follow-up and multi-location routing — each plan adds more control.
                 </p>
@@ -483,7 +486,9 @@ export function MarketingPricingTemplate() {
               <div className="compare-section">
                 <div className="sec-label">Compare plans</div>
                 <h2 className="sec-title">
-                  {mkSectionTitle('Compare RingBooker', 'plans')}
+                  Compare
+                  <br />
+                  <em>RingBooker</em> plans
                 </h2>
                 <p className="sec-sub" style={{ marginBottom: 28 }}>
                   See what is included in Starter, Professional, and Custom.

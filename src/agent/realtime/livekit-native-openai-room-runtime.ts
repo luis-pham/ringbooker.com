@@ -44,9 +44,12 @@ function resolveJoinToken(input: RealtimeDispatchInput): string | null {
   );
 }
 
+const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 24000;
+
 function compactSystemInstruction(raw: string): string {
   return compactRealtimeSystemInstruction(raw, {
     maxCharsRaw: process.env.AGENT_OPENAI_SYSTEM_PROMPT_MAX_CHARS,
+    defaultMaxChars: DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS,
     policyKind: 'native_openai',
   });
 }

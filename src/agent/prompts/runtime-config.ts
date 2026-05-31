@@ -139,9 +139,7 @@ function renderCallerPhoneStatus(callerPhone: string | null | undefined): string
   return 'CALLER PHONE STATUS: Caller ID is unavailable. If booking, follow-up, callback, or SMS requires contact, ask once for the best callback number.';
 }
 
-export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): string {
-  const services = renderGroupedServices(config);
-
+export function renderRuntimeEssentials(config: RuntimeBusinessConfig): string {
   return [
     'RUNTIME BUSINESS CONFIG',
     `BUSINESS NAME: ${compactPromptLine(config.businessName, 120)}`,
@@ -154,11 +152,6 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     `SHOP STATUS HOURS (open/closed status only -- do not use to answer weekly schedule questions): ${config.todayHours ? compactPromptLine(config.todayHours, 80) : 'Not specified'}`,
     config.hours ? `WEEKLY SCHEDULE (answer hours questions from this -- always Monday through Sunday order, use AM/PM format): ${compactPromptLine(config.hours, 700)}` : null,
     config.providers?.length ? `PROVIDERS / STAFF: ${config.providers.slice(0, 12).join(', ')}` : null,
-    services.length ? ['SERVICES / PRICING:', ...services].join('\n') : 'SERVICES / PRICING: Not configured. Use consultation or callback framing.',
-    config.services?.some((service) => service.variants?.length) ? 'SERVICE OPTION RULE: When a service has options, explain the available durations/prices and ask which option the caller prefers; do not quote only the cheapest option as the full answer.' : null,
-    config.notOfferedServices?.length ? `NOT OFFERED SERVICES: ${config.notOfferedServices.slice(0, 30).join(', ')}` : null,
-    config.promotions ? `PROMOTIONS: ${compactPromptLine(config.promotions, 400)}` : null,
-    config.cancellationPolicy ? `CANCELLATION POLICY: ${compactPromptLine(config.cancellationPolicy, 400)}` : null,
     config.bookingMethod ? `booking_method: ${config.bookingMethod}` : null,
     config.selectedIntegration ? `selected_integration: ${config.selectedIntegration}` : null,
     config.vagaroMode ? `vagaro_mode: ${config.vagaroMode}` : null,
@@ -166,18 +159,36 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     config.bookingUrl ? `BOOKING URL: ${config.bookingUrl}` : null,
     config.bookingRequestInstruction ? `BOOKING REQUEST INSTRUCTION: ${compactPromptLine(config.bookingRequestInstruction, 300)}` : null,
     config.welcomeMessage ? `WELCOME MESSAGE: ${compactPromptLine(config.welcomeMessage, 260)}` : null,
+    config.handoffPolicy ? `HANDOFF POLICY: ${compactPromptLine(config.handoffPolicy, 400)}` : null,
+    renderCallerPhoneStatus(config.callerPhone),
+    config.callerContext ? `CALLER CONTEXT: ${compactPromptLine(config.callerContext, 900)}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function renderRuntimeOptional(config: RuntimeBusinessConfig): string {
+  const services = renderGroupedServices(config);
+
+  return [
+    services.length ? ['SERVICES / PRICING:', ...services].join('\n') : 'SERVICES / PRICING: Not configured. Use consultation or callback framing.',
+    config.services?.some((service) => service.variants?.length) ? 'SERVICE OPTION RULE: When a service has options, explain the available durations/prices and ask which option the caller prefers; do not quote only the cheapest option as the full answer.' : null,
+    config.notOfferedServices?.length ? `NOT OFFERED SERVICES: ${config.notOfferedServices.slice(0, 30).join(', ')}` : null,
+    config.promotions ? `PROMOTIONS: ${compactPromptLine(config.promotions, 400)}` : null,
+    config.cancellationPolicy ? `CANCELLATION POLICY: ${compactPromptLine(config.cancellationPolicy, 400)}` : null,
     config.languageOptions?.length ? `LANGUAGE OPTIONS: ${config.languageOptions.join(', ')}` : null,
     config.productionLanguageDirective
       ? `LANGUAGE DIRECTIVE: ${compactPromptLine(config.productionLanguageDirective, 1200)}`
       : null,
-    config.handoffPolicy ? `HANDOFF POLICY: ${compactPromptLine(config.handoffPolicy, 400)}` : null,
-    renderCallerPhoneStatus(config.callerPhone),
-    config.callerContext ? `CALLER CONTEXT: ${compactPromptLine(config.callerContext, 900)}` : null,
     config.demoContext ? `DEMO CONTEXT: ${compactPromptLine(config.demoContext, 900)}` : null,
     config.customInstructions ? `CUSTOM INSTRUCTIONS: ${compactPromptLine(config.customInstructions, 900)}` : null,
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): string {
+  return [renderRuntimeEssentials(config), renderRuntimeOptional(config)].filter(Boolean).join('\n');
 }
 
 export function inferVerticalFromBusinessConfig(config: RuntimeBusinessConfig): VoicePromptVertical {

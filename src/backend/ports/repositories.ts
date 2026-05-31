@@ -26,6 +26,9 @@ import type {
   JobStatus,
   JobType,
   Shop,
+  ShopStaff,
+  ShopStaffExternalProvider,
+  ShopStaffService,
   ShopLocation,
   ShopOverageCharge,
   ShopOverageChargeStatus,
@@ -557,6 +560,48 @@ export interface ShopsRepository {
   findServiceCatalogByShopId(shopId: string): Promise<Shop['service_catalog'] | null>;
   saveServiceCatalog(shopId: string, catalog: NonNullable<Shop['service_catalog']>): Promise<Shop['service_catalog'] | null>;
   deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<Shop['service_catalog'] | null>;
+}
+
+export type UpsertShopStaff = {
+  shopId: string;
+  name: string;
+  role?: string | null;
+  specialties?: string[];
+  notes?: string | null;
+  active?: boolean;
+  externalProvider: ShopStaffExternalProvider;
+  externalStaffId: string;
+  externalMetadata?: Record<string, unknown>;
+};
+
+export interface ShopStaffRepository {
+  findByShopId(shopId: string): Promise<ShopStaff[]>;
+  findByExternalId(
+    shopId: string,
+    provider: ShopStaffExternalProvider,
+    externalStaffId: string,
+  ): Promise<ShopStaff | null>;
+  upsert(staff: UpsertShopStaff): Promise<ShopStaff>;
+  bulkUpsertFromSync(
+    shopId: string,
+    staff: UpsertShopStaff[],
+  ): Promise<{ created: number; updated: number; skipped: number }>;
+  deactivateNotInList(
+    shopId: string,
+    provider: ShopStaffExternalProvider,
+    activeExternalIds: string[],
+  ): Promise<number>;
+}
+
+export interface ShopStaffServicesRepository {
+  setMappingsForStaff(
+    shopId: string,
+    staffId: string,
+    serviceIds: string[],
+  ): Promise<{ created: number; skipped: number }>;
+  getServiceIdsByStaffId(shopId: string, staffId: string): Promise<string[]>;
+  getStaffIdsByServiceId(shopId: string, serviceId: string): Promise<string[]>;
+  listByShopId(shopId: string): Promise<ShopStaffService[]>;
 }
 
 export interface BusinessKnowledgeSuggestionsRepository {

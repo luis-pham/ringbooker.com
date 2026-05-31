@@ -21,7 +21,7 @@ import { compactRealtimeSystemInstruction, normalizePromptWhitespace } from '@/s
 import { withLogContext } from '@/src/backend/observability/logger';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 
-const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 18000;
+const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 24000;
 const DEFAULT_MAX_TOOL_RESPONSE_CHARS = 3000;
 
 const TOOL_DECLARATIONS: FunctionDeclaration[] = REALTIME_TOOL_DEFINITIONS.map((tool) => ({

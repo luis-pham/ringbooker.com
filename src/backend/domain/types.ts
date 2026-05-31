@@ -169,6 +169,31 @@ export interface StaffMember {
   active?: boolean;
 }
 
+export type ShopStaffExternalProvider = 'square' | 'vagaro' | 'mindbody' | 'acuity';
+
+export interface ShopStaff {
+  id: string;
+  shopId: string;
+  name: string;
+  role?: string | null;
+  specialties: string[];
+  notes?: string | null;
+  active: boolean;
+  externalProvider?: ShopStaffExternalProvider | null;
+  externalStaffId?: string | null;
+  externalMetadata?: Record<string, unknown> | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShopStaffService {
+  id: string;
+  shopId: string;
+  staffId: string;
+  serviceId: string;
+  createdAt?: string;
+}
+
 export interface BusinessFaqItem {
   question: string;
   answer: string;
@@ -264,6 +289,8 @@ export interface Shop {
   /** User-confirmed services the business does not offer. Never infer this from vertical alone. */
   not_offered_services?: string[];
   staff?: StaffMember[];
+  /** Normalized staff records loaded from shop_staff when a workflow needs platform sync metadata. */
+  shopStaff?: ShopStaff[];
   faqs?: BusinessFaqItem[];
   hours: BusinessHours;
   cancel_policy: string;

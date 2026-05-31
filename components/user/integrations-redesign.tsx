@@ -1756,7 +1756,6 @@ export function IntegrationsRedesign({
       ) : null}
 
       {status.error ? <div className="note integration-error-note">{status.error}</div> : null}
-      {status.isLoading ? <div className="note">Refreshing integration status...</div> : null}
 
       {!showSetupFlow && hasConfiguredState && effectiveBookingMethod ? (
         <ConfiguredIntegrationView

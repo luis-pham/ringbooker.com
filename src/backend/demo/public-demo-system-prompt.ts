@@ -2,6 +2,8 @@ import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
   renderPublicDemoFallbackCustomInstructions,
+  renderRuntimeEssentials,
+  renderRuntimeOptional,
   type VoicePromptVertical,
 } from '@/src/agent/prompts';
 import type { VoicePromptCallType } from '@/src/agent/prompts/types';
@@ -291,5 +293,7 @@ export function buildPublicDemoSystemPrompt(input: {
     callType,
     mode: 'demo',
     business,
+    runtimeEssentials: renderRuntimeEssentials(business),
+    runtimeOptional: renderRuntimeOptional(business),
   });
 }
