@@ -165,6 +165,116 @@ function tabFromSearch(value: string | null): BookingFilter {
   return 'all';
 }
 
+function bookingsEmptyState(
+  filter: BookingFilter,
+  shopHasGoneLive: boolean,
+  hasAnyBookings: boolean,
+  isCallScoped: boolean,
+): { title: string; message: string; showGoLiveCta: boolean } {
+  if (isCallScoped) {
+    return {
+      title: 'No booking linked to this call',
+      message: 'If this call did not create a booking request, it will only appear in Calls.',
+      showGoLiveCta: false,
+    };
+  }
+  if (filter === 'awaiting_action') {
+    return {
+      title: 'No new booking requests',
+      message: hasAnyBookings
+        ? 'Fresh booking requests and booking links waiting for action will appear here.'
+        : shopHasGoneLive
+          ? 'New booking requests will appear here when callers ask to book.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'contacted') {
+    return {
+      title: 'No contacted bookings',
+      message: hasAnyBookings
+        ? 'Bookings marked contacted will appear here.'
+        : shopHasGoneLive
+          ? 'Contacted bookings will appear here after your team follows up.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'confirmed') {
+    return {
+      title: 'No confirmed bookings',
+      message: hasAnyBookings
+        ? 'Confirmed appointments and reminder-sent bookings will appear here.'
+        : shopHasGoneLive
+          ? 'Confirmed bookings will appear here once appointments are created.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'declined') {
+    return {
+      title: 'No declined bookings',
+      message: hasAnyBookings
+        ? 'Booking requests marked declined will appear here.'
+        : shopHasGoneLive
+          ? 'Declined booking requests will appear here if a request cannot be accepted.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'rescheduled') {
+    return {
+      title: 'No rescheduled bookings',
+      message: hasAnyBookings
+        ? 'Rescheduled appointments will appear here.'
+        : shopHasGoneLive
+          ? 'Rescheduled bookings will appear here after appointment times change.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'cancellation_pending') {
+    return {
+      title: 'No cancellation requests',
+      message: hasAnyBookings
+        ? 'Bookings with cancellation links sent will appear here.'
+        : shopHasGoneLive
+          ? 'Cancellation requests will appear here when callers ask to cancel.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'cancelled') {
+    return {
+      title: 'No cancelled bookings',
+      message: hasAnyBookings
+        ? 'Cancelled appointments will appear here.'
+        : shopHasGoneLive
+          ? 'Cancelled bookings will appear here if appointments are cancelled.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  if (filter === 'completed') {
+    return {
+      title: 'No completed bookings',
+      message: hasAnyBookings
+        ? 'Completed appointments will appear here.'
+        : shopHasGoneLive
+          ? 'Completed bookings will appear here after appointments are finished.'
+          : 'Complete Go Live to start capturing booking requests.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyBookings,
+    };
+  }
+  return {
+    title: 'No booking requests yet',
+    message: shopHasGoneLive
+      ? "They'll appear here when your AI receptionist captures one."
+      : 'RingBooker captures booking requests from phone calls. Complete Go Live to start receiving calls.',
+    showGoLiveCta: !shopHasGoneLive,
+  };
+}
+
 function hasAnyStats(stats: BookingsStats) {
   return stats.total > 0;
 }
@@ -379,6 +489,8 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
   const canGoNext = page < totalPages;
   const activeStatus = activeBooking ? normalizeStatus(activeBooking.status) : 'captured';
   const shopHasGoneLive = shopLiveStatus.liveCallsEnabled || Boolean(shopLiveStatus.goLiveAt);
+  const hasAnyBookings = hasAnyStats(stats);
+  const emptyState = bookingsEmptyState(activeFilter, shopHasGoneLive, hasAnyBookings, Boolean(callIdParam));
 
   return (
     <UserLayout styles={userBookingsStyles} scripts={userBookingsScripts} scriptPrefix="user-bookings-live">
@@ -432,15 +544,11 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
                 {!loading && bookings.length === 0 ? (
                   <div className="bookings-empty">
                     <div className="bookings-empty-icon">▣</div>
-                    <h3>No booking requests yet</h3>
-                    {shopHasGoneLive ? (
-                      <p>No bookings yet — they'll appear here when your AI receptionist captures one.</p>
-                    ) : (
-                      <>
-                        <p>RingBooker captures booking requests from phone calls. Complete Go Live to start receiving calls.</p>
-                        <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
-                      </>
-                    )}
+                    <h3>{emptyState.title}</h3>
+                    <p>{emptyState.message}</p>
+                    {emptyState.showGoLiveCta ? (
+                      <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                    ) : null}
                   </div>
                 ) : null}
                 {loading && bookings.length === 0 ? <div className="bookings-empty"><p>Loading bookings…</p></div> : null}

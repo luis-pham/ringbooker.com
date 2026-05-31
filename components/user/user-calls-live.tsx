@@ -81,6 +81,7 @@ type Call = {
 };
 
 type CallsStats = {
+  total: number;
   last7Days: number;
   bookings: number;
   followUp: number;
@@ -121,11 +122,18 @@ export type IntentSummaryResponse = {
 };
 
 const USER_CALLS_PAGE_SIZE = 25;
-const EMPTY_STATS: CallsStats = { last7Days: 0, bookings: 0, followUp: 0, missed: 0, highUrgency: 0 };
+const EMPTY_STATS: CallsStats = { total: 0, last7Days: 0, bookings: 0, followUp: 0, missed: 0, highUrgency: 0 };
 
 function normalizeInitialStats(data?: CallsResponse | null, summary?: IntentSummaryResponse | null): CallsStats {
-  if (data?.ok && data.stats) return data.stats;
+  if (data?.ok && data.stats) {
+    return {
+      ...EMPTY_STATS,
+      ...data.stats,
+      total: data.stats.total ?? data.summary?.total ?? data.total ?? 0,
+    };
+  }
   return {
+    total: data?.summary?.total ?? data?.total ?? 0,
     last7Days: summary?.ok ? summary.totalLast7Days ?? 0 : data?.summary?.total ?? 0,
     bookings: summary?.ok ? summary.bookingsCount ?? 0 : data?.summary?.booked ?? 0,
     followUp: summary?.ok ? summary.followUpCount ?? 0 : 0,
@@ -201,6 +209,49 @@ function statusMeta(status: CallStatus) {
 function tabFromSearch(value: string | null): CallFilter {
   if (value === 'follow_up' || value === 'high_urgency' || value === 'missed' || value === 'insights') return value;
   return 'all';
+}
+
+function callsEmptyState(filter: CallFilter, shopHasGoneLive: boolean, hasAnyCalls: boolean): { title: string; message: string; showGoLiveCta: boolean } {
+  if (filter === 'follow_up') {
+    return {
+      title: 'No follow-ups needed',
+      message: hasAnyCalls
+        ? 'Calls that need owner follow-up will appear here.'
+        : shopHasGoneLive
+          ? 'Follow-up calls will appear here once customers start calling.'
+          : 'Complete Go Live to start tracking calls that need follow-up.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyCalls,
+    };
+  }
+  if (filter === 'high_urgency') {
+    return {
+      title: 'No high urgency calls',
+      message: hasAnyCalls
+        ? 'Urgent complaints, cancellations, and priority follow-ups will appear here.'
+        : shopHasGoneLive
+          ? 'High urgency calls will appear here if a customer needs immediate attention.'
+          : 'Complete Go Live to start tracking urgent calls.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyCalls,
+    };
+  }
+  if (filter === 'missed') {
+    return {
+      title: 'No missed calls',
+      message: hasAnyCalls
+        ? 'Missed or unanswered calls will appear here.'
+        : shopHasGoneLive
+          ? 'Missed calls will appear here if customers call when the AI cannot connect.'
+          : 'Complete Go Live to start tracking missed calls.',
+      showGoLiveCta: !shopHasGoneLive && !hasAnyCalls,
+    };
+  }
+  return {
+    title: 'No calls yet',
+    message: shopHasGoneLive
+      ? 'Your AI receptionist is active and ready. Calls will appear here once customers start calling.'
+      : 'Complete Go Live to start receiving calls on your business number.',
+    showGoLiveCta: !shopHasGoneLive,
+  };
 }
 
 function hourLabel(hour: number): string {
@@ -402,7 +453,7 @@ export function UserCallsLive({
         });
         setTotalCount(body.pagination?.total ?? body.total ?? 0);
         setTotalPages(body.pagination?.totalPages ?? Math.max(1, Math.ceil((body.pagination?.total ?? body.total ?? 0) / USER_CALLS_PAGE_SIZE)));
-        setStats(body.stats ?? EMPTY_STATS);
+        setStats(normalizeInitialStats(body, null));
       })
       .catch((err) => {
         if ((err as Error).name === 'AbortError') return;
@@ -530,7 +581,7 @@ export function UserCallsLive({
     const refreshedBody = (await refreshed.json()) as CallsResponse;
     if (refreshed.ok && refreshedBody.ok) {
       setCalls(refreshedBody.calls ?? []);
-      setStats(refreshedBody.stats ?? EMPTY_STATS);
+      setStats(normalizeInitialStats(refreshedBody, null));
       setShopLiveStatus({
         liveCallsEnabled: Boolean(refreshedBody.shop?.liveCallsEnabled),
         goLiveAt: refreshedBody.shop?.goLiveAt ?? null,
@@ -554,6 +605,8 @@ export function UserCallsLive({
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
   const shopHasGoneLive = shopLiveStatus.liveCallsEnabled || Boolean(shopLiveStatus.goLiveAt);
+  const hasAnyCalls = stats.total > 0;
+  const emptyState = callsEmptyState(activeFilter, shopHasGoneLive, hasAnyCalls);
 
   return (
     <UserLayout styles={userCallsStyles} scripts={userCallsScripts} scriptPrefix="user-calls-live">
@@ -615,15 +668,11 @@ export function UserCallsLive({
                 {!loading && calls.length === 0 ? (
                   <div className="calls-empty">
                     <div className="calls-empty-icon">☎</div>
-                    <h3>No calls yet</h3>
-                    {shopHasGoneLive ? (
-                      <p>No calls yet — your AI receptionist is active and ready. Calls will appear here once customers start calling.</p>
-                    ) : (
-                      <>
-                        <p>Complete Go Live to start receiving calls on your business number.</p>
-                        <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
-                      </>
-                    )}
+                    <h3>{emptyState.title}</h3>
+                    <p>{emptyState.message}</p>
+                    {emptyState.showGoLiveCta ? (
+                      <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                    ) : null}
                   </div>
                 ) : null}
                 {loading && calls.length === 0 ? <div className="calls-empty"><p>Loading calls…</p></div> : null}

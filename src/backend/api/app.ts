@@ -7213,9 +7213,10 @@ export function createBackendApp(deps: {
     const canUseAdvancedCallAnalytics = isCapabilityAllowed(shop.plan, 'advanced_call_analytics');
     const canPlayCallRecording = isCapabilityAllowed(shop.plan, 'call_recording_playback');
 
-    const [calls, total, last7DaysCount, missed] = await Promise.all([
+    const [calls, total, totalAll, last7DaysCount, missed] = await Promise.all([
       repo.listByShop(shop.id, { ...filters, limit, offset }),
       repo.countByShop(shop.id, filters),
+      repo.countByShop(shop.id),
       repo.countByShop(shop.id, { startedAfter: last7Days }),
       repo.countByShop(shop.id, { outcome: 'missed' }),
     ]);
@@ -7263,8 +7264,8 @@ export function createBackendApp(deps: {
       },
       total,
       stats: canUseAdvancedCallAnalytics
-        ? { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency }
-        : { last7Days: last7DaysCount, missed },
+        ? { total: totalAll, last7Days: last7DaysCount, bookings, followUp, missed, highUrgency }
+        : { total: totalAll, last7Days: last7DaysCount, missed },
       capabilities: { call_recovery_insights: isCapabilityAllowed(shop.plan, 'call_recovery_insights') },
       pagination: { page, limit, pageSize: limit, total, totalPages },
       ...(canUseAdvancedCallAnalytics ? { summary: { total, booked: bookings, missed, transcriptsReady } } : {}),
