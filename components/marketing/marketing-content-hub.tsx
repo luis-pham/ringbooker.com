@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { HtmlHubFaq } from '@/components/marketing/html-hub-faq';
+import { HubScrollAnimationsInit } from '@/components/marketing/hub-scroll-animations-init';
 import { HubStepTrackInit } from '@/components/marketing/hub-step-track-init';
 import { HTML_HUB_SCOPED_CSS } from '@/components/marketing/html-hub-scoped-css';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -362,6 +363,16 @@ function sectionOuterClass(html: HubBlockHtmlMeta | undefined, kind: ContentHubB
   return map[mode] ?? 'section';
 }
 
+type HubStaggerVariant = 'up' | 'left' | 'fade';
+
+function hubStaggerGrid(variant: HubStaggerVariant = 'up') {
+  return { 'data-hub-stagger-grid': true, 'data-hub-stagger': variant } as const;
+}
+
+function hubStaggerItem() {
+  return { 'data-hub-stagger-item': true } as const;
+}
+
 function HubEyebrow({ html }: { html?: HubBlockHtmlMeta }) {
   if (!html?.eyebrow) return null;
   const tone = html.eyebrowTone ?? 'purple';
@@ -409,9 +420,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
               const restCards = useSplit ? cards.slice(split) : [];
 
               const leakGrid = (items: typeof cards) => (
-                <div className={leakGridClass}>
+                <div className={leakGridClass} {...hubStaggerGrid()}>
                   {items.map((c) => (
-                    <article className="leak-card" key={c.title}>
+                    <article className="leak-card" key={c.title} {...hubStaggerItem()}>
                       <div className="leak-icon" aria-hidden>
                         {c.icon}
                       </div>
@@ -450,9 +461,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   <p className="section-sub hub-entity-definition">{block.definition}</p>
                 ) : null}
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="card-grid">
+                <div className="card-grid" {...hubStaggerGrid()}>
                   {block.cards.map((c) => (
-                    <div className={cardClass} key={c.title}>
+                    <div className={cardClass} key={c.title} {...hubStaggerItem()}>
                       <div className="card-icon" aria-hidden>
                         {c.icon}
                       </div>
@@ -471,9 +482,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="scenario-grid">
+                <div className="scenario-grid" {...hubStaggerGrid()}>
                   {block.items.map((s) => (
-                    <div className="scenario" key={s.title}>
+                    <div className="scenario" key={s.title} {...hubStaggerItem()}>
                       <div className="scenario-icon" aria-hidden>
                         {s.icon}
                       </div>
@@ -494,17 +505,19 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="intent-grid">
+                <div className="intent-grid" {...hubStaggerGrid()}>
                   {block.intents.map((x) => (
-                    <div className="intent-item" key={x.label}>
+                    <div className="intent-item" key={x.label} {...hubStaggerItem()}>
                       <span aria-hidden>{x.emoji}</span> {x.label}
                     </div>
                   ))}
                 </div>
-                <div className="stat-row">
+                <div className="stat-row" data-hub-stat-strip>
                   {block.stats.map((s) => (
                     <div className="stat" key={s.label}>
-                      <div className="stat-num">{s.value}</div>
+                      <div className="stat-num" data-hub-stat-value={s.value}>
+                        {s.value}
+                      </div>
                       <div className="stat-label">{s.label}</div>
                     </div>
                   ))}
@@ -519,9 +532,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
                 <div
                   className={`card-grid${block.html?.compareStripGridCols4 ? ' card-grid--cols-4' : ''}`}
+                  {...hubStaggerGrid()}
                 >
                   {block.cards.map((c) => (
-                    <div className="card" key={c.title}>
+                    <div className="card" key={c.title} {...hubStaggerItem()}>
                       <div className="card-icon" aria-hidden>
                         {c.icon}
                       </div>
@@ -547,9 +561,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 {block.sub ? <p className="section-sub section-sub--alt-link-grid">{block.sub}</p> : null}
                 <div
                   className={`alt-link-grid${block.html?.hubGridCols3 ? ' hub-grid-cols-3 hub-compare-3up' : ''}`}
+                  {...hubStaggerGrid()}
                 >
                   {block.links.map((l) => (
-                    <Link href={l.href} className="alt-link-card" key={l.href}>
+                    <Link href={l.href} className="alt-link-card" key={l.href} {...hubStaggerItem()}>
                       <h4>
                         {l.title} <span>Read Guide →</span>
                       </h4>
@@ -567,9 +582,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   <HubEyebrow html={block.html} />
                   <h2>{block.heading}</h2>
                   {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                  <div className="principles">
+                  <div className="principles" {...hubStaggerGrid()}>
                     {block.items.map((s) => (
-                      <div className="principle" key={s.title}>
+                      <div className="principle" key={s.title} {...hubStaggerItem()}>
                         <div className="p-icon" aria-hidden>
                           {s.icon}
                         </div>
@@ -597,9 +612,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   <HubEyebrow html={block.html} />
                   <h2>{block.heading}</h2>
                   {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                  <div className="use-case-list">
+                  <div className="use-case-list" {...hubStaggerGrid()}>
                     {block.items.map((s) => (
-                      <div className="use-case" key={s.title}>
+                      <div className="use-case" key={s.title} {...hubStaggerItem()}>
                         <div className="uc-icon" aria-hidden>
                           {s.icon}
                         </div>
@@ -628,9 +643,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className={scenarioGridClass}>
+                <div className={scenarioGridClass} {...hubStaggerGrid()}>
                   {block.items.map((s) => (
-                    <div className="scenario" key={s.title}>
+                    <div className="scenario" key={s.title} {...hubStaggerItem()}>
                       <div className="scenario-icon" aria-hidden>
                         {s.icon}
                       </div>
@@ -658,10 +673,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="flow-visual">
+                <div className="flow-visual" {...hubStaggerGrid('left')}>
                   {block.steps.map((s, j) => (
                     <Fragment key={s.label}>
-                      <div className="flow-step">
+                      <div className="flow-step" {...hubStaggerItem()}>
                         <div className="icon" aria-hidden>
                           {s.iconSrc ? (
                             <Image
@@ -710,9 +725,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="objection-grid">
+                <div className="objection-grid" {...hubStaggerGrid()}>
                   {block.items.map((o) => (
-                    <div className="objection" key={o.q}>
+                    <div className="objection" key={o.q} {...hubStaggerItem()}>
                       <div className="q">{o.q}</div>
                       <p className="a">{o.a}</p>
                     </div>
@@ -728,9 +743,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   <HubEyebrow html={block.html} />
                   <h2>{block.heading}</h2>
                   {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                  <div className="card-grid">
+                  <div className="card-grid" {...hubStaggerGrid()}>
                     {block.cards.map((c) => (
-                      <div className="card card-purple" key={c.title}>
+                      <div className="card card-purple" key={c.title} {...hubStaggerItem()}>
                         <div className="card-icon" aria-hidden>
                           {c.icon}
                         </div>
@@ -747,9 +762,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="pillar-grid">
+                <div className="pillar-grid" {...hubStaggerGrid()}>
                   {block.cards.map((c) => (
-                    <div className="pillar" key={c.title}>
+                    <div className="pillar" key={c.title} {...hubStaggerItem()}>
                       <div className="pillar-icon" aria-hidden>
                         {c.icon}
                       </div>
@@ -767,9 +782,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="tool-grid">
+                <div className="tool-grid" {...hubStaggerGrid()}>
                   {block.tools.map((t) => (
-                    <Link href={t.href} className="tool-card" key={t.href}>
+                    <Link href={t.href} className="tool-card" key={t.href} {...hubStaggerItem()}>
                       <span className="tool-arrow" aria-hidden>
                         <svg viewBox="0 0 16 16" width={12} height={12}>
                           <path
@@ -841,9 +856,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       .join(' ')
                   }
                   data-step-scroller
+                  {...hubStaggerGrid('left')}
                 >
                   {block.steps.map((s, idx) => (
-                    <div className="step" key={s.title} id={`hub-step-${i}-${idx + 1}`} data-step-card>
+                    <div className="step" key={s.title} id={`hub-step-${i}-${idx + 1}`} data-step-card {...hubStaggerItem()}>
                       <h4>{s.title}</h4>
                       <p>{s.body}</p>
                     </div>
@@ -859,10 +875,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 {block.sub ? (
                   <p className="section-sub section-sub--compare-matrix">{block.sub}</p>
                 ) : null}
-                <div className="compare-table-wrap">
+                <div className="compare-table-wrap" {...hubStaggerGrid('fade')}>
                   <table className="compare-table">
                     <thead>
-                      <tr>
+                      <tr {...hubStaggerItem()}>
                         {block.headers.map((h, hi) => (
                           <th key={h} className={hi === block.headers.length - 1 ? 'rb-col' : undefined}>
                             {h}
@@ -872,7 +888,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                     </thead>
                     <tbody>
                       {block.rows.map((row) => (
-                        <tr key={row.criterion}>
+                        <tr key={row.criterion} {...hubStaggerItem()}>
                           <td>{row.criterion}</td>
                           {row.cells.map((cell, ci) => (
                             <td key={ci} className={ci === row.cells.length - 1 ? 'td-rb' : undefined}>
@@ -899,8 +915,8 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="expect-split-grid">
-                  <div className="expect-split-card expect-split-card--good">
+                <div className="expect-split-grid" {...hubStaggerGrid()}>
+                  <div className="expect-split-card expect-split-card--good" {...hubStaggerItem()}>
                     <div className="expect-split-head expect-split-head--good">{block.left.title}</div>
                     <ul>
                       {block.left.items.map((line) => (
@@ -911,7 +927,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       ))}
                     </ul>
                   </div>
-                  <div className="expect-split-card expect-split-card--team">
+                  <div className="expect-split-card expect-split-card--team" {...hubStaggerItem()}>
                     <div className="expect-split-head expect-split-head--team">{block.right.title}</div>
                     <ul>
                       {block.right.items.map((line) => (
@@ -944,9 +960,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
                 <div
                   className={`situation-grid${block.html?.hubGridCols3 ? ' hub-grid-cols-3 hub-compare-3up' : ''}`}
+                  {...hubStaggerGrid()}
                 >
                   {block.items.map((s) => (
-                    <div className="situation" key={s.title}>
+                    <div className="situation" key={s.title} {...hubStaggerItem()}>
                       <div className="if">{s.prefix}</div>
                       <h4>{s.title}</h4>
                       <p>{s.body}</p>
@@ -1179,9 +1196,9 @@ export function MarketingContentHub({
               {industryEyebrow ? <div className="section-label">{industryEyebrow}</div> : null}
               {industryHeading ? <h2>{industryHeading}</h2> : null}
               {industrySub ? <p className="section-sub">{industrySub}</p> : null}
-              <div className="industry-grid">
+              <div className="industry-grid" {...hubStaggerGrid()}>
                 {industryCards.map((c) => (
-                  <Link key={c.href} href={c.href} className="industry-card">
+                  <Link key={c.href} href={c.href} className="industry-card" {...hubStaggerItem()}>
                     <div className="emoji" aria-hidden>
                       {c.emoji}
                     </div>
@@ -1201,9 +1218,9 @@ export function MarketingContentHub({
               {resourceEyebrow ? <div className="section-label">{resourceEyebrow}</div> : null}
               {resourceHeading ? <h2>{resourceHeading}</h2> : null}
               {resourceSub ? <p className="section-sub">{resourceSub}</p> : null}
-              <div className="article-list">
+              <div className="article-list" {...hubStaggerGrid()}>
                 {resourceLinks.map((l) => (
-                  <Link key={l.href} href={l.href} className="article-link">
+                  <Link key={l.href} href={l.href} className="article-link" {...hubStaggerItem()}>
                     {l.label}
                   </Link>
                 ))}
@@ -1308,6 +1325,7 @@ export function MarketingContentHub({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       ) : null}
       <HubStepTrackInit />
+      <HubScrollAnimationsInit />
       <style dangerouslySetInnerHTML={{ __html: HTML_HUB_SCOPED_CSS }} />
     </>
   );
