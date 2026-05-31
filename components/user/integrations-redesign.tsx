@@ -710,11 +710,10 @@ function VagaroConfigPanel({
   );
 }
 
-function SquareConfigPanel({ connected, provider, onDisconnect, onRefresh }: {
+function SquareConfigPanel({ connected, provider, onDisconnect }: {
   connected: boolean;
   provider: { configured?: boolean; details: Record<string, unknown> | null; readiness?: { liveReady: boolean; missingFields?: string[]; message?: string } } | null;
   onDisconnect: () => Promise<void>;
-  onRefresh: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const liveReady = Boolean(provider?.readiness?.liveReady ?? provider?.details?.liveReady ?? provider?.configured ?? false);
@@ -746,7 +745,6 @@ function SquareConfigPanel({ connected, provider, onDisconnect, onRefresh }: {
           </div>
           <p className="calendar-int-desc">Choose a Square location before RingBooker creates appointments directly. If Square is incomplete or fails, RingBooker captures the booking request instead.</p>
           <div className="integrations-inline-actions">
-            <button type="button" className="btn" onClick={onRefresh}>Refresh</button>
             <button
               type="button"
               className="btn"
@@ -1146,7 +1144,6 @@ function AppConfigPanel({
   disconnectMindbody,
   disconnectAcuity,
   disconnectSquare,
-  refresh,
 }: {
   appKey: IntegrationAppKey | null;
   providers: Array<{ id: string; connected: boolean; configured?: boolean; liveReady?: boolean; readiness?: { liveReady: boolean; missingFields?: string[]; message?: string }; details: Record<string, unknown> | null }>;
@@ -1185,7 +1182,6 @@ function AppConfigPanel({
   disconnectMindbody: () => Promise<void>;
   disconnectAcuity: () => Promise<void>;
   disconnectSquare: () => Promise<void>;
-  refresh: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const app = findIntegrationApp(appKey);
@@ -1208,10 +1204,9 @@ function AppConfigPanel({
           <h4>{app.name}</h4>
           <span className="integration-status-line"><StatusDot connected={connected && liveReady} warning={connected && !liveReady} />{statusLabel}</span>
         </div>
-        <button type="button" className="btn" onClick={refresh}>Refresh</button>
       </div>
       {app.key === 'square' ? (
-        <SquareConfigPanel connected={connected} provider={selectedProvider} onDisconnect={disconnectSquare} onRefresh={refresh} />
+        <SquareConfigPanel connected={connected} provider={selectedProvider} onDisconnect={disconnectSquare} />
       ) : app.key === 'mindbody' ? (
         <MindbodyConfigPanel connected={connected} provider={selectedProvider} onConnect={connectMindbody} onDisconnect={disconnectMindbody} />
       ) : app.key === 'acuity' ? (
@@ -1737,9 +1732,6 @@ export function IntegrationsRedesign({
           <h3>Integrations</h3>
           <p className="sub">Tell RingBooker how clients book so it gives callers the right next step.</p>
         </div>
-        <button type="button" className="btn" disabled={status.isLoading} onClick={() => void refresh()}>
-          {status.isLoading ? 'Refreshing...' : 'Refresh'}
-        </button>
       </div>
 
       {calendarStatus && showCalendarStatusBanner ? (
@@ -1854,7 +1846,6 @@ export function IntegrationsRedesign({
             disconnectMindbody={disconnectMindbody}
             disconnectAcuity={disconnectAcuity}
             disconnectSquare={disconnectSquare}
-            refresh={() => void refresh()}
           />
         </>
       ) : null}
