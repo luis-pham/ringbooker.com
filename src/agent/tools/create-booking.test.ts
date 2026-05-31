@@ -25,14 +25,15 @@ function createShop(provider: 'square_appointments' | 'manual' | 'mindbody' | 'a
     send_missed_call_followup_sms: true,
     plan: 'starter',
     active: true,
+    selected_integration: provider === 'manual' ? null : provider,
     google_cal_credentials_encrypted:
       provider === 'square_appointments'
         ? JSON.stringify({
             provider: 'square_appointments',
-            accessToken: 'square-access-token',
-            refreshToken: 'square-refresh-token',
-            locationId: 'location-id',
-            serviceVariationId: 'service-variation-id',
+            access_token: 'square-access-token',
+            refresh_token: 'square-refresh-token',
+            location_id: 'location-id',
+            service_variation_id: 'service-variation-id',
           })
         : null,
     integration_credentials_encrypted:

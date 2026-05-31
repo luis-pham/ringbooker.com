@@ -10,6 +10,7 @@ import {
   parseCalendarProviderId,
   type CalendarProviderId,
 } from '@/src/backend/services/calendar/provider-catalog';
+import { resolveSelectedCalendarProviderId } from '@/src/backend/services/calendar/provider-readiness';
 
 export interface CalendarProvider {
   shop: Shop;
@@ -42,39 +43,12 @@ export interface CalendarProvider {
 
 export type CalendarProviderOptions = {
   persistCredentials?: (encodedCredentials: string) => Promise<void>;
+  allowManualFallback?: boolean;
 };
-
-function parseShopCalendarProviderHint(shop: Shop): CalendarProviderId | null {
-  const rawCredentials = shop.integration_credentials_encrypted ?? shop.google_cal_credentials_encrypted;
-  if (!rawCredentials) return null;
-  const parseCandidates = [rawCredentials];
-  try {
-    parseCandidates.push(Buffer.from(rawCredentials, 'base64').toString('utf-8'));
-  } catch {
-    // ignore invalid base64 candidate
-  }
-
-  for (const candidate of parseCandidates) {
-    try {
-      const parsed = JSON.parse(candidate) as Record<string, unknown>;
-      if (parsed.type === 'booking_link') continue;
-      const hintedProvider =
-        parsed.provider ??
-        parsed.provider_id ??
-        (parsed.connection && typeof parsed.connection === 'object'
-          ? (parsed.connection as Record<string, unknown>).provider
-          : null);
-      const providerId = parseCalendarProviderId(hintedProvider);
-      if (providerId) return providerId;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
 
 function hasVagaroLiveSyncConfig(shop: Shop): boolean {
   return (
+    shop.selected_integration === 'vagaro' &&
     shop.vagaro_mode === 'live_sync' &&
     shop.vagaro_connection_status === 'connected' &&
     Boolean(shop.vagaro_business_id?.trim()) &&
@@ -84,19 +58,13 @@ function hasVagaroLiveSyncConfig(shop: Shop): boolean {
   );
 }
 
-function hasAcuityOAuthConfig(shop: Shop): boolean {
-  return (
-    shop.selected_integration === 'acuity' &&
-    shop.acuity_connection_status === 'connected' &&
-    Boolean(shop.acuity_access_token_encrypted?.trim())
-  );
-}
-
 function resolveShopCalendarProviderId(shop: Shop): CalendarProviderId {
+  const selected = parseCalendarProviderId(shop.selected_integration);
+  if (selected === 'square_appointments' || selected === 'mindbody' || selected === 'acuity') return selected;
   if (hasVagaroLiveSyncConfig(shop)) return 'vagaro';
-  if (hasAcuityOAuthConfig(shop)) return 'acuity';
-  const hinted = parseShopCalendarProviderHint(shop);
-  if (hinted) return hinted;
+  if (selected) return 'manual';
+  const explicit = resolveSelectedCalendarProviderId(shop);
+  if (explicit !== 'manual') return explicit;
   if (shop.google_cal_id) return 'google_calendar';
 
   const envDefault = parseCalendarProviderId(process.env.CALENDAR_PROVIDER_DEFAULT);
@@ -138,12 +106,16 @@ export function getCalendarProvider(shop: Shop, options?: CalendarProviderOption
     return new AcuityProvider(shop);
   }
 
+  if (providerMeta.type === 'booking_link') {
+    return new ManualCalendarProvider(shop);
+  }
+
   if (providerId !== 'manual' && !providerMeta.implemented) {
     throw new Error(`calendar_provider_not_implemented:${providerId}`);
   }
 
   const productionStrictCalendar = process.env.NODE_ENV === 'production' && process.env.ALLOW_MANUAL_CALENDAR_PROVIDER !== 'true';
-  if (productionStrictCalendar && shop.active) {
+  if (productionStrictCalendar && shop.active && !options?.allowManualFallback) {
     throw new Error(`calendar_provider_not_configured_for_shop:${shop.id}:provider=${providerId}`);
   }
   return new ManualCalendarProvider(shop);

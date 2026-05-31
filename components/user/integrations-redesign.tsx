@@ -171,10 +171,11 @@ function BookingMethodQuestion({
   );
 }
 
-function AppCard({ app, selected, connected, onSelect, displayName, displayTag, displayTagVariant = 'default', upgradePill, dashed = false, useLinkIcon = false }: {
+function AppCard({ app, selected, connected, liveReady = connected, onSelect, displayName, displayTag, displayTagVariant = 'default', upgradePill, dashed = false, useLinkIcon = false }: {
   app: IntegrationApp;
   selected: boolean;
   connected: boolean;
+  liveReady?: boolean;
   onSelect: () => void;
   displayName?: string;
   displayTag?: string;
@@ -215,7 +216,7 @@ function AppCard({ app, selected, connected, onSelect, displayName, displayTag, 
           {upgradePill}
         </span>
       ) : null}
-      {connected ? <span className="integration-app-badge connected">Connected</span> : null}
+      {connected ? <span className={`integration-app-badge ${liveReady ? 'connected' : ''}`}>{liveReady ? 'Connected' : 'Setup needed'}</span> : null}
       {app.comingSoon ? <span className="integration-app-badge">Coming soon</span> : null}
     </button>
   );
@@ -223,13 +224,17 @@ function AppCard({ app, selected, connected, onSelect, displayName, displayTag, 
 
 function AppPicker({ selectedApp, providers, vagaroMode, vagaroConnectionStatus, onBack, onSelect }: {
   selectedApp: IntegrationAppKey | null;
-  providers: Array<{ id: string; connected: boolean }>;
+  providers: Array<{ id: string; connected: boolean; liveReady?: boolean; configured?: boolean; readiness?: { liveReady: boolean } }>;
   vagaroMode: VagaroMode;
   vagaroConnectionStatus: VagaroConnectionStatus;
   onBack: () => void;
   onSelect: (key: IntegrationAppKey) => void;
 }) {
   const isConnected = (app: IntegrationApp) => providers.some((provider) => provider.id === toBackendProviderKey(app.key) && provider.connected);
+  const isLiveReady = (app: IntegrationApp) => {
+    const provider = providers.find((item) => item.id === toBackendProviderKey(app.key));
+    return Boolean(provider?.readiness?.liveReady ?? provider?.liveReady ?? provider?.configured ?? provider?.connected);
+  };
   const visibleBookingLinkApps = BOOKING_LINK_APPS.filter((app) => (
     app.key === 'vagaro'
     || app.key === 'fresha'
@@ -249,7 +254,7 @@ function AppPicker({ selectedApp, providers, vagaroMode, vagaroConnectionStatus,
         </div>
         <div className="integrations-app-grid integrations-app-grid--sync">
           {FULL_SYNC_APPS.map((app) => (
-            <AppCard key={app.key} app={app} selected={selectedApp === app.key} connected={isConnected(app)} onSelect={() => onSelect(app.key)} />
+            <AppCard key={app.key} app={app} selected={selectedApp === app.key} connected={isConnected(app)} liveReady={isLiveReady(app)} onSelect={() => onSelect(app.key)} />
           ))}
         </div>
       </section>
@@ -266,6 +271,7 @@ function AppPicker({ selectedApp, providers, vagaroMode, vagaroConnectionStatus,
               app={app}
               selected={selectedApp === app.key}
               connected={isConnected(app)}
+              liveReady={isLiveReady(app)}
               onSelect={() => onSelect(app.key)}
               displayName={app.key === 'custom' ? 'Any booking link' : undefined}
               displayTag={
@@ -706,22 +712,39 @@ function VagaroConfigPanel({
 
 function SquareConfigPanel({ connected, provider, onDisconnect, onRefresh }: {
   connected: boolean;
-  provider: { details: Record<string, unknown> | null } | null;
+  provider: { configured?: boolean; details: Record<string, unknown> | null; readiness?: { liveReady: boolean; missingFields?: string[]; message?: string } } | null;
   onDisconnect: () => Promise<void>;
   onRefresh: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const liveReady = Boolean(provider?.readiness?.liveReady ?? provider?.details?.liveReady ?? provider?.configured ?? false);
+  const missingFields = provider?.readiness?.missingFields ?? (Array.isArray(provider?.details?.missingFields) ? provider.details.missingFields.map(String) : []);
+  const healthMessage = provider?.readiness?.message ?? (typeof provider?.details?.healthMessage === 'string' ? provider.details.healthMessage : null);
   return (
     <div className="integration-config-body">
       {connected ? (
         <>
-          <div className="integration-success-box">Connected · Merchant: {String(provider?.details?.merchantId ?? 'Square')}</div>
+          <div className={liveReady ? 'integration-success-box' : 'integration-info-box'}>
+            {liveReady ? 'Live-ready' : 'Connected · setup needed'} · Merchant: {String(provider?.details?.merchantId ?? 'Square')}
+            {!liveReady && healthMessage ? (
+              <>
+                <br />
+                {healthMessage}
+              </>
+            ) : null}
+            {!liveReady && missingFields.length ? (
+              <>
+                <br />
+                Missing: {missingFields.join(', ')}
+              </>
+            ) : null}
+          </div>
           <div className="integration-info-box">
             <strong>Square Appointments booking provider.</strong>
             <br />
-            Services/catalog sync: available · Staff sync: available · Availability check: {provider?.details?.availabilityCheck === 'available' ? 'available' : 'needs mapping'} · Direct appointment creation: {provider?.details?.directAppointmentCreation === 'enabled' ? 'enabled' : 'not enabled'}.
+            Services/catalog sync: available · Staff sync: available · Availability check: {provider?.details?.availabilityCheck === 'available' ? 'available' : 'needs setup'} · Direct appointment creation: {provider?.details?.directAppointmentCreation === 'enabled' ? 'enabled' : 'not enabled'}.
           </div>
-          <p className="calendar-int-desc">Choose a Square location and service variation before RingBooker creates appointments directly. If Square fails, RingBooker captures the booking request instead.</p>
+          <p className="calendar-int-desc">Choose a Square location before RingBooker creates appointments directly. If Square is incomplete or fails, RingBooker captures the booking request instead.</p>
           <div className="integrations-inline-actions">
             <button type="button" className="btn" onClick={onRefresh}>Refresh</button>
             <button
@@ -1126,8 +1149,8 @@ function AppConfigPanel({
   refresh,
 }: {
   appKey: IntegrationAppKey | null;
-  providers: Array<{ id: string; connected: boolean; details: Record<string, unknown> | null }>;
-  selectedProvider: { id: string; connected: boolean; details: Record<string, unknown> | null } | null;
+  providers: Array<{ id: string; connected: boolean; configured?: boolean; liveReady?: boolean; readiness?: { liveReady: boolean; missingFields?: string[]; message?: string }; details: Record<string, unknown> | null }>;
+  selectedProvider: { id: string; connected: boolean; configured?: boolean; liveReady?: boolean; readiness?: { liveReady: boolean; missingFields?: string[]; message?: string }; details: Record<string, unknown> | null } | null;
   saveBookingLink: (url: string, key: IntegrationAppKey) => Promise<void>;
   vagaroMode: VagaroMode;
   vagaroConnectionStatus: VagaroConnectionStatus;
@@ -1167,6 +1190,8 @@ function AppConfigPanel({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const app = findIntegrationApp(appKey);
   const connected = app ? providers.some((provider) => provider.id === toBackendProviderKey(app.key) && provider.connected) : false;
+  const liveReady = Boolean(selectedProvider?.readiness?.liveReady ?? selectedProvider?.liveReady ?? selectedProvider?.configured ?? connected);
+  const statusLabel = connected ? (liveReady ? 'Connected' : 'Connected · setup needed') : 'Not connected';
 
   useEffect(() => {
     if (app && panelRef.current) panelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1181,7 +1206,7 @@ function AppConfigPanel({
         <AppLogo app={app} />
         <div>
           <h4>{app.name}</h4>
-          <span className="integration-status-line"><StatusDot connected={connected} />{connected ? 'Connected' : 'Not connected'}</span>
+          <span className="integration-status-line"><StatusDot connected={connected && liveReady} warning={connected && !liveReady} />{statusLabel}</span>
         </div>
         <button type="button" className="btn" onClick={refresh}>Refresh</button>
       </div>
@@ -1268,6 +1293,7 @@ function ConfiguredIntegrationView({
   selectedAppKey,
   bookingUrl,
   fullSyncConnected,
+  fullSyncSetupNeeded = false,
   canUseThirdPartyIntegrations,
   onChange,
   onReconnect,
@@ -1277,6 +1303,7 @@ function ConfiguredIntegrationView({
   selectedAppKey: IntegrationAppKey | null;
   bookingUrl: string | null;
   fullSyncConnected: boolean;
+  fullSyncSetupNeeded?: boolean;
   canUseThirdPartyIntegrations: boolean;
   onChange: () => void;
   onReconnect?: () => void;
@@ -1289,7 +1316,8 @@ function ConfiguredIntegrationView({
   const app = findIntegrationApp(selectedAppKey);
   const isFullSyncApp = Boolean(app && app.category === 'full-sync');
   const isFullSync = Boolean(fullSyncConnected);
-  const needsReconnect = Boolean(isFullSyncApp && !fullSyncConnected);
+  const needsSetup = Boolean(isFullSyncApp && fullSyncSetupNeeded && !fullSyncConnected);
+  const needsReconnect = Boolean(isFullSyncApp && !fullSyncConnected && !needsSetup);
   const displayName = app?.key === 'custom' ? 'Any booking link' : app?.name ?? 'Booking link';
 
   useEffect(() => {
@@ -1315,19 +1343,25 @@ function ConfiguredIntegrationView({
           <div className="integration-configured-copy">
             <div className="integration-configured-title-row">
               <strong>{displayName}</strong>
-              {isFullSync || needsReconnect ? (
+              {isFullSync || needsReconnect || needsSetup ? (
                 <SectionBadge icon="refresh" label="Live sync" variant="teal" />
               ) : (
                 <SectionBadge icon="link" label="Booking link" variant="gray" />
               )}
             </div>
             <span className="integration-status-line">
-              <StatusDot connected={isFullSync || !needsReconnect} warning={needsReconnect} />
-              {needsReconnect ? 'Connection lost — reconnect to restore live sync' : isFullSync ? 'Connected — checking availability in real time' : 'Link saved — RingBooker will text this to callers'}
+              <StatusDot connected={isFullSync || (!needsReconnect && !needsSetup)} warning={needsReconnect || needsSetup} />
+              {needsSetup
+                ? 'Connected — finish setup before live booking'
+                : needsReconnect
+                  ? 'Connection lost — reconnect to restore live sync'
+                  : isFullSync
+                    ? 'Connected — checking availability in real time'
+                    : 'Link saved — RingBooker will text this to callers'}
             </span>
           </div>
-          {needsReconnect ? (
-            <button type="button" className="btn" onClick={onReconnect}>Reconnect</button>
+          {needsReconnect || needsSetup ? (
+            <button type="button" className="btn" onClick={onReconnect}>{needsSetup ? 'Finish setup' : 'Reconnect'}</button>
           ) : (
             <button type="button" className="btn" onClick={onChange}>Change</button>
           )}
@@ -1662,6 +1696,11 @@ export function IntegrationsRedesign({
 	  const selectedProviderConnected = configuredSelectedApp
 	    ? status.providers.some((provider) => provider.id === toBackendProviderKey(configuredSelectedApp.key) && provider.connected)
 	    : false;
+  const configuredProvider = configuredSelectedApp
+    ? status.providers.find((provider) => provider.id === toBackendProviderKey(configuredSelectedApp.key)) ?? null
+    : null;
+  const configuredProviderLiveReady = Boolean(configuredProvider?.readiness?.liveReady ?? configuredProvider?.liveReady ?? configuredProvider?.configured ?? selectedProviderConnected);
+  const configuredProviderSetupNeeded = Boolean(selectedProviderConnected && !configuredProviderLiveReady);
 	  const selectedAppIsFullSync = Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync');
 	  const vagaroLiveSyncConnected = configuredSelectedAppKey === 'vagaro' && status.vagaroMode === 'live_sync' && status.vagaroConnectionStatus === 'connected';
 	  const hasConfiguredState = effectiveBookingMethod === 'direct' || (
@@ -1724,7 +1763,8 @@ export function IntegrationsRedesign({
           bookingMethod={effectiveBookingMethod}
           selectedAppKey={configuredSelectedAppKey}
           bookingUrl={configuredBookingUrl?.trim() || null}
-	          fullSyncConnected={Boolean(vagaroLiveSyncConnected || (configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && selectedProviderConnected))}
+	          fullSyncConnected={Boolean(vagaroLiveSyncConnected || (configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderLiveReady))}
+          fullSyncSetupNeeded={Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderSetupNeeded)}
           canUseThirdPartyIntegrations
           onChange={() => {
             void (async () => {

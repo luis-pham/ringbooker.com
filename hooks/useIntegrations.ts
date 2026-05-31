@@ -19,6 +19,16 @@ type ProviderSummary = {
   implemented: boolean;
   connected: boolean;
   configured: boolean;
+  liveReady?: boolean;
+  readiness?: {
+    status: 'ready' | 'missing_config' | 'disconnected' | 'auth_expired' | 'invalid_credentials';
+    liveReady: boolean;
+    missingFields: string[];
+    canCheckAvailability: boolean;
+    canCreateBooking: boolean;
+    canSendBookingLink: boolean;
+    message: string;
+  };
   details: {
     bookingUrl?: string | null;
     merchantId?: string | null;
@@ -56,6 +66,10 @@ type ProviderSummary = {
     connectionStatus?: string | null;
     authMode?: string | null;
     capabilityNote?: string | null;
+    readinessStatus?: string | null;
+    liveReady?: boolean | null;
+    missingFields?: string[] | null;
+    healthMessage?: string | null;
     type?: string | null;
   } | null;
 };

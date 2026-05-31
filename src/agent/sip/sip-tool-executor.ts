@@ -42,7 +42,8 @@ import type {
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
 import { logger } from '@/src/backend/observability/logger';
-import { getCalendarProvider, getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
+import { getCalendarProvider, getShopCalendarProviderMetadata, type CalendarProvider } from '@/src/backend/services/calendar/types';
+import { resolveBookingProviderReadiness } from '@/src/backend/services/calendar/provider-readiness';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 
@@ -96,6 +97,85 @@ type AvailabilityToolResult = {
   suggestions?: unknown;
 };
 
+class LazySipCalendarProvider implements CalendarProvider {
+  readonly shop: Shop;
+  private provider: CalendarProvider | null = null;
+  private degradedLogged = false;
+
+  constructor(
+    shop: Shop,
+    private readonly createProvider: () => CalendarProvider,
+    private readonly context: { requestId: string; rbCallId?: string; openAiLegCallControlId?: string | null },
+  ) {
+    this.shop = shop;
+  }
+
+  private getProvider(): CalendarProvider {
+    if (this.provider) return this.provider;
+    try {
+      this.provider = this.createProvider();
+      return this.provider;
+    } catch (err) {
+      const readiness = resolveBookingProviderReadiness(this.shop);
+      if (!this.degradedLogged) {
+        this.degradedLogged = true;
+        logger.warn(
+          {
+            err,
+            callSessionId: this.context.rbCallId ?? this.context.requestId,
+            providerCallId: this.context.openAiLegCallControlId ?? null,
+            shopId: this.shop.id,
+            provider: readiness.providerId,
+            readinessStatus: readiness.status,
+            missingFields: readiness.missingFields,
+          },
+          'provider_config_invalid',
+        );
+        logger.warn(
+          {
+            callSessionId: this.context.rbCallId ?? this.context.requestId,
+            providerCallId: this.context.openAiLegCallControlId ?? null,
+            shopId: this.shop.id,
+            provider: readiness.providerId,
+            degradedReason: 'provider_unavailable',
+          },
+          'voice_session_degraded',
+        );
+      }
+      throw err;
+    }
+  }
+
+  async prefetchAvailability(params: { date: string; timezone: string }): Promise<void> {
+    const provider = this.getProvider();
+    await provider.prefetchAvailability?.(params);
+  }
+
+  async checkAvailability(params: Parameters<CalendarProvider['checkAvailability']>[0]): ReturnType<CalendarProvider['checkAvailability']> {
+    return this.getProvider().checkAvailability(params);
+  }
+
+  async getTeamMembers(): Promise<Array<{ id: string; displayName: string; givenName?: string; familyName?: string }>> {
+    return this.getProvider().getTeamMembers?.() ?? [];
+  }
+
+  async findTeamMemberByName(name: string): Promise<string | null> {
+    return this.getProvider().findTeamMemberByName?.(name) ?? null;
+  }
+
+  async createBooking(input: Parameters<CalendarProvider['createBooking']>[0]): ReturnType<CalendarProvider['createBooking']> {
+    return this.getProvider().createBooking(input);
+  }
+
+  async cancelBooking(params: Parameters<CalendarProvider['cancelBooking']>[0]): ReturnType<CalendarProvider['cancelBooking']> {
+    return this.getProvider().cancelBooking(params);
+  }
+
+  async rescheduleBooking(params: Parameters<CalendarProvider['rescheduleBooking']>[0]): ReturnType<CalendarProvider['rescheduleBooking']> {
+    return this.getProvider().rescheduleBooking(params);
+  }
+}
+
 function availabilityCacheKey(params: {
   providerId: string;
   service: string;
@@ -136,6 +216,8 @@ function resolveDraftServiceName(ctx: AgentToolContext): string | null {
 function buildAvailabilityRequestFromDraft(ctx: AgentToolContext): AvailabilityCheckRequest | null {
   const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
   if (providerMeta.id === 'manual' || !providerMeta.capabilities.checkAvailability) return null;
+  const readiness = resolveBookingProviderReadiness(ctx.shop);
+  if (!readiness.canCheckAvailability) return null;
 
   const serviceCandidate = latestServiceCandidate(ctx);
   if (!serviceCandidate) return null;
@@ -190,6 +272,8 @@ function buildAvailabilityRequestFromToolInput(
 
   const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
   if (providerMeta.id === 'manual' || !providerMeta.capabilities.checkAvailability) return null;
+  const readiness = resolveBookingProviderReadiness(ctx.shop);
+  if (!readiness.canCheckAvailability) return null;
   const service = resolveRuntimeService(ctx.shop, serviceText);
   if (!service.ok) return null;
 
@@ -247,14 +331,48 @@ export function createSipAgentToolContext(params: {
   rbCallId?: string;
   openAiLegCallControlId?: string | null;
 }): AgentToolContext {
-  const calendarProvider = getCalendarProvider(params.shop, {
-    persistCredentials: async (encodedCredentials) => {
-      await params.deps.shopsRepository.updateCalendarConnection(params.shop.id, {
-        google_cal_id: params.shop.google_cal_id ?? null,
-        google_cal_credentials_encrypted: encodedCredentials,
-      });
+  const readiness = resolveBookingProviderReadiness(params.shop);
+  if (readiness.selectedIntegration && !readiness.liveReady) {
+    logger.warn(
+      {
+        callSessionId: params.rbCallId ?? params.requestId,
+        providerCallId: params.openAiLegCallControlId ?? null,
+        shopId: params.shop.id,
+        provider: readiness.providerId,
+        readinessStatus: readiness.status,
+        missingFields: readiness.missingFields,
+      },
+      'provider_config_invalid',
+    );
+    logger.warn(
+      {
+        callSessionId: params.rbCallId ?? params.requestId,
+        providerCallId: params.openAiLegCallControlId ?? null,
+        shopId: params.shop.id,
+        provider: readiness.providerId,
+        degradedReason: 'provider_not_live_ready',
+      },
+      'voice_session_degraded',
+    );
+  }
+
+  const calendarProvider = new LazySipCalendarProvider(
+    params.shop,
+    () => getCalendarProvider(params.shop, {
+      allowManualFallback: true,
+      persistCredentials: async (encodedCredentials) => {
+        await params.deps.shopsRepository.updateCalendarConnection(params.shop.id, {
+          google_cal_id: params.shop.google_cal_id ?? null,
+          google_cal_credentials_encrypted: encodedCredentials,
+        });
+      },
+    }),
+    {
+      requestId: params.requestId,
+      rbCallId: params.rbCallId,
+      openAiLegCallControlId: params.openAiLegCallControlId,
     },
-  });
+  );
 
   return {
     shop: params.shop,

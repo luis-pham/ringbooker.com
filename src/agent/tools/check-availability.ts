@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
+import { resolveBookingProviderReadiness } from '@/src/backend/services/calendar/provider-readiness';
 import {
   dateSchema,
   isRequestedAppointmentInsideBusinessHours,
@@ -55,6 +56,14 @@ export async function checkAvailabilityTool(
     const service = resolveRuntimeService(ctx.shop, parsed.data.service);
     if (!service.ok) {
       return toToolError(service.message, { code: SERVICE_ERROR_CODE[service.reason], retryable: false });
+    }
+
+    const readiness = resolveBookingProviderReadiness(ctx.shop);
+    if (!readiness.canCheckAvailability) {
+      return toToolError(
+        'Live availability is not configured for this shop. Offer to capture the request and have the shop confirm.',
+        { code: 'CALENDAR_TIMEOUT', retryable: false },
+      );
     }
 
     return await ctx.calendarProvider.checkAvailability({

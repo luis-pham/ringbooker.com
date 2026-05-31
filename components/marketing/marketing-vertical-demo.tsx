@@ -545,7 +545,7 @@ const styles: string[] = [
   .vd-status-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
   .vd-status-dot.pulse{animation:vdPulse 1.2s ease-in-out infinite}
   @keyframes vdPulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .vd-status-h{font-size:22px;font-weight:900;letter-spacing:-.5px;color:#111827;margin:0 0 6px}
+  .vd-status-h{font-size:22px;font-weight:600;letter-spacing:-.5px;color:#111827;margin:0 0 6px}
   .vd-status-body{font-size:14px;line-height:1.6;color:#6B7280;margin:0 0 18px}
   .vd-wave{height:30px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:14px}
   .vd-wave span{display:block;width:3px;border-radius:4px;background:#10B981;animation:vdWave 1.65s ease-in-out infinite}

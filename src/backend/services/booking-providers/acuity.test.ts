@@ -27,6 +27,7 @@ function buildShop(overrides: Partial<Shop> = {}): Shop {
     send_missed_call_followup_sms: true,
     plan: 'professional',
     active: true,
+    selected_integration: 'acuity',
     integration_credentials_encrypted: encodeAcuityCredentials({
       provider: 'acuity',
       userId: 'user-1',

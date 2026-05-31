@@ -38,6 +38,7 @@ test('calendar provider resolver returns Vagaro provider for live sync shop', ()
     vagaro_region: 'usa03',
     vagaro_client_id: 'client-123',
     vagaro_client_secret_encrypted: encrypt('secret-123'),
+    selected_integration: 'vagaro',
   });
 
   const provider = getCalendarProvider(shop);

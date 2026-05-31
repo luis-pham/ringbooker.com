@@ -118,6 +118,68 @@ const FALLBACK_TRANSFER_MESSAGE = "Let me connect you with someone who can help.
 const FALLBACK_ISSUE_MESSAGE =
   "We're experiencing a technical issue. We'll follow up with you shortly.";
 
+function compactFallbackPromptValue(value: string | null | undefined, fallback: string, maxChars = 160): string {
+  const normalized = value?.replace(/\s+/g, ' ').trim();
+  if (!normalized) return fallback;
+  return normalized.length > maxChars ? normalized.slice(0, maxChars) : normalized;
+}
+
+function buildFallbackProductionSipPrompt(params: {
+  shop: Shop;
+  callerPhone?: string | null;
+}): string {
+  const shopName = compactFallbackPromptValue(params.shop.name, 'this business', 120);
+  const businessType = params.shop.vertical ? params.shop.vertical.replace(/_/g, ' ') : 'service business';
+  const callerLine = params.callerPhone
+    ? `Caller phone: ${params.callerPhone}. Use it for booking requests unless the caller gives another number.`
+    : 'Caller phone may be unavailable. Ask for the phone number only if needed for a booking request.';
+
+  return [
+    `You are RingBooker's virtual phone assistant for ${shopName}, a ${businessType}.`,
+    'This is a live inbound phone call. Speak naturally, keep replies concise, and listen before asking follow-up questions.',
+    'If a caller asks about services, hours, pricing, or policies and you do not have reliable data, say you can take a message for the team instead of guessing.',
+    'For appointment requests, capture service, preferred date and time, caller name, and phone. Use the booking tools when available.',
+    'Never claim an appointment is confirmed unless a tool result explicitly confirms it. If live booking is unavailable, create a pending request for staff follow-up.',
+    callerLine,
+    'When the call is resolved, say goodbye naturally and call end_call silently.',
+  ].join('\n');
+}
+
+function buildFallbackDemoSipPrompt(params: {
+  shopName: string;
+  businessType: string;
+}): string {
+  const shopName = compactFallbackPromptValue(params.shopName, 'this demo business', 120);
+  const businessType = compactFallbackPromptValue(params.businessType, 'service business', 80);
+  return [
+    `You are RingBooker's demo phone assistant for ${shopName}, a ${businessType}.`,
+    'This is a demo call. Speak naturally, answer common questions, and offer to capture a booking request.',
+    'Do not claim a real appointment is confirmed in demo mode.',
+    'When the call is resolved, say goodbye naturally and call end_call silently.',
+  ].join('\n');
+}
+
+function logVoiceSessionDegraded(params: {
+  callId: string;
+  routeKind: 'shop' | 'demo';
+  shopId?: string | null;
+  degradedReason: string;
+  err?: unknown;
+  details?: Record<string, unknown>;
+}): void {
+  logger.warn(
+    {
+      callId: params.callId,
+      routeKind: params.routeKind,
+      shopId: params.shopId ?? null,
+      degradedReason: params.degradedReason,
+      err: params.err,
+      ...(params.details ?? {}),
+    },
+    'voice_session_degraded',
+  );
+}
+
 type DemoCallTimer = { timer: ReturnType<typeof setTimeout>; telnyxCallControlId: string };
 const demoCallTimers = new Map<string, DemoCallTimer>();
 
@@ -854,25 +916,52 @@ export async function handleOpenAiRealtimeSipWebhook(
       demoChannel: 'inbound_sip' as const,
       voiceCallType: 'inbound_booking' as const,
     };
-    instructions = buildPublicDemoSystemPrompt(demoPromptInput);
-    const scriptedWelcomeLine = buildPublicDemoScriptedWelcomeLine(demoPromptInput);
-    demoInitialResponseInstructions = `Speak first now. Say this opening line exactly once, naturally, then stop and listen for the caller: ${scriptedWelcomeLine}`;
+    try {
+      instructions = buildPublicDemoSystemPrompt(demoPromptInput);
+      const scriptedWelcomeLine = buildPublicDemoScriptedWelcomeLine(demoPromptInput);
+      demoInitialResponseInstructions = `Speak first now. Say this opening line exactly once, naturally, then stop and listen for the caller: ${scriptedWelcomeLine}`;
+    } catch (err) {
+      instructions = buildFallbackDemoSipPrompt({ shopName, businessType });
+      demoInitialResponseInstructions = `Speak first now. Say this opening line exactly once, naturally, then stop and listen for the caller: Thanks for calling ${shopName}. How can I help today?`;
+      logger.warn({ err, callId, routeKind: 'demo' }, 'prompt_build_degraded');
+      logVoiceSessionDegraded({
+        callId,
+        routeKind: 'demo',
+        degradedReason: 'demo_prompt_build_failed',
+        err,
+      });
+    }
   } else {
     demoVertical = voiceVerticalFromShopVertical(route.shop.vertical);
     const routingRules = deps.shopRoutingRulesRepository
       ? await deps.shopRoutingRulesRepository.listByShopId(route.shop.id, { activeOnly: true }).catch((error) => {
           logger.warn({ err: error, shopId: route.shop.id }, 'openai_sip_routing_rules_lookup_failed');
           return [];
-        })
+      })
       : [];
-    instructions = buildSystemPrompt({
-      shop: route.shop,
-      customer: null,
-      mode: 'inbound',
-      vertical: demoVertical,
-      routingRules,
-      callerPhone: callerPhoneForPrompt,
-    });
+    try {
+      instructions = buildSystemPrompt({
+        shop: route.shop,
+        customer: null,
+        mode: 'inbound',
+        vertical: demoVertical,
+        routingRules,
+        callerPhone: callerPhoneForPrompt,
+      });
+    } catch (err) {
+      instructions = buildFallbackProductionSipPrompt({
+        shop: route.shop,
+        callerPhone: callerPhoneForPrompt,
+      });
+      logger.warn({ err, callId, routeKind: 'shop', shopId: route.shop.id }, 'prompt_build_degraded');
+      logVoiceSessionDegraded({
+        callId,
+        routeKind: 'shop',
+        shopId: route.shop.id,
+        degradedReason: 'shop_prompt_build_failed',
+        err,
+      });
+    }
   }
   logger.info(
     {
@@ -1039,25 +1128,35 @@ export async function handleOpenAiRealtimeSipWebhook(
         // clearDemoTimer is passed to sideband so WS close (call ended) cancels it immediately.
         if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
           const acceptedAtMs = Date.now();
-          startOpenAiRealtimeSipSideband({
-            variant: 'demo',
-            callId,
-            apiKey: apiKey!,
-            enableToolLoop: true,
-            acceptedAtMs,
-            initialResponseInstructions: demoInitialResponseInstructions,
-            onTranscript: demoOnTranscript,
-            onEnded: () => {
-              clearDemoTimer();
-              persistDemoTranscript();
-            },
-            onEndCall: () => {
-              if (demoHangupInitiated) return;
-              demoHangupInitiated = true;
-              logger.info({ callId }, 'openai_sip_demo_end_call_tool_hangup');
-              void callControlHangupWithRetry(telnyxCcId, { apiKey: demoTelnyxKey, fetchImpl }, { callId });
-            },
-          });
+          try {
+            startOpenAiRealtimeSipSideband({
+              variant: 'demo',
+              callId,
+              apiKey: apiKey!,
+              enableToolLoop: true,
+              acceptedAtMs,
+              initialResponseInstructions: demoInitialResponseInstructions,
+              onTranscript: demoOnTranscript,
+              onEnded: () => {
+                clearDemoTimer();
+                persistDemoTranscript();
+              },
+              onEndCall: () => {
+                if (demoHangupInitiated) return;
+                demoHangupInitiated = true;
+                logger.info({ callId }, 'openai_sip_demo_end_call_tool_hangup');
+                void callControlHangupWithRetry(telnyxCcId, { apiKey: demoTelnyxKey, fetchImpl }, { callId });
+              },
+            });
+          } catch (err) {
+            logger.error({ err, callId, routeKind: 'demo' }, 'openai_sip_sideband_start_failed');
+            logVoiceSessionDegraded({
+              callId,
+              routeKind: 'demo',
+              degradedReason: 'sideband_start_failed',
+              err,
+            });
+          }
         }
       } else {
         logger.warn(
@@ -1079,34 +1178,44 @@ export async function handleOpenAiRealtimeSipWebhook(
             }
           };
 
-          startOpenAiRealtimeSipSideband({
-            variant: 'demo',
-            callId,
-            apiKey: apiKey!,
-            enableToolLoop: true,
-            acceptedAtMs,
-            initialResponseInstructions: demoInitialResponseInstructions,
-            onTranscript: demoOnTranscript,
-            onEnded: () => {
-              // Call ended normally — cancel the fallback timer and persist transcript.
-              clearNoHangupFallbackTimer();
-              persistDemoTranscript();
-            },
-            onEndCall: () => {
-              if (demoNoHangupEndCallFired) return;
-              demoNoHangupEndCallFired = true;
-              logger.warn({ callId }, 'openai_sip_demo_end_call_no_call_control_id_no_hangup');
-              logger.info({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_started');
-              // No Telnyx CC ID — cannot issue a programmatic hangup. Start a 30-second
-              // timer so the transcript is persisted even if the caller never hangs up
-              // and the WS doesn't close within a reasonable window.
-              demoNoHangupFallbackTimer = setTimeout(() => {
-                demoNoHangupFallbackTimer = null;
-                logger.warn({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_fired');
+          try {
+            startOpenAiRealtimeSipSideband({
+              variant: 'demo',
+              callId,
+              apiKey: apiKey!,
+              enableToolLoop: true,
+              acceptedAtMs,
+              initialResponseInstructions: demoInitialResponseInstructions,
+              onTranscript: demoOnTranscript,
+              onEnded: () => {
+                // Call ended normally — cancel the fallback timer and persist transcript.
+                clearNoHangupFallbackTimer();
                 persistDemoTranscript();
-              }, DEMO_END_CALL_NO_CCID_FALLBACK_MS);
-            },
-          });
+              },
+              onEndCall: () => {
+                if (demoNoHangupEndCallFired) return;
+                demoNoHangupEndCallFired = true;
+                logger.warn({ callId }, 'openai_sip_demo_end_call_no_call_control_id_no_hangup');
+                logger.info({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_started');
+                // No Telnyx CC ID — cannot issue a programmatic hangup. Start a 30-second
+                // timer so the transcript is persisted even if the caller never hangs up
+                // and the WS doesn't close within a reasonable window.
+                demoNoHangupFallbackTimer = setTimeout(() => {
+                  demoNoHangupFallbackTimer = null;
+                  logger.warn({ callId }, 'openai_sip_demo_end_call_no_ccid_fallback_fired');
+                  persistDemoTranscript();
+                }, DEMO_END_CALL_NO_CCID_FALLBACK_MS);
+              },
+            });
+          } catch (err) {
+            logger.error({ err, callId, routeKind: 'demo' }, 'openai_sip_sideband_start_failed');
+            logVoiceSessionDegraded({
+              callId,
+              routeKind: 'demo',
+              degradedReason: 'sideband_start_failed',
+              err,
+            });
+          }
         }
       }
     }
@@ -1154,7 +1263,26 @@ export async function handleOpenAiRealtimeSipWebhook(
         let fallbackTriggered = false;
         /** One-shot guard: prevents double-hangup when caller hangs up during the end_call delay. */
         let hangupInitiated = false;
-        const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
+        let initialResponseInstructions: string;
+        try {
+          const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
+          initialResponseInstructions = buildProductionInitialGreetingInstructions(effectiveRuntimeConfig.aiWelcomeMessage);
+        } catch (err) {
+          const fallbackWelcome = compactFallbackPromptValue(
+            shop.ai_welcome_message,
+            `Thanks for calling ${compactFallbackPromptValue(shop.name, 'us')}. How can I help you today?`,
+            240,
+          );
+          initialResponseInstructions = buildProductionInitialGreetingInstructions(fallbackWelcome);
+          logger.warn({ err, callId, shopId: shop.id }, 'runtime_config_degraded');
+          logVoiceSessionDegraded({
+            callId,
+            routeKind: 'shop',
+            shopId: shop.id,
+            degradedReason: 'runtime_config_failed',
+            err,
+          });
+        }
 
         function clearAvailabilityPrefetch(options: { clearCache?: boolean } = {}): void {
           currentAvailabilityPrefetch = null;
@@ -1376,7 +1504,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             callId,
             apiKey: apiKey!,
             acceptedAtMs,
-            initialResponseInstructions: buildProductionInitialGreetingInstructions(effectiveRuntimeConfig.aiWelcomeMessage),
+            initialResponseInstructions,
             initialResponseBridgeGate:
               parentCcId && sidebandCtx.openAiLegCallControlId
                 ? {
@@ -1595,11 +1723,24 @@ export async function handleOpenAiRealtimeSipWebhook(
           await new Promise((resolve) => setTimeout(resolve, WS_FALLBACK_HOLD_MS));
 
           let reconnected = false;
-          startOpenAiRealtimeSipSideband({
-            ...buildShopSidebandCore(),
-            onConnected: () => { reconnected = true; },
-            onWsDropped: undefined,
-          });
+          try {
+            startOpenAiRealtimeSipSideband({
+              ...buildShopSidebandCore(),
+              onConnected: () => { reconnected = true; },
+              onWsDropped: undefined,
+            });
+          } catch (err) {
+            logger.error({ err, callId, shopId: shop.id }, 'openai_sip_sideband_reconnect_start_failed');
+            logVoiceSessionDegraded({
+              callId,
+              routeKind: 'shop',
+              shopId: shop.id,
+              degradedReason: 'sideband_reconnect_start_failed',
+              err,
+            });
+            await doFinalFallback();
+            return;
+          }
 
           await new Promise((resolve) => setTimeout(resolve, WS_RECONNECT_TIMEOUT_MS));
 
@@ -1613,48 +1754,62 @@ export async function handleOpenAiRealtimeSipWebhook(
           await doFinalFallback();
         }
 
-        startOpenAiRealtimeSipSideband({
-          ...buildShopSidebandCore(),
-          onConnected: () => {
-            fallbackTriggered = false;
-            if (parentCcId && sidebandCtx.openAiLegCallControlId) {
-              markSidebandReadyForAnswer({
-                parentCallControlId: parentCcId,
-                openaiLegCallControlId: sidebandCtx.openAiLegCallControlId,
-                rbCallId: sidebandCtx.rbCallId,
-                shopId: shop.id,
-              });
-            }
-          },
-          onWsDropped: (closeCode) => { void handleWsDrop(closeCode); },
-          onHardLimit: () => {
-            hangupInitiated = true; // prevent stale onEndCall from double-hanging
-            clearAvailabilityPrefetch({ clearCache: true });
-            logger.warn({ callId, shopId: shop.id, hardLimitMs }, 'openai_sip_shop_hard_limit_hit');
-            if (deps.jobsRepository) {
-              void deps.jobsRepository.enqueue({
-                shopId: shop.id,
-                type: 'max_duration_alert',
-                payload: { shopId: shop.id, callId, reason: 'max_duration_exceeded' },
-                runAt: new Date(),
-                idempotencyKey: `max_duration_alert:${callId}`,
-              }).catch(() => {});
-            }
-            if (parentCcId && telnyxKey) {
-              void callControlSpeak(parentCcId, {
-                payload: PROD_CALL_HARD_LIMIT_MESSAGE,
-                voice: 'Polly.Joanna',
-                language: 'en-US',
-                payload_type: 'text',
-              }, { apiKey: telnyxKey, fetchImpl })
-                .then(() => new Promise((resolve) => setTimeout(resolve, HARD_LIMIT_HANGUP_DELAY_MS)))
-                .then(() => callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id }))
-                .catch(() => { void callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id }); });
-            } else {
-              void callControlHangupWithRetry(shopRoomContext.openAiLegCallControlId ?? callId, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id });
-            }
-          },
-        });
+        try {
+          startOpenAiRealtimeSipSideband({
+            ...buildShopSidebandCore(),
+            onConnected: () => {
+              fallbackTriggered = false;
+              if (parentCcId && sidebandCtx.openAiLegCallControlId) {
+                markSidebandReadyForAnswer({
+                  parentCallControlId: parentCcId,
+                  openaiLegCallControlId: sidebandCtx.openAiLegCallControlId,
+                  rbCallId: sidebandCtx.rbCallId,
+                  shopId: shop.id,
+                });
+              }
+            },
+            onWsDropped: (closeCode) => { void handleWsDrop(closeCode); },
+            onHardLimit: () => {
+              hangupInitiated = true; // prevent stale onEndCall from double-hanging
+              clearAvailabilityPrefetch({ clearCache: true });
+              logger.warn({ callId, shopId: shop.id, hardLimitMs }, 'openai_sip_shop_hard_limit_hit');
+              if (deps.jobsRepository) {
+                void deps.jobsRepository.enqueue({
+                  shopId: shop.id,
+                  type: 'max_duration_alert',
+                  payload: { shopId: shop.id, callId, reason: 'max_duration_exceeded' },
+                  runAt: new Date(),
+                  idempotencyKey: `max_duration_alert:${callId}`,
+                }).catch(() => {});
+              }
+              if (parentCcId && telnyxKey) {
+                void callControlSpeak(parentCcId, {
+                  payload: PROD_CALL_HARD_LIMIT_MESSAGE,
+                  voice: 'Polly.Joanna',
+                  language: 'en-US',
+                  payload_type: 'text',
+                }, { apiKey: telnyxKey, fetchImpl })
+                  .then(() => new Promise((resolve) => setTimeout(resolve, HARD_LIMIT_HANGUP_DELAY_MS)))
+                  .then(() => callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id }))
+                  .catch(() => { void callControlHangupWithRetry(parentCcId!, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id }); });
+              } else {
+                void callControlHangupWithRetry(shopRoomContext.openAiLegCallControlId ?? callId, { apiKey: telnyxKey!, fetchImpl }, { callId, shopId: shop.id });
+              }
+            },
+          });
+        } catch (err) {
+          logger.error({ err, callId, shopId: shop.id }, 'openai_sip_sideband_start_failed');
+          logVoiceSessionDegraded({
+            callId,
+            routeKind: 'shop',
+            shopId: shop.id,
+            degradedReason: 'sideband_start_failed',
+            err,
+          });
+          void doFinalFallback().catch((fallbackErr: unknown) => {
+            logger.error({ err: fallbackErr, callId, shopId: shop.id }, 'openai_sip_sideband_start_fallback_failed');
+          });
+        }
       }
     }
   }

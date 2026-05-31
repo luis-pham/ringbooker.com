@@ -194,6 +194,7 @@ import {
   type SquareConnectionCredentials,
 } from '@/src/backend/services/calendar/provider-connections';
 import { syncSquareCatalogToShopServices } from '@/src/backend/services/calendar/square-catalog-sync';
+import { resolveBookingProviderReadinessForId } from '@/src/backend/services/calendar/provider-readiness';
 import {
   encodeVagaroCredentials,
   generateWebhookToken,
@@ -7385,26 +7386,40 @@ export function createBackendApp(deps: {
       .filter((id) => id !== 'manual' && id !== 'google_calendar')
       .map((id) => {
         const meta = CALENDAR_PROVIDER_CATALOG[id];
+        const readiness = resolveBookingProviderReadinessForId(shop, id);
+        const readinessPayload = {
+          status: readiness.status,
+          liveReady: readiness.liveReady,
+          missingFields: readiness.missingFields,
+          canCheckAvailability: readiness.canCheckAvailability,
+          canCreateBooking: readiness.canCreateBooking,
+          canSendBookingLink: readiness.canSendBookingLink,
+          message: readiness.message,
+        };
         if (id === 'square_appointments') {
-          const connected = Boolean(squareCredentials?.access_token && squareCredentials?.refresh_token);
-          const configured = Boolean(squareCredentials?.location_id);
           return {
             id,
             label: meta.label,
             implemented: meta.implemented,
-            connected,
-            configured,
-            details: connected
+            connected: readiness.connected,
+            configured: readiness.configured,
+            liveReady: readiness.liveReady,
+            readiness: readinessPayload,
+            details: readiness.connected
               ? {
                   merchantId: squareCredentials?.merchant_id ?? null,
                   locationId: squareCredentials?.location_id ?? null,
                   serviceVariationId: squareCredentials?.service_variation_id ?? null,
                   teamMemberId: squareCredentials?.team_member_id ?? null,
+                  readinessStatus: readiness.status,
+                  liveReady: readiness.liveReady,
+                  missingFields: readiness.missingFields,
+                  healthMessage: readiness.message,
                   servicesCatalogSync: 'available',
                   staffSync: 'available',
-                  availabilityCheck: configured ? 'available' : 'needs_mapping',
-                  directAppointmentCreation: configured ? 'enabled' : 'not_enabled',
-                  bookingMode: configured ? 'direct_booking_with_fallback' : 'capture_request_only',
+                  availabilityCheck: readiness.canCheckAvailability ? 'available' : 'needs_mapping',
+                  directAppointmentCreation: readiness.canCreateBooking ? 'enabled' : 'not_enabled',
+                  bookingMode: readiness.canCreateBooking ? 'direct_booking_with_fallback' : 'capture_request_only',
                   capabilityNote:
                     'Square Appointments is a booking provider. RingBooker can check availability and create appointments directly after location and service mapping are configured.',
                 }
@@ -7423,14 +7438,14 @@ export function createBackendApp(deps: {
             vagaroConnectionStatus === 'connected' &&
             Boolean(businessId);
           const legacyCredentialsConnected = Boolean(vagaroCredentials?.accessToken || vagaroCredentials?.clientId);
-          const connected = Boolean(vagaroBookingUrl) || liveSyncConnected || legacyCredentialsConnected;
-          const configured = Boolean(vagaroBookingUrl) || liveSyncConnected || Boolean(vagaroCredentials?.region && vagaroCredentials?.businessId);
           return {
             id,
             label: meta.label,
             implemented: true,
-            connected,
-            configured,
+            connected: readiness.connected || Boolean(vagaroBookingUrl) || liveSyncConnected || legacyCredentialsConnected,
+            configured: readiness.configured,
+            liveReady: readiness.liveReady,
+            readiness: readinessPayload,
             details: {
               vagaroMode,
               vagaroConnectionStatus,
@@ -7443,7 +7458,11 @@ export function createBackendApp(deps: {
               webhookTokenMasked: shop.vagaro_webhook_token ? 'whk_••••••••••••' : null,
               bookingUrl: vagaroBookingUrl,
               fallbackUrl: shop.vagaro_fallback_url ?? null,
-              availabilityCheck: liveSyncConnected ? 'available' : 'needs_credentials',
+              readinessStatus: readiness.status,
+              liveReady: readiness.liveReady,
+              missingFields: readiness.missingFields,
+              healthMessage: readiness.message,
+              availabilityCheck: readiness.canCheckAvailability ? 'available' : 'needs_credentials',
               directAppointmentCreation: 'not_available',
               type: vagaroMode === 'live_sync' ? 'live_sync' : 'booking_link',
               capabilityNote: liveSyncConnected
@@ -7453,15 +7472,15 @@ export function createBackendApp(deps: {
           };
         }
         if (id === 'mindbody') {
-          const connected = Boolean(mindbodyCredentials?.siteId && mindbodyCredentials?.apiKey);
-          const configured = connected;
           return {
             id,
             label: meta.label,
             implemented: meta.implemented,
-            connected,
-            configured,
-            details: connected
+            connected: readiness.connected,
+            configured: readiness.configured,
+            liveReady: readiness.liveReady,
+            readiness: readinessPayload,
+            details: readiness.connected
               ? {
                   siteId: mindbodyCredentials?.siteId ?? null,
                   sourceName: mindbodyCredentials?.sourceName ?? null,
@@ -7469,8 +7488,12 @@ export function createBackendApp(deps: {
                   sessionTypeId: mindbodyCredentials?.sessionTypeId ?? null,
                   staffId: mindbodyCredentials?.staffId ?? null,
                   bookingUrl: mindbodyCredentials?.bookingUrl ?? shop.booking_url ?? null,
+                  readinessStatus: readiness.status,
+                  liveReady: readiness.liveReady,
+                  missingFields: readiness.missingFields,
+                  healthMessage: readiness.message,
                   servicesStaffSync: 'available',
-                  availabilityCheck: 'best_effort',
+                  availabilityCheck: readiness.canCheckAvailability ? 'best_effort' : 'needs_credentials',
                   directAppointmentCreation: 'not_enabled',
                   bookingMode: 'capture_request_only',
                   capabilityNote:
@@ -7481,7 +7504,6 @@ export function createBackendApp(deps: {
         }
         if (id === 'acuity') {
           const oauthConnected = shop.acuity_connection_status === 'connected' && Boolean(shop.acuity_access_token_encrypted);
-          const connected = Boolean(oauthConnected || acuityCredentials?.accessToken || (acuityCredentials?.userId && acuityCredentials?.apiKey));
           const serviceMappingCount = Object.keys(acuityCredentials?.serviceMappings ?? {}).length;
           const staffMappingCount = Object.keys(acuityCredentials?.staffMappings ?? {}).length;
           const defaultCalendarId = acuityCredentials?.defaultCalendarId ?? acuityCredentials?.calendarId ?? null;
@@ -7496,9 +7518,11 @@ export function createBackendApp(deps: {
             id,
             label: meta.label,
             implemented: meta.implemented,
-            connected,
-            configured: connected,
-            details: connected
+            connected: readiness.connected,
+            configured: readiness.configured,
+            liveReady: readiness.liveReady,
+            readiness: readinessPayload,
+            details: readiness.connected
               ? {
                   userId: shop.acuity_user_id ?? acuityCredentials?.userId ?? null,
                   appointmentTypeId: acuityCredentials?.appointmentTypeId ?? null,
@@ -7514,9 +7538,13 @@ export function createBackendApp(deps: {
                   bookingUrl: acuityCredentials?.bookingUrl ?? shop.booking_url ?? null,
                   connectionStatus: shop.acuity_connection_status ?? 'disconnected',
                   authMode: oauthConnected ? 'oauth' : 'legacy',
+                  readinessStatus: readiness.status,
+                  liveReady: readiness.liveReady,
+                  missingFields: readiness.missingFields,
+                  healthMessage: readiness.message,
                   appointmentTypesSync: 'available',
                   calendarsSync: 'available',
-                  availabilityCheck: serviceMappingCount > 0 ? 'available' : 'needs_mapping',
+                  availabilityCheck: readiness.canCheckAvailability ? 'available' : 'needs_mapping',
                   directAppointmentCreation: directEnabled ? 'enabled' : 'not_enabled',
                   bookingMode: directEnabled ? 'direct_booking_with_fallback' : 'capture_request_only',
                   capabilityNote: directEnabled
@@ -7534,10 +7562,16 @@ export function createBackendApp(deps: {
             implemented: meta.implemented,
             connected,
             configured: connected,
+            liveReady: connected,
+            readiness: readinessPayload,
             details: connected
               ? {
                   bookingUrl: shop.booking_url,
                   type: 'booking_link',
+                  readinessStatus: readiness.status,
+                  liveReady: readiness.liveReady,
+                  missingFields: readiness.missingFields,
+                  healthMessage: readiness.message,
                   capabilityNote: 'When clients call to book, they will receive your booking link via SMS.',
                 }
               : null,
@@ -7549,6 +7583,8 @@ export function createBackendApp(deps: {
           implemented: meta.implemented,
           connected: false,
           configured: false,
+          liveReady: false,
+          readiness: readinessPayload,
           details: null,
         };
       });

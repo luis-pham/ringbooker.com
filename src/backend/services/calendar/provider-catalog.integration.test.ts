@@ -36,8 +36,9 @@ test('calendar provider resolver returns google provider when shop has google ca
   assert.equal(metadata.implemented, true);
 });
 
-test('calendar provider resolver returns square provider when shop hint is square_appointments', () => {
+test('calendar provider resolver returns square provider when selected integration is square_appointments', () => {
   const shop = buildShop({
+    selected_integration: 'square_appointments',
     google_cal_credentials_encrypted: JSON.stringify({
       provider: 'square_appointments',
       access_token: 'sq0atp_test',
@@ -52,4 +53,20 @@ test('calendar provider resolver returns square provider when shop hint is squar
   assert.equal(metadata.id, 'square_appointments');
   assert.equal(metadata.status, 'active');
   assert.equal(metadata.implemented, true);
+});
+
+test('calendar provider resolver ignores stale square credentials when selected integration is null', () => {
+  const shop = buildShop({
+    selected_integration: null,
+    google_cal_credentials_encrypted: JSON.stringify({
+      provider: 'square_appointments',
+      access_token: 'sq0atp_test',
+      refresh_token: 'sq0rtp_test',
+      location_id: 'L123',
+    }),
+  });
+  const provider = getCalendarProvider(shop);
+  assert.equal(provider.constructor.name, 'ManualCalendarProvider');
+  const metadata = getShopCalendarProviderMetadata(shop);
+  assert.equal(metadata.id, 'manual');
 });

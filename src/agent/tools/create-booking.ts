@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ToolError } from '@/src/backend/domain/types';
 import { logger } from '@/src/backend/observability/logger';
 import { scheduleBookingFollowupJobs } from '@/src/backend/services/bookings/reminder-scheduling';
+import { resolveBookingProviderReadiness } from '@/src/backend/services/calendar/provider-readiness';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import {
   dateSchema,
@@ -80,6 +81,7 @@ export async function createBookingTool(
     const canonicalServiceName = service.serviceName;
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
     const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
+    const readiness = resolveBookingProviderReadiness(ctx.shop);
 
     if (ctx.shop.booking_url?.trim() && providerMeta?.id === 'manual') {
       return toToolError(
@@ -108,7 +110,7 @@ export async function createBookingTool(
 
     let teamMemberId: string | undefined;
 
-    if (parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
+    if (readiness.canCreateBooking && parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
       try {
         const foundTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(parsed.data.techName);
         if (foundTeamMemberId) {
@@ -149,40 +151,59 @@ export async function createBookingTool(
     }
 
     let result;
-    try {
-      result = await ctx.calendarProvider.createBooking({
-        shopId: ctx.shop.id,
-        customerPhone: ctx.callerPhone,
-        customerName: parsed.data.customerName,
-        customerEmail: parsed.data.customerEmail,
-        service: canonicalServiceName,
-        techName: parsed.data.techName,
-        teamMemberId,
-        datetimeIso: utcIso,
-        timezone: ctx.shop.timezone,
-        durationMin,
-        source: 'inbound_call',
-        notes: parsed.data.notes,
-        matchedServiceId: service.matchedServiceId,
-        matchedServiceConfidence: service.matchedServiceConfidence,
-        idempotencyKey,
-      });
-    } catch (error) {
+    if (providerMeta.capabilities.createBooking && !readiness.liveReady) {
       logger.warn(
         {
-          err: error,
           shopId: ctx.shop.id,
           provider: providerMeta.id,
-          errorKind: 'provider_create_booking_failed',
+          readinessStatus: readiness.status,
+          missingFields: readiness.missingFields,
+          errorKind: 'provider_not_ready',
         },
-        'booking_provider_create_failed_fallback_request',
+        'booking_provider_not_ready_fallback_request',
       );
       result = {
         bookingId: `${providerMeta.id}-request-${idempotencyKey}`,
         confirmed: false,
-        providerStatus: 'provider_failed',
-        providerErrorReason: error instanceof Error ? error.message.slice(0, 240) : 'provider_create_booking_failed',
+        providerStatus: 'provider_not_ready',
+        providerErrorReason: readiness.missingFields.length ? `missing:${readiness.missingFields.join(',')}` : readiness.status,
       };
+    } else {
+      try {
+        result = await ctx.calendarProvider.createBooking({
+          shopId: ctx.shop.id,
+          customerPhone: ctx.callerPhone,
+          customerName: parsed.data.customerName,
+          customerEmail: parsed.data.customerEmail,
+          service: canonicalServiceName,
+          techName: parsed.data.techName,
+          teamMemberId,
+          datetimeIso: utcIso,
+          timezone: ctx.shop.timezone,
+          durationMin,
+          source: 'inbound_call',
+          notes: parsed.data.notes,
+          matchedServiceId: service.matchedServiceId,
+          matchedServiceConfidence: service.matchedServiceConfidence,
+          idempotencyKey,
+        });
+      } catch (error) {
+        logger.warn(
+          {
+            err: error,
+            shopId: ctx.shop.id,
+            provider: providerMeta.id,
+            errorKind: 'provider_create_booking_failed',
+          },
+          'booking_provider_create_failed_fallback_request',
+        );
+        result = {
+          bookingId: `${providerMeta.id}-request-${idempotencyKey}`,
+          confirmed: false,
+          providerStatus: 'provider_failed',
+          providerErrorReason: error instanceof Error ? error.message.slice(0, 240) : 'provider_create_booking_failed',
+        };
+      }
     }
 
     const booking = await ctx.bookingsRepository.create({

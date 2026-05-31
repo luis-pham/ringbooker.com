@@ -58,6 +58,30 @@ test('get_shop_info returns shop data', async () => {
   assert.ok(json.includes('services'));
 });
 
+test('SIP context does not throw when selected provider credentials are incomplete', async () => {
+  const deps = memoryDeps();
+  const shop = await deps.shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop: {
+      ...shop,
+      active: true,
+      selected_integration: 'square_appointments',
+      google_cal_credentials_encrypted: JSON.stringify({
+        provider: 'square_appointments',
+        access_token: 'sq0atp_test',
+        refresh_token: 'sq0rtp_test',
+      }),
+    },
+    callerPhone: '+15550001111',
+    requestId: 'sip-exec-provider-degraded',
+    roomName: 'sip-room-provider-degraded',
+    deps,
+  });
+  const json = await executeSipShopToolCall(ctx, 'get_shop_info', { query: 'hours' });
+  assert.ok(json.includes(shop.name));
+});
+
 test('check_availability returns availability JSON', async () => {
   const deps = memoryDeps();
   const shop = await deps.shopsRepository.findById('demo-shop');

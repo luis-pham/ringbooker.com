@@ -22,6 +22,7 @@ function buildShop(overrides: Partial<Shop> = {}): Shop {
     send_missed_call_followup_sms: true,
     plan: 'professional',
     active: false,
+    selected_integration: 'mindbody',
     google_cal_credentials_encrypted: encodeMindbodyCredentials({
       provider: 'mindbody',
       siteId: '12345',

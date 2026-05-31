@@ -13,6 +13,7 @@ import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-rep
 import { InMemoryVoiceCallLegsRepository } from '@/src/backend/adapters/memory/voice-call-legs-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
+import type { Shop } from '@/src/backend/domain/types';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 import {
@@ -46,6 +47,24 @@ class CalendarIntegratedShopsRepository extends InMemoryShopsRepository {
   override async findById(shopId: string) {
     const shop = await super.findById(shopId);
     return shop ? { ...shop, google_cal_id: 'primary-calendar' } : shop;
+  }
+}
+
+function breakShopForPromptBuild(shop: Shop | null): Shop | null {
+  return shop ? { ...shop, hours: null as unknown as Shop['hours'] } : null;
+}
+
+class PromptMalformedShopsRepository extends InMemoryShopsRepository {
+  override async findByDestinationPhone(destinationPhone: string) {
+    return breakShopForPromptBuild(await super.findByDestinationPhone(destinationPhone));
+  }
+
+  override async findByTelnyxNumber(e164: string) {
+    return breakShopForPromptBuild(await super.findByTelnyxNumber(e164));
+  }
+
+  override async findById(shopId: string) {
+    return breakShopForPromptBuild(await super.findById(shopId));
   }
 }
 
@@ -273,6 +292,65 @@ test('openai SIP webhook uses shop DB when DID map empty and To is routable E.16
 
   const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_db_1/accept'));
   assert.equal(acceptCalls.length, 1);
+  assert.ok(acceptCalls[0].body.includes('RingBooker Demo Salon'));
+});
+
+test('openai SIP shop prompt build failures fall back instead of failing call accept', async () => {
+  const { secret, raw } = whsecSecret();
+  applyRequiredTestEnv({
+    OPENAI_SIP_WEBHOOK_ENABLED: 'true',
+    OPENAI_WEBHOOK_SECRET: secret,
+    OPENAI_SIP_ACCEPT_ENABLED: 'true',
+    OPENAI_API_KEY: 'sk-test-openai',
+    OPENAI_SIP_SIDEBAND_ENABLED: 'false',
+  });
+  delete process.env.OPENAI_SIP_DEMO_DID_MAP_JSON;
+  resetEnvCacheForTests();
+
+  const calls: Array<{ url: string; body: string }> = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    calls.push({ url, body: typeof init?.body === 'string' ? init.body : '' });
+    return new Response('{}', { status: 200 });
+  };
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+    shopsRepository: new PromptMalformedShopsRepository(),
+    testingOpenAiFetch: fetchImpl,
+  });
+
+  const did = '+17145550123';
+  const webhookId = 'wh_evt_shop_prompt_fallback';
+  const ts = `${Math.floor(Date.now() / 1000)}`;
+  const rawBody = JSON.stringify({
+    type: 'realtime.call.incoming',
+    data: {
+      call_id: 'call_shop_prompt_fallback',
+      sip_headers: [
+        { name: 'To', value: `sip:${did.replace('+', '')}@pstn.twilio.com` },
+        { name: 'From', value: 'sip:+15559876543@sip.example.com' },
+      ],
+    },
+  });
+  const sig = signV1({ raw, webhookId, webhookTimestamp: ts, rawBody });
+
+  const res = await app.request('/webhooks/openai', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'webhook-id': webhookId,
+      'webhook-timestamp': ts,
+      'webhook-signature': sig,
+    },
+    body: rawBody,
+  });
+  assert.equal(res.status, 200);
+
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_prompt_fallback/accept'));
+  assert.equal(acceptCalls.length, 1);
+  assert.ok(acceptCalls[0].body.includes("RingBooker's virtual phone assistant"));
   assert.ok(acceptCalls[0].body.includes('RingBooker Demo Salon'));
 });
 
