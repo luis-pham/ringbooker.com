@@ -354,6 +354,8 @@ export function createBackendRuntime() {
     forwardingTestSessionsRepository: repositories.forwardingTestSessionsRepository,
     callbacksRepository: repositories.callbacksRepository,
     shopsRepository: repositories.shopsRepository,
+    shopStaffRepository: repositories.shopStaffRepository,
+    shopStaffServicesRepository: repositories.shopStaffServicesRepository,
     telephonyService: services.telephonyService,
     phoneProvisioningService: services.phoneProvisioningService,
     emailService,
