@@ -63,6 +63,10 @@ type Booking = {
   status: BookingStatus | string;
   callId?: string | null;
   integrationId?: string | null;
+  providerStatus?: string | null;
+  providerError?: string | null;
+  integrationName?: string | null;
+  calendarEventId?: string | null;
   smsLog?: SmsLogEntry[];
   parentCall?: ParentCall | null;
   createdAt?: string;
@@ -81,13 +85,19 @@ type BookingsStats = {
   completed: number;
 };
 
+type ShopLiveSummary = {
+  timezone?: string | null;
+  liveCallsEnabled?: boolean;
+  goLiveAt?: string | null;
+};
+
 export type BookingsResponse = {
   ok: boolean;
   bookings?: Booking[];
   booking?: Booking;
   stats?: BookingsStats;
   total?: number;
-  shop?: { timezone?: string | null };
+  shop?: ShopLiveSummary;
   pagination?: { page: number; limit: number; total: number; totalPages: number };
   error?: string;
 };
@@ -164,8 +174,77 @@ function formatDuration(minutes?: number | null) {
   return `${minutes} min`;
 }
 
+function formatIntegrationName(value?: string | null) {
+  const key = value?.trim().toLowerCase();
+  if (!key) return 'Manual';
+  const map: Record<string, string> = {
+    acuity: 'Acuity',
+    booking_link: 'Booking link',
+    manual: 'Manual',
+    mindbody: 'Mindbody',
+    square: 'Square',
+    square_appointments: 'Square',
+    vagaro: 'Vagaro',
+  };
+  return map[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function humanizeProviderError(value?: string | null) {
+  const key = value?.trim().toLowerCase();
+  if (!key) return 'Sync failed. Please try again.';
+  if (key.includes('401') || key.includes('403') || key.includes('auth') || key.includes('credential')) return 'Invalid integration credentials.';
+  if (key.includes('timeout') || key.includes('network') || key.includes('fetch')) return 'Connection timed out.';
+  if (key.includes('availability') || key.includes('conflict')) return 'This time is no longer available.';
+  if (key.includes('variation') || key.includes('service')) return 'Service mapping is missing.';
+  if (key.includes('location')) return 'Location is not configured.';
+  if (key.includes('rate')) return 'Provider is busy. Try again later.';
+  return 'Sync failed. Please try again.';
+}
+
+function integrationStatusMeta(booking: Booking): { badge: string; className: string; detail: string; error?: string } {
+  const provider = booking.integrationName?.trim().toLowerCase() ?? '';
+  const providerName = formatIntegrationName(provider);
+  const providerStatus = booking.providerStatus?.trim().toLowerCase() ?? '';
+  const failedStatuses = new Set(['failed', 'provider_failed', 'provider_unavailable', 'provider_disabled', 'missing_mapping']);
+  const confirmedStatuses = new Set(['confirmed', 'provider_confirmed']);
+  const pendingStatuses = new Set(['pending', 'provider_pending']);
+  if (!provider || provider === 'manual') {
+    return { badge: 'Manual booking', className: 'booking-status booking-status--captured', detail: 'No external calendar sync.' };
+  }
+  if (failedStatuses.has(providerStatus) || booking.providerError) {
+    return {
+      badge: 'Sync failed',
+      className: 'booking-status booking-status--cancelled',
+      detail: `Could not sync to ${providerName}.`,
+      error: humanizeProviderError(booking.providerError ?? providerStatus),
+    };
+  }
+  if (pendingStatuses.has(providerStatus)) {
+    return { badge: 'Pending sync', className: 'booking-status booking-status--warning', detail: `Waiting on ${providerName}.` };
+  }
+  if (confirmedStatuses.has(providerStatus) || booking.calendarEventId) {
+    return { badge: `Synced to ${providerName}`, className: 'booking-status booking-status--confirmed', detail: 'Calendar event created.' };
+  }
+  if (providerStatus === 'request_only') {
+    return { badge: 'Manual booking', className: 'booking-status booking-status--captured', detail: 'Team follow-up required.' };
+  }
+  return { badge: 'Pending sync', className: 'booking-status booking-status--warning', detail: `Waiting on ${providerName}.` };
+}
+
+function IntegrationStatus({ booking }: { booking: Booking }) {
+  const meta = integrationStatusMeta(booking);
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <span className={meta.className}>{meta.badge}</span>
+      <p className="booking-muted">{meta.detail}</p>
+      {meta.error ? <p className="bookings-error" style={{ margin: 0 }}>{meta.error}</p> : null}
+    </div>
+  );
+}
+
 function formatAppointment(booking: Booking, timezone: string) {
-  if (booking.datetimeUtc) return `${formatShopDate(booking.datetimeUtc, timezone)} · ${formatShopTime(booking.datetimeUtc, timezone)}`;
+  const displayTimezone = booking.timezone ?? timezone;
+  if (booking.datetimeUtc) return `${formatShopDate(booking.datetimeUtc, displayTimezone)} · ${formatShopTime(booking.datetimeUtc, displayTimezone)}`;
   if (booking.appointmentDate) return `${booking.appointmentDate}${booking.appointmentTime ? ` · ${booking.appointmentTime}` : ''}`;
   return '—';
 }
@@ -185,6 +264,10 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'unknown_error' : null);
   const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(initialData?.ok ? initialData.shop : null));
+  const [shopLiveStatus, setShopLiveStatus] = useState(() => ({
+    liveCallsEnabled: Boolean(initialData?.ok ? initialData.shop?.liveCallsEnabled : false),
+    goLiveAt: initialData?.ok ? initialData.shop?.goLiveAt ?? null : null,
+  }));
   const [activeBooking, setActiveBooking] = useState<Booking | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -219,6 +302,10 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
         setBookings(body.bookings ?? []);
         setStats(body.stats ?? EMPTY_STATS);
         setShopTimezone(getShopTimezone(body.shop));
+        setShopLiveStatus({
+          liveCallsEnabled: Boolean(body.shop?.liveCallsEnabled),
+          goLiveAt: body.shop?.goLiveAt ?? null,
+        });
         setTotalCount(body.pagination?.total ?? body.total ?? 0);
         setTotalPages(body.pagination?.totalPages ?? Math.max(1, Math.ceil((body.pagination?.total ?? body.total ?? 0) / USER_BOOKINGS_PAGE_SIZE)));
       })
@@ -291,6 +378,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
   const activeStatus = activeBooking ? normalizeStatus(activeBooking.status) : 'captured';
+  const shopHasGoneLive = shopLiveStatus.liveCallsEnabled || Boolean(shopLiveStatus.goLiveAt);
 
   return (
     <UserLayout styles={userBookingsStyles} scripts={userBookingsScripts} scriptPrefix="user-bookings-live">
@@ -345,8 +433,14 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
                   <div className="bookings-empty">
                     <div className="bookings-empty-icon">▣</div>
                     <h3>No booking requests yet</h3>
-                    <p>RingBooker captures booking requests from phone calls. Complete Go Live to start receiving calls.</p>
-                    <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                    {shopHasGoneLive ? (
+                      <p>No bookings yet — they'll appear here when your AI receptionist captures one.</p>
+                    ) : (
+                      <>
+                        <p>RingBooker captures booking requests from phone calls. Complete Go Live to start receiving calls.</p>
+                        <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                      </>
+                    )}
                   </div>
                 ) : null}
                 {loading && bookings.length === 0 ? <div className="bookings-empty"><p>Loading bookings…</p></div> : null}
@@ -410,7 +504,8 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
             <aside className="booking-detail-panel" onClick={(event) => event.stopPropagation()}>
               <div className="booking-detail-head"><div><h2>{activeBooking.callerName?.trim() || formatPhone(activeBooking.callerPhone)}</h2><p>{formatPhone(activeBooking.callerPhone)}</p></div><button type="button" onClick={() => setActiveBooking(null)}>×</button></div>
               {detailLoading ? <div className="booking-detail-loading">Loading details…</div> : null}
-              <section className="booking-detail-section"><h3>Booking info</h3><dl><dt>Service</dt><dd>{activeBooking.serviceRequested || 'Not specified'}</dd><dt>Provider</dt><dd>{activeBooking.providerRequested || 'Any available'}</dd><dt>Date</dt><dd>{formatAppointment(activeBooking, shopTimezone)}</dd><dt>Duration</dt><dd>{activeBooking.durationMinutes ? `${activeBooking.durationMinutes} min` : 'Not set'}</dd><dt>Status</dt><dd><span className={statusMeta(activeBooking.status).className}>{statusMeta(activeBooking.status).label}</span></dd><dt>Integration</dt><dd>{activeBooking.integrationId || 'No integration'}</dd></dl></section>
+              <section className="booking-detail-section"><h3>Booking info</h3><dl><dt>Service</dt><dd>{activeBooking.serviceRequested || 'Not specified'}</dd><dt>Provider</dt><dd>{activeBooking.providerRequested || 'Any available'}</dd><dt>Date</dt><dd>{formatAppointment(activeBooking, shopTimezone)}</dd><dt>Duration</dt><dd>{activeBooking.durationMinutes ? `${activeBooking.durationMinutes} min` : 'Not set'}</dd><dt>Status</dt><dd><span className={statusMeta(activeBooking.status).className}>{statusMeta(activeBooking.status).label}</span></dd></dl></section>
+              <section className="booking-detail-section"><h3>Integration</h3><IntegrationStatus booking={activeBooking} /></section>
               <section className="booking-detail-section"><h3>Parent call</h3>{activeBooking.parentCall ? <dl><dt>Called</dt><dd>{formatShopDateTime(activeBooking.parentCall.startedAt, shopTimezone)}</dd><dt>Duration</dt><dd>{activeBooking.parentCall.durationSeconds ? `${activeBooking.parentCall.durationSeconds}s` : 'Not set'}</dd><dt>Transcript</dt><dd>{activeBooking.parentCall.transcriptAvailable ? <a href={`/user/calls?callId=${encodeURIComponent(activeBooking.parentCall.id)}`}>View transcript →</a> : 'Pending'}</dd></dl> : <p className="booking-muted">No linked call available.</p>}</section>
               <section className="booking-detail-section"><h3>SMS history</h3>{activeBooking.smsLog?.length ? <div className="booking-sms-timeline">{activeBooking.smsLog.map((entry) => <div className="booking-sms-entry" key={entry.id}><span className={entry.failedAt ? 'failed' : ''} /><div><strong>{smsLabel(entry.type)}</strong><p>{formatShopDateTime(entry.failedAt || entry.deliveredAt || entry.sentAt, shopTimezone)}</p></div></div>)}</div> : <p className="booking-muted">No SMS history for this booking yet.</p>}</section>
               {(activeStatus === 'captured' || activeStatus === 'link_sent') ? (

@@ -68,6 +68,7 @@ import { checkLiveCallUsageGate } from '@/src/backend/services/usage/live-call-u
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { callControlHangup } from '@/src/backend/services/calls/call-control-client';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
+import { maskPhone } from '@/src/backend/utils/pii';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   collectOpenAiSipDidCandidates,
@@ -606,7 +607,7 @@ export async function handleOpenAiRealtimeSipWebhook(
   if (!route && didCtx) route = { kind: 'demo', ctx: didCtx };
   if (!route && deps.demoSessionsRepository && normalizedFrom) {
     const enrichment = await deps.demoSessionsRepository.findLatestSipDemoContext({ callerPhone: normalizedFrom }).catch((err) => {
-      logger.warn({ err, callId, callerPhone: normalizedFrom }, 'openai_sip_demo_context_route_lookup_failed');
+      logger.warn({ err, callId, callerPhone: maskPhone(normalizedFrom) }, 'openai_sip_demo_context_route_lookup_failed');
       return null;
     });
     const v = asVoiceVertical(enrichment?.verticalSlug);

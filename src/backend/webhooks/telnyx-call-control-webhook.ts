@@ -2606,10 +2606,10 @@ async function processCallHangup(
             runAt: new Date(),
             idempotencyKey: `telnyx_cc_missed_call_followup:${event.id}`,
           });
-          log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_cc_missed_call_followup_queued');
+          log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_cc_missed_call_followup_queued');
         }
       } else if (subsRepo && accessStatesRepo) {
-        log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_cc_missed_call_followup_not_queued');
+        log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_cc_missed_call_followup_not_queued');
       }
     }
 

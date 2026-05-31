@@ -435,11 +435,8 @@ function VagaroConfigPanel({
   const webhookBase = typeof window === 'undefined'
     ? 'https://api.[your-domain]/api/backend/webhooks/vagaro'
     : `${window.location.origin}/api/backend/webhooks/vagaro`;
-  const displayedEndpoint = rawWebhookToken
-    ? `${webhookBase}/${rawWebhookToken}`
-    : maskedToken
-      ? `${webhookBase}/${maskedToken}`
-      : `${webhookBase}/whk_...`;
+  const displayedEndpoint = webhookBase;
+  const displayedHeaderToken = rawWebhookToken ?? maskedToken ?? 'whk_...';
 
   const modeButtonStyle = (mode: VagaroMode) => localMode === mode
     ? { border: '2px solid var(--purple-dark)', background: 'var(--purple-ultra)', color: 'var(--purple-dark)' }
@@ -536,11 +533,9 @@ function VagaroConfigPanel({
               <button
                 type="button"
                 className="btn"
-                disabled={!rawWebhookToken}
-                title={rawWebhookToken ? 'Copy webhook endpoint' : 'Connect or regenerate to copy the full token once'}
+                title="Copy webhook endpoint"
                 onClick={async () => {
-                  if (!rawWebhookToken) return;
-                  await navigator.clipboard.writeText(`${webhookBase}/${rawWebhookToken}`);
+                  await navigator.clipboard.writeText(webhookBase);
                   setMessage('Webhook endpoint copied.');
                 }}
               >
@@ -558,7 +553,7 @@ function VagaroConfigPanel({
                     setInlineError(null);
                     try {
 	                      await onRegenerate();
-	                      setMessage('Webhook token regenerated. Copy the new endpoint now.');
+	                      setMessage('Webhook token regenerated. Copy the new header now.');
 	                    } catch (err) {
 	                      setInlineError(normalizeIntegrationError('vagaro', err, 'vagaro_token_regenerate_failed'));
 	                    } finally {
@@ -570,7 +565,28 @@ function VagaroConfigPanel({
                 </button>
               ) : null}
             </div>
-            <small>Set trigger to Appointment and Customer in Vagaro. Raw tokens are shown only when first generated or regenerated.</small>
+            <small>Set trigger to Appointment and Customer in Vagaro.</small>
+          </div>
+          <div className="field integration-config-field" style={{ maxWidth: 'none' }}>
+            <label>Webhook header — add this in Vagaro</label>
+            <div className="integrations-inline-actions" style={{ gap: 8 }}>
+              <input value={`X-RingBooker-Shop-Token: ${displayedHeaderToken}`} readOnly style={{ flex: '1 1 340px', minWidth: 0 }} />
+              <button
+                type="button"
+                className="btn"
+                disabled={!rawWebhookToken}
+                title={rawWebhookToken ? 'Copy webhook header' : 'Connect or regenerate to copy the full token once'}
+                onClick={async () => {
+                  if (!rawWebhookToken) return;
+                  await navigator.clipboard.writeText(`X-RingBooker-Shop-Token: ${rawWebhookToken}`);
+                  setMessage('Webhook header copied.');
+                }}
+              >
+                <IconCopy size={16} stroke={2} aria-hidden="true" />
+                Copy header
+              </button>
+            </div>
+            <small>Raw tokens are shown only when first generated or regenerated.</small>
           </div>
 
           <div className="calendar-int-grid">
@@ -665,7 +681,7 @@ function VagaroConfigPanel({
 	                  });
 	                  setClientSecretKey('');
                   setIsDirty(false);
-	                  setMessage('Vagaro live sync connected. Copy the webhook endpoint if this is the first connection.');
+	                  setMessage('Vagaro live sync connected. Copy the webhook endpoint and header if this is the first connection.');
 	                } catch (err) {
 	                  setInlineError(normalizeIntegrationError('vagaro', err, 'connection_failed'));
 	                } finally {

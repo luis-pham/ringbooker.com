@@ -10,6 +10,7 @@ import {
   logBlockedOwnerHandoffDestination,
 } from '@/src/backend/services/calls/destination-policy';
 import { consumeRateLimit, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import { maskPhone } from '@/src/backend/utils/pii';
 import { normalizePhone } from '@/lib/phone-number';
 import { isWithinHours } from '@/lib/time-utils';
 import type { Shop } from '@/src/backend/domain/types';
@@ -137,7 +138,7 @@ export async function requestHumanHandoffTool(
   const countryCode = ctx.shop.country_code ?? 'US';
   const telnyxNumber = ctx.shop.telnyx_number?.trim();
   if (telnyxNumber && normalizePhone(ownerPhone, countryCode) === normalizePhone(telnyxNumber, countryCode)) {
-    logger.warn({ shopId: ctx.shop.id, ownerPhone }, 'handoff_loop_detected');
+    logger.warn({ shopId: ctx.shop.id, ownerPhone: maskPhone(ownerPhone) }, 'handoff_loop_detected');
     return {
       success: false,
       handoff_possible: false,
@@ -148,7 +149,7 @@ export async function requestHumanHandoffTool(
   }
   // Warn (don't block) when ownerPhone matches the business line — possible forwarding loop.
   if (ctx.shop.phone_number && normalizePhone(ownerPhone, countryCode) === normalizePhone(ctx.shop.phone_number, countryCode)) {
-    logger.warn({ shopId: ctx.shop.id, ownerPhone }, 'handoff_target_matches_business_line');
+    logger.warn({ shopId: ctx.shop.id, ownerPhone: maskPhone(ownerPhone) }, 'handoff_target_matches_business_line');
   }
 
   const destination = evaluateOwnerHandoffDestination({

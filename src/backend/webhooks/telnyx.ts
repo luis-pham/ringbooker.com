@@ -22,6 +22,7 @@ import { securityAudit } from '@/src/backend/security/audit-log';
 import { getClientIp } from '@/src/backend/security/rate-limit';
 import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { maskPhone } from '@/src/backend/utils/pii';
 
 const telnyxEnvelopeSchema = z.object({
   data: z.object({
@@ -305,12 +306,12 @@ export async function handleTelnyxWebhook(
                 runAt: new Date(),
                 idempotencyKey: `telnyx_missed_call_followup:${event.id}`,
               });
-              log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_queued');
+              log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_missed_call_followup_queued');
             } else {
-              log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_deduped');
+              log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_missed_call_followup_deduped');
             }
           } else if (subsRepo && accessStatesRepo) {
-            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_not_queued');
+            log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_missed_call_followup_not_queued');
           }
         }
       }
@@ -335,7 +336,7 @@ export async function handleTelnyxWebhook(
             );
             if (!access.canReceiveLiveCalls) {
               log.info(
-                { eventId: event.id, shopId: shop.id, callerPhone, blockReason: access.blockReason },
+                { eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone), blockReason: access.blockReason },
                 'telnyx_callback_request_blocked_by_billing',
               );
               incrementMetric('billing_blocked_workflows_total', {
@@ -346,7 +347,7 @@ export async function handleTelnyxWebhook(
             }
           }
           if (!canUsePaidFollowup) {
-            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_not_queued');
+            log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_callback_request_not_queued');
           } else {
             const callback = deps.callbacksRepository
               ? await deps.callbacksRepository.create({
@@ -366,7 +367,7 @@ export async function handleTelnyxWebhook(
               runAt: new Date(),
               idempotencyKey: `telnyx_callback_request_owner_alert:${event.id}`,
             });
-            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_owner_alert_queued');
+            log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_callback_request_owner_alert_queued');
           }
         }
       }
@@ -380,9 +381,9 @@ export async function handleTelnyxWebhook(
         const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
           await deps.customersRepository.setSmsOptOut(shop.id, callerPhone, true);
-          log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_sms_stop_opt_out_recorded');
+          log.info({ eventId: event.id, shopId: shop.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_sms_stop_opt_out_recorded');
         } else {
-          log.info({ eventId: event.id, callerPhone }, 'telnyx_sms_stop_platform_opt_out_recorded');
+          log.info({ eventId: event.id, callerPhone: maskPhone(callerPhone) }, 'telnyx_sms_stop_platform_opt_out_recorded');
         }
       }
     }

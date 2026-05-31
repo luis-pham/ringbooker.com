@@ -180,7 +180,7 @@ import { handleOpenAiRealtimeSipWebhook } from '@/src/backend/webhooks/openai-re
 import { handleTelnyxWebhook } from '@/src/backend/webhooks/telnyx';
 import { handleTelnyxCallControlWebhook } from '@/src/backend/webhooks/telnyx-call-control-webhook';
 import { handleTelnyxTexmlOpenAiInbound } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
-import { handleVagaroWebhook } from '@/src/backend/webhooks/vagaro';
+import { verifyVagaroWebhookHmac } from '@/src/backend/webhooks/vagaro';
 import {
   acuityAuthorizeUrl,
   acuityExchangeAuthorizationCode,
@@ -1289,6 +1289,10 @@ function toUserBookingResponse(booking: BookingRecord, smsLog: OutboundMessageRe
     status,
     callId: booking.callLogId ?? undefined,
     integrationId: booking.calendarEventId ?? undefined,
+    providerStatus: booking.providerStatus ?? null,
+    providerError: booking.providerErrorReason ?? null,
+    integrationName: booking.provider ?? null,
+    calendarEventId: booking.calendarEventId ?? null,
     smsLog: smsLog.map((message) => ({
       id: message.id,
       bookingRequestId: booking.id,
@@ -1799,12 +1803,27 @@ function toUserFacingServiceCatalog(catalog?: ShopServiceCatalog | null): ShopSe
   };
 }
 
+function stripSensitiveShopFields(shop: Shop): Shop {
+  const sanitized = Object.fromEntries(
+    Object.entries(shop).filter(([key]) => !key.endsWith('_encrypted') && !key.endsWith('_secret')),
+  ) as Shop;
+  return sanitized;
+}
+
 function toUserFacingShop(shop: Shop): Shop {
+  const sanitized = stripSensitiveShopFields(shop);
   return {
-    ...shop,
-    vagaro_webhook_token: shop.vagaro_webhook_token ? 'whk_••••••••••••' : null,
-    vagaro_client_secret_encrypted: undefined,
-    service_catalog: toUserFacingServiceCatalog(shop.service_catalog) ?? undefined,
+    ...sanitized,
+    vagaro_webhook_token: sanitized.vagaro_webhook_token ? 'whk_••••••••••••' : null,
+    service_catalog: toUserFacingServiceCatalog(sanitized.service_catalog) ?? undefined,
+  };
+}
+
+function toAdminFacingShop(shop: Shop): Shop {
+  const sanitized = stripSensitiveShopFields(shop);
+  return {
+    ...sanitized,
+    vagaro_webhook_token: sanitized.vagaro_webhook_token ? 'whk_••••••••••••' : null,
   };
 }
 
@@ -1897,6 +1916,7 @@ async function readSession(c: Context): Promise<{ role: SessionRole; email: stri
 async function requireSession(
   c: Context,
   role: SessionRole,
+  options?: { authUsersRepository?: AuthUsersRepository },
 ): Promise<{ role: SessionRole; email: string; shopId?: string; emailVerified?: boolean } | Response> {
   const session = await readSession(c);
   if (!session || session.role !== role) {
@@ -1912,6 +1932,25 @@ async function requireSession(
       },
     });
     return c.json({ ok: false, error: 'unauthorized' }, 401);
+  }
+  if (role === 'admin' && options?.authUsersRepository) {
+    const dbUser = await options.authUsersRepository.findByEmail(session.email).catch((err) => {
+      logger.warn({ err, adminEmail: session.email }, 'admin_session_revalidation_failed');
+      return null;
+    });
+    if (!dbUser || dbUser.role !== 'admin' || !dbUser.active) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'admin',
+        actorId: session.email,
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: {
+          reason: 'admin_session_revalidation_failed',
+        },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
   }
   return session;
 }
@@ -2156,21 +2195,17 @@ async function createAndSendEmailVerification(params: {
  * Prefer validated `APP_BASE_URL`; otherwise derive from `x-forwarded-*` / `host` so HTTPS
  * behind a reverse proxy is not downgraded to `http://` (Square redirect URI must match the dashboard).
  */
-function getAppBaseUrl(req: { header(name: string): string | undefined }): string {
-  try {
-    const fromEnv = getEnv().APP_BASE_URL?.trim();
-    if (fromEnv) return fromEnv.replace(/\/+$/, '');
-  } catch {
-    /* env may be unavailable in some import/build paths */
+function getAppBaseUrl(_req: { header(name: string): string | undefined }): string {
+  const fromEnv = process.env.APP_BASE_URL?.trim() ?? '';
+  if (fromEnv) {
+    const parsed = new URL(fromEnv);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('APP_BASE_URL must be http or https');
+    }
+    return fromEnv.replace(/\/+$/, '');
   }
-  const xfHost = req.header('x-forwarded-host')?.trim();
-  const host = (xfHost && xfHost.length > 0 ? xfHost : req.header('host')?.trim()) ?? '';
-  if (host.length > 0) {
-    const xfProto = req.header('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
-    const isLocal =
-      host.startsWith('localhost:') || host === 'localhost' || host.startsWith('127.0.0.1');
-    const scheme = xfProto === 'http' || xfProto === 'https' ? xfProto : isLocal ? 'http' : 'https';
-    return `${scheme}://${host}`.replace(/\/+$/, '');
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('APP_BASE_URL must be set in production');
   }
   return 'http://localhost:3000';
 }
@@ -2863,6 +2898,9 @@ export function createBackendApp(deps: {
 
     c.header('X-Frame-Options', 'DENY');
     c.header('X-Content-Type-Options', 'nosniff');
+    if (process.env.NODE_ENV === 'production') {
+      c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     c.header('Cross-Origin-Opener-Policy', 'same-origin');
@@ -2916,6 +2954,14 @@ export function createBackendApp(deps: {
       method: c.req.method,
       status: c.res.status,
     });
+  });
+
+  app.use(path('/admin/*'), async (c, next) => {
+    const sessionResult = await requireSession(c, 'admin', {
+      authUsersRepository: deps.authUsersRepository,
+    });
+    if (sessionResult instanceof Response) return sessionResult;
+    await next();
   });
 
   app.get(path('/health'), (c) => c.json({ ok: true }));
@@ -3139,13 +3185,79 @@ export function createBackendApp(deps: {
     })(),
   );
 
+  const handleShopVagaroWebhook = async (c: Context, params: { token: string | null; deprecatedPathToken: boolean }) => {
+    if (!deps.shopsRepository || !deps.vagaroWebhookEventsRepository) {
+      return c.json({ ok: false, error: 'vagaro_webhook_dependencies_unavailable' }, 500);
+    }
+    const token = params.token?.trim() ?? '';
+    if (!token) return c.json({ ok: false }, 401);
+
+    const shop = await deps.shopsRepository.getShopByWebhookToken(token);
+    if (!shop) return c.json({ ok: false }, 404);
+
+    const rawBody = await c.req.text().catch(() => '');
+    const signature = c.req.header('x-vagaro-signature') ?? c.req.header('X-Vagaro-Signature') ?? null;
+    if (signature && !verifyVagaroWebhookHmac({ rawBody, secret: token, signature })) {
+      incrementMetric('webhook_requests_total', {
+        provider: 'vagaro',
+        outcome: 'invalid_signature',
+      });
+      securityAudit({
+        action: 'webhook_signature_invalid',
+        actorType: 'provider',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        provider: 'vagaro',
+        details: {
+          shopId: shop.id,
+          reason: 'hmac_mismatch',
+        },
+      });
+      return c.json({ ok: false }, 401);
+    }
+    if (!signature) {
+      // TODO: make X-Vagaro-Signature mandatory when Vagaro supports signed webhook payloads.
+      logger.warn({ shopId: shop.id }, 'vagaro_webhook_signature_missing_header_token_auth_used');
+    }
+    if (params.deprecatedPathToken) {
+      logger.warn({ shopId: shop.id }, 'vagaro_webhook_path_token_deprecated');
+    }
+
+    let body: unknown = null;
+    try {
+      body = rawBody ? JSON.parse(rawBody) : null;
+    } catch {
+      return c.json({ ok: false }, 400);
+    }
+    const eventType = getWebhookStringField(body, 'type') ?? 'unknown';
+    const action = getWebhookStringField(body, 'action');
+    const payload =
+      body && typeof body === 'object' && Object.prototype.hasOwnProperty.call(body, 'payload')
+        ? (body as Record<string, unknown>).payload
+        : body;
+
+    await deps.vagaroWebhookEventsRepository.save({
+      shop_id: shop.id,
+      event_type: eventType,
+      action,
+      payload: payload ?? {},
+      raw_headers: safeWebhookHeaders(c.req.raw.headers),
+      received_at: new Date().toISOString(),
+      processed_at: null,
+      processing_error: null,
+    });
+
+    logger.info({ shopId: shop.id, eventType, action }, 'vagaro_webhook_received');
+    return c.json({ ok: true }, 200);
+  };
+
   app.post(path('/webhooks/vagaro'), (c) =>
     (async () => {
-      logger.info({ timestamp: new Date().toISOString() }, 'vagaro_webhook_legacy_route_called');
       const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_paddle, 'webhook_vagaro');
       if (limited) return limited;
-      return handleVagaroWebhook(c, {
-        providerEventsRepository: deps.providerEventsRepository,
+      return handleShopVagaroWebhook(c, {
+        token: c.req.header('x-ringbooker-shop-token') ?? c.req.header('X-RingBooker-Shop-Token') ?? null,
+        deprecatedPathToken: false,
       });
     })(),
   );
@@ -3154,34 +3266,10 @@ export function createBackendApp(deps: {
     (async () => {
       const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_paddle, 'webhook_vagaro_token');
       if (limited) return limited;
-      if (!deps.shopsRepository || !deps.vagaroWebhookEventsRepository) {
-        return c.json({ ok: false, error: 'vagaro_webhook_dependencies_unavailable' }, 500);
-      }
-      const token = c.req.param('token') ?? '';
-      const shop = await deps.shopsRepository.getShopByWebhookToken(token);
-      if (!shop) return c.json({ ok: false }, 404);
-
-      const body = await c.req.json().catch(() => null);
-      const eventType = getWebhookStringField(body, 'type') ?? 'unknown';
-      const action = getWebhookStringField(body, 'action');
-      const payload =
-        body && typeof body === 'object' && Object.prototype.hasOwnProperty.call(body, 'payload')
-          ? (body as Record<string, unknown>).payload
-          : body;
-
-      await deps.vagaroWebhookEventsRepository.save({
-        shop_id: shop.id,
-        event_type: eventType,
-        action,
-        payload: payload ?? {},
-        raw_headers: safeWebhookHeaders(c.req.raw.headers),
-        received_at: new Date().toISOString(),
-        processed_at: null,
-        processing_error: null,
+      return handleShopVagaroWebhook(c, {
+        token: c.req.param('token') ?? null,
+        deprecatedPathToken: true,
       });
-
-      logger.info({ shopId: shop.id, eventType, action }, 'vagaro_webhook_received');
-      return c.json({ ok: true }, 200);
     })(),
   );
 
@@ -6622,6 +6710,8 @@ export function createBackendApp(deps: {
 
 
   app.patch(path('/user/calls/:requestId/follow-up-done'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_follow_up_done');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
@@ -6669,6 +6759,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const accessState = deps.shopAccessStatesRepository
+      ? await deps.shopAccessStatesRepository.findByShopId(shop.id).catch(() => null)
+      : null;
 
     const page = parsed.data.page ?? 1;
     const limit = parsed.data.limit ?? USER_BOOKINGS_PAGE_SIZE;
@@ -6703,7 +6796,11 @@ export function createBackendApp(deps: {
           customerPhone: (booking.callLogId && linkedCallMeta.get(booking.callLogId)?.callerPhone) || booking.customerPhone,
         }),
       ),
-      shop: { timezone: shop.timezone },
+      shop: {
+        timezone: shop.timezone,
+        liveCallsEnabled: accessState?.liveCallsEnabled ?? false,
+        goLiveAt: accessState?.goLiveAt ?? null,
+      },
       total,
       stats: {
         total: totalAll,
@@ -6761,6 +6858,8 @@ export function createBackendApp(deps: {
   });
 
   app.patch(path('/user/bookings/:id'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_bookings_update');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
@@ -7099,6 +7198,9 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const accessState = deps.shopAccessStatesRepository
+      ? await deps.shopAccessStatesRepository.findByShopId(shop.id).catch(() => null)
+      : null;
 
     const repo = deps.callLogsRepository;
     await repo.resolveStaleInProgressByShop(shop.id, new Date(Date.now() - 30 * 60 * 1000)).catch(() => 0);
@@ -7154,7 +7256,11 @@ export function createBackendApp(deps: {
           ? advancedCall
           : { ...advancedCall, recordingAvailable: undefined, recordingStatus: undefined };
       }),
-      shop: { timezone: shop.timezone },
+      shop: {
+        timezone: shop.timezone,
+        liveCallsEnabled: accessState?.liveCallsEnabled ?? false,
+        goLiveAt: accessState?.goLiveAt ?? null,
+      },
       total,
       stats: canUseAdvancedCallAnalytics
         ? { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency }
@@ -10668,7 +10774,7 @@ export function createBackendApp(deps: {
     return c.json({
       ok: true,
       shops: shops.map((shop) => ({
-        ...shop,
+        ...toAdminFacingShop(shop),
         totalCalls: callsByShop.get(shop.id)?.totalCalls ?? 0,
         latestCallAt: callsByShop.get(shop.id)?.latestCallAt,
         latestCallOutcome: callsByShop.get(shop.id)?.latestOutcome,
@@ -10782,7 +10888,7 @@ export function createBackendApp(deps: {
         shopId: created.id,
       },
     });
-    return c.json({ ok: true, shop: created }, 201);
+    return c.json({ ok: true, shop: toAdminFacingShop(created) }, 201);
   });
 
   app.get(path('/admin/shops/:id/calls'), async (c) => {
@@ -10955,7 +11061,7 @@ export function createBackendApp(deps: {
 
     return c.json({
       ok: true,
-      shop,
+      shop: toAdminFacingShop(shop),
       commercialGoLiveApprovalEvents,
       shopLocations,
       shopRoutingRules,
@@ -11003,7 +11109,7 @@ export function createBackendApp(deps: {
         active: parsed.data.active ?? null,
       },
     });
-    return c.json({ ok: true, shop: updated });
+    return c.json({ ok: true, shop: toAdminFacingShop(updated) });
   });
 
   app.post(path('/admin/shops/:id/approve-commercial-go-live'), async (c) => {
@@ -11114,6 +11220,18 @@ export function createBackendApp(deps: {
     const parsed = adminShopLocationSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
     const location = await deps.shopLocationsRepository.create({ shopId: shop.id, ...parsed.data });
+    securityAudit({
+      action: 'admin_location_create',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId: shop.id,
+        locationId: location.id,
+        changes: parsed.data,
+      },
+    });
     return c.json({ ok: true, location });
   });
 
@@ -11132,6 +11250,18 @@ export function createBackendApp(deps: {
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
     const location = await deps.shopLocationsRepository.update(shopId, locationId, parsed.data as Parameters<NonNullable<typeof deps.shopLocationsRepository>['update']>[2]);
     if (!location) return c.json({ ok: false, error: 'location_not_found' }, 404);
+    securityAudit({
+      action: 'admin_location_update',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId,
+        locationId,
+        changes: parsed.data,
+      },
+    });
     return c.json({ ok: true, location });
   });
 
@@ -11150,6 +11280,18 @@ export function createBackendApp(deps: {
     const parsed = adminShopRoutingRuleSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
     const rule = await deps.shopRoutingRulesRepository.create({ shopId: shop.id, ...parsed.data });
+    securityAudit({
+      action: 'admin_routing_rule_create',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId: shop.id,
+        ruleId: rule.id,
+        changes: parsed.data,
+      },
+    });
     return c.json({ ok: true, rule });
   });
 
@@ -11168,6 +11310,18 @@ export function createBackendApp(deps: {
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
     const rule = await deps.shopRoutingRulesRepository.update(shopId, ruleId, parsed.data);
     if (!rule) return c.json({ ok: false, error: 'routing_rule_not_found' }, 404);
+    securityAudit({
+      action: 'admin_routing_rule_update',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId,
+        ruleId,
+        changes: parsed.data,
+      },
+    });
     return c.json({ ok: true, rule });
   });
 
@@ -11186,6 +11340,17 @@ export function createBackendApp(deps: {
     const parsed = adminCommercialAccountSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
     const account = await deps.commercialAccountsRepository.upsert({ shopId: shop.id, ...parsed.data });
+    securityAudit({
+      action: 'admin_commercial_account_update',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId: shop.id,
+        changes: parsed.data,
+      },
+    });
     return c.json({ ok: true, commercialAccount: account });
   });
 
@@ -11217,7 +11382,7 @@ export function createBackendApp(deps: {
         shopId,
       },
     });
-    return c.json({ ok: true, shop: updated });
+    return c.json({ ok: true, shop: toAdminFacingShop(updated) });
   });
 
   app.put(path('/admin/shops/:id/config'), async (c) => {
@@ -11249,7 +11414,7 @@ export function createBackendApp(deps: {
         keys: Object.keys(parsed.data),
       },
     });
-    return c.json({ ok: true, shop: updated });
+    return c.json({ ok: true, shop: toAdminFacingShop(updated) });
   });
 
   app.get(path('/admin/calls'), async (c) => {

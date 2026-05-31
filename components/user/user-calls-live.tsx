@@ -88,13 +88,19 @@ type CallsStats = {
   highUrgency: number;
 };
 
+type ShopLiveSummary = {
+  timezone?: string | null;
+  liveCallsEnabled?: boolean;
+  goLiveAt?: string | null;
+};
+
 export type CallsResponse = {
   ok: boolean;
   calls?: Call[];
   total?: number;
   stats?: CallsStats;
   capabilities?: { call_recovery_insights?: boolean };
-  shop?: { timezone?: string | null };
+  shop?: ShopLiveSummary;
   pagination?: { page: number; limit?: number; pageSize?: number; total: number; totalPages?: number };
   summary?: { total: number; booked: number; missed: number; transcriptsReady?: number };
   error?: string;
@@ -321,7 +327,9 @@ export function UserCallsLive({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const callIdParam = searchParams.get('callId');
   const didUseInitialCalls = useRef(Boolean(initialData?.ok));
+  const openedCallIdRef = useRef<string | null>(null);
   const [calls, setCalls] = useState<Call[]>(initialData?.ok ? initialData.calls ?? [] : []);
   const [page, setPage] = useState(initialData?.pagination?.page ?? 1);
   const [totalCount, setTotalCount] = useState(initialData?.ok ? initialData.pagination?.total ?? initialData.total ?? 0 : 0);
@@ -337,6 +345,10 @@ export function UserCallsLive({
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [useMobileCallsList, setUseMobileCallsList] = useState(false);
   const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(initialData?.ok ? initialData.shop : null));
+  const [shopLiveStatus, setShopLiveStatus] = useState(() => ({
+    liveCallsEnabled: Boolean(initialData?.ok ? initialData.shop?.liveCallsEnabled : false),
+    goLiveAt: initialData?.ok ? initialData.shop?.goLiveAt ?? null : null,
+  }));
   const [canViewRecoveryInsights, setCanViewRecoveryInsights] = useState(Boolean(initialData?.capabilities?.call_recovery_insights));
   const [insights, setInsights] = useState<CallRecoveryInsights | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
@@ -351,9 +363,9 @@ export function UserCallsLive({
   }, []);
 
   useEffect(() => {
-    const next = tabFromSearch(searchParams.get('tab'));
+    const next = callIdParam ? 'all' : tabFromSearch(searchParams.get('tab'));
     setActiveFilter((current) => (current === next ? current : next));
-  }, [searchParams]);
+  }, [callIdParam, searchParams]);
 
   useEffect(() => {
     if (activeFilter === 'insights') {
@@ -384,6 +396,10 @@ export function UserCallsLive({
         setCalls(body.calls ?? []);
         setCanViewRecoveryInsights(Boolean(body.capabilities?.call_recovery_insights));
         setShopTimezone(getShopTimezone(body.shop));
+        setShopLiveStatus({
+          liveCallsEnabled: Boolean(body.shop?.liveCallsEnabled),
+          goLiveAt: body.shop?.goLiveAt ?? null,
+        });
         setTotalCount(body.pagination?.total ?? body.total ?? 0);
         setTotalPages(body.pagination?.totalPages ?? Math.max(1, Math.ceil((body.pagination?.total ?? body.total ?? 0) / USER_CALLS_PAGE_SIZE)));
         setStats(body.stats ?? EMPTY_STATS);
@@ -448,6 +464,34 @@ export function UserCallsLive({
     }
   }
 
+  useEffect(() => {
+    if (!callIdParam || openedCallIdRef.current === callIdParam) return;
+    openedCallIdRef.current = callIdParam;
+    setActiveFilter('all');
+    setPage(1);
+
+    const existingCall = calls.find((call) =>
+      call.id === callIdParam || call.requestId === callIdParam || call.providerCallId === callIdParam
+    );
+    const clearCallIdParam = () => router.replace('/user/calls', { scroll: false });
+
+    if (existingCall) {
+      void openCall(existingCall).finally(clearCallIdParam);
+      return;
+    }
+
+    setShowTranscript(false);
+    setRecordingUrl(null);
+    setRecordingError(null);
+    void fetch(`/api/backend/user/calls/${encodeURIComponent(callIdParam)}`)
+      .then(async (res) => {
+        const body = (await res.json()) as { ok: boolean; call?: Call };
+        if (body.ok && body.call) setActiveCall(body.call);
+      })
+      .catch(() => undefined)
+      .finally(clearCallIdParam);
+  }, [callIdParam, calls, router]);
+
   function listenToCall(call: Call) {
     setActiveCall(call);
     setShowTranscript(false);
@@ -487,6 +531,10 @@ export function UserCallsLive({
     if (refreshed.ok && refreshedBody.ok) {
       setCalls(refreshedBody.calls ?? []);
       setStats(refreshedBody.stats ?? EMPTY_STATS);
+      setShopLiveStatus({
+        liveCallsEnabled: Boolean(refreshedBody.shop?.liveCallsEnabled),
+        goLiveAt: refreshedBody.shop?.goLiveAt ?? null,
+      });
       setTotalCount(refreshedBody.pagination?.total ?? refreshedBody.total ?? 0);
       setTotalPages(refreshedBody.pagination?.totalPages ?? 1);
     }
@@ -505,6 +553,7 @@ export function UserCallsLive({
 
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
+  const shopHasGoneLive = shopLiveStatus.liveCallsEnabled || Boolean(shopLiveStatus.goLiveAt);
 
   return (
     <UserLayout styles={userCallsStyles} scripts={userCallsScripts} scriptPrefix="user-calls-live">
@@ -567,8 +616,14 @@ export function UserCallsLive({
                   <div className="calls-empty">
                     <div className="calls-empty-icon">☎</div>
                     <h3>No calls yet</h3>
-                    <p>Complete Go Live to start receiving calls on your business number.</p>
-                    <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                    {shopHasGoneLive ? (
+                      <p>No calls yet — your AI receptionist is active and ready. Calls will appear here once customers start calling.</p>
+                    ) : (
+                      <>
+                        <p>Complete Go Live to start receiving calls on your business number.</p>
+                        <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                      </>
+                    )}
                   </div>
                 ) : null}
                 {loading && calls.length === 0 ? <div className="calls-empty"><p>Loading calls…</p></div> : null}

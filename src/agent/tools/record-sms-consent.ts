@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
 import { logger } from '@/src/backend/observability/logger';
+import { maskPhone } from '@/src/backend/utils/pii';
 import { type AgentToolContext, toToolError } from '@/src/agent/tools/types';
 
 const schema = z.object({});
@@ -23,10 +24,10 @@ export async function recordSmsConsentTool(
 
   try {
     await ctx.customersRepository.setSmsConsent(ctx.shop.id, phone);
-    logger.info({ shopId: ctx.shop.id, phone }, 'sms_consent_recorded');
+    logger.info({ shopId: ctx.shop.id, phone: maskPhone(phone) }, 'sms_consent_recorded');
     return { success: true, message: 'SMS consent recorded. Automated appointment reminders and booking confirmations may now be sent.' };
   } catch (error) {
-    logger.warn({ err: error, shopId: ctx.shop.id, phone }, 'sms_consent_record_failed');
+    logger.warn({ err: error, shopId: ctx.shop.id, phone: maskPhone(phone) }, 'sms_consent_record_failed');
     return toToolError('Unable to record SMS consent right now.', { code: 'INTERNAL', retryable: true });
   }
 }

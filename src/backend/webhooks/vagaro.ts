@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
 import type { ProviderEventsRepository } from '@/src/backend/ports/repositories';
@@ -87,6 +87,23 @@ function verifyVagaroSignature(params: { expectedToken?: string; signature?: str
   const signature = params.signature?.trim();
   if (!expected || !signature) return false;
   return timingSafeEqualString(signature, expected);
+}
+
+export function verifyVagaroWebhookHmac(params: {
+  rawBody: string;
+  secret: string;
+  signature?: string | null;
+}): boolean {
+  const signature = params.signature?.trim();
+  const secret = params.secret.trim();
+  if (!signature || !secret) return false;
+  const expected = createHmac('sha256', secret).update(params.rawBody).digest('hex');
+  const normalizedCandidates = [
+    signature,
+    signature.replace(/^sha256=/i, ''),
+    signature.replace(/^hmac-sha256=/i, ''),
+  ].map((value) => value.trim().toLowerCase());
+  return normalizedCandidates.some((candidate) => /^[a-f0-9]{64}$/.test(candidate) && timingSafeEqualString(candidate, expected));
 }
 
 export async function handleVagaroWebhook(
