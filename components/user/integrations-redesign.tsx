@@ -163,7 +163,7 @@ function BookingMethodQuestion({
         </button>
       </div>
       {showLater ? (
-        <button type="button" className="user-link--subtle integrations-later-link" onClick={() => onChoose('later')}>
+        <button type="button" className="user-link integrations-later-link" onClick={() => onChoose('later')}>
           I&apos;ll set this up later
         </button>
       ) : null}
@@ -245,7 +245,7 @@ function AppPicker({ selectedApp, providers, vagaroMode, vagaroConnectionStatus,
 
   return (
     <div className="integrations-flow-stack">
-      <button type="button" className="user-link--subtle integrations-back-link" onClick={onBack}>← Back</button>
+      <button type="button" className="user-link integrations-back-link" onClick={onBack}>← Back</button>
       <section className="integrations-app-section">
         <div>
           <h4 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1648,7 +1648,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
 
       <StarterUpgradeBanner />
 
-      <button type="button" className="user-link--subtle integrations-later-link" onClick={() => void chooseMethod('later')}>
+      <button type="button" className="user-link integrations-later-link" onClick={() => void chooseMethod('later')}>
         I&apos;ll set this up later
       </button>
         </>

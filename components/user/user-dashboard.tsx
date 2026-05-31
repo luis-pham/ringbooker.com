@@ -106,7 +106,7 @@ button,input,select,textarea{font:inherit}
 .brand-text{display:flex;flex-direction:column;gap:2px;min-width:0;justify-content:center}
 .brand-title{
   font-weight:600;font-size:18px;letter-spacing:-.02em;
-  color:var(--purple-dark);line-height:1.2;
+  color:#111827;line-height:1.2;
 }
 .brand-tagline{
   margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
@@ -273,6 +273,28 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   background:#f9fafb;border-color:#d1d5db;color:var(--text-dark);
 }
 .portal-top-account-btn:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
+.portal-top-account-dd{position:relative;display:inline-flex;vertical-align:middle}
+.portal-top-account-menu{
+  position:absolute;right:0;top:calc(100% + 10px);min-width:168px;
+  opacity:0;pointer-events:none;transition:opacity .15s ease,transform .15s ease;
+  transform:translateY(-4px);z-index:90;
+}
+.portal-top-account-menu.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.portal-top-account-menu-inner{
+  background:var(--surface-card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 14px 42px rgba(15,23,42,.14);overflow:hidden;padding:6px;
+}
+.portal-top-account-menu-item{
+  display:flex;align-items:center;width:100%;padding:10px 12px;border-radius:8px;
+  font:inherit;font-size:13px;font-weight:500;color:var(--text-dark);text-decoration:none;
+  background:none;border:none;cursor:pointer;text-align:left;line-height:1.3;
+  transition:background .14s ease,color .14s ease;
+}
+.portal-top-account-menu-item:hover{
+  background:var(--bg-gray);color:var(--text-dark);
+}
+.portal-top-account-menu-item--logout{color:var(--text-gray)}
+.portal-top-account-menu-item--logout:hover{background:#fef2f2;color:var(--red-deep)}
 .topbar-trailing{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin-left:auto;
@@ -831,6 +853,7 @@ html[data-user-theme="dark"] .nav-item.active:hover{
   background:rgba(56,139,253,0.22);
   color:#79c0ff;
 }
+html[data-user-theme="dark"] .user-app-shell .brand-title{color:#fff}
 html[data-user-theme="dark"] .sidebar-logout{color:#8b949e}
 html[data-user-theme="dark"] .btn{
   background:#21262d;
@@ -891,6 +914,17 @@ html[data-user-theme="dark"] .portal-top-account-btn:hover{
   background:#21262d;
   border-color:#8b949e;
   color:var(--text-dark);
+}
+html[data-user-theme="dark"] .portal-top-account-menu-inner{
+  box-shadow:0 16px 48px rgba(0,0,0,.45);
+}
+html[data-user-theme="dark"] .portal-top-account-menu-item:hover{
+  background:#21262d;
+}
+html[data-user-theme="dark"] .portal-top-account-menu-item--logout{color:var(--text-gray)}
+html[data-user-theme="dark"] .portal-top-account-menu-item--logout:hover{
+  background:rgba(248,81,73,.12);
+  color:#f85149;
 }
 html[data-user-theme="dark"] .portal-notif-badge{
   border-color:var(--surface-page);
