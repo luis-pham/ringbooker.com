@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { IPHONE_CALL_MOCKUP_CSS } from '@/components/marketing/iphone-call-mockup-css';
 import { HomeHeroPhoneMockup } from '@/components/marketing/home-hero-phone-mockup';
+import { HomeIndustriesSection } from '@/components/marketing/home-industries-section';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -63,16 +64,6 @@ const HOME_COMPARE_ROWS = [
     good: 'Purpose-built for nail salons, spas, med spas, and clinics.',
   },
 ] as const;
-
-const HOME_INDUSTRY_CARDS = [
-  { href: '/industries/nail-salon', icon: '💅', title: 'Nail Salon', sub: 'Walk-ins, gel, peak-hour calls' },
-  { href: '/industries/hair-salon', icon: '✂️', title: 'Hair Salon', sub: 'Cuts, color, busy chair time' },
-  { href: '/industries/spa', icon: '🧖', title: 'Spa / Day Spa', sub: 'Treatment bookings and availability' },
-  { href: '/industries/med-spa', icon: '💉', title: 'Med Spa', sub: 'Consult-led, high-ticket calls' },
-  { href: '/industries/beauty-clinic', icon: '🏥', title: 'Beauty Clinic', sub: 'Consults & follow-ups' },
-] as const;
-
-const HOME_INDUSTRY_RV_CLASSES = ['rv', 'rv d1', 'rv d2', 'rv d3', 'rv d4'] as const;
 
 const homeFaqJsonLd = {
   '@context': 'https://schema.org',
@@ -750,23 +741,43 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 }
 .industries-title em{font-style:italic;font-weight:500;color:var(--purple-dark)}
 .industries-lead{font-size:var(--mk-section-lead);color:var(--text-desc);line-height:var(--mk-section-lead-lh);max-width:44ch;font-weight:400}
-.industries-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:36px}
+.industries-tabs-wrap{margin-top:36px}
+.industries-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.industries-tab-btn{
+	display:inline-flex;align-items:center;justify-content:center;gap:8px;
+	min-width:0;padding:10px 16px;border-radius:999px;
+	border:1px solid var(--border);background:#fff;
+	color:var(--text-gray);font-size:13px;font-weight:500;
+	white-space:nowrap;cursor:pointer;font-family:inherit;
+	transition:all .2s ease;
+}
+.industries-tab-btn svg{width:18px;height:18px;flex-shrink:0}
+.industries-tab-btn.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
+.industries-tab-btn:not(.is-active):hover{border-color:rgba(139,92,246,.45);color:var(--purple-dark);background:rgba(245,243,255,.5)}
+.industries-panel{
+	margin-top:20px;border-radius:24px;border:1px solid var(--border);
+	background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);
+	padding:32px 28px;box-shadow:var(--home-shadow-soft);
+}
+.industries-panel-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:0}
+.industries-panel-icon{
+	width:48px;height:48px;min-width:48px;border-radius:14px;
+	background:var(--purple-ultra);color:var(--purple-dark);
+	display:flex;align-items:center;justify-content:center;
+	border:1px solid rgba(196,181,253,.35);
+}
+.industries-panel-icon svg{width:24px;height:24px}
+.industries-panel h3{font-size:20px;font-weight:600;letter-spacing:-.45px;color:var(--text-dark);margin:0 0 12px}
+.industries-panel-desc{font-size:var(--mk-body);color:var(--text-desc);line-height:var(--mk-body-lh);font-weight:400;max-width:62ch;margin:0}
+.industries-panel-chips{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 24px}
+.industries-panel-chip{
+	display:inline-flex;align-items:center;
+	background:var(--purple-ultra);color:var(--purple-dark);
+	font-size:var(--mk-badge);font-weight:600;
+	letter-spacing:.02em;padding:6px 12px;border-radius:var(--r-pill);
+	border:1px solid rgba(196,181,253,.4);
+}
 .industries .metrics-grid{margin-top:48px}
-.industry-card-lite{
-	display:flex;flex-direction:column;align-items:center;text-align:center;text-decoration:none;color:inherit;
-	padding:28px 14px 24px;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);
-	border:1px solid var(--border);border-radius:16px;
-	box-shadow:var(--home-shadow-soft);
-	transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;min-height:0;
-}
-.industry-card-lite:hover{
-	transform:translateY(-1px);
-	box-shadow:var(--home-shadow-hover);
-	border-color:var(--home-card-border-hover);
-}
-.industry-card-icon{font-size:1.75rem;line-height:1;margin-bottom:14px}
-.industry-card-lite .industry-title{font-size:15px;font-weight:500;line-height:1.3;color:var(--text-dark);letter-spacing:-.15px;margin-bottom:6px}
-.industry-card-lite .industry-sub{font-size:13px;line-height:1.45;color:var(--text-desc);font-weight:400;max-width:13ch}
 .home-carousel{position:relative}
 .home-carousel-controls{display:none;align-items:center;justify-content:center;gap:12px;margin-top:18px}
 .home-carousel-nav-btn{
@@ -872,16 +883,11 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
   .summary-time{margin-top:-4px}
   .user-shell{aspect-ratio:16/10}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries{padding-left:22px;padding-right:22px}
-  .industries-grid{
-    display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;
-    scrollbar-width:none;-ms-overflow-style:none;padding:4px 2px 8px;margin-top:28px;
-  }
-  .industries-grid::-webkit-scrollbar{display:none}
-  .industry-card-lite{flex:0 0 calc((100% - 14px) / 2);min-width:calc((100% - 14px) / 2);scroll-snap-align:start}
-  .home-carousel-track .industry-card-lite{
-    flex:0 0 calc((100% - 16px) / 2);
-    min-width:calc((100% - 16px) / 2);
-  }
+  .industries-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;padding:4px 2px 8px}
+  .industries-tabs::-webkit-scrollbar{display:none}
+  .industries-tab-btn{flex:0 0 auto;font-size:12px;padding:8px 12px}
+  .industries-panel{padding:24px 20px}
+  .industries-panel-head{flex-direction:column;gap:14px}
   .home-carousel-track{
     display:flex;
     gap:16px;
@@ -906,8 +912,6 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 }
 
 @media(max-width:640px){
-  .industry-card-lite{flex:0 0 84%;min-width:84%}
-  .industry-sub{max-width:190px}
   .summary-row{padding:14px 12px}
   .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
@@ -1278,16 +1282,6 @@ setPriceSafe('monthly')
     }
 
     initCarousel({
-      rootId: 'industriesCarousel',
-      trackSelector: '.home-carousel-track',
-      cardSelector: '.industry-card-lite',
-      prevId: 'industriesPrev',
-      nextId: 'industriesNext',
-      dotsId: 'industriesDots',
-      dotClassName: 'home-carousel-dot',
-    })
-
-    initCarousel({
       rootId: 'pricingCarousel',
       trackSelector: '.home-carousel-track',
       cardSelector: '.plan',
@@ -1350,6 +1344,8 @@ setPriceSafe('monthly')
     '.home-call-in{opacity:1;transform:translateY(0)}',
     '.home-stat-fade-pre{opacity:0;transition:opacity 1200ms ease-out}',
     '.home-stat-fade-in{opacity:1}',
+    '.home-step-pre{opacity:0;transform:translateX(-16px);transition:opacity 500ms ease-out,transform 500ms ease-out}',
+    '.home-step-in{opacity:1;transform:translateX(0)}',
   ].join('')
   document.head.appendChild(style)
 
@@ -1487,6 +1483,20 @@ setPriceSafe('monthly')
   setupCallStagger('home-tonights-calls-panel', '.coverage-call-row', (index) => index * 300)
   setupCallStagger('home-call-summary-panel', '.coverage-status-row', (index) => index * 300)
   setupCallStagger('home-missed-call-recovery-panel', '.coverage-msg-row', (index) => index * 350)
+
+  const homeHowSection = document.querySelector('[data-home-how-section]')
+  if (homeHowSection) {
+    const scroller = homeHowSection.querySelector('[data-home-step-scroller]')
+    if (scroller) {
+      const cards = Array.from(scroller.querySelectorAll('[data-home-step-card]'))
+      cards.forEach((card) => card.classList.add('home-step-pre'))
+      observeOnce(homeHowSection, () => {
+        cards.forEach((card, index) => {
+          window.setTimeout(() => card.classList.add('home-step-in'), index * 250)
+        })
+      })
+    }
+  }
 })()
 `,
 ];
@@ -1795,7 +1805,7 @@ export function MarketingHomeTemplate() {
           </div>
         </section>
         {/* HOW IT WORKS */}
-        <section className="steps-section" id="how-it-works">
+        <section className="steps-section" id="how-it-works" data-home-how-section>
           <div className="steps-inner">
             <div className="steps-intro rv">
               <div className="sec-label sec-label-left">How it works</div>
@@ -1806,20 +1816,20 @@ export function MarketingHomeTemplate() {
               </h2>
               <p className="steps-copy reveal">Keep your current phone number. Keep your booking tools. Just forward your line and RingBooker handles the rest.</p>
             </div>
-            <div className="steps-shell reveal">
+            <div className="steps-shell">
               <div className="steps-rail" aria-hidden="true" />
-              <div className="steps-grid">
-                <article className="step-card rv">
+              <div className="steps-grid" data-home-step-scroller>
+                <article className="step-card" data-home-step-card>
                   <div className="step-marker">1</div>
                   <h3>Forward your number</h3>
                   <p>Keep the number your clients know. RingBooker sits behind your line and catches every missed, busy, or after-hours call.</p>
                 </article>
-                <article className="step-card rv d1">
+                <article className="step-card" data-home-step-card>
                   <div className="step-marker">2</div>
                   <h3>Import your details</h3>
                   <p>Paste your website URL to auto-fill your hours, services, and pricing — or enter your details manually. Review, adjust, and connect your tools.</p>
                 </article>
-                <article className="step-card rv d2">
+                <article className="step-card" data-home-step-card>
                   <div className="step-marker">3</div>
                   <h3>Start recovering bookings</h3>
                   <p>Callers get help instantly. Your team gets the summary, booking details, and next action.</p>
@@ -1839,24 +1849,7 @@ export function MarketingHomeTemplate() {
                 Each vertical has different call patterns, from walk-ins to consultation-driven bookings.
               </p>
                   </div>
-            <div className="home-carousel" id="industriesCarousel">
-            <div className="industries-grid home-carousel-track reveal">
-              {HOME_INDUSTRY_CARDS.map(({ href, icon, title, sub }, index) => (
-                <Link key={href} href={href} className={`industry-card-lite home-carousel-slide ${HOME_INDUSTRY_RV_CLASSES[index]}`}>
-                  <span className="industry-card-icon" aria-hidden="true">
-                    {icon}
-                  </span>
-                  <span className="industry-title">{title}</span>
-                  <span className="industry-sub">{sub}</span>
-                </Link>
-              ))}
-            </div>
-              <div className="home-carousel-controls" aria-label="Industries carousel controls">
-                <button type="button" id="industriesPrev" className="home-carousel-nav-btn" aria-label="Previous industry">‹</button>
-                <div className="home-carousel-dots" id="industriesDots" aria-label="Industries carousel indicators" />
-                <button type="button" id="industriesNext" className="home-carousel-nav-btn" aria-label="Next industry">›</button>
-              </div>
-            </div>
+            <HomeIndustriesSection className="reveal rv d1" />
             <div className="metrics-grid reveal rv d1" id="by-the-numbers">
               <article className="metrics-cell">
                 <div className="metrics-value" data-count="500" data-suffix="+">500+</div>
