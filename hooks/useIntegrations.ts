@@ -109,6 +109,7 @@ export type IntegrationsState = {
   vagaroConnectionStatus: VagaroConnectionStatus;
   vagaroWebhookToken: string | null;
   providers: ProviderSummary[];
+  providersLoaded: boolean;
   isLoading: boolean;
   error: string | null;
 };
@@ -214,6 +215,7 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
   const [selectedApp, setSelectedAppState] = useState<IntegrationAppKey | null>(initialSelectedApp);
   const [step, setStep] = useState<Step>(inferStep(initialBookingMethod));
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(enabled && !hasInitialPreferences);
   const [error, setError] = useState<string | null>(null);
   const [vagaroMode, setVagaroModeState] = useState<VagaroMode>('link_only');
@@ -249,16 +251,21 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
   const loadProviders = useCallback(async () => {
     if (!enabled) {
       setProviders([]);
+      setProvidersLoaded(true);
       return;
     }
 
-    const response = await fetch('/api/backend/user/calendar/providers');
-    const body = (await response.json()) as ProvidersResponse;
-    if (!response.ok || !body.ok) {
-      if (body.error === 'plan_feature_locked') return;
-      throw new Error(integrationErrorMessage(body.error, 'integrations_providers_failed'));
+    try {
+      const response = await fetch('/api/backend/user/calendar/providers');
+      const body = (await response.json()) as ProvidersResponse;
+      if (!response.ok || !body.ok) {
+        if (body.error === 'plan_feature_locked') return;
+        throw new Error(integrationErrorMessage(body.error, 'integrations_providers_failed'));
+      }
+      setProviders(body.providers ?? []);
+    } finally {
+      setProvidersLoaded(true);
     }
-    setProviders(body.providers ?? []);
   }, [enabled]);
 
   const load = useCallback(async () => {
@@ -266,6 +273,7 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       setIsLoading(false);
       setError(null);
       setProviders([]);
+      setProvidersLoaded(true);
       return;
     }
     setIsLoading(true);
@@ -288,8 +296,10 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
 
       applyPreferences(preferences);
       setProviders(providersBody.providers ?? []);
+      setProvidersLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'integrations_load_failed');
+      setProvidersLoaded(true);
     } finally {
       setIsLoading(false);
     }
@@ -624,6 +634,7 @@ export function useIntegrations(options: UseIntegrationsOptions = {}) {
       vagaroConnectionStatus,
       vagaroWebhookToken,
       providers,
+      providersLoaded,
       isLoading,
       error,
     } satisfies IntegrationsState,

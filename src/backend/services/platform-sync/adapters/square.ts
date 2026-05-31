@@ -213,6 +213,17 @@ export class SquareSyncAdapter implements PlatformSyncAdapter {
         },
       });
       const teamMembers = await provider.getTeamMembers();
+      if (teamMembers.length === 0) {
+        this.deps.logger.warn(
+          {
+            shopId: shop.id,
+            platform: 'square',
+            locationId: credentials.location_id,
+            reason: 'no_active_team_members_returned',
+          },
+          'square_staff_sync_empty',
+        );
+      }
       const records = teamMembers
         .map((member): UpsertShopStaff | null => {
           const externalStaffId = sanitizeExternalId(member.id);

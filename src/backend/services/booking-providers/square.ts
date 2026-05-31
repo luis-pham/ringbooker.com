@@ -97,6 +97,7 @@ type SquareTokenResponse = {
 
 type SquareTeamMembersResponse = {
   team_members?: SquareTeamMemberApiItem[];
+  cursor?: string;
   errors?: SquareErrorItem[];
 };
 
@@ -633,29 +634,41 @@ export class SquareAppointmentsProvider implements BookingProvider {
     }
 
     try {
-      const response = await this.squareJsonRequest<SquareTeamMembersResponse>({
-        path: '/v2/team-members?status=ACTIVE',
-        method: 'GET',
-      });
-
-      if (response.errors?.length) {
-        // H3: structured logger instead of console.warn
-        logger.warn({ shopId: this.shop.id, error: extractSquareError(response.errors) }, 'square_team_member_lookup_failed');
-        return [];
-      }
-
       const items: SquareTeamMember[] = [];
-      for (const member of response.team_members ?? []) {
-        if (!member.id) continue;
-        const displayName = member.display_name?.trim() || [member.given_name, member.family_name].filter(Boolean).join(' ').trim();
-        if (!displayName) continue;
-        items.push({
-          id: member.id,
-          displayName,
-          ...(member.given_name ? { givenName: member.given_name } : {}),
-          ...(member.family_name ? { familyName: member.family_name } : {}),
+      let cursor: string | undefined;
+      do {
+        const response = await this.squareJsonRequest<SquareTeamMembersResponse>({
+          path: '/v2/team-members/search',
+          method: 'POST',
+          body: {
+            limit: 200,
+            ...(cursor ? { cursor } : {}),
+            query: {
+              filter: {
+                status: 'ACTIVE',
+              },
+            },
+          },
         });
-      }
+
+        if (response.errors?.length) {
+          logger.warn({ shopId: this.shop.id, error: extractSquareError(response.errors) }, 'square_team_member_lookup_failed');
+          return [];
+        }
+
+        for (const member of response.team_members ?? []) {
+          if (!member.id || items.some((item) => item.id === member.id)) continue;
+          const displayName = member.display_name?.trim() || [member.given_name, member.family_name].filter(Boolean).join(' ').trim();
+          if (!displayName) continue;
+          items.push({
+            id: member.id,
+            displayName,
+            ...(member.given_name ? { givenName: member.given_name } : {}),
+            ...(member.family_name ? { familyName: member.family_name } : {}),
+          });
+        }
+        cursor = response.cursor;
+      } while (cursor);
 
       this.teamMembersCache = {
         items,

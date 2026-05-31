@@ -244,7 +244,7 @@ export function squareAuthorizeUrl(params: {
   url.searchParams.set('state', params.state);
   url.searchParams.set(
     'scope',
-    ['APPOINTMENTS_READ', 'APPOINTMENTS_WRITE', 'CUSTOMERS_READ', 'CUSTOMERS_WRITE', 'ITEMS_READ', 'MERCHANT_PROFILE_READ'].join(' '),
+    ['APPOINTMENTS_READ', 'APPOINTMENTS_WRITE', 'CUSTOMERS_READ', 'CUSTOMERS_WRITE', 'EMPLOYEES_READ', 'ITEMS_READ', 'MERCHANT_PROFILE_READ'].join(' '),
   );
   return url.toString();
 }

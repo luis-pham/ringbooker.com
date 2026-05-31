@@ -1288,6 +1288,7 @@ function ConfiguredIntegrationView({
   selectedAppKey,
   bookingUrl,
   fullSyncConnected,
+  fullSyncProviderStatusLoaded = true,
   fullSyncSetupNeeded = false,
   canUseThirdPartyIntegrations,
   onChange,
@@ -1298,6 +1299,7 @@ function ConfiguredIntegrationView({
   selectedAppKey: IntegrationAppKey | null;
   bookingUrl: string | null;
   fullSyncConnected: boolean;
+  fullSyncProviderStatusLoaded?: boolean;
   fullSyncSetupNeeded?: boolean;
   canUseThirdPartyIntegrations: boolean;
   onChange: () => void;
@@ -1311,9 +1313,12 @@ function ConfiguredIntegrationView({
   const app = findIntegrationApp(selectedAppKey);
   const isFullSyncApp = Boolean(app && app.category === 'full-sync');
   const isFullSync = Boolean(fullSyncConnected);
-  const needsSetup = Boolean(isFullSyncApp && fullSyncSetupNeeded && !fullSyncConnected);
-  const needsReconnect = Boolean(isFullSyncApp && !fullSyncConnected && !needsSetup);
+  const providerStatusPending = Boolean(isFullSyncApp && !fullSyncProviderStatusLoaded);
+  const needsSetup = Boolean(isFullSyncApp && !providerStatusPending && fullSyncSetupNeeded && !fullSyncConnected);
+  const needsReconnect = Boolean(isFullSyncApp && !providerStatusPending && !fullSyncConnected && !needsSetup);
   const displayName = app?.key === 'custom' ? 'Any booking link' : app?.name ?? 'Booking link';
+  const statusDotConnected = Boolean(isFullSync || (!isFullSyncApp && !needsReconnect && !needsSetup));
+  const statusDotWarning = Boolean(!providerStatusPending && (needsReconnect || needsSetup));
 
   useEffect(() => {
     setUrlDraft(bookingUrl ?? '');
@@ -1357,8 +1362,10 @@ function ConfiguredIntegrationView({
               )}
             </div>
             <span className="integration-status-line">
-              <StatusDot connected={isFullSync || (!needsReconnect && !needsSetup)} warning={needsReconnect || needsSetup} />
-              {needsSetup
+              <StatusDot connected={statusDotConnected} warning={statusDotWarning} />
+              {providerStatusPending
+                ? 'Checking connection...'
+                : needsSetup
                 ? 'Connected — finish setup before live booking'
                 : needsReconnect
                   ? 'Connection lost — reconnect to restore live sync'
@@ -1767,6 +1774,7 @@ export function IntegrationsRedesign({
           selectedAppKey={configuredSelectedAppKey}
           bookingUrl={configuredBookingUrl?.trim() || null}
 	          fullSyncConnected={Boolean(vagaroLiveSyncConnected || (configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderLiveReady))}
+          fullSyncProviderStatusLoaded={status.providersLoaded}
           fullSyncSetupNeeded={Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderSetupNeeded)}
           canUseThirdPartyIntegrations
           onChange={() => {
