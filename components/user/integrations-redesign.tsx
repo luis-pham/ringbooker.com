@@ -1321,6 +1321,18 @@ function ConfiguredIntegrationView({
     setMessage(null);
   }, [bookingUrl, selectedAppKey, bookingMethod]);
 
+  function handleReconnect() {
+    if (needsReconnect && selectedAppKey === 'square') {
+      window.location.href = '/api/backend/user/calendar/providers/square_appointments/connect/start';
+      return;
+    }
+    if (needsReconnect && selectedAppKey === 'acuity') {
+      window.location.href = '/api/backend/user/calendar/providers/acuity/connect/start';
+      return;
+    }
+    onReconnect?.();
+  }
+
   if (bookingMethod === 'direct') {
     return (
       <>
@@ -1356,7 +1368,7 @@ function ConfiguredIntegrationView({
             </span>
           </div>
           {needsReconnect || needsSetup ? (
-            <button type="button" className="btn" onClick={onReconnect}>{needsSetup ? 'Finish setup' : 'Reconnect'}</button>
+            <button type="button" className="btn" onClick={handleReconnect}>{needsSetup ? 'Finish setup' : 'Reconnect'}</button>
           ) : (
             <button type="button" className="btn" onClick={onChange}>Change</button>
           )}
