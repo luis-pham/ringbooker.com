@@ -204,6 +204,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-hero-title-home-lh);letter-spacing:var(--mk-hero-title-home-track);color:var(--text-dark);margin-bottom:20px;word-break:break-word;text-align:left}
+h1.hero-h em{font-style:italic;font-weight:500;color:var(--purple-dark)}
 .hero-sub{font-size:var(--mk-hero-lead);color:var(--text-desc);line-height:var(--mk-hero-lead-lh);max-width:36rem;margin:0 0 28px;padding:0;font-weight:400;text-align:left}
 .hero-sub a.hero-sub-link{color:var(--purple-dark);font-weight:600;text-decoration:none;transition:color .18s ease}
 .hero-sub a.hero-sub-link:hover{color:#5b21b6;text-decoration:none}
@@ -800,14 +801,11 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .industries-panel-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
 .industries-panel-chip{
 	display:inline-flex;align-items:center;
+	background:var(--ind-accent-nail);color:var(--purple-dark);
 	font-size:var(--mk-badge);font-weight:600;
 	letter-spacing:.02em;padding:6px 12px;border-radius:var(--r-pill);
+	border:1px solid rgba(196,181,253,.4);
 }
-.industries-panel[data-vertical="nail-salon"] .industries-panel-chip{background:var(--ind-accent-nail);color:var(--purple-dark);border:1px solid rgba(196,181,253,.4)}
-.industries-panel[data-vertical="hair-salon"] .industries-panel-chip{background:var(--ind-accent-hair);color:var(--text-dark);border:1px solid rgba(251,146,60,.35)}
-.industries-panel[data-vertical="day-spa"] .industries-panel-chip{background:var(--ind-accent-day-spa);color:var(--text-dark);border:1px solid rgba(16,185,129,.28)}
-.industries-panel[data-vertical="med-spa"] .industries-panel-chip{background:var(--ind-accent-med-spa);color:var(--text-dark);border:1px solid rgba(59,130,246,.28)}
-.industries-panel[data-vertical="beauty-clinic"] .industries-panel-chip{background:var(--ind-accent-beauty-clinic);color:var(--text-dark);border:1px solid rgba(236,72,153,.28)}
 .industries-panel-cta{align-self:flex-start;margin:0}
 .industries-panel-visual{
 	position:relative;min-height:340px;overflow:hidden;
@@ -1568,7 +1566,7 @@ export function MarketingHomeTemplate() {
             <div className="hero-copy">
               <p className="hero-eyebrow">AI voice receptionist for beauty businesses</p>
             <h1 className="hero-h">
-                Every missed call
+                Every <em>missed</em> call
               <br />
                 is a booking
                 <br />

@@ -9,6 +9,13 @@ import { UserLayout } from '@/components/user/user-layout';
 import { useUserPortalToast } from '@/components/user/user-portal-toast';
 import { contextualSaveSuccessMessage, formatSaveErrorMessage } from '@/lib/user-portal-save-messages';
 import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
+import {
+  OnboardingManualVerticalIcon,
+  OnboardingMixedGroupChipIcon,
+  OnboardingServiceGroupIcon,
+  resolveOnboardingServiceGroupVisual,
+  type OnboardingManualVerticalId,
+} from '@/components/user/onboarding-service-icons';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 import { userPortalTypographyStyles } from '@/components/user/user-portal-typography';
 import { DemoCallModal } from '@/components/user/demo-call-modal';
@@ -280,13 +287,13 @@ const MIXED_SERVICE_GROUPS = [
 ] as const;
 type VerticalConfidence = 'high' | 'low' | 'none';
 
-const MANUAL_PRIMARY_VERTICAL: Array<{ id: Vertical | 'beauty_umbrella'; emoji: string; label: string }> = [
-  { id: 'nail_salon', emoji: '✦', label: 'Nail salon' },
-  { id: 'hair_salon', emoji: '✂️', label: 'Hair salon' },
-  { id: 'day_spa', emoji: '🫧', label: 'Day spa' },
-  { id: 'med_spa', emoji: '💉', label: 'Med spa' },
-  { id: 'beauty_clinic', emoji: '✨', label: 'Beauty clinic' },
-  { id: 'beauty_umbrella', emoji: '⋯', label: 'Mixed / other' },
+const MANUAL_PRIMARY_VERTICAL: Array<{ id: OnboardingManualVerticalId; label: string }> = [
+  { id: 'nail_salon', label: 'Nail salon' },
+  { id: 'hair_salon', label: 'Hair salon' },
+  { id: 'day_spa', label: 'Day spa' },
+  { id: 'med_spa', label: 'Med spa' },
+  { id: 'beauty_clinic', label: 'Beauty clinic' },
+  { id: 'beauty_umbrella', label: 'Mixed / other' },
 ];
 
 const BEAUTY_SUBTYPE_OPTIONS: Array<{ id: BeautySubtype; label: string }> = [
@@ -297,24 +304,6 @@ const BEAUTY_SUBTYPE_OPTIONS: Array<{ id: BeautySubtype; label: string }> = [
   { id: 'brow_studio', label: 'Brow studio' },
   { id: 'other_beauty', label: 'Other beauty service' },
 ];
-
-const MIXED_SERVICE_GROUP_ICONS: Record<(typeof MIXED_SERVICE_GROUPS)[number], string> = {
-  Manicure: '💅',
-  Pedicure: '💅',
-  'Acrylics / Extensions': '💅',
-  Haircuts: '✂️',
-  'Hair Color': '🎨',
-  Waxing: '🔥',
-  Massage: '💆',
-  Facials: '💧',
-  'Brows & Lashes': '👁',
-  Makeup: '✦',
-  Injectables: '💉',
-  Laser: '⚡',
-  'Skin Treatments': '🔬',
-  Consultations: '💬',
-  Other: '⋯',
-};
 
 type ChipSuggestionProfileKey = Vertical | 'lash_studio' | 'aesthetic_clinic' | 'wax_studio' | 'brow_studio';
 
@@ -806,24 +795,6 @@ function titleCaseServiceLabel(value: string): string {
     .replace(/\bOr\b/g, 'or')
     .replace(/\bOf\b/g, 'of')
     .replace(/\bWith\b/g, 'with');
-}
-
-function serviceGroupIcon(group: string): { icon: string; bg: string } {
-  const value = group.toLowerCase();
-  if (/color|highlight|balayage/.test(value)) return { icon: '🎨', bg: '#fef3c7' };
-  if (/haircut|cut|trim/.test(value)) return { icon: '✂️', bg: '#f0fdf4' };
-  if (/style|blowout/.test(value)) return { icon: '💨', bg: '#eff6ff' };
-  if (/extension|keratin/.test(value)) return { icon: '✨', bg: '#f5f3ff' };
-  if (/wax/.test(value)) return { icon: '🔥', bg: '#fff7ed' };
-  if (/massage|body/.test(value)) return { icon: '💆', bg: '#f0fdfa' };
-  if (/facial|skin/.test(value)) return { icon: '💧', bg: '#eff6ff' };
-  if (/nail|mani|pedi/.test(value)) return { icon: '💅', bg: '#fdf2f8' };
-  if (/lash|brow/.test(value)) return { icon: '👁', bg: '#faf5ff' };
-  if (/makeup/.test(value)) return { icon: '💄', bg: '#fff1f2' };
-  if (/injectable|botox|filler/.test(value)) return { icon: '💉', bg: '#f0fdf4' };
-  if (/laser/.test(value)) return { icon: '⚡', bg: '#fffbeb' };
-  if (/consultation/.test(value)) return { icon: '💬', bg: '#f8fafc' };
-  return { icon: '📋', bg: '#f9fafb' };
 }
 
 function formatServicePrice(service: ServiceItem): string {
@@ -2348,13 +2319,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .type-opt{display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;background:#fff;transition:border-color .15s,background .15s;text-align:left;font:inherit;margin:0;min-height:48px;box-sizing:border-box}
 .type-opt:hover{border-color:#d1d5db}
 .type-opt.selected{border-color:#7c3aed;background:#f5f3ff}
-.type-icon{font-size:18px;width:22px;text-align:center;flex-shrink:0;line-height:1}
+.type-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;color:#64748b;line-height:1}
+.type-opt.selected .type-icon{color:#7c3aed}
 .type-name{font-size:13px;font-weight:500;color:#111}
 .type-opt.selected .type-name{color:#7c3aed}
 .onb-step1-also-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
 .onb-step1-also-chips .preset-chip.mixed-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid #e5e7eb;background:#fff;color:#374151;box-shadow:none}
 .onb-step1-also-chips .preset-chip.mixed-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}
-.onb-step1-also-chips .preset-chip.mixed-chip .chip-icon{font-size:14px;line-height:1}
+.onb-step1-also-chips .preset-chip.mixed-chip .chip-icon{display:inline-flex;align-items:center;justify-content:center;line-height:1}
 .onb-step1-also-chips .preset-chip:not(.mixed-chip){display:inline-flex;align-items:center;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid #e5e7eb;background:#fff;color:#374151}
 .onb-step1-also-chips .preset-chip:not(.mixed-chip).active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}
 .onb-step1-manual-actions{justify-content:space-between;align-items:center;max-width:none;margin-left:0;margin-right:0;margin-top:28px;gap:16px;width:100%}
@@ -2364,11 +2336,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-compact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .onb-step2-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .choice-card.compact{min-height:78px;padding:12px;text-align:center;display:grid;align-content:center;justify-items:center}
-.choice-card.compact .emoji{font-size:1.1rem;color:#475569}.choice-card.compact h4{margin:7px 0 0;font-size:14px;font-weight:500;color:#374151}
-.choice-card.compact.active .emoji,.choice-card.compact.active h4{color:#6d28d9}
+.choice-card.compact .choice-card-icon{display:inline-flex;align-items:center;justify-content:center;color:#475569}.choice-card.compact h4{margin:7px 0 0;font-size:14px;font-weight:500;color:#374151}
+.choice-card.compact.active .choice-card-icon,.choice-card.compact.active h4{color:#6d28d9}
 .preset-chip.active{border-color:#7c3aed;background:#faf5ff;color:#5b21b6}
 .mixed-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;font-size:13px;font-weight:500}
-.mixed-chip .chip-icon{font-size:12px;line-height:1;color:#64748b}.mixed-chip.active .chip-icon{color:#5b21b6}
+.mixed-chip .chip-icon{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:#64748b}.mixed-chip.active .chip-icon{color:#5b21b6}
 .onb-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#166534;padding:5px 12px;font-size:13px;font-weight:500;margin:18px 0 16px}
 .onb-service-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#15803d;padding:7px 13px;font-size:14px;font-weight:500;margin:18px 0 16px}
 .profile-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -2455,7 +2427,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-group-rename-sheet-actions button{flex:1;height:48px;border-radius:10px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .onb-group-rename-sheet-cancel{border:1px solid #e5e7eb;background:#fff;color:#6b7280}
 .onb-group-rename-sheet-save{border:none;background:#111;color:#fff;flex:2}
-.service-group-icon{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.service-group-icon{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#6d28d9}
 .service-group-main{display:grid;gap:2px;min-width:0;flex:1}.service-group-title{margin:0;color:#111827;font-size:15px;font-weight:500;line-height:1.25}.service-group-meta{color:#9ca3af;font-size:12px;font-weight:400;line-height:1.25}
 .service-group-warning{border-radius:999px;background:#fffbeb;color:#f59e0b;padding:3px 8px;font-size:11px;font-weight:500;white-space:nowrap}.service-group-chevron{color:#6b7280;font-size:18px;line-height:1;transition:transform .18s ease}.service-group-chevron.open{transform:rotate(180deg)}
 .service-group-body{display:grid;gap:0;padding:12px 16px 16px}
@@ -2545,7 +2517,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                   className={`type-opt ${manualPrimaryPick === item.id ? 'selected' : ''}`}
                   onClick={() => setManualPrimaryPick(item.id)}
                 >
-                  <span className="type-icon" aria-hidden>{item.emoji}</span>
+                  <span className="type-icon" aria-hidden>
+                    <OnboardingManualVerticalIcon id={item.id} />
+                  </span>
                   <span className="type-name">{item.label}</span>
                 </button>
               ))}
@@ -2669,7 +2643,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                           if (item.id !== 'beauty_umbrella') setBeautySubtype('');
                         }}
                       >
-                        <span className="type-icon" aria-hidden>{item.emoji}</span>
+                        <span className="type-icon" aria-hidden>
+                    <OnboardingManualVerticalIcon id={item.id} />
+                  </span>
                         <span className="type-name">{item.label}</span>
                       </button>
                     ))}
@@ -3113,7 +3089,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                       setStatus(null);
                     }}
                   >
-                    <span className="emoji">{item.emoji}</span>
+                    <span className="choice-card-icon" aria-hidden>
+                      <OnboardingManualVerticalIcon id={item.id} size={20} />
+                    </span>
                     <h4>{item.label}</h4>
                   </button>
                 ))}
@@ -3382,7 +3360,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                       setStatus(null);
                     }}
                   >
-                    <span className="emoji">{item.emoji}</span>
+                    <span className="choice-card-icon" aria-hidden>
+                      <OnboardingManualVerticalIcon id={item.id} size={20} />
+                    </span>
                     <h4>{item.label}</h4>
                   </button>
                 ))}
@@ -3661,7 +3641,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                 : toggleServiceGroup(chipGroup)
             }
           >
-            <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[chipGroup as keyof typeof MIXED_SERVICE_GROUP_ICONS]}</span>
+            <span className="chip-icon">
+              <OnboardingMixedGroupChipIcon group={chipGroup} />
+            </span>
             {chipGroup}
           </button>
         );
@@ -3749,7 +3731,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 
     const renderGroupCard = (group: string, items: Array<{ service: ServiceItem; index: number }>) => {
       const collapsed = collapsedServiceGroups.includes(group);
-      const groupVisual = serviceGroupIcon(group);
+      const groupVisual = resolveOnboardingServiceGroupVisual(group);
       const groupNeedsReview = items.some(({ service }) => serviceNeedsAttention(service));
       const editingDesktopName = groupRenameDesktop === group;
 
@@ -3763,7 +3745,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
       return (
         <div className="service-group-card" key={group} data-service-group={group}>
           <div className="service-group-head">
-            <span className="service-group-icon" style={{ background: groupVisual.bg }} aria-hidden>{groupVisual.icon}</span>
+            <span className="service-group-icon" style={{ background: groupVisual.bg }} aria-hidden>
+              <OnboardingServiceGroupIcon group={group} />
+            </span>
             <span className="service-group-main">
               <span className="onb-group-title-desktop service-group-title-row">
                 {editingDesktopName ? (

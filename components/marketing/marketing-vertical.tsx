@@ -25,6 +25,12 @@ const MK_SECTION_H2 =
 const MK_SECTION_LEAD = 'text-[16px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]';
 /** Plain hero label — typography via .hero-eyebrow in marketing-shared-scoped-css */
 const VERTICAL_HERO_EYEBROW = 'hero-eyebrow';
+const VERTICAL_HERO_H1 =
+  'mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900';
+
+function VerticalHeroAccent({ accentClass, children }: { accentClass: string; children: ReactNode }) {
+  return <em className={`font-medium ${accentClass}`}>{children}</em>;
+}
 /** Section kicker — uppercase via .mk-section-eyebrow in marketing-shared-scoped-css */
 const VERTICAL_SEC_EYEBROW = 'mk-section-eyebrow';
 
@@ -547,8 +553,8 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className={theme.heroEyebrowClass}>
             AI receptionist &amp; call recovery for nail salons
           </p>
-          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
-            Nail Salon Calls Get Missed Most During Busy Service Hours
+          <h1 className={VERTICAL_HERO_H1}>
+            Nail Salon Calls Get <VerticalHeroAccent accentClass={theme.accentClass}>Missed</VerticalHeroAccent> Most During Busy Service Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for nail salons — after hours, peak-hour overflow, and weekend rushes. Works
@@ -961,8 +967,8 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className={theme.heroEyebrowClass}>
             AI receptionist for hair salons
           </p>
-          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
-            Recover Hair Salon Revenue Lost During Services and Peak Hours
+          <h1 className={VERTICAL_HERO_H1}>
+            Recover Hair Salon <VerticalHeroAccent accentClass={theme.accentClass}>Revenue Lost</VerticalHeroAccent> During Services and Peak Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for hair salons — covering preferred stylist requests, color slot inquiries,
@@ -1048,7 +1054,11 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-amber-600"
         eyebrowClass={theme.accentClass}
-        heading={mkSectionTitle('How RingBooker works', 'on your current salon number')}
+        heading={
+          <>
+            How RingBooker works on your <em>current</em> salon number
+          </>
+        }
         steps={[
           { n: '1', title: 'Connect your salon number', body: 'Forward overflow or after-hours calls. Your existing number stays the same for all clients.' },
           { n: '2', title: 'Import your services and stylists', body: 'Paste your URL — RingBooker pulls your team, service list, and prices — or enter your details manually. Review what it found and calls are handled with that context.' },
@@ -1084,8 +1094,8 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className={theme.heroEyebrowClass}>
             AI receptionist for day spas
           </p>
-          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
-            After-Hours Spa Calls Should Not Turn Into Lost Revenue
+          <h1 className={VERTICAL_HERO_H1}>
+            After-Hours Spa Calls Should Not Turn Into <VerticalHeroAccent accentClass={theme.accentClass}>Lost Revenue</VerticalHeroAccent>
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for day spas — capturing couples massage inquiries, package questions, and
@@ -1125,7 +1135,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading={mkSectionTitle('Why spas miss bookings', 'when it matters most')}
+        heading={
+          <>
+            Why spas <em>miss</em> bookings when it matters most
+          </>
+        }
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -1179,7 +1193,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-teal-600"
         eyebrowClass={theme.accentClass}
-        heading={mkSectionTitle('How RingBooker works', 'on your current spa number')}
+        heading={
+          <>
+            How RingBooker works on your <em>current</em> spa number
+          </>
+        }
         steps={[
           { n: '1', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
           { n: '2', title: 'Import your treatments and hours', body: 'Paste your URL — RingBooker pulls your services, pricing, and hours — or enter your details manually. Review, adjust, and calls are handled with your spa\'s context.' },
@@ -1191,7 +1209,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         eyebrowClass={theme.accentClass}
-        heading={mkSectionTitle('How missed spa calls', 'get recovered')}
+        heading={
+          <>
+            How missed spa calls get <em>recovered</em>
+          </>
+        }
         rows={[
           { scenario: 'Couples massage inquiry Saturday', without: 'Voicemail — couple books elsewhere', with: 'Guest count and preferred time captured' },
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
@@ -1225,8 +1247,8 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className={theme.heroEyebrowClass}>
             AI receptionist for med spas
           </p>
-          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
-            Med Spa Consultation Calls Should Not Go to Voicemail
+          <h1 className={VERTICAL_HERO_H1}>
+            Med Spa Consultation Calls Should Not Go to <VerticalHeroAccent accentClass={theme.accentClass}>Voicemail</VerticalHeroAccent>
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for med spas — covering after-hours Botox, filler, and consultation calls and
@@ -1367,8 +1389,8 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className={theme.heroEyebrowClass}>
             AI receptionist for beauty clinics, wax studios &amp; lash studios
           </p>
-          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
-            Beauty Clinic Calls Need More Than Voicemail
+          <h1 className={VERTICAL_HERO_H1}>
+            Beauty Clinic Calls Need More Than <VerticalHeroAccent accentClass={theme.accentClass}>Voicemail</VerticalHeroAccent>
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for beauty clinics, aesthetic clinics, wax studios, and lash studios —
@@ -1408,7 +1430,11 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading={mkSectionTitle('Why beauty clinics need', 'a smarter phone layer')}
+        heading={
+          <>
+            Why beauty clinics need a <em>smarter</em> phone layer
+          </>
+        }
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -1438,7 +1464,11 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-fuchsia-50 text-fuchsia-600"
         eyebrowClass={theme.accentClass}
-        heading={mkSectionTitle('What RingBooker handles', 'for beauty clinic calls')}
+        heading={
+          <>
+            What RingBooker <em>handles</em> for beauty clinic calls
+          </>
+        }
         features={[
           { icon: '✨', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
           { icon: '🔁', title: 'Treatment continuity context', body: 'Captures returning patient calls, provider preference, and session context for follow-up or booking.' },
@@ -1458,7 +1488,11 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-fuchsia-600"
         eyebrowClass={theme.accentClass}
-        heading={mkSectionTitle('How RingBooker works', 'on your current clinic number')}
+        heading={
+          <>
+            How RingBooker works on your <em>current</em> clinic number
+          </>
+        }
         steps={[
           { n: '1', title: 'Forward calls during treatments or after hours', body: 'Cover overflow during busy clinic hours or go full-time.' },
           { n: '2', title: 'Import your services and hours', body: 'Paste your URL — RingBooker pulls your treatments, pricing, and clinic hours — or enter your details manually. Review, adjust, and clients get a seamless response.' },
