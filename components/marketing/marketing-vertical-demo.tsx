@@ -358,7 +358,8 @@ const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
  */
 const DIRECT_OPENAI_GREETING_MIC_UNMUTE_FALLBACK_MS = 10_000;
 const DIRECT_OPENAI_END_CALL_AUDIO_STOP_FALLBACK_MS = 6_000;
-const DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS = 1_200;
+const DIRECT_OPENAI_END_CALL_AUDIO_STOP_HARD_FALLBACK_MS = 30_000;
+const DIRECT_OPENAI_END_CALL_AUDIO_TAIL_GRACE_MS = 1_000;
 const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
 const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
 
@@ -1634,13 +1635,17 @@ export function MarketingVerticalDemoTemplate({
       let assistantAudioPlaying = false;
       let endCallPending = false;
       let endCallFallbackTimer: number | null = null;
+      let endCallFallbackStartedAtMs: number | null = null;
       let latestResponseDone = false;
+      let lastResponseCreatedAtMs: number | null = null;
+      let lastOutputAudioBufferStoppedAtMs: number | null = null;
 
       const clearEndCallFallbackTimer = () => {
         if (endCallFallbackTimer !== null) {
           window.clearTimeout(endCallFallbackTimer);
           endCallFallbackTimer = null;
         }
+        endCallFallbackStartedAtMs = null;
       };
 
       const completeDirectDemoAfterEndCall = (reason: string) => {
@@ -1666,11 +1671,39 @@ export function MarketingVerticalDemoTemplate({
 
       const armEndCallCompletion = () => {
         if (endCallFallbackTimer !== null) return;
+        const startedAt = endCallFallbackStartedAtMs ?? Date.now();
+        endCallFallbackStartedAtMs = startedAt;
         endCallFallbackTimer = window.setTimeout(() => {
           endCallFallbackTimer = null;
+          if (!endCallPending) {
+            endCallFallbackStartedAtMs = null;
+            return;
+          }
+          const elapsedMs = Date.now() - startedAt;
+          if (assistantAudioPlaying && elapsedMs < DIRECT_OPENAI_END_CALL_AUDIO_STOP_HARD_FALLBACK_MS) {
+            logDemoRealtime('end_call_audio_still_active_fallback_deferred', {
+              elapsedMs,
+              nextDelayMs: DIRECT_OPENAI_END_CALL_AUDIO_STOP_FALLBACK_MS,
+              hardFallbackMs: DIRECT_OPENAI_END_CALL_AUDIO_STOP_HARD_FALLBACK_MS,
+            });
+            armEndCallCompletion();
+            return;
+          }
+          if (assistantAudioPlaying) {
+            logDemoRealtime('end_call_audio_active_hard_fallback', {
+              elapsedMs,
+              hardFallbackMs: DIRECT_OPENAI_END_CALL_AUDIO_STOP_HARD_FALLBACK_MS,
+            });
+          }
           completeDirectDemoAfterEndCall('fallback_timeout');
         }, DIRECT_OPENAI_END_CALL_AUDIO_STOP_FALLBACK_MS);
       };
+
+      const finalResponseAudioAlreadyStopped = () =>
+        latestResponseDone &&
+        lastResponseCreatedAtMs !== null &&
+        lastOutputAudioBufferStoppedAtMs !== null &&
+        lastOutputAudioBufferStoppedAtMs >= lastResponseCreatedAtMs;
 
       /** Register demo tools via session.update (once). */
       const registerDemoTools = () => {
@@ -1709,7 +1742,8 @@ export function MarketingVerticalDemoTemplate({
                     name: 'end_call',
                     description:
                       'End the browser demo session after the caller request is fully complete. ' +
-                      'Say a brief warm goodbye before calling this tool.',
+                      'Say a brief warm goodbye before calling this tool. ' +
+                      'Do not call this as a standalone action; speak the goodbye in the same final response first.',
                     parameters: {
                       type: 'object',
                       properties: {
@@ -1842,6 +1876,7 @@ export function MarketingVerticalDemoTemplate({
           }
           if (data.type === 'output_audio_buffer.started') {
             assistantAudioPlaying = true;
+            lastOutputAudioBufferStoppedAtMs = null;
           }
           if (data.type === 'session.created' || data.type === 'session.updated') {
             // Caller-speech transcription is enabled at client-secret mint time
@@ -1870,8 +1905,8 @@ export function MarketingVerticalDemoTemplate({
                 assistantAudioPlaying,
                 latestResponseDone,
               });
-              if (!assistantAudioPlaying && latestResponseDone) {
-                armEndCallTailGrace('goodbye_transcript_after_response_done');
+              if (!assistantAudioPlaying && finalResponseAudioAlreadyStopped()) {
+                armEndCallTailGrace('goodbye_transcript_after_audio_stop');
               }
             }
           }
@@ -1880,6 +1915,8 @@ export function MarketingVerticalDemoTemplate({
             if (text) transcriptTurnsRef.current.push({ role: 'user', text: text.slice(0, 1000) });
           }
           if (data.type === 'response.created') {
+            lastResponseCreatedAtMs = Date.now();
+            lastOutputAudioBufferStoppedAtMs = null;
             latestResponseDone = false;
             if (!endCallPending) setStatusText('AI receptionist is responding…');
           }
@@ -1888,8 +1925,8 @@ export function MarketingVerticalDemoTemplate({
             const responseDoneStatus = data.response?.status;
             latestResponseDone = true;
             logDemoRealtime('response_done', { status: responseDoneStatus });
-            if (endCallPending && !assistantAudioPlaying) {
-              armEndCallTailGrace('response.done_without_active_audio');
+            if (endCallPending && !assistantAudioPlaying && finalResponseAudioAlreadyStopped()) {
+              armEndCallTailGrace('response.done_after_audio_stop');
             } else if (!awaitingInitialGreetingAudioStop && !endCallPending) {
               setStatusText('You\'re connected — speak naturally or tap a prompt below.');
             }
@@ -1969,6 +2006,9 @@ export function MarketingVerticalDemoTemplate({
             setStatusText('Wrapping up the demo…');
             armEndCallCompletion();
             logDemoRealtime('end_call_tool_called', { callId, assistantAudioPlaying });
+            if (!assistantAudioPlaying && finalResponseAudioAlreadyStopped()) {
+              armEndCallTailGrace('end_call_tool_after_audio_stop');
+            }
             if (dc.readyState === 'open') {
               try {
                 dc.send(JSON.stringify({
@@ -1996,6 +2036,7 @@ export function MarketingVerticalDemoTemplate({
           }
           if (data.type === 'output_audio_buffer.stopped') {
             assistantAudioPlaying = false;
+            lastOutputAudioBufferStoppedAtMs = Date.now();
             if (endCallPending) {
               armEndCallTailGrace('output_audio_buffer.stopped');
             }

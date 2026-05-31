@@ -95,7 +95,7 @@ const WS_RECONNECT_TIMEOUT_MS = 3_000;
 /** After playing the goodbye message, wait this long before issuing hangup. */
 const HARD_LIMIT_HANGUP_DELAY_MS = 5_000;
 /** After end_call tool fires and audio finishes, wait this long before issuing hangup. */
-const END_CALL_TOOL_HANGUP_DELAY_MS = 500;
+const END_CALL_TOOL_HANGUP_DELAY_MS = 1_000;
 /** After playing the transfer announcement, wait this long before dialling the owner. */
 const FALLBACK_TRANSFER_ANNOUNCE_DELAY_MS = 2_000;
 /** Retry budget for callControlHangupWithRetry: max attempts. */
