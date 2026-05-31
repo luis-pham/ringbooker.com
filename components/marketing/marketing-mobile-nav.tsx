@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { MarketingVerticalIcon } from '@/components/marketing/marketing-vertical-icon';
 import { useNavState } from '@/components/marketing/nav-actions-client';
 import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
 
@@ -145,8 +146,9 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
                 className="mk-drawer-navlink"
                 onClick={() => setOpen(false)}
               >
-                <span className="mk-drawer-navlink-label">
-                  {item.icon} {item.label}
+                <span className="mk-drawer-navlink-label mk-drawer-navlink-label-with-icon">
+                  <MarketingVerticalIcon id={item.iconId} size={17} />
+                  {item.label}
                 </span>
                 <span className="mk-drawer-navlink-chevron" aria-hidden="true" />
               </Link>

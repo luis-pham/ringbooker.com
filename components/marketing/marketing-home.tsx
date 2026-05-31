@@ -135,6 +135,11 @@ const styles: string[] = [
   --r-lg:var(--mk-radius-card,22px);
   --r-md:var(--mk-radius-input,16px);
   --r-sm:12px;
+  --ind-accent-nail:var(--purple-ultra,#f5f0ff);
+  --ind-accent-hair:#fff5f0;
+  --ind-accent-day-spa:#f0faf5;
+  --ind-accent-med-spa:#f0f4ff;
+  --ind-accent-beauty-clinic:#fff0f8;
 }
 html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
@@ -532,6 +537,16 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:20px 16px;
 }
+.industries .metrics-cell{
+  padding:8px 12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  background:#fff;
+  border:0;
+  border-radius:0;
+}
 .metrics-cell{
   padding:8px 12px;
   display:flex;
@@ -548,6 +563,21 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
     border:1px solid var(--border);border-radius:20px;background:#fff;overflow:hidden;
     box-shadow:var(--home-shadow-soft);
   }
+  .industries .metrics-cell{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-rows:auto auto;
+    align-items:center;
+    gap:2px 16px;
+    width:100%;
+    padding:18px 20px;
+    text-align:left;
+    background:transparent;
+    border-radius:0;
+    border:none;
+    border-bottom:1px solid var(--border);
+  }
+  .industries .metrics-cell:last-child{border-bottom:none}
   .metrics-cell{
     display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;
     align-items:center;gap:2px 16px;width:100%;padding:18px 20px;text-align:left;
@@ -756,26 +786,39 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .industries-tab-btn:not(.is-active):hover{border-color:rgba(139,92,246,.45);color:var(--purple-dark);background:rgba(245,243,255,.5)}
 .industries-panel{
 	margin-top:20px;border-radius:24px;border:1px solid var(--border);
-	background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);
-	padding:32px 28px;box-shadow:var(--home-shadow-soft);
+	background:#fff;overflow:hidden;
+	display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr);
+	box-shadow:var(--home-shadow-soft);
 }
-.industries-panel-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:0}
-.industries-panel-icon{
-	width:48px;height:48px;min-width:48px;border-radius:14px;
-	background:var(--purple-ultra);color:var(--purple-dark);
-	display:flex;align-items:center;justify-content:center;
-	border:1px solid rgba(196,181,253,.35);
+.industries-panel-copy{padding:32px 28px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.industries-panel-eyebrow{
+	font-size:var(--mk-eyebrow);font-weight:600;color:var(--purple-dark);
+	letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:14px;opacity:.95;
 }
-.industries-panel-icon svg{width:24px;height:24px}
-.industries-panel h3{font-size:20px;font-weight:600;letter-spacing:-.45px;color:var(--text-dark);margin:0 0 12px}
-.industries-panel-desc{font-size:var(--mk-body);color:var(--text-desc);line-height:var(--mk-body-lh);font-weight:400;max-width:62ch;margin:0}
-.industries-panel-chips{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 24px}
+.industries-panel h3{font-size:20px;font-weight:600;letter-spacing:-.45px;color:var(--text-dark);margin:0 0 14px;line-height:1.25}
+.industries-panel-desc{font-size:var(--mk-body);color:var(--text-desc);line-height:var(--mk-body-lh);font-weight:400;margin:0 0 18px}
+.industries-panel-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
 .industries-panel-chip{
 	display:inline-flex;align-items:center;
-	background:var(--purple-ultra);color:var(--purple-dark);
 	font-size:var(--mk-badge);font-weight:600;
 	letter-spacing:.02em;padding:6px 12px;border-radius:var(--r-pill);
-	border:1px solid rgba(196,181,253,.4);
+}
+.industries-panel[data-vertical="nail-salon"] .industries-panel-chip{background:var(--ind-accent-nail);color:var(--purple-dark);border:1px solid rgba(196,181,253,.4)}
+.industries-panel[data-vertical="hair-salon"] .industries-panel-chip{background:var(--ind-accent-hair);color:var(--text-dark);border:1px solid rgba(251,146,60,.35)}
+.industries-panel[data-vertical="day-spa"] .industries-panel-chip{background:var(--ind-accent-day-spa);color:var(--text-dark);border:1px solid rgba(16,185,129,.28)}
+.industries-panel[data-vertical="med-spa"] .industries-panel-chip{background:var(--ind-accent-med-spa);color:var(--text-dark);border:1px solid rgba(59,130,246,.28)}
+.industries-panel[data-vertical="beauty-clinic"] .industries-panel-chip{background:var(--ind-accent-beauty-clinic);color:var(--text-dark);border:1px solid rgba(236,72,153,.28)}
+.industries-panel-cta{align-self:flex-start;margin:0}
+.industries-panel-visual{
+	position:relative;min-height:340px;overflow:hidden;
+}
+.industries-panel-visual[data-vertical="nail-salon"]{background:var(--ind-accent-nail)}
+.industries-panel-visual[data-vertical="hair-salon"]{background:var(--ind-accent-hair)}
+.industries-panel-visual[data-vertical="day-spa"]{background:var(--ind-accent-day-spa)}
+.industries-panel-visual[data-vertical="med-spa"]{background:var(--ind-accent-med-spa)}
+.industries-panel-visual[data-vertical="beauty-clinic"]{background:var(--ind-accent-beauty-clinic)}
+.industries-panel-photo{
+	position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
 }
 .industries .metrics-grid{margin-top:48px}
 .home-carousel{position:relative}
@@ -886,8 +929,9 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
   .industries-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;padding:4px 2px 8px}
   .industries-tabs::-webkit-scrollbar{display:none}
   .industries-tab-btn{flex:0 0 auto;font-size:12px;padding:8px 12px}
-  .industries-panel{padding:24px 20px}
-  .industries-panel-head{flex-direction:column;gap:14px}
+  .industries-panel{grid-template-columns:1fr}
+  .industries-panel-copy{padding:24px 20px}
+  .industries-panel-visual{min-height:260px}
   .home-carousel-track{
     display:flex;
     gap:16px;

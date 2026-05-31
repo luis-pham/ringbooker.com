@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { DemoPickerLazy } from '@/components/marketing/demo-picker-lazy';
+import { MarketingVerticalIcon } from '@/components/marketing/marketing-vertical-icon';
 import { MARKETING_SHARED_SCOPED_CSS } from '@/components/marketing/marketing-shared-scoped-css';
 import { MarketingInternalLinkRouter } from '@/components/marketing/marketing-internal-link-router';
 import { MarketingMobileNav } from '@/components/marketing/marketing-mobile-nav';
@@ -89,7 +90,8 @@ export function MarketingChromeStyles() {
 .mk-demo-dd:hover .mk-demo-menu{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
 .mk-demo-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:12px;font-size:13.5px;font-weight:600;color:var(--mk-text-body,#334155);text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
 .mk-demo-item:hover{background:var(--mk-brand-purple-wash,#F5F3FF);color:var(--mk-brand-purple-dark,#7C3AED)}
-.mk-demo-item-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+.mk-demo-item-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--mk-brand-purple-dark,#7C3AED)}
+.mk-demo-item-icon svg{width:18px;height:18px;display:block}
 
 /* ─── MOBILE HAMBURGER + FULL-WIDTH MENU (≤960px) ─── */
 .mk-nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
@@ -110,6 +112,8 @@ export function MarketingChromeStyles() {
 .mk-drawer-navlink:hover,.mk-drawer-navlink:focus-visible{background:#FAF5FF;color:var(--mk-brand-purple-deep,#5B21B6);outline:none}
 .mk-drawer-navlink.active{background:linear-gradient(90deg,rgba(124,58,237,.08) 0%,transparent 100%);color:var(--mk-text-strong,#111827);font-weight:500;box-shadow:inset 3px 0 0 var(--mk-brand-purple-dark,#7C3AED)}
 .mk-drawer-navlink-label{flex:1;min-width:0}
+.mk-drawer-navlink-label-with-icon{display:inline-flex;align-items:center;gap:10px;color:inherit}
+.mk-drawer-navlink-label-with-icon svg{flex-shrink:0;color:var(--mk-brand-purple-dark,#7C3AED)}
 .mk-drawer-navlink-chevron{width:9px;height:9px;margin-left:12px;flex-shrink:0;border-right:2px solid #D1D5DB;border-bottom:2px solid #D1D5DB;transform:rotate(-45deg) translate(0,-1px);transition:border-color .14s}
 .mk-drawer-navlink:hover .mk-drawer-navlink-chevron,.mk-drawer-navlink:focus-visible .mk-drawer-navlink-chevron{border-color:#A78BFA}
 .mk-drawer-navlink.active .mk-drawer-navlink-chevron{border-color:#7C3AED}
@@ -249,7 +253,9 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
               <div className="mk-demo-menu-inner">
                 {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
                   <Link key={item.href} href={item.href} className="mk-demo-item">
-                    <span className="mk-demo-item-icon">{item.icon}</span>
+                    <span className="mk-demo-item-icon">
+                      <MarketingVerticalIcon id={item.iconId} />
+                    </span>
                     {item.label}
                   </Link>
                 ))}
@@ -269,7 +275,9 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
               <div className="mk-demo-menu-inner">
                 {MARKETING_DEMO_NAV_ITEMS.map((item) => (
                   <Link key={item.href} href={item.href} className="mk-demo-item">
-                    <span className="mk-demo-item-icon">{item.icon}</span>
+                    <span className="mk-demo-item-icon">
+                      <MarketingVerticalIcon id={item.iconId} />
+                    </span>
                     {item.label}
                   </Link>
                 ))}
