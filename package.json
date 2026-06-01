@@ -43,6 +43,7 @@
     "@livekit/agents-plugin-openai": "^1.2.5",
     "@livekit/rtc-node": "^0.13.24",
     "@prisma/client": "^6.7.0",
+    "prisma": "^6.7.0",
     "@supabase/supabase-js": "^2.101.1",
     "@t3-oss/env-core": "^0.13.11",
     "@tabler/icons-react": "^3.34.0",
@@ -80,7 +81,6 @@
     "eslint-config-next": "^15.0.0",
     "htmltojsx": "^0.3.0",
     "postcss": "^8.5.10",
-    "prisma": "^6.7.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2"
