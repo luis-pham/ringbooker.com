@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npm run prompts:sync && npx prisma generate",
+    "prebuild": "npm run prompts:sync && ./node_modules/.bin/prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -28,8 +28,8 @@
     "reconcile:provider-events": "node scripts/reconcile-provider-events.mjs",
     "reconcile:paddle-subscriptions": "node scripts/reconcile-paddle-subscriptions.mjs",
     "replay:provider-events": "node scripts/replay-provider-events.mjs",
-    "prisma:generate": "npx prisma generate",
-    "prisma:migrate:dev": "npx prisma migrate dev",
+    "prisma:generate": "./node_modules/.bin/prisma generate",
+    "prisma:migrate:dev": "./node_modules/.bin/prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
