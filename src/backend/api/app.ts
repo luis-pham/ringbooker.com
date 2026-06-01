@@ -59,6 +59,8 @@ import type {
   JobType,
   Shop,
   ShopAccessState,
+  ShopStaff,
+  ShopStaffService,
   ShopServiceCatalog,
   VagaroSettings,
 } from '@/src/backend/domain/types';
@@ -658,6 +660,29 @@ const staffMemberSchema = z.object({
   notes: z.string().trim().max(500).nullable().optional(),
   active: z.boolean().optional().default(true),
 });
+
+const normalizedStaffCreateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  role: z.string().trim().max(100).nullable().optional(),
+  specialties: z.array(z.string().trim().min(1).max(50)).max(10).optional().default([]),
+  notes: z.string().trim().max(500).nullable().optional(),
+  active: z.boolean().optional().default(true),
+  allServices: z.boolean().optional().default(true),
+  serviceIds: z.array(z.string().uuid()).max(100).optional().default([]),
+}).strict();
+
+const normalizedStaffUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  role: z.string().trim().max(100).nullable().optional(),
+  specialties: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+  active: z.boolean().optional(),
+}).strict();
+
+const staffServiceAssignmentSchema = z.object({
+  allServices: z.boolean(),
+  serviceIds: z.array(z.string().uuid()).max(100).optional().default([]),
+}).strict();
 
 const businessFaqItemSchema = z.object({
   question: z.string().trim().min(1).max(200),
@@ -1804,6 +1829,24 @@ function toUserFacingServiceCatalog(catalog?: ShopServiceCatalog | null): ShopSe
       } = service;
       return userFacingService;
     }),
+  };
+}
+
+function toUserFacingStaff(member: ShopStaff, mappings: ShopStaffService[] = []) {
+  const allServices = member.allServices !== false;
+  return {
+    id: member.id,
+    name: member.name,
+    role: member.role ?? null,
+    specialties: member.specialties ?? [],
+    notes: member.notes ?? null,
+    active: member.active,
+    allServices,
+    serviceIds: allServices
+      ? []
+      : mappings.filter((mapping) => mapping.staffId === member.id).map((mapping) => mapping.serviceId),
+    syncedFromPlatform: Boolean(member.externalProvider),
+    externalProvider: member.externalProvider ?? null,
   };
 }
 
@@ -3301,6 +3344,7 @@ export function createBackendApp(deps: {
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         shopRoutingRulesRepository: deps.shopRoutingRulesRepository,
         shopStaffRepository: deps.shopStaffRepository,
+        shopStaffServicesRepository: deps.shopStaffServicesRepository,
         jobsRepository: deps.jobsRepository,
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
@@ -7316,6 +7360,198 @@ export function createBackendApp(deps: {
       capabilityMinPlans: CAPABILITY_MIN_PLAN,
       showGoLiveSettingsTab,
       serviceCatalogEnabled,
+    });
+  });
+
+  app.get(path('/user/staff'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_staff_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopStaffRepository || !deps.shopStaffServicesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'edit_staff')) {
+      return planFeatureLockedJson(c, 'edit_staff');
+    }
+
+    const [staff, mappings] = await Promise.all([
+      deps.shopStaffRepository.findByShopId(shop.id),
+      deps.shopStaffServicesRepository.listByShopId(shop.id),
+    ]);
+
+    return c.json({
+      ok: true,
+      staff: staff.map((member) => toUserFacingStaff(member, mappings)),
+    });
+  });
+
+  app.post(path('/user/staff'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_staff_create');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopStaffRepository || !deps.shopStaffServicesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'edit_staff')) {
+      return planFeatureLockedJson(c, 'edit_staff');
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = normalizedStaffCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_input', details: parsed.error.issues }, 400);
+    }
+
+    const { allServices, serviceIds: rawServiceIds, ...profile } = parsed.data;
+    const serviceIds = [...new Set(rawServiceIds)];
+    if (!allServices) {
+      const catalog = await deps.shopsRepository.findServiceCatalogByShopId(shop.id);
+      const validServiceIds = new Set((catalog?.services ?? []).map((service) => service.id));
+      const invalidIds = serviceIds.filter((id) => !validServiceIds.has(id));
+      if (invalidIds.length > 0) {
+        return c.json({ ok: false, error: 'invalid_service_ids', invalidIds }, 400);
+      }
+    }
+
+    const created = await deps.shopStaffRepository.create({
+      shopId: shop.id,
+      ...profile,
+      allServices,
+    });
+    if (!allServices) {
+      await deps.shopStaffServicesRepository.replaceMappingsForStaff(shop.id, created.id, serviceIds);
+    }
+    const mappings = await deps.shopStaffServicesRepository.listByShopId(shop.id);
+
+    return c.json({
+      ok: true,
+      staff: toUserFacingStaff(created, mappings),
+    });
+  });
+
+  app.patch(path('/user/staff/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_staff_update');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopStaffRepository || !deps.shopStaffServicesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'edit_staff')) {
+      return planFeatureLockedJson(c, 'edit_staff');
+    }
+
+    const staffId = c.req.param('id') ?? '';
+    if (!staffId) return c.json({ ok: false, error: 'not_found' }, 404);
+    const existing = await deps.shopStaffRepository.findById(staffId);
+    if (!existing || existing.shopId !== shop.id) {
+      return c.json({ ok: false, error: 'not_found' }, 404);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = normalizedStaffUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_input', details: parsed.error.issues }, 400);
+    }
+
+    const updated = await deps.shopStaffRepository.update(staffId, parsed.data);
+    const mappings = await deps.shopStaffServicesRepository.listByShopId(shop.id);
+    return c.json({
+      ok: true,
+      staff: toUserFacingStaff(updated, mappings),
+    });
+  });
+
+  app.delete(path('/user/staff/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_staff_delete');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopStaffRepository || !deps.shopStaffServicesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'edit_staff')) {
+      return planFeatureLockedJson(c, 'edit_staff');
+    }
+
+    const staffId = c.req.param('id') ?? '';
+    if (!staffId) return c.json({ ok: false, error: 'not_found' }, 404);
+    const existing = await deps.shopStaffRepository.findById(staffId);
+    if (!existing || existing.shopId !== shop.id) {
+      return c.json({ ok: false, error: 'not_found' }, 404);
+    }
+
+    await deps.shopStaffServicesRepository.replaceMappingsForStaff(shop.id, staffId, []);
+    await deps.shopStaffRepository.deleteById(staffId);
+    return c.json({ ok: true, success: true });
+  });
+
+  app.put(path('/user/staff/:id/services'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_staff_services_update');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopStaffRepository || !deps.shopStaffServicesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isCapabilityAllowed(shop.plan, 'edit_staff')) {
+      return planFeatureLockedJson(c, 'edit_staff');
+    }
+
+    const staffId = c.req.param('id') ?? '';
+    if (!staffId) return c.json({ ok: false, error: 'not_found' }, 404);
+    const existing = await deps.shopStaffRepository.findById(staffId);
+    if (!existing || existing.shopId !== shop.id) {
+      return c.json({ ok: false, error: 'not_found' }, 404);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = staffServiceAssignmentSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_input', details: parsed.error.issues }, 400);
+    }
+
+    const serviceIds = [...new Set(parsed.data.serviceIds)];
+    if (!parsed.data.allServices) {
+      const catalog = await deps.shopsRepository.findServiceCatalogByShopId(shop.id);
+      const validServiceIds = new Set((catalog?.services ?? []).map((service) => service.id));
+      const invalidIds = serviceIds.filter((id) => !validServiceIds.has(id));
+      if (invalidIds.length > 0) {
+        return c.json({ ok: false, error: 'invalid_service_ids', invalidIds }, 400);
+      }
+    }
+
+    const updated = await deps.shopStaffRepository.update(staffId, {
+      allServices: parsed.data.allServices,
+    });
+    if (!parsed.data.allServices) {
+      await deps.shopStaffServicesRepository.replaceMappingsForStaff(shop.id, staffId, serviceIds);
+    }
+    const mappings = await deps.shopStaffServicesRepository.listByShopId(shop.id);
+
+    return c.json({
+      ok: true,
+      success: true,
+      staff: toUserFacingStaff(updated, mappings),
+      allServices: parsed.data.allServices,
+      serviceIds: parsed.data.allServices ? [] : serviceIds,
     });
   });
 

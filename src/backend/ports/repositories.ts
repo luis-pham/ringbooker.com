@@ -569,19 +569,38 @@ export type UpsertShopStaff = {
   specialties?: string[];
   notes?: string | null;
   active?: boolean;
+  allServices?: boolean;
   externalProvider: ShopStaffExternalProvider;
   externalStaffId: string;
   externalMetadata?: Record<string, unknown>;
 };
 
+export type CreateShopStaff = {
+  shopId: string;
+  name: string;
+  role?: string | null;
+  specialties?: string[];
+  notes?: string | null;
+  active?: boolean;
+  allServices?: boolean;
+};
+
+export type UpdateShopStaff = Partial<
+  Pick<ShopStaff, 'name' | 'role' | 'specialties' | 'notes' | 'active' | 'allServices'>
+>;
+
 export interface ShopStaffRepository {
   findByShopId(shopId: string): Promise<ShopStaff[]>;
+  findById(id: string): Promise<ShopStaff | null>;
   findByExternalId(
     shopId: string,
     provider: ShopStaffExternalProvider,
     externalStaffId: string,
   ): Promise<ShopStaff | null>;
+  create(staff: CreateShopStaff): Promise<ShopStaff>;
   upsert(staff: UpsertShopStaff): Promise<ShopStaff>;
+  update(id: string, data: UpdateShopStaff): Promise<ShopStaff>;
+  deleteById(id: string): Promise<void>;
   bulkUpsertFromSync(
     shopId: string,
     staff: UpsertShopStaff[],
@@ -595,6 +614,11 @@ export interface ShopStaffRepository {
 
 export interface ShopStaffServicesRepository {
   setMappingsForStaff(
+    shopId: string,
+    staffId: string,
+    serviceIds: string[],
+  ): Promise<{ created: number; skipped: number }>;
+  replaceMappingsForStaff(
     shopId: string,
     staffId: string,
     serviceIds: string[],

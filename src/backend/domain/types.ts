@@ -179,6 +179,7 @@ export interface ShopStaff {
   specialties: string[];
   notes?: string | null;
   active: boolean;
+  allServices: boolean;
   externalProvider?: ShopStaffExternalProvider | null;
   externalStaffId?: string | null;
   externalMetadata?: Record<string, unknown> | null;

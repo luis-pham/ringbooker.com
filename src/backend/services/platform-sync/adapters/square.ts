@@ -297,6 +297,10 @@ export class SquareSyncAdapter implements PlatformSyncAdapter {
             skipped += 1;
             continue;
           }
+          if (staff.allServices === false) {
+            skipped += 1;
+            continue;
+          }
           const result = await this.deps.shopStaffServicesRepository.setMappingsForStaff(shop.id, staff.id, [service.id]);
           created += result.created;
           skipped += result.skipped;

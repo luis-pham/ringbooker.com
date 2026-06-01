@@ -1,4 +1,4 @@
-import type { Customer, Shop, ShopRoutingRule, ShopStaff } from '@/src/backend/domain/types';
+import type { Customer, Shop, ShopRoutingRule, ShopStaff, ShopStaffService } from '@/src/backend/domain/types';
 import { canUseReturningCallerContext, isCapabilityAllowed } from '@/src/backend/domain/shop-plan-capabilities';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 import { resolveEffectiveRuntimeConfig } from '@/src/backend/domain/resolve-effective-runtime-config';
@@ -174,16 +174,39 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
   }));
 }
 
-function buildStaffForPrompt(shop: Shop, shopStaff?: ShopStaff[]): string[] {
+function buildStaffForPrompt(
+  shop: Shop,
+  shopStaff?: ShopStaff[],
+  staffServiceMappings?: ShopStaffService[],
+): string[] {
   if (isCapabilityAllowed(shop.plan, 'provider_context') && shopStaff && shopStaff.length > 0) {
+    const serviceNameById = new Map((shop.service_catalog?.services ?? []).map((service) => [service.id, service.name]));
+    const mappingsByStaffId = new Map<string, string[]>();
+    for (const mapping of staffServiceMappings ?? []) {
+      const serviceIds = mappingsByStaffId.get(mapping.staffId) ?? [];
+      serviceIds.push(mapping.serviceId);
+      mappingsByStaffId.set(mapping.staffId, serviceIds);
+    }
     return shopStaff
       .filter((staff) => staff.active !== false)
       .slice(0, 12)
       .map((staff) => {
+        const serviceIds = mappingsByStaffId.get(staff.id) ?? [];
+        const assignedServiceNames = serviceIds
+          .map((serviceId) => serviceNameById.get(serviceId))
+          .filter((name): name is string => Boolean(name));
+        const serviceContext =
+          staff.allServices === false
+            ? assignedServiceNames.length > 0
+              ? `services: ${assignedServiceNames.slice(0, 8).join(', ')}${assignedServiceNames.length > 8 ? `, +${assignedServiceNames.length - 8} more` : ''}`
+              : 'services: no assigned services'
+            : staff.specialties?.length
+              ? `specialties: ${staff.specialties.join(', ')}`
+              : null;
         const parts = [
           staff.name,
           staff.role ?? null,
-          staff.specialties?.length ? `specialties: ${staff.specialties.join(', ')}` : null,
+          serviceContext,
           staff.notes ?? null,
         ].filter(Boolean);
         return compactLine(parts.join(' | '), 180);
@@ -210,6 +233,7 @@ function buildProductionBusinessConfig(
   routingRules?: ShopRoutingRule[],
   callerPhone?: string | null,
   shopStaff?: ShopStaff[],
+  staffServiceMappings?: ShopStaffService[],
 ): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
@@ -232,7 +256,7 @@ function buildProductionBusinessConfig(
     hours: renderHours(shop),
     services: buildRuntimeServices(shop),
     notOfferedServices: (shop.not_offered_services ?? []).filter((service) => service.trim().length > 0),
-    providers: buildStaffForPrompt(shop, shopStaff ?? shop.shopStaff),
+    providers: buildStaffForPrompt(shop, shopStaff ?? shop.shopStaff, staffServiceMappings),
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
     bookingMethod: shop.booking_method ?? null,
@@ -267,6 +291,7 @@ export function buildSystemPrompt(input: {
   routingRules?: ShopRoutingRule[];
   callerPhone?: string | null;
   shopStaff?: ShopStaff[];
+  staffServiceMappings?: ShopStaffService[];
 }): string {
   const business = buildProductionBusinessConfig(
     input.shop,
@@ -274,6 +299,7 @@ export function buildSystemPrompt(input: {
     input.routingRules,
     input.callerPhone,
     input.shopStaff,
+    input.staffServiceMappings,
   );
   return composeVoicePrompt({
     vertical: input.vertical ?? inferVerticalFromBusinessConfig(business),

@@ -17,6 +17,11 @@ import { knowledgePortalTabPageClass, UserPortalPageContent } from '@/components
 import { useUserPortalToast } from '@/components/user/user-portal-toast';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import {
+  StaffDrawer,
+  type StaffUpdateData,
+  type StaffWithServices,
+} from '@/components/user/staff-drawer';
+import {
   bookingLinkSaveSuccessMessage,
   formatSaveErrorMessage,
   settingsSaveSuccessMessage,
@@ -124,6 +129,44 @@ type BusinessKnowledgeSuggestionsResponse = {
   counts?: Record<string, number>;
   error?: string;
 };
+const DRAFT_STAFF_ID_PREFIX = 'draft-staff-';
+
+function isDraftStaffId(staffId: string) {
+  return staffId.startsWith(DRAFT_STAFF_ID_PREFIX);
+}
+
+function createStaffDraft(): StaffWithServices {
+  return {
+    id: `${DRAFT_STAFF_ID_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: '',
+    role: null,
+    specialties: [],
+    notes: null,
+    active: true,
+    allServices: true,
+    serviceIds: [],
+    syncedFromPlatform: false,
+    externalProvider: null,
+  };
+}
+
+function parseStaffSpecialtiesInput(value: string) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function sanitizeStaffProfile(member: StaffWithServices): StaffUpdateData {
+  return {
+    name: member.name.trim(),
+    role: member.role?.trim() || null,
+    specialties: (member.specialties ?? []).map((item) => item.trim()).filter(Boolean).slice(0, 10),
+    notes: member.notes?.trim() || null,
+    active: member.active !== false,
+  };
+}
 type ShopSettings = {
   id: string;
   name: string;
@@ -761,10 +804,6 @@ function getHourPresetId(hours: Record<string, BusinessHoursEntry>) {
   return match?.id ?? 'custom';
 }
 
-function emptyStaffMember(): StaffMember {
-  return { name: '', role: '', specialties: [], notes: '', active: true };
-}
-
 function emptyFaqItem(): BusinessFaqItem {
   return { question: '', answer: '' };
 }
@@ -862,15 +901,18 @@ export function UserSettingsLive({
   const [knowledgeCatalogMobileError, setKnowledgeCatalogMobileError] = useState<string | null>(null);
   const [knowledgeLegacyMobileSheet, setKnowledgeLegacyMobileSheet] = useState<{ index: number; draft: ServiceItem } | null>(null);
   const [knowledgeLegacyMobileError, setKnowledgeLegacyMobileError] = useState<string | null>(null);
-  const [knowledgeStaffAddSheetOpen, setKnowledgeStaffAddSheetOpen] = useState(false);
-  const [knowledgeStaffAddDraft, setKnowledgeStaffAddDraft] = useState<StaffMember>(() => emptyStaffMember());
+  const [shopStaff, setShopStaff] = useState<StaffWithServices[]>([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffLoadError, setStaffLoadError] = useState<string | null>(null);
+  const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
+  const [staffDrawerOpen, setStaffDrawerOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<StaffWithServices | null>(null);
   const [knowledgeFaqCreateSheetOpen, setKnowledgeFaqCreateSheetOpen] = useState(false);
   const [knowledgeFaqCreateDraft, setKnowledgeFaqCreateDraft] = useState<BusinessFaqItem>(() => emptyFaqItem());
   const legacyServiceDialogRef = useRef<HTMLDialogElement>(null);
   const [legacyDialogIndex, setLegacyDialogIndex] = useState<number | null>(null);
   const [legacyDialogDraft, setLegacyDialogDraft] = useState<ServiceItem | null>(null);
   const [legacyFormError, setLegacyFormError] = useState<string | null>(null);
-  const [expandedStaffIndex, setExpandedStaffIndex] = useState<number | null>(null);
   const [websiteSuggestions, setWebsiteSuggestions] = useState<BusinessKnowledgeSuggestion[]>([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
   const [suggestionEdits, setSuggestionEdits] = useState<Record<string, Record<string, unknown>>>({});
@@ -1283,6 +1325,39 @@ export function UserSettingsLive({
   }, [currentForm.services]);
 
   const visibleTabs = useMemo(() => visibleTabsForPortal(portal), [portal]);
+
+  const loadStaff = useCallback(async () => {
+    if (!settingsReady) return;
+    if (!currentCapabilities.edit_staff) {
+      setShopStaff([]);
+      setStaffLoadError(null);
+      return;
+    }
+    setStaffLoading(true);
+    setStaffLoadError(null);
+    try {
+      const response = await fetch('/api/backend/user/staff');
+      const body = (await response.json()) as {
+        ok?: boolean;
+        staff?: StaffWithServices[];
+        error?: string;
+      };
+      if (!response.ok || !body.ok || !Array.isArray(body.staff)) {
+        const message = body.error ?? 'staff_load_failed';
+        setStaffLoadError(message);
+        return;
+      }
+      setShopStaff(body.staff);
+    } catch {
+      setStaffLoadError('network_error');
+    } finally {
+      setStaffLoading(false);
+    }
+  }, [currentCapabilities.edit_staff, settingsReady]);
+
+  useEffect(() => {
+    if (activeTab === 'staff') void loadStaff();
+  }, [activeTab, loadStaff]);
 
   useEffect(() => {
     const allowed = SETTINGS_PORTAL_TAB_ORDER[portal];
@@ -1774,13 +1849,6 @@ export function UserSettingsLive({
     );
   }
 
-  function updateStaff(index: number, patch: Partial<StaffMember>) {
-    patchState(
-      'staff',
-      currentForm.staff.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
-    );
-  }
-
   function updateFaq(index: number, patch: Partial<BusinessFaqItem>) {
     patchState(
       'faqs',
@@ -1798,6 +1866,125 @@ export function UserSettingsLive({
   function updateHours(day: (typeof DAY_ORDER)[number], next: BusinessHoursEntry) {
     patchState('hours', { ...currentForm.hours, [day]: next });
     setHourPreset('custom');
+  }
+
+  function addStaffDraft() {
+    const draft = createStaffDraft();
+    setShopStaff((current) => [...current, draft]);
+    setExpandedStaffId(draft.id);
+  }
+
+  function updateShopStaffMember(staffId: string, patch: Partial<StaffWithServices>) {
+    setShopStaff((current) => current.map((member) => (member.id === staffId ? { ...member, ...patch } : member)));
+    setSelectedStaff((current) => (current?.id === staffId ? { ...current, ...patch } : current));
+  }
+
+  async function createStaffMemberRecord(data: StaffUpdateData, allServices: boolean, serviceIds: string[]) {
+    const response = await fetch('/api/backend/user/staff', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...data, allServices, serviceIds }),
+    });
+    const body = (await response.json()) as { ok?: boolean; staff?: StaffWithServices; error?: string };
+    if (!response.ok || !body.ok || !body.staff) {
+      throw new Error(body.error ?? 'staff_create_failed');
+    }
+    return body.staff;
+  }
+
+  async function saveStaffProfileRecord(staffId: string, data: StaffUpdateData) {
+    const response = await fetch(`/api/backend/user/staff/${encodeURIComponent(staffId)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const body = (await response.json()) as { ok?: boolean; staff?: StaffWithServices; error?: string };
+    if (!response.ok || !body.ok || !body.staff) {
+      throw new Error(body.error ?? 'staff_save_failed');
+    }
+    return body.staff;
+  }
+
+  async function saveAllStaffProfiles() {
+    if (!settingsReady) {
+      showToast({
+        type: 'error',
+        message: formatSaveErrorMessage('settings_still_loading', 'Staff saved'),
+      });
+      return;
+    }
+    setSavingSection('staff');
+    setStatus(null);
+    try {
+      const saved: StaffWithServices[] = [];
+      for (const member of shopStaff) {
+        const payload = sanitizeStaffProfile(member);
+        if (!payload.name) {
+          if (isDraftStaffId(member.id)) continue;
+          throw new Error('staff_name_required');
+        }
+        const result = isDraftStaffId(member.id)
+          ? await createStaffMemberRecord(payload, member.allServices !== false, member.allServices ? [] : member.serviceIds)
+          : await saveStaffProfileRecord(member.id, payload);
+        saved.push(result);
+      }
+      setShopStaff(saved.sort((a, b) => a.name.localeCompare(b.name)));
+      setExpandedStaffId((current) => {
+        if (!current || isDraftStaffId(current)) return null;
+        return saved.some((member) => member.id === current) ? current : null;
+      });
+      showToast({ type: 'success', message: 'Staff saved' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'staff_save_failed';
+      showToast({ type: 'error', message: formatSaveErrorMessage(message, 'Staff saved') });
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
+  async function removeStaffMember(member: StaffWithServices) {
+    if (isDraftStaffId(member.id)) {
+      setShopStaff((current) => current.filter((item) => item.id !== member.id));
+      setExpandedStaffId((current) => (current === member.id ? null : current));
+      return;
+    }
+    if (!window.confirm(`Remove ${member.name.trim() || 'this staff member'}? This cannot be undone.`)) return;
+    setSavingSection('staff');
+    try {
+      const response = await fetch(`/api/backend/user/staff/${encodeURIComponent(member.id)}`, {
+        method: 'DELETE',
+      });
+      const body = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !body.ok) {
+        throw new Error(body.error ?? 'staff_delete_failed');
+      }
+      setShopStaff((current) => current.filter((item) => item.id !== member.id));
+      setExpandedStaffId((current) => (current === member.id ? null : current));
+      setSelectedStaff((current) => (current?.id === member.id ? null : current));
+      showToast({ type: 'success', message: 'Staff removed' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'staff_delete_failed';
+      showToast({ type: 'error', message: formatSaveErrorMessage(message, 'Staff removed') });
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
+  async function saveStaffServices(staffId: string, allServices: boolean, serviceIds: string[]) {
+    const response = await fetch(`/api/backend/user/staff/${encodeURIComponent(staffId)}/services`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ allServices, serviceIds }),
+    });
+    const body = (await response.json()) as { ok?: boolean; staff?: StaffWithServices; error?: string };
+    if (!response.ok || !body.ok || !body.staff) {
+      throw new Error(body.error ?? 'staff_services_save_failed');
+    }
+    updateShopStaffMember(staffId, {
+      allServices: body.staff.allServices,
+      serviceIds: body.staff.serviceIds,
+    });
+    showToast({ type: 'success', message: 'Staff saved' });
   }
 
   async function commitSettingsPatch(sectionId: string, patch: Record<string, unknown>) {
@@ -3204,51 +3391,45 @@ export function UserSettingsLive({
 
             {activeTab === 'staff' ? (
             <section className="card">
-              <form
-                className="card-section-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void commitSettingsPatch('staff', {
-                    staff: currentForm.staff
-                      .map((item) => ({
-                        ...item,
-                        name: item.name.trim(),
-                        role: item.role?.trim() || null,
-                        specialties: (item.specialties ?? []).map((value) => value.trim()).filter(Boolean),
-                        notes: item.notes?.trim() || null,
-                        active: item.active !== false,
-                      }))
-                      .filter((item) => item.name),
-                  });
-                }}
-              >
-                <div className="panel-head knowledge-tab-panel-head">
+              <div className="card-section-form">
+                <div className="panel-head knowledge-tab-panel-head settings-tab-content-frame">
                   <div>
                     <h3>Staff / Technicians</h3>
-                    <p className="sub">Add staff names and specialties so RingBooker answers accurately. Preferred-provider memory requires Professional.</p>
+                    <p className="sub">Manage staff profiles and which services each provider can perform.</p>
                   </div>
+	                  <div className="staff-section-toolbar">
+	                    {renderLockCopy('edit_staff')}
+	                    {!isLocked('edit_staff') ? (
+	                      <button
+	                        type="button"
+	                        className="btn"
+	                        onClick={addStaffDraft}
+	                      >
+	                        Add staff
+	                      </button>
+	                    ) : null}
+	                  </div>
                 </div>
                 <div className="card-section settings-tab-content-frame">
-                  {currentForm.staff.length > 0 ? (
-                    <div className="staff-section-toolbar">
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => {
-                          if (portal === 'knowledge' && knowledgeMobile) {
-                            setKnowledgeStaffAddDraft(emptyStaffMember());
-                            setKnowledgeStaffAddSheetOpen(true);
-                            return;
-                          }
-                          patchState('staff', [...currentForm.staff, emptyStaffMember()]);
-                          setExpandedStaffIndex(currentForm.staff.length);
-                        }}
-                      >
-                        Add staff
+                  {isLocked('edit_staff') ? (
+                    <div className="sh-empty empty staff-empty">
+                      <strong>Staff management is locked on this plan.</strong>
+                      <p>Upgrade to Professional to edit staff profiles and service assignments.</p>
+                    </div>
+                  ) : staffLoading ? (
+                    <div className="sh-empty empty staff-empty">
+                      <strong>Loading staff...</strong>
+                      <p>Pulling staff from the normalized staff table.</p>
+                    </div>
+                  ) : staffLoadError ? (
+                    <div className="sh-empty empty staff-empty">
+                      <strong>Staff could not load.</strong>
+                      <p>{staffLoadError}</p>
+                      <button type="button" className="btn staff-empty-add" onClick={() => void loadStaff()}>
+                        Try again
                       </button>
                     </div>
-                  ) : null}
-                  {currentForm.staff.length === 0 ? (
+                  ) : shopStaff.length === 0 ? (
                     <div className="sh-empty empty staff-empty">
                       <div className="staff-empty-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -3259,89 +3440,146 @@ export function UserSettingsLive({
                         </svg>
                       </div>
                       <strong>No staff added yet.</strong>
-                      <p>Add providers so callers can request them by name.</p>
-                      <button
-                        type="button"
-                        className="btn staff-empty-add"
-                        onClick={() => {
-                          if (portal === 'knowledge' && knowledgeMobile) {
-                            setKnowledgeStaffAddDraft(emptyStaffMember());
-                            setKnowledgeStaffAddSheetOpen(true);
-                            return;
-                          }
-                          patchState('staff', [...currentForm.staff, emptyStaffMember()]);
-                          setExpandedStaffIndex(0);
-                        }}
-                      >
-                        + Add staff member
-                      </button>
-                    </div>
-                  ) : null}
-                  {currentForm.staff.map((member, index) => (
-                    <div className={`staff-card ${member.active === false ? 'inactive' : ''}`} key={`staff-${index}`}>
-                      <div className="staff-card-main" role="button" tabIndex={0} onClick={() => setExpandedStaffIndex(expandedStaffIndex === index ? null : index)} onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          setExpandedStaffIndex(expandedStaffIndex === index ? null : index);
-                        }
-                      }}>
-                        <div className="staff-avatar">
-                          {(member.name.trim() || 'S').slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="staff-info">
-                          <div className="staff-name">
-                            {member.name.trim() || 'New staff member'}
-                            {member.active === false ? <span> · inactive</span> : null}
-                          </div>
-                          <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
-                          {(member.specialties ?? []).length > 0 ? (
-                            <div className="staff-spec-tags">
-                              {(member.specialties ?? []).slice(0, 4).map((specialty, specialtyIndex) => (
-                                <span className="staff-spec" key={`${specialty}-${specialtyIndex}`}>{specialty}</span>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="staff-card-actions">
-                          <button
-                            type="button"
-                            className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
-                            aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              updateStaff(index, { active: member.active === false });
-                            }}
-                          />
-                          <span className="staff-chevron" aria-hidden="true">{expandedStaffIndex === index ? '⌃' : '⌄'}</span>
-                        </div>
-                      </div>
-                      {expandedStaffIndex === index ? (
-                        <div className="staff-card-detail">
-                          <div className="form-grid">
-                            <div className="field"><label>Name</label><input value={member.name} onChange={(event) => updateStaff(index, { name: event.target.value })} placeholder="Sarah" /></div>
-                            <div className="field"><label>Role / title</label><input value={member.role ?? ''} onChange={(event) => updateStaff(index, { role: event.target.value })} placeholder="Nail technician" /></div>
-                            <div className="field" style={{ gridColumn: '1 / -1' }}><label>Specialties</label><input value={(member.specialties ?? []).join(', ')} onChange={(event) => updateStaff(index, { specialties: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} placeholder="Gel nails, nail art, pedicure" /></div>
-                            <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes for AI</label><textarea value={member.notes ?? ''} onChange={(event) => updateStaff(index, { notes: event.target.value })} placeholder="Optional. Example: Available Tuesday-Friday. Best for detailed nail art." /></div>
-                          </div>
-                          <div className="staff-detail-actions">
-                            <button type="button" className="subtle-link" onClick={() => {
-                              patchState('staff', currentForm.staff.filter((_, itemIndex) => itemIndex !== index));
-                              setExpandedStaffIndex(null);
-                            }}>
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                <div className="settings-save-footer settings-tab-content-frame">
-                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'staff' ? 'Saving...' : 'Save staff'}
-                  </button>
-                </div>
-              </form>
+                      <p>Add providers or sync from Square so callers can request them by name.</p>
+	                      <button
+	                        type="button"
+	                        className="btn staff-empty-add"
+	                        onClick={addStaffDraft}
+	                      >
+	                        Add staff member
+	                      </button>
+	                    </div>
+	                  ) : null}
+	                  {shopStaff.map((member) => {
+	                    const isExpanded = expandedStaffId === member.id;
+	                    const isDraft = isDraftStaffId(member.id);
+	                    return (
+	                      <div
+	                        className={`staff-card ${member.active === false ? 'inactive' : ''}`}
+	                        key={member.id}
+	                      >
+	                        <div className="staff-card-main">
+	                          <button
+	                            type="button"
+	                            className="staff-card-toggle-area"
+	                            onClick={() => setExpandedStaffId((current) => (current === member.id ? null : member.id))}
+	                            aria-expanded={isExpanded}
+	                          >
+	                            <div className="staff-avatar">
+	                              {(member.name.trim() || 'S').slice(0, 1).toUpperCase()}
+	                            </div>
+	                            <div className="staff-info">
+	                              <div className="staff-name">
+	                                {member.name.trim() || 'Staff member'}
+	                                {member.active === false ? <span> · inactive</span> : null}
+	                              </div>
+	                              <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
+	                              <div className="staff-spec-tags">
+	                                <span className="staff-spec">{member.allServices ? 'All services' : `${member.serviceIds.length} services`}</span>
+	                                {member.syncedFromPlatform ? <span className="staff-spec">Synced</span> : null}
+	                                {(member.specialties ?? []).slice(0, 3).map((specialty) => (
+	                                  <span className="staff-spec" key={`${member.id}-${specialty}`}>{specialty}</span>
+	                                ))}
+	                              </div>
+	                            </div>
+	                          </button>
+	                          <div className="staff-card-actions">
+	                            <button
+	                              type="button"
+	                              className="staff-services-button"
+	                              disabled={isDraft}
+	                              onClick={() => {
+	                                setSelectedStaff(member);
+	                                setStaffDrawerOpen(true);
+	                              }}
+	                            >
+	                              Services
+	                            </button>
+	                            <button
+	                              type="button"
+	                              className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
+	                              aria-pressed={member.active !== false}
+	                              aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
+	                              onClick={() => updateShopStaffMember(member.id, { active: member.active === false })}
+	                            />
+	                            <button
+	                              type="button"
+	                              className="staff-chevron"
+	                              aria-label={isExpanded ? 'Collapse staff profile' : 'Expand staff profile'}
+	                              onClick={() => setExpandedStaffId((current) => (current === member.id ? null : member.id))}
+	                            >
+	                              {isExpanded ? 'v' : '>'}
+	                            </button>
+	                          </div>
+	                        </div>
+	                        {isExpanded ? (
+	                          <div className="staff-card-detail">
+	                            <div className="form-grid">
+	                              <label className="field">
+	                                <span>Name</span>
+	                                <input
+	                                  value={member.name}
+	                                  onChange={(event) => updateShopStaffMember(member.id, { name: event.target.value })}
+	                                  placeholder="Jessica Lee"
+	                                />
+	                              </label>
+	                              <label className="field">
+	                                <span>Role / title</span>
+	                                <input
+	                                  value={member.role ?? ''}
+	                                  onChange={(event) => updateShopStaffMember(member.id, { role: event.target.value })}
+	                                  placeholder="Owner / stylist"
+	                                />
+	                              </label>
+	                              <label className="field field-full">
+	                                <span>Specialties</span>
+	                                <input
+	                                  value={(member.specialties ?? []).join(', ')}
+	                                  onChange={(event) => updateShopStaffMember(member.id, {
+	                                    specialties: parseStaffSpecialtiesInput(event.target.value),
+	                                  })}
+	                                  placeholder="Color, cuts, blowouts"
+	                                />
+	                              </label>
+	                              <label className="field field-full">
+	                                <span>Notes for AI</span>
+	                                <textarea
+	                                  value={member.notes ?? ''}
+	                                  onChange={(event) => updateShopStaffMember(member.id, { notes: event.target.value })}
+	                                  placeholder="Optional context for callers."
+	                                />
+	                              </label>
+	                            </div>
+	                            <div className="staff-detail-actions">
+	                              <button type="button" className="subtle-link" onClick={() => void removeStaffMember(member)}>
+	                                Remove
+	                              </button>
+	                              <span>Service assignment is managed from the Services button.</span>
+	                            </div>
+	                          </div>
+	                        ) : null}
+	                      </div>
+	                    );
+	                  })}
+	                </div>
+	                {!isLocked('edit_staff') && !staffLoading && !staffLoadError && shopStaff.length > 0 ? (
+	                  <div className="settings-save-footer settings-tab-content-frame">
+	                    <button type="button" className="btn user-save" disabled={savingSection !== null} onClick={() => void saveAllStaffProfiles()}>
+	                      {savingSection === 'staff' ? 'Saving...' : 'Save staff'}
+	                    </button>
+	                  </div>
+	                ) : null}
+	                <StaffDrawer
+	                  isOpen={staffDrawerOpen}
+	                  onClose={() => {
+	                    setStaffDrawerOpen(false);
+	                    setSelectedStaff(null);
+	                  }}
+	                  staff={selectedStaff}
+	                  serviceCatalog={currentForm.service_catalog ?? null}
+	                  onSaveServices={saveStaffServices}
+	                />
+              </div>
             </section>
             ) : null}
 
@@ -4094,84 +4332,6 @@ export function UserSettingsLive({
                     </div>
                   </>
                 ) : null}
-              </BottomSheet>
-
-              <BottomSheet
-                isOpen={knowledgeStaffAddSheetOpen}
-                onClose={() => setKnowledgeStaffAddSheetOpen(false)}
-                title="Add Staff"
-              >
-                <div className="form-grid" style={{ gap: 12 }}>
-                  <div className="field">
-                    <label>Name</label>
-                    <input
-                      value={knowledgeStaffAddDraft.name}
-                      onChange={(event) => setKnowledgeStaffAddDraft({ ...knowledgeStaffAddDraft, name: event.target.value })}
-                      placeholder="Sarah"
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Role / title</label>
-                    <input
-                      value={knowledgeStaffAddDraft.role ?? ''}
-                      onChange={(event) => setKnowledgeStaffAddDraft({ ...knowledgeStaffAddDraft, role: event.target.value })}
-                      placeholder="Nail technician"
-                    />
-                  </div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Specialties</label>
-                    <input
-                      value={(knowledgeStaffAddDraft.specialties ?? []).join(', ')}
-                      onChange={(event) =>
-                        setKnowledgeStaffAddDraft({
-                          ...knowledgeStaffAddDraft,
-                          specialties: event.target.value
-                            .split(',')
-                            .map((value) => value.trim())
-                            .filter(Boolean),
-                        })
-                      }
-                      placeholder="Gel nails, nail art, pedicure"
-                    />
-                  </div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Notes for AI</label>
-                    <textarea
-                      value={knowledgeStaffAddDraft.notes ?? ''}
-                      onChange={(event) => setKnowledgeStaffAddDraft({ ...knowledgeStaffAddDraft, notes: event.target.value })}
-                      placeholder="Optional. Example: Available Tuesday-Friday."
-                    />
-                  </div>
-                </div>
-                <div className="onb-sheet-actions">
-                  <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeStaffAddSheetOpen(false)}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="onb-sheet-save"
-                    disabled={!knowledgeStaffAddDraft.name.trim()}
-                    onClick={() => {
-                      const name = knowledgeStaffAddDraft.name.trim();
-                      if (!name) return;
-                      patchState('staff', [
-                        ...currentForm.staff,
-                        {
-                          ...knowledgeStaffAddDraft,
-                          name,
-                          role: knowledgeStaffAddDraft.role?.trim() || null,
-                          specialties: (knowledgeStaffAddDraft.specialties ?? []).map((value) => value.trim()).filter(Boolean),
-                          notes: knowledgeStaffAddDraft.notes?.trim() || null,
-                          active: knowledgeStaffAddDraft.active !== false,
-                        },
-                      ]);
-                      setExpandedStaffIndex(currentForm.staff.length);
-                      setKnowledgeStaffAddSheetOpen(false);
-                    }}
-                  >
-                    Save
-                  </button>
-                </div>
               </BottomSheet>
 
               <BottomSheet

@@ -54,6 +54,7 @@ import type {
   ShopAccessStatesRepository,
   ShopActiveCallSessionsRepository,
   ShopStaffRepository,
+  ShopStaffServicesRepository,
   ShopRoutingRulesRepository,
   ShopsRepository,
   SipDemoSessionEnrichment,
@@ -503,6 +504,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     shopRoutingRulesRepository?: ShopRoutingRulesRepository;
     shopStaffRepository?: ShopStaffRepository;
+    shopStaffServicesRepository?: ShopStaffServicesRepository;
     jobsRepository?: JobsRepository;
     bookingsRepository?: BookingsRepository;
     callbacksRepository?: CallbacksRepository;
@@ -945,12 +947,20 @@ export async function handleOpenAiRealtimeSipWebhook(
           return [];
       })
       : [];
-    const shopStaff = deps.shopStaffRepository
-      ? await deps.shopStaffRepository.findByShopId(route.shop.id).catch((error) => {
-          logger.warn({ err: error, shopId: route.shop.id }, 'openai_sip_staff_lookup_failed');
-          return undefined;
-        })
-      : undefined;
+    const [shopStaff, staffServiceMappings] = await Promise.all([
+      deps.shopStaffRepository
+        ? deps.shopStaffRepository.findByShopId(route.shop.id).catch((error) => {
+            logger.warn({ err: error, shopId: route.shop.id }, 'openai_sip_staff_lookup_failed');
+            return undefined;
+          })
+        : Promise.resolve(undefined),
+      deps.shopStaffServicesRepository
+        ? deps.shopStaffServicesRepository.listByShopId(route.shop.id).catch((error) => {
+            logger.warn({ err: error, shopId: route.shop.id }, 'openai_sip_staff_services_lookup_failed');
+            return undefined;
+          })
+        : Promise.resolve(undefined),
+    ]);
     try {
       instructions = buildSystemPrompt({
         shop: route.shop,
@@ -960,6 +970,7 @@ export async function handleOpenAiRealtimeSipWebhook(
         routingRules,
         callerPhone: callerPhoneForPrompt,
         shopStaff,
+        staffServiceMappings,
       });
     } catch (err) {
       instructions = buildFallbackProductionSipPrompt({

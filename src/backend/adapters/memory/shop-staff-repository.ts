@@ -1,13 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ShopStaff, ShopStaffExternalProvider, ShopStaffService } from '@/src/backend/domain/types';
-import type { ShopStaffRepository, ShopStaffServicesRepository, UpsertShopStaff } from '@/src/backend/ports/repositories';
+import type {
+  CreateShopStaff,
+  ShopStaffRepository,
+  ShopStaffServicesRepository,
+  UpdateShopStaff,
+  UpsertShopStaff,
+} from '@/src/backend/ports/repositories';
 
 export class InMemoryShopStaffRepository implements ShopStaffRepository {
   private readonly staff = new Map<string, ShopStaff>();
 
   async findByShopId(shopId: string): Promise<ShopStaff[]> {
     return [...this.staff.values()].filter((staff) => staff.shopId === shopId);
+  }
+
+  async findById(id: string): Promise<ShopStaff | null> {
+    return this.staff.get(id) ?? null;
   }
 
   async findByExternalId(
@@ -25,6 +35,27 @@ export class InMemoryShopStaffRepository implements ShopStaffRepository {
     );
   }
 
+  async create(input: CreateShopStaff): Promise<ShopStaff> {
+    const now = new Date().toISOString();
+    const record: ShopStaff = {
+      id: `shop-staff-${randomUUID()}`,
+      shopId: input.shopId,
+      name: input.name,
+      role: input.role ?? null,
+      specialties: input.specialties ?? [],
+      notes: input.notes ?? null,
+      active: input.active !== false,
+      allServices: input.allServices ?? true,
+      externalProvider: null,
+      externalStaffId: null,
+      externalMetadata: {},
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.staff.set(record.id, record);
+    return record;
+  }
+
   async upsert(input: UpsertShopStaff): Promise<ShopStaff> {
     const existing = await this.findByExternalId(input.shopId, input.externalProvider, input.externalStaffId);
     const now = new Date().toISOString();
@@ -36,6 +67,7 @@ export class InMemoryShopStaffRepository implements ShopStaffRepository {
       specialties: input.specialties ?? [],
       notes: input.notes ?? null,
       active: input.active !== false,
+      allServices: input.allServices ?? existing?.allServices ?? true,
       externalProvider: input.externalProvider,
       externalStaffId: input.externalStaffId,
       externalMetadata: input.externalMetadata ?? {},
@@ -44,6 +76,22 @@ export class InMemoryShopStaffRepository implements ShopStaffRepository {
     };
     this.staff.set(record.id, record);
     return record;
+  }
+
+  async update(id: string, data: UpdateShopStaff): Promise<ShopStaff> {
+    const existing = this.staff.get(id);
+    if (!existing) throw new Error('shop_staff_update_not_found');
+    const updated: ShopStaff = {
+      ...existing,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    this.staff.set(id, updated);
+    return updated;
+  }
+
+  async deleteById(id: string): Promise<void> {
+    this.staff.delete(id);
   }
 
   async bulkUpsertFromSync(
@@ -116,6 +164,19 @@ export class InMemoryShopStaffServicesRepository implements ShopStaffServicesRep
       created += 1;
     }
     return { created, skipped };
+  }
+
+  async replaceMappingsForStaff(
+    shopId: string,
+    staffId: string,
+    serviceIds: string[],
+  ): Promise<{ created: number; skipped: number }> {
+    for (const [id, mapping] of this.mappings.entries()) {
+      if (mapping.shopId === shopId && mapping.staffId === staffId) {
+        this.mappings.delete(id);
+      }
+    }
+    return this.setMappingsForStaff(shopId, staffId, serviceIds);
   }
 
   async getServiceIdsByStaffId(shopId: string, staffId: string): Promise<string[]> {
