@@ -13,6 +13,7 @@ import { scheduleCallbackTool } from '@/src/agent/tools/schedule-callback';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { requestHumanHandoffTool } from '@/src/agent/tools/request-human-handoff';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
+import { normalizeStaffPreferenceName } from '@/src/agent/tools/staff-preference';
 import {
   createBookingDraft,
   deriveBookingDraftReasonCodes,
@@ -277,7 +278,7 @@ function buildAvailabilityRequestFromToolInput(
   const date = typeof record.date === 'string' ? record.date : '';
   const time = typeof record.time === 'string' ? record.time : '';
   const serviceText = typeof record.service === 'string' ? record.service : '';
-  const techName = typeof record.techName === 'string' && record.techName.trim() ? record.techName.trim() : undefined;
+  const techName = normalizeStaffPreferenceName(typeof record.techName === 'string' ? record.techName : undefined);
   if (!date || !time || !serviceText) return null;
 
   const providerMeta = getShopCalendarProviderMetadata(ctx.shop);

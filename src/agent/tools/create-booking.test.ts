@@ -238,6 +238,49 @@ test('uses cached availability staff for anyone bookings without another availab
   assert.equal(harness.availabilityInputs.length, 0);
 });
 
+test('treats anyone techName as no staff preference and uses cached staff', async () => {
+  const harness = createContext({
+    findTeamMemberByName: async () => {
+      throw new Error('should_not_lookup_anyone_as_staff');
+    },
+  });
+  harness.ctx.availabilityCheck = {
+    latest: {
+      providerId: 'square_appointments',
+      service: 'Haircut',
+      date: '2099-01-02',
+      time: '10:00',
+      available: true,
+      suggestions: [{ date: '2099-01-02', time: '10:00', techName: 'Marcus Rivera' }],
+      resolvedTeamMemberId: 'TM_MARCUS',
+      resolvedTeamMemberName: 'Marcus Rivera',
+      requestedTeamMemberId: null,
+      requestedTeamMemberName: null,
+      requestedStaffUnavailable: false,
+      fallbackTeamMemberId: null,
+      fallbackTeamMemberName: null,
+      serviceVariationId: 'SV_HAIRCUT',
+      locationId: 'LOC_TEST',
+      raw: { available: true },
+      fetchedAtMs: Date.now(),
+    },
+  };
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+    techName: 'anyone is okay',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal(harness.findTeamMemberCalls, 0);
+  assert.equal(harness.createdInputs[0]?.teamMemberId, 'TM_MARCUS');
+  assert.equal(harness.createdInputs[0]?.skipAvailabilitySearch, true);
+  assert.equal(harness.createdInputs[0]?.techName, undefined);
+  assert.equal('bookedWithTech' in result ? result.bookedWithTech : undefined, undefined);
+});
+
 test('cached requested-staff-unavailable result blocks booking with that stylist and names fallback', async () => {
   const harness = createContext();
   harness.ctx.availabilityCheck = {

@@ -166,3 +166,40 @@ test('checkAvailabilityTool caches staff resolution without returning raw team m
   assert.equal(harness.ctx.availabilityCheck?.latest?.requestedTeamMemberId, 'TM_JESSICA');
   assert.equal((harness.availabilityInputs[0] as { teamMemberId?: string })?.teamMemberId, 'TM_JESSICA');
 });
+
+test('checkAvailabilityTool treats anyone as no staff preference', async () => {
+  const harness = createContext({
+    findTeamMemberByName: async () => {
+      throw new Error('should_not_lookup_anyone_as_staff');
+    },
+    checkAvailability: async (input) => {
+      assert.equal(input.techName, undefined);
+      assert.equal(input.teamMemberId, undefined);
+      return {
+        available: true,
+        staffResolution: {
+          resolvedTeamMemberId: 'TM_MARCUS',
+          resolvedTeamMemberName: 'Marcus',
+          requestedTeamMemberId: null,
+          requestedTeamMemberName: null,
+          requestedStaffUnavailable: false,
+          fallbackTeamMemberId: null,
+          fallbackTeamMemberName: null,
+          serviceVariationId: 'SV_HAIRCUT',
+          locationId: 'LOC_TEST',
+        },
+      };
+    },
+  });
+
+  const result = await checkAvailabilityTool(harness.ctx, {
+    date: '2099-01-05',
+    time: '10:00',
+    service: 'Haircut',
+    techName: 'anyone is okay',
+  });
+
+  assert.deepEqual(result, { available: true });
+  assert.equal(harness.ctx.availabilityCheck?.latest?.techName, undefined);
+  assert.equal(harness.ctx.availabilityCheck?.latest?.resolvedTeamMemberId, 'TM_MARCUS');
+});

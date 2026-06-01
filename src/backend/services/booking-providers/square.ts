@@ -991,8 +991,9 @@ export class SquareAppointmentsProvider implements BookingProvider {
     const variation = await this.requireSquareVariationId(input.matchedServiceId, input.service);
     // C2: pass idempotencyKey so customer creation is idempotency-safe
     const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName, input.idempotencyKey);
-    let resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
-    if (input.teamMemberId && !input.skipAvailabilitySearch) {
+    const inputTeamMemberId = input.teamMemberId?.trim() || undefined;
+    let resolvedTeamMemberId = (inputTeamMemberId ?? this.credentials.teamMemberId?.trim()) || undefined;
+    if (inputTeamMemberId && !input.skipAvailabilitySearch) {
       const localStart = DateTime.fromISO(input.datetimeIso, { zone: 'utc' }).setZone(input.timezone);
       if (!localStart.isValid) {
         throw new Error('square_create_booking_invalid_datetime');
@@ -1003,7 +1004,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
         timezone: input.timezone,
         matchedServiceId: input.matchedServiceId,
         serviceName: input.service,
-        requestedTeamMemberId: input.teamMemberId,
+        requestedTeamMemberId: inputTeamMemberId,
       });
       if (!requestedSlot?.teamMemberId) {
         throw new Error('square_requested_staff_unavailable');
@@ -1032,6 +1033,10 @@ export class SquareAppointmentsProvider implements BookingProvider {
     if (!resolvedTeamMemberId) {
       throw new Error('square_create_booking_no_available_team_member');
     }
+    const squareTeamMemberId = resolvedTeamMemberId.trim();
+    if (!squareTeamMemberId) {
+      throw new Error('square_create_booking_no_available_team_member');
+    }
     const response = await this.squareJsonRequest<SquareBookingResponse>({
       path: '/v2/bookings',
       method: 'POST',
@@ -1047,7 +1052,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
               duration_minutes: input.durationMin,
               service_variation_id: variation.variationId,
               ...(variation.version ? { service_variation_version: variation.version } : {}),
-              ...(resolvedTeamMemberId ? { team_member_id: resolvedTeamMemberId } : {}),
+              team_member_id: squareTeamMemberId,
             },
           ],
         },

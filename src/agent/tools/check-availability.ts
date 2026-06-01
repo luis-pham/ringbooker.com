@@ -10,6 +10,7 @@ import {
   type AgentToolContext,
   toToolError,
 } from '@/src/agent/tools/types';
+import { normalizeStaffPreferenceName } from '@/src/agent/tools/staff-preference';
 import {
   hasValidAppointmentTimeValidation,
   requiresAppointmentTimeValidation,
@@ -125,16 +126,17 @@ export async function checkAvailabilityTool(
       );
     }
 
+    const requestedTechName = normalizeStaffPreferenceName(parsed.data.techName);
     let requestedTeamMemberId: string | undefined;
-    if (parsed.data.techName && ctx.calendarProvider.findTeamMemberByName) {
-      requestedTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(parsed.data.techName) ?? undefined;
+    if (requestedTechName && ctx.calendarProvider.findTeamMemberByName) {
+      requestedTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(requestedTechName) ?? undefined;
     }
 
     const result = await ctx.calendarProvider.checkAvailability({
       date: parsed.data.date,
       time: parsed.data.time,
       durationMin: service.durationMin,
-      techName: parsed.data.techName,
+      techName: requestedTechName,
       teamMemberId: requestedTeamMemberId,
       timezone: ctx.shop.timezone,
       matchedServiceId: service.matchedServiceId,
@@ -146,7 +148,7 @@ export async function checkAvailabilityTool(
         service: service.serviceName,
         date: parsed.data.date,
         time: parsed.data.time,
-        ...(parsed.data.techName ? { techName: parsed.data.techName } : {}),
+        ...(requestedTechName ? { techName: requestedTechName } : {}),
         result,
         fetchedAtMs: Date.now(),
       });

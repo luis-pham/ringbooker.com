@@ -164,12 +164,17 @@ test('Square createBooking auto-selects an available team member when caller say
       }),
     );
 
-    await provider.createBooking(bookingInput({ matchedServiceId: 'svc-haircut' }));
+    await provider.createBooking(bookingInput({ matchedServiceId: 'svc-haircut', teamMemberId: '   ' }));
+    const availabilityRequest = requests.find((request) => request.url.includes('/v2/bookings/availability/search'));
+    const availabilitySegment = (availabilityRequest?.body as {
+      query?: { filter?: { segment_filters?: Array<{ team_member_id_filter?: unknown }> } };
+    })?.query?.filter?.segment_filters?.[0];
     const bookingRequest = requests.find((request) => request.url.endsWith('/v2/bookings'));
     const segment = (bookingRequest?.body as {
       booking?: { appointment_segments?: Array<{ team_member_id?: string }> };
     })?.booking?.appointment_segments?.[0];
 
+    assert.equal(availabilitySegment?.team_member_id_filter, undefined);
     assert.equal(segment?.team_member_id, 'TM_AVAILABLE');
   } finally {
     globalThis.fetch = originalFetch;

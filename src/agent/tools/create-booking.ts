@@ -15,6 +15,7 @@ import {
   type AgentToolContext,
   toToolError,
 } from '@/src/agent/tools/types';
+import { normalizeStaffPreferenceName } from '@/src/agent/tools/staff-preference';
 import {
   hasValidAppointmentTimeValidation,
   requiresAppointmentTimeValidation,
@@ -135,6 +136,7 @@ export async function createBookingTool(
 
     const durationMin = service.durationMin;
     const canonicalServiceName = service.serviceName;
+    const requestedTechName = normalizeStaffPreferenceName(parsed.data.techName);
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
     const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
     const readiness = resolveBookingProviderReadiness(ctx.shop);
@@ -175,12 +177,12 @@ export async function createBookingTool(
     let teamMemberId: string | undefined;
     let skipAvailabilitySearch = false;
     if (availabilityCache) {
-      const cached = cachedTeamMemberForBooking(availabilityCache, parsed.data.techName);
+      const cached = cachedTeamMemberForBooking(availabilityCache, requestedTechName);
       if ('unavailable' in cached) {
         return {
           success: false,
           techNotAvailable: true,
-          requestedTech: parsed.data.techName ?? availabilityCache.requestedStaffName ?? availabilityCache.requestedTeamMemberName ?? 'that stylist',
+          requestedTech: requestedTechName ?? availabilityCache.requestedStaffName ?? availabilityCache.requestedTeamMemberName ?? 'that stylist',
           message: cached.message,
         };
       }
@@ -188,15 +190,15 @@ export async function createBookingTool(
       skipAvailabilitySearch = cached.skipAvailabilitySearch;
     }
 
-    if (!teamMemberId && readiness.canCreateBooking && parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
+    if (!teamMemberId && readiness.canCreateBooking && requestedTechName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
       try {
-        const foundTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(parsed.data.techName);
+        const foundTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(requestedTechName);
         if (foundTeamMemberId) {
           const availability = await ctx.calendarProvider.checkAvailability({
             date: parsed.data.date,
             time: parsed.data.time,
             durationMin,
-            techName: parsed.data.techName,
+            techName: requestedTechName,
             teamMemberId: foundTeamMemberId,
             timezone: ctx.shop.timezone,
             matchedServiceId: service.matchedServiceId,
@@ -206,11 +208,11 @@ export async function createBookingTool(
             return {
               success: false,
               techNotAvailable: true,
-              requestedTech: parsed.data.techName,
+              requestedTech: requestedTechName,
               message:
                 availability.message ??
-                `${parsed.data.techName} is not available at that time. ` +
-                  `Would you like to book with any available stylist, or choose a different time for ${parsed.data.techName}?`,
+                `${requestedTechName} is not available at that time. ` +
+                  `Would you like to book with any available stylist, or choose a different time for ${requestedTechName}?`,
             };
           }
 
@@ -218,23 +220,23 @@ export async function createBookingTool(
             return {
               success: false,
               techNotAvailable: true,
-              requestedTech: parsed.data.techName,
+              requestedTech: requestedTechName,
               message:
-                `${parsed.data.techName} is not available at that time. ` +
-                `Would you like to book with any available stylist, or choose a different time for ${parsed.data.techName}?`,
+                `${requestedTechName} is not available at that time. ` +
+                `Would you like to book with any available stylist, or choose a different time for ${requestedTechName}?`,
             };
           }
 
           teamMemberId = availability.staffResolution?.resolvedTeamMemberId ?? foundTeamMemberId;
         } else {
           logger.warn(
-            { shopId: ctx.shop.id, techName: parsed.data.techName },
+            { shopId: ctx.shop.id, techName: requestedTechName },
             'square_team_member_not_found_booking_without_preference',
           );
         }
       } catch (error) {
         logger.warn(
-          { shopId: ctx.shop.id, techName: parsed.data.techName, err: error },
+          { shopId: ctx.shop.id, techName: requestedTechName, err: error },
           'square_tech_lookup_failed_booking_without_preference',
         );
       }
@@ -266,7 +268,7 @@ export async function createBookingTool(
           customerName: parsed.data.customerName,
           customerEmail: parsed.data.customerEmail,
           service: canonicalServiceName,
-          techName: parsed.data.techName,
+          techName: requestedTechName,
           teamMemberId,
           skipAvailabilitySearch,
           datetimeIso: utcIso,
@@ -332,7 +334,7 @@ export async function createBookingTool(
             serviceName: canonicalServiceName,
             appointmentDate: parsed.data.date,
             appointmentTime: parsed.data.time,
-            techName: parsed.data.techName,
+            techName: requestedTechName,
             shopName: ctx.shop.name,
             confirmed: result.confirmed,
           },
@@ -357,7 +359,7 @@ export async function createBookingTool(
             serviceName: canonicalServiceName,
             appointmentDate: parsed.data.date,
             appointmentTime: parsed.data.time,
-            techName: parsed.data.techName,
+            techName: requestedTechName,
             notes: parsed.data.notes,
           },
           runAt: new Date(),
@@ -373,10 +375,10 @@ export async function createBookingTool(
       bookingId: booking.id,
       confirmed: result.confirmed,
       calendarEventId: result.calendarEventId,
-      ...(teamMemberId && parsed.data.techName
+      ...(teamMemberId && requestedTechName
         ? {
-            bookedWithTech: parsed.data.techName,
-            message: `Booked with ${parsed.data.techName}!`,
+            bookedWithTech: requestedTechName,
+            message: `Booked with ${requestedTechName}!`,
           }
         : {}),
     };
