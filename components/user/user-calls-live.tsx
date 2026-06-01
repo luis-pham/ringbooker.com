@@ -772,42 +772,52 @@ export function UserCallsLive({
                               <div className="calls-row-caller">
                                 <div className="calls-caller-avatar" aria-hidden>{callerAvatarGlyph(call)}</div>
                                 <div className="calls-caller-body">
-                                  <span className="calls-caller-phone">{formatPhone(call.callerPhone)}</span>
-                                  <span className="calls-caller-routed">{formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}</span>
+                                  <div className="calls-caller-line1">
+                                    <span className="calls-caller-phone">{formatPhone(call.callerPhone)}</span>
+                                    {call.isRepeatCaller ? <span className="calls-repeat-badge">Repeat caller</span> : null}
+                                  </div>
+                                  {call.forwardedTo ? <div className="calls-caller-routed">Forwarded to {formatPhone(call.forwardedTo)}</div> : null}
                                 </div>
                               </div>
                               <span className={status.className}>{status.label}</span>
                             </div>
-                            <div className="mobile-call-tags">
-                              {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
-                              {call.bookingCaptured ? (
-                                <span className={`${outcome.className} calls-outcome-link`} role="link" tabIndex={0} onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openBookingForCall(call); } }}>{outcome.label}</span>
-                              ) : (
-                                <span className={outcome.className}>{outcome.label}</span>
-                              )}
-                              {call.transcriptAvailable ? (
-                                <button
-                                  className="calls-log-icon-btn"
-                                  type="button"
-                                  title="View transcript"
-                                  aria-label="View transcript"
-                                  onClick={(event) => { event.stopPropagation(); void openCall(call); }}
-                                >
-                                  <IconFileDescription size={18} stroke={1.7} />
-                                </button>
-                              ) : null}
-                              {call.recordingAvailable ? (
-                                <button
-                                  className="calls-log-icon-btn"
-                                  type="button"
-                                  title="Play recording"
-                                  aria-label="Play recording"
-                                  onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
-                                >
-                                  <IconPlayerPlay size={18} stroke={1.7} />
-                                </button>
-                              ) : null}
+                            <div className="mobile-call-meta">
+                              <span className="mobile-call-meta-primary">
+                                {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
+                                {call.bookingCaptured ? (
+                                  <span className={`${outcome.className} calls-outcome-link`} role="link" tabIndex={0} onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openBookingForCall(call); } }}>{outcome.label}</span>
+                                ) : (
+                                  <span className={outcome.className}>{outcome.label}</span>
+                                )}
+                              </span>
+                              <span className="mobile-call-meta-datetime">{formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}</span>
                             </div>
+                            {call.transcriptAvailable || call.recordingAvailable ? (
+                              <div className="mobile-call-actions">
+                                {call.transcriptAvailable ? (
+                                  <button
+                                    className="calls-log-icon-btn"
+                                    type="button"
+                                    title="View transcript"
+                                    aria-label="View transcript"
+                                    onClick={(event) => { event.stopPropagation(); void openCall(call); }}
+                                  >
+                                    <IconFileDescription size={18} stroke={1.7} />
+                                  </button>
+                                ) : null}
+                                {call.recordingAvailable ? (
+                                  <button
+                                    className="calls-log-icon-btn"
+                                    type="button"
+                                    title="Play recording"
+                                    aria-label="Play recording"
+                                    onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
+                                  >
+                                    <IconPlayerPlay size={18} stroke={1.7} />
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </button>
                         );
                       })}

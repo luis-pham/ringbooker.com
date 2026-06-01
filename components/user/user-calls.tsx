@@ -86,11 +86,15 @@ const callsPortalStyles = String.raw`
 .calls-pager-btn:disabled{opacity:.45;cursor:not-allowed}
 .calls-table-desktop{display:table}
 .mobile-calls{display:none!important}
-.mobile-call-card{appearance:none;text-align:left;background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;color:inherit}
+.mobile-call-card{appearance:none;text-align:left;background:var(--surface-card);border:0;border-bottom:1px solid var(--border);border-radius:0;padding:14px 16px;display:grid;gap:10px;cursor:pointer;color:inherit;width:100%;box-sizing:border-box;font:inherit}
+.mobile-call-card:last-child{border-bottom:0}
 .mobile-call-card.is-high-urgency{border-left:3px solid #dc2626}
-.mobile-call-card.is-follow-up:not(.is-high-urgency){border-left:3px solid #f59e0b}
-.mobile-call-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.mobile-call-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.mobile-call-card.is-follow-up:not(.is-high-urgency){border-left:1px solid #f59e0b}
+.mobile-call-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mobile-call-meta{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:12px;color:var(--text-gray)}
+.mobile-call-meta-primary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.mobile-call-meta-datetime{flex-shrink:0;white-space:nowrap;color:var(--text-gray)}
+.mobile-call-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.58);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;z-index:160}
 .modal-card{width:min(760px,100%);max-height:min(88vh,900px);overflow:auto;background:var(--surface-card);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(17,24,39,.18);padding:22px}
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
@@ -129,7 +133,7 @@ html[data-user-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.55)}
 @media (max-width:900px){
   .calls-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .calls-table-desktop{display:none !important}
-  .mobile-calls{display:flex !important;flex-direction:column;gap:10px;padding:10px}
+  .mobile-calls{display:grid !important}
 }
 @media (min-width:901px){
   .calls-table-desktop{display:table !important}
