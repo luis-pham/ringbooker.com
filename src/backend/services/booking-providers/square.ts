@@ -716,6 +716,54 @@ export class SquareAppointmentsProvider implements BookingProvider {
     };
   }
 
+  private teamMemberIdFromAvailability(slot: SquareAvailability | undefined): string | undefined {
+    return slot?.appointment_segments?.find((segment) => Boolean(segment.team_member_id))?.team_member_id;
+  }
+
+  private async findAvailableTeamMemberId(params: {
+    date: string;
+    time: string;
+    timezone: string;
+    matchedServiceId?: string | null;
+    serviceName?: string;
+  }): Promise<string | undefined> {
+    const requestedStart = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
+    if (!requestedStart.isValid) {
+      throw new Error('square_availability_invalid_datetime');
+    }
+
+    const window = this.buildAvailabilityWindow(params.date, params.timezone);
+    const variation = await this.requireSquareVariationId(params.matchedServiceId, params.serviceName);
+    const response = await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
+      path: '/v2/bookings/availability/search',
+      method: 'POST',
+      body: {
+        query: {
+          filter: {
+            start_at_range: {
+              start_at: window.startAt,
+              end_at: window.endAt,
+            },
+            location_id: this.credentials.locationId,
+            segment_filters: [
+              {
+                service_variation_id: variation.variationId,
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    if (response.errors?.length) {
+      throw new Error(`square_search_availability_failed:${extractSquareError(response.errors)}`);
+    }
+
+    const requestedIso = requestedStart.toUTC().toISO();
+    const exact = (response.availabilities ?? []).find((slot) => slot.start_at === requestedIso);
+    return this.teamMemberIdFromAvailability(exact);
+  }
+
   async prefetchAvailability(params: { date: string; timezone: string }): Promise<void> {
     if (!this.credentials.serviceVariationId) return;
 
@@ -828,7 +876,29 @@ export class SquareAppointmentsProvider implements BookingProvider {
     const variation = await this.requireSquareVariationId(input.matchedServiceId, input.service);
     // C2: pass idempotencyKey so customer creation is idempotency-safe
     const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName, input.idempotencyKey);
-    const resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
+    let resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
+    if (!resolvedTeamMemberId) {
+      const localStart = DateTime.fromISO(input.datetimeIso, { zone: 'utc' }).setZone(input.timezone);
+      if (!localStart.isValid) {
+        throw new Error('square_create_booking_invalid_datetime');
+      }
+      resolvedTeamMemberId = await this.findAvailableTeamMemberId({
+        date: localStart.toFormat('yyyy-LL-dd'),
+        time: localStart.toFormat('HH:mm'),
+        timezone: input.timezone,
+        matchedServiceId: input.matchedServiceId,
+        serviceName: input.service,
+      });
+      if (resolvedTeamMemberId) {
+        logger.info(
+          { shopId: this.shop.id, bookingProvider: 'square_appointments' },
+          'square_booking_auto_selected_team_member',
+        );
+      }
+    }
+    if (!resolvedTeamMemberId) {
+      throw new Error('square_create_booking_no_available_team_member');
+    }
     const response = await this.squareJsonRequest<SquareBookingResponse>({
       path: '/v2/bookings',
       method: 'POST',
