@@ -703,6 +703,26 @@ html[data-user-theme="dark"]{
 }
 .faq-empty-state p{margin:0}
 .faq-empty-state .faq-empty-cta{margin-top:16px;margin-bottom:0}
+.faq-policies-form .option-card{cursor:default;display:grid;gap:0}
+.faq-policies-form .option-card:hover{transform:none;box-shadow:none;border-color:var(--border)}
+.faq-policies-form .option-card .service-catalog-heading{align-items:flex-start;margin-bottom:0}
+.faq-policies-form .faq-item-list{display:grid;gap:12px;margin-top:12px}
+.faq-policies-form .faq-item-list .staff-card{margin-bottom:0}
+.faq-policies-form .faq-item-list .staff-card-detail{padding:14px 16px 16px}
+.faq-policies-form .faq-item-list .actions-row{margin-top:0}
+.faq-policies-form .faq-item-list .subtle-link{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 4px}
+.faq-policies-form > .settings-save-footer{
+  position:sticky;bottom:0;z-index:24;
+  margin-top:18px;padding:12px 0 calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(255,255,255,0) 0%,var(--surface-page,#f6f7fb) 28%);
+  align-items:stretch;justify-content:stretch;
+}
+.faq-policies-form > .settings-save-footer > .btn.user-save{
+  width:100%;justify-content:center;min-height:48px;padding:14px 18px;font-size:15px;
+}
+html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
+  background:linear-gradient(180deg,rgba(13,17,23,0) 0%,var(--surface-page,#0d1117) 28%);
+}
 .staff-empty{
   display:grid;justify-items:center;gap:8px;padding:42px 22px;margin-bottom:8px;
   background:#fff;border:1px dashed #d1d5db;border-radius:16px;color:var(--text-gray);
@@ -1127,6 +1147,19 @@ html[data-user-theme="dark"]{
 }
 .onb-sheet-input:focus{border-color:var(--purple-dark)}
 .onb-sheet-actions{display:flex;gap:10px;margin-top:16px}
+.onb-sheet-remove{
+  align-self:center;
+  margin-right:auto;
+  padding:13px 0;
+  border:none;
+  background:transparent;
+  color:var(--danger-text);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:inherit;
+}
+.onb-sheet-remove:disabled{opacity:.45;cursor:not-allowed}
 .onb-sheet-cancel{
   flex:1;
   padding:13px;
@@ -2008,11 +2041,16 @@ html[data-user-theme="dark"] .plan-chip{
   }
   .service-catalog-heading{display:grid;gap:12px}
   .service-catalog-actions{display:grid;grid-template-columns:1fr;width:100%;margin-left:0}
+  .service-catalog-actions .btn{width:100%;justify-content:center}
   .knowledge-portal-main .panel-head.service-catalog-heading{align-items:stretch}
   .staff-empty .service-catalog-actions,
   .faq-empty-state .service-catalog-actions{width:100%;max-width:none;margin-top:16px}
   .faq-empty-state .service-catalog-actions .faq-empty-cta{width:100%;justify-content:center}
   .staff-empty .service-catalog-actions .staff-empty-add{width:100%;justify-content:center}
+  .faq-policies-form .option-card{padding:12px 14px}
+  .faq-policies-form .preset-pill{min-height:44px;box-sizing:border-box}
+  .faq-policies-form .field input,
+  .faq-policies-form .field textarea{font-size:16px}
   .service-item-head{grid-template-columns:1fr}
   .sh-hours-thead{display:none}
   .sh-hours-wrap{border:none;border-radius:0;background:transparent;overflow:visible}

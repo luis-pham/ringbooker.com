@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { IconAdjustmentsHorizontal, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 
 import { BottomSheet, useIsKnowledgeMobile } from '@/components/ui/BottomSheet';
 import { UserLayout } from '@/components/user/user-layout';
@@ -150,6 +151,14 @@ function createStaffDraft(): StaffWithServices {
   };
 }
 
+function cloneStaffProfile(member: StaffWithServices): StaffWithServices {
+  return {
+    ...member,
+    specialties: [...(member.specialties ?? [])],
+    serviceIds: [...(member.serviceIds ?? [])],
+  };
+}
+
 function parseStaffSpecialtiesInput(value: string) {
   return value
     .split(',')
@@ -257,6 +266,18 @@ type CatalogGroupSheetState =
   | null
   | { mode: 'add' }
   | { mode: 'rename'; categoryId: string; currentName: string };
+
+type StaffProfileSheetState =
+  | null
+  | { mode: 'add' | 'edit'; draft: StaffWithServices; error: string | null };
+
+const STAFF_ROLE_OPTIONS = ['Provider', 'Technician', 'Other'] as const;
+
+function normalizeStaffRoleOption(role: string | null | undefined) {
+  const trimmed = role?.trim();
+  if (!trimmed) return STAFF_ROLE_OPTIONS[0];
+  return (STAFF_ROLE_OPTIONS as readonly string[]).includes(trimmed) ? trimmed : 'Other';
+}
 
 type CalendarProviderSummary = {
   id: string;
@@ -1512,6 +1533,45 @@ export function UserSettingsLive({
     });
   }
 
+  function catalogWithRemovedServiceGroup(categoryId: string) {
+    const category = currentForm.service_catalog.categories.find((item) => item.id === categoryId);
+    if (!category) return null;
+    const remainingCategories = currentForm.service_catalog.categories.filter((item) => item.id !== categoryId);
+    const servicesToMove = currentForm.service_catalog.services.filter((service) => service.categoryId === categoryId);
+    let generalCategory = remainingCategories.find((item) => item.name.trim().toLowerCase() === 'general services');
+    if (servicesToMove.length > 0 && !generalCategory) {
+      generalCategory = {
+        id: clientId('service-category'),
+        shopId: effectiveShop.id,
+        name: 'General Services',
+        description: null,
+        sortOrder: 0,
+        active: true,
+      };
+      remainingCategories.unshift(generalCategory);
+    }
+    return {
+      categories: remainingCategories.map((item, index) => ({ ...item, sortOrder: index })),
+      services: currentForm.service_catalog.services.map((service) =>
+        service.categoryId === categoryId ? { ...service, categoryId: generalCategory?.id ?? null } : service,
+      ),
+    };
+  }
+
+  async function removeServiceGroup(categoryId: string) {
+    const category = currentForm.service_catalog.categories.find((item) => item.id === categoryId);
+    if (!category) return false;
+    const servicesToMove = currentForm.service_catalog.services.filter((service) => service.categoryId === categoryId);
+    const serviceCopy =
+      servicesToMove.length > 0
+        ? ` ${servicesToMove.length} ${servicesToMove.length === 1 ? 'service' : 'services'} in this group will move to General Services.`
+        : '';
+    if (!window.confirm(`Remove ${category.name || 'this service group'}?${serviceCopy} This cannot be undone.`)) return false;
+    const nextCatalog = catalogWithRemovedServiceGroup(categoryId);
+    if (!nextCatalog) return false;
+    return saveServiceCatalogToDb(nextCatalog);
+  }
+
   function addServiceToGroup(categoryId: string) {
     const groupCount = currentForm.service_catalog.services.filter((service) => service.categoryId === categoryId).length;
     const serviceId = clientId('service');
@@ -1912,6 +1972,15 @@ export function UserSettingsLive({
       'faqs',
       currentForm.faqs.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
     );
+  }
+
+  function addFaqEntry() {
+    if (portal === 'knowledge' && knowledgeMobile) {
+      setKnowledgeFaqCreateDraft(emptyFaqItem());
+      setKnowledgeFaqCreateSheetOpen(true);
+      return;
+    }
+    patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
   }
 
   function toggleLanguage(language: string, checked: boolean) {
@@ -2714,9 +2783,18 @@ export function UserSettingsLive({
 	                                  </div>
 	                                </div>
 	                                <div className="service-item-footer">
-		                                  <button type="button" className="subtle-link" onClick={() => void removeLegacyService(index)} disabled={savingSection !== null}>
-		                                    Remove service
-		                                  </button>
+			                                  <button
+			                                    type="button"
+			                                    className="subtle-link"
+			                                    onClick={() => {
+			                                      const label = service.name.trim() || 'this service';
+			                                      if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+			                                      void removeLegacyService(index);
+			                                    }}
+			                                    disabled={savingSection !== null}
+			                                  >
+			                                    Remove service
+			                                  </button>
 		                                  <button
 		                                    type="button"
 		                                    className="btn"
@@ -2855,7 +2933,7 @@ export function UserSettingsLive({
                           <path d="M3 9h10" />
                           <path d="M3 9v8.5A2.5 2.5 0 0 0 5.5 20H12" />
                         </svg>
-                        Add group
+                        Add service group
                       </button>
                     </div>
                   </div>
@@ -3017,7 +3095,16 @@ export function UserSettingsLive({
                                                 <select value={variant.priceType ?? 'from'} onChange={(event) => updateCatalogServiceVariant(service.id, variantIndex, { priceType: event.target.value as ServicePriceType })}>
                                                   {PRICE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                                                 </select>
-                                                <button type="button" className="subtle-link" onClick={() => removeCatalogServiceVariant(service.id, variantIndex)}>Remove</button>
+	                                                <button
+	                                                  type="button"
+	                                                  className="subtle-link"
+	                                                  onClick={() => {
+	                                                    if (!window.confirm('Remove this option? This cannot be undone.')) return;
+	                                                    removeCatalogServiceVariant(service.id, variantIndex);
+	                                                  }}
+	                                                >
+	                                                  Remove
+	                                                </button>
                                               </div>
                                             ))}
                                             <button type="button" className="btn ghost" onClick={() => addCatalogServiceVariant(service.id)}>+ Add option</button>
@@ -3032,9 +3119,13 @@ export function UserSettingsLive({
 		                                          <button
 		                                            type="button"
 		                                            className="subtle-link catalog-service-dialog-link-remove"
-		                                            onClick={() => void removeCatalogService(service.id)}
-		                                            disabled={savingSection !== null}
-		                                          >
+			                                            onClick={() => {
+			                                              const label = service.name.trim() || 'this service';
+			                                              if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+			                                              void removeCatalogService(service.id);
+			                                            }}
+			                                            disabled={savingSection !== null}
+			                                          >
 		                                            Remove
 		                                          </button>
 		                                          <button
@@ -3286,8 +3377,11 @@ export function UserSettingsLive({
                                     <button
                                       type="button"
                                       className="subtle-link"
-                                      onClick={() => removeCatalogDialogVariantRow(variantIndex)}
-                                    >
+	                                      onClick={() => {
+	                                        if (!window.confirm('Remove this option? This cannot be undone.')) return;
+	                                        removeCatalogDialogVariantRow(variantIndex);
+	                                      }}
+	                                    >
                                       Remove
                                     </button>
                                   </div>
@@ -3337,9 +3431,9 @@ export function UserSettingsLive({
                       </div>
                     ) : null}
                   </dialog>
-                  <OnboardingAddGroupSheet
-                    isOpen={catalogGroupSheet !== null}
-                    onClose={() => setCatalogGroupSheet(null)}
+	                  <OnboardingAddGroupSheet
+	                    isOpen={catalogGroupSheet !== null}
+	                    onClose={() => setCatalogGroupSheet(null)}
 	                    onConfirm={(name) => {
 	                      const trimmed = name.trim();
 	                      if (!trimmed || !catalogGroupSheet || savingSection !== null) return;
@@ -3352,14 +3446,28 @@ export function UserSettingsLive({
 	                        if (saved) setCatalogGroupSheet(null);
 	                      })();
 	                    }}
-                    title={
-                      catalogGroupSheet?.mode === 'rename' ? 'Rename service group' : catalogGroupSheet?.mode === 'add' ? 'New service group' : ''
-                    }
-                    placeholder="e.g. Waxing, Facials, Extensions..."
-                    initialName={catalogGroupSheet?.mode === 'rename' ? catalogGroupSheet.currentName : undefined}
-                    confirmLabel={catalogGroupSheet?.mode === 'rename' ? 'Save' : 'Add group'}
-                    titleId="knowledge-catalog-group-sheet-title"
-                  />
+	                    onRemove={
+	                      catalogGroupSheet?.mode === 'rename'
+	                        ? () => {
+	                            const sheet = catalogGroupSheet;
+	                            if (savingSection !== null) return;
+	                            void (async () => {
+	                              const saved = await removeServiceGroup(sheet.categoryId);
+	                              if (saved) setCatalogGroupSheet(null);
+	                            })();
+	                          }
+	                        : undefined
+	                    }
+	                    title={
+	                      catalogGroupSheet?.mode === 'rename' ? 'Edit Service Group' : catalogGroupSheet?.mode === 'add' ? 'New service group' : ''
+	                    }
+	                    placeholder="e.g. Waxing, Facials, Extensions..."
+	                    initialName={catalogGroupSheet?.mode === 'rename' ? catalogGroupSheet.currentName : undefined}
+	                    confirmLabel={catalogGroupSheet?.mode === 'rename' ? 'Save' : 'Add service group'}
+	                    removeLabel="Remove"
+	                    actionDisabled={savingSection !== null}
+	                    titleId="knowledge-catalog-group-sheet-title"
+	                  />
                     </>
                   )}
                 </div>
@@ -3652,7 +3760,7 @@ export function UserSettingsLive({
             {activeTab === 'faq' ? (
             <section className="card">
               <form
-                className="card-section-form"
+                className="card-section-form faq-policies-form"
 	                onSubmit={(event) => {
 	                  event.preventDefault();
 	                  void commitSettingsPatch('faqs', {
@@ -3664,33 +3772,14 @@ export function UserSettingsLive({
                   });
                 }}
               >
-	                <div className="panel-head knowledge-tab-panel-head service-catalog-heading">
+	                <div className="panel-head knowledge-tab-panel-head">
 	                  <div>
 	                    <h3>Policies & FAQ</h3>
 	                    <p className="sub">Approved answers for common caller questions: deposits, cancellations, walk-ins, payments, and more.</p>
 	                  </div>
-		                  {currentForm.faqs.length > 0 ? (
-	                    <div className="service-catalog-actions">
-		                    <button type="button" className="btn" onClick={() => {
-                          if (portal === 'knowledge' && knowledgeMobile) {
-                            setKnowledgeFaqCreateDraft(emptyFaqItem());
-                            setKnowledgeFaqCreateSheetOpen(true);
-                            return;
-                          }
-                          patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
-                        }}>
-                          <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
-                            <path d="M4 4h16v14H8l-4 4V4z" />
-                            <path d="M12 9v-4" />
-                            <path d="M9 9h6" />
-                          </svg>
-		                      Add FAQ
-		                    </button>
-	                    </div>
-		                  ) : null}
 	                </div>
 	                <div className="card-section settings-tab-content-frame">
-	                  <div className="option-card option-card--bare">
+	                  <div className="option-card">
 	                    <strong className="option-title">Cancellation policy</strong>
 	                    <div className="preset-pills" style={{ marginTop: 12 }}>
 	                      {CANCEL_POLICY_PRESETS.map((item) => (
@@ -3703,15 +3792,17 @@ export function UserSettingsLive({
 	                      ))}
 	                      <button type="button" className={`preset-pill ${cancelPreset === 'custom' ? 'active' : ''}`} onClick={() => setCancelPreset('custom')}>Custom</button>
 	                    </div>
-	                    <div className="field" style={{ marginTop: 14 }}>
-	                      <label>Policy text</label>
-	                      <textarea value={currentForm.cancel_policy} onChange={(event) => {
-	                        setCancelPreset('custom');
-	                        patchState('cancel_policy', event.target.value);
-	                      }} placeholder="e.g. 24-hour notice required. Late cancellations may be charged a fee." />
-	                    </div>
+	                    {cancelPreset === 'custom' ? (
+	                      <div className="field" style={{ marginTop: 14, marginBottom: 0 }}>
+	                        <label>Policy text</label>
+	                        <textarea value={currentForm.cancel_policy} onChange={(event) => {
+	                          setCancelPreset('custom');
+	                          patchState('cancel_policy', event.target.value);
+	                        }} placeholder="e.g. 24-hour notice required. Late cancellations may be charged a fee." />
+	                      </div>
+	                    ) : null}
 	                  </div>
-	                  <div className="option-card option-card--bare">
+	                  <div className="option-card">
 	                    <strong className="option-title">Promotion</strong>
 	                    <div className="preset-pills" style={{ marginTop: 12 }}>
 	                      {PROMOTION_PRESETS.map((item, index) => (
@@ -3724,47 +3815,64 @@ export function UserSettingsLive({
 	                      ))}
 	                      <button type="button" className={`preset-pill ${promoPreset === 'custom' ? 'active' : ''}`} onClick={() => setPromoPreset('custom')}>Custom</button>
 	                    </div>
-	                    <div className="field" style={{ marginTop: 14 }}>
-	                      <label>Promotion text</label>
-	                      <textarea value={currentForm.promotions} onChange={(event) => {
-	                        setPromoPreset('custom');
-	                        patchState('promotions', event.target.value);
-	                      }} placeholder="Optional. Leave blank if you are not running a promotion." />
-	                    </div>
+	                    {promoPreset === 'custom' ? (
+	                      <div className="field" style={{ marginTop: 14, marginBottom: 0 }}>
+	                        <label>Promotion text</label>
+	                        <textarea value={currentForm.promotions} onChange={(event) => {
+	                          setPromoPreset('custom');
+	                          patchState('promotions', event.target.value);
+	                        }} placeholder="Optional. Leave blank if you are not running a promotion." />
+	                      </div>
+	                    ) : null}
 	                  </div>
+	                  <div className="option-card">
+	                    <div className="service-catalog-heading">
+	                      <strong className="option-title">FAQ</strong>
+	                      <div className="service-catalog-actions">
+	                        <button type="button" className="btn" onClick={addFaqEntry}>
+	                          <IconPlus size={18} stroke={1.8} aria-hidden />
+	                          Add FAQ
+	                        </button>
+	                      </div>
+	                    </div>
 		                  {currentForm.faqs.length === 0 ? (
-		                    <div className="sh-empty faq-empty-state">
+		                    <div className="sh-empty faq-empty-state" style={{ marginTop: 12 }}>
 		                      <p>No FAQs added yet. Add common answers so RingBooker can respond consistently.</p>
-		                      <div className="service-catalog-actions">
-		                      <button type="button" className="btn faq-empty-cta" onClick={() => {
-                            if (portal === 'knowledge' && knowledgeMobile) {
-                              setKnowledgeFaqCreateDraft(emptyFaqItem());
-                              setKnowledgeFaqCreateSheetOpen(true);
-                              return;
-                            }
-                            patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
-                          }}>
-                            <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
-                              <path d="M4 4h16v14H8l-4 4V4z" />
-                              <path d="M12 9v-4" />
-                              <path d="M9 9h6" />
-                            </svg>
-		                        Add FAQ
-		                      </button>
-		                      </div>
 		                    </div>
-		                  ) : null}
-	                  {currentForm.faqs.map((item, index) => (
-	                    <div className="option-card option-card--bare" key={`faq-${index}`}>
-                      <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
-                      <div className="field"><label>Approved answer</label><textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." /></div>
-                      <div className="settings-save-footer settings-tab-content-frame" style={{ marginTop: 10 }}>
-                        <button type="button" className="subtle-link" onClick={() => patchState('faqs', currentForm.faqs.filter((_, itemIndex) => itemIndex !== index))}>
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+		                  ) : (
+		                    <div className="faq-item-list">
+		                      {currentForm.faqs.map((item, index) => (
+		                        <div className="staff-card" key={`faq-${index}`}>
+		                          <div className="staff-card-detail" style={{ borderTop: 'none' }}>
+		                            <div className="field" style={{ marginBottom: 16 }}>
+		                              <label>Question</label>
+		                              <input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" />
+		                            </div>
+		                            <div className="field" style={{ marginBottom: 16 }}>
+		                              <label>Approved answer</label>
+		                              <textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." />
+		                            </div>
+		                            <div className="actions-row">
+		                              <button
+		                                type="button"
+		                                className="subtle-link"
+		                                style={{ color: 'var(--danger-text)' }}
+		                                onClick={() => {
+		                                  const label = item.question.trim() || 'this FAQ';
+		                                  if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+		                                  patchState('faqs', currentForm.faqs.filter((_, itemIndex) => itemIndex !== index));
+		                                }}
+		                              >
+		                                <IconTrash size={16} stroke={1.8} aria-hidden />
+		                                Remove
+		                              </button>
+		                            </div>
+		                          </div>
+		                        </div>
+		                      ))}
+		                    </div>
+		                  )}
+	                  </div>
                 </div>
 	                <div className="settings-save-footer settings-tab-content-frame">
 	                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
@@ -4624,9 +4732,16 @@ export function UserSettingsLive({
                                     </option>
                                   ))}
                                 </select>
-                                <button type="button" className="subtle-link" onClick={() => removeKnowledgeMobileVariantRow(variantIndex)}>
-                                  Remove
-                                </button>
+	                                <button
+	                                  type="button"
+	                                  className="subtle-link"
+	                                  onClick={() => {
+	                                    if (!window.confirm('Remove this option? This cannot be undone.')) return;
+	                                    removeKnowledgeMobileVariantRow(variantIndex);
+	                                  }}
+	                                >
+	                                  Remove
+	                                </button>
                               </div>
                             ))}
                             <button type="button" className="btn ghost" onClick={() => addKnowledgeMobileVariantRow()}>
