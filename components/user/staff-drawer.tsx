@@ -243,7 +243,7 @@ export function StaffDrawer({
           Cancel
         </button>
         <button type="button" className="staff-drawer-primary" onClick={handleSave} disabled={saving || !staff}>
-          {saving ? 'Saving...' : 'Save services'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
       <style jsx>{`

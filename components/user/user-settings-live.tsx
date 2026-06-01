@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { IconAdjustmentsHorizontal, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAdjustmentsHorizontal, IconPencil, IconTrash } from '@tabler/icons-react';
 
 import { BottomSheet, useIsKnowledgeMobile } from '@/components/ui/BottomSheet';
 import { UserLayout } from '@/components/user/user-layout';
@@ -3968,9 +3968,13 @@ export function UserSettingsLive({
 	                  <div className="option-card">
 	                    <div className="service-catalog-heading">
 	                      <strong className="option-title">FAQ</strong>
-	                      <div className="service-catalog-actions">
-	                        <button type="button" className="btn" onClick={addFaqEntry}>
-	                          <IconPlus size={18} stroke={1.8} aria-hidden />
+	                      <div className="service-catalog-actions service-catalog-actions--mobile-full">
+	                        <button type="button" className="btn faq-add-cta" onClick={addFaqEntry}>
+	                          <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+	                            <path d="M4 4h16v14H8l-4 4V4z" />
+	                            <path d="M12 9v-4" />
+	                            <path d="M9 9h6" />
+	                          </svg>
 	                          Add FAQ
 	                        </button>
 	                      </div>
@@ -4593,72 +4597,78 @@ export function UserSettingsLive({
                   setKnowledgeLegacyMobileSheet(null);
                   setKnowledgeLegacyMobileError(null);
                 }}
-                title="Edit Service"
+                title={
+                  knowledgeLegacyMobileSheet !== null && isNewLegacyServiceDraft(knowledgeLegacyMobileSheet.index)
+                    ? 'Add service'
+                    : 'Edit service'
+                }
               >
                 {knowledgeLegacyMobileSheet ? (
-                  <>
-                    <div className="field">
-                      <label>service name</label>
-                      <input
-                        value={knowledgeLegacyMobileSheet.draft.name}
-                        onChange={(event) =>
-                          setKnowledgeLegacyMobileSheet({
-                            ...knowledgeLegacyMobileSheet,
-                            draft: { ...knowledgeLegacyMobileSheet.draft, name: event.target.value },
-                          })
-                        }
-                        placeholder="Gel Manicure"
-                      />
-                      <p className="service-name-edit-hint">Shorten so callers can understand</p>
-                    </div>
-                    <div className="service-item-head" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="rb-bottom-sheet-shell">
+                    <div className="rb-bottom-sheet-scroll">
                       <div className="field">
-                        <label>duration</label>
+                        <label>service name</label>
                         <input
-                          type="number"
-                          min={1}
-                          value={knowledgeLegacyMobileSheet.draft.duration_min || ''}
+                          value={knowledgeLegacyMobileSheet.draft.name}
                           onChange={(event) =>
                             setKnowledgeLegacyMobileSheet({
                               ...knowledgeLegacyMobileSheet,
-                              draft: {
-                                ...knowledgeLegacyMobileSheet.draft,
-                                duration_min: event.target.value === '' ? 0 : Number(event.target.value),
-                              },
+                              draft: { ...knowledgeLegacyMobileSheet.draft, name: event.target.value },
                             })
                           }
-                          placeholder="60"
+                          placeholder="Gel Manicure"
                         />
+                        <p className="service-name-edit-hint">Shorten so callers can understand</p>
                       </div>
-                      <div className="field">
-                        <label>price</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={knowledgeLegacyMobileSheet.draft.price}
-                          onChange={(event) =>
-                            setKnowledgeLegacyMobileSheet({
-                              ...knowledgeLegacyMobileSheet,
-                              draft: { ...knowledgeLegacyMobileSheet.draft, price: Number(event.target.value) },
-                            })
-                          }
-                        />
+                      <div className="service-item-head" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="field">
+                          <label>duration</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={knowledgeLegacyMobileSheet.draft.duration_min || ''}
+                            onChange={(event) =>
+                              setKnowledgeLegacyMobileSheet({
+                                ...knowledgeLegacyMobileSheet,
+                                draft: {
+                                  ...knowledgeLegacyMobileSheet.draft,
+                                  duration_min: event.target.value === '' ? 0 : Number(event.target.value),
+                                },
+                              })
+                            }
+                            placeholder="60"
+                          />
+                        </div>
+                        <div className="field">
+                          <label>price</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={knowledgeLegacyMobileSheet.draft.price}
+                            onChange={(event) =>
+                              setKnowledgeLegacyMobileSheet({
+                                ...knowledgeLegacyMobileSheet,
+                                draft: { ...knowledgeLegacyMobileSheet.draft, price: Number(event.target.value) },
+                              })
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
-                    {knowledgeLegacyMobileError ? (
-                      <p className="catalog-service-dialog-error" style={{ marginTop: 8 }}>
-                        {knowledgeLegacyMobileError}
-                      </p>
-                    ) : null}
-                    <div className="onb-sheet-actions">
-                      <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeLegacyMobileSheet(null)}>
-                        Cancel
-                      </button>
-	                      <button type="button" className="onb-sheet-save" onClick={() => void saveKnowledgeLegacyMobileSheet()} disabled={savingSection !== null}>
-	                        {savingSection === 'services' ? 'Saving...' : isNewLegacyServiceDraft(knowledgeLegacyMobileSheet.index) ? 'Save service' : 'Save changes'}
-	                      </button>
+                    <div className="rb-bottom-sheet-footer">
+                      {knowledgeLegacyMobileError ? (
+                        <p className="catalog-service-dialog-error rb-bottom-sheet-footer-note">{knowledgeLegacyMobileError}</p>
+                      ) : null}
+                      <div className="rb-bottom-sheet-footer-actions">
+                        <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeLegacyMobileSheet(null)}>
+                          Cancel
+                        </button>
+                        <button type="button" className="onb-sheet-save" onClick={() => void saveKnowledgeLegacyMobileSheet()} disabled={savingSection !== null}>
+                          {savingSection === 'services' ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
                     </div>
-                  </>
+                  </div>
                 ) : null}
               </BottomSheet>
 
@@ -4711,13 +4721,18 @@ export function UserSettingsLive({
                   setKnowledgeCatalogMobileSheet(null);
                   setKnowledgeCatalogMobileError(null);
                 }}
-                title="Edit Service"
+                title={
+                  knowledgeCatalogMobileSheet !== null && isNewCatalogServiceDraft(knowledgeCatalogMobileSheet.serviceId)
+                    ? 'Add service'
+                    : 'Edit service'
+                }
               >
                 {knowledgeCatalogMobileSheet ? (() => {
                   const draft = knowledgeCatalogMobileSheet.draft;
                   const showPrice = draft.priceType !== 'consultation' && draft.priceType !== 'varies';
                   return (
-                    <>
+                    <div className="rb-bottom-sheet-shell">
+                      <div className="rb-bottom-sheet-scroll">
                       <div className="flex flex-col gap-3">
                         <div className="service-item-head service-item-head--catalog-pair">
                           <div className="field">
@@ -4890,16 +4905,20 @@ export function UserSettingsLive({
                             </button>
                           </div>
                         </div>
+                        <label className="inline-check block">
+                          <input
+                            type="checkbox"
+                            checked={draft.bookable}
+                            onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookable: event.target.checked })}
+                          />
+                          Bookable by request
+                        </label>
+                        {knowledgeCatalogMobileError ? (
+                          <p className="catalog-service-dialog-error">{knowledgeCatalogMobileError}</p>
+                        ) : null}
                       </div>
-                      <label className="inline-check mt-2 block">
-                        <input
-                          type="checkbox"
-                          checked={draft.bookable}
-                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookable: event.target.checked })}
-                        />
-                        Bookable by request
-                      </label>
-                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+                      </div>
+                      <div className="rb-bottom-sheet-footer rb-bottom-sheet-footer--split">
                         <button
                           type="button"
                           className="subtle-link catalog-service-dialog-link-remove"
@@ -4914,7 +4933,7 @@ export function UserSettingsLive({
 		                          <IconTrash size={16} stroke={1.8} aria-hidden />
 		                          Remove
                         </button>
-                        <div className="flex gap-2">
+                        <div className="rb-bottom-sheet-footer-actions">
                           <button
                             type="button"
                             className="onb-sheet-cancel"
@@ -4926,14 +4945,11 @@ export function UserSettingsLive({
                             Cancel
                           </button>
 	                          <button type="button" className="onb-sheet-save" onClick={() => void saveKnowledgeCatalogMobileSheet()} disabled={savingSection !== null}>
-	                            {savingSection === 'services' ? 'Saving...' : isNewCatalogServiceDraft(knowledgeCatalogMobileSheet.serviceId) ? 'Save service' : 'Save changes'}
+	                            {savingSection === 'services' ? 'Saving...' : 'Save'}
 	                          </button>
                         </div>
                       </div>
-                      {knowledgeCatalogMobileError ? (
-                        <p className="catalog-service-dialog-error mt-2">{knowledgeCatalogMobileError}</p>
-                      ) : null}
-                    </>
+                    </div>
                   );
                 })() : null}
               </BottomSheet>

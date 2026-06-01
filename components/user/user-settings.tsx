@@ -17,6 +17,10 @@ html[data-user-theme="dark"]{
   display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px;padding-top:16px;
   border-top:none;flex-wrap:wrap;
 }
+.settings-save-footer > .btn.user-save,
+.settings-save-footer > button.btn.user-save{
+  min-height:48px;height:auto;padding:14px 18px;font-size:15px;font-weight:500;line-height:1.2;box-sizing:border-box;
+}
 .card-section{display:grid;gap:16px}
 .option-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .calendar-int-grid{
@@ -707,7 +711,16 @@ html[data-user-theme="dark"]{
 .faq-empty-state .faq-empty-cta{margin-top:16px;margin-bottom:0}
 .faq-policies-form .option-card{cursor:default;display:grid;gap:0}
 .faq-policies-form .option-card:hover{transform:none;box-shadow:none;border-color:var(--border)}
-.faq-policies-form .option-card .service-catalog-heading{align-items:flex-start;margin-bottom:0}
+.faq-policies-form .option-card > .service-catalog-heading{
+  display:grid;gap:12px;align-items:stretch;margin-bottom:0;
+}
+.faq-policies-form .option-card > .service-catalog-heading .service-catalog-actions{
+  width:100%;margin-left:0;display:grid;grid-template-columns:1fr;
+}
+.faq-policies-form .option-card > .service-catalog-heading .service-catalog-actions .btn,
+.faq-policies-form .option-card > .service-catalog-heading .faq-add-cta{
+  width:100%;justify-content:center;min-height:48px;box-sizing:border-box;
+}
 .faq-policies-form .faq-item-list{display:grid;gap:12px;margin-top:12px}
 .faq-policies-form .faq-item-list .staff-card{margin-bottom:0}
 .faq-policies-form .faq-item-list .staff-card-detail{padding:14px 16px 16px}
@@ -717,10 +730,6 @@ html[data-user-theme="dark"]{
   position:sticky;bottom:0;z-index:24;
   margin-top:18px;padding:12px 0 calc(12px + env(safe-area-inset-bottom));
   background:linear-gradient(180deg,rgba(255,255,255,0) 0%,var(--surface-page,#f6f7fb) 28%);
-  align-items:stretch;justify-content:stretch;
-}
-.faq-policies-form > .settings-save-footer > .btn.user-save{
-  width:100%;justify-content:center;min-height:48px;padding:14px 18px;font-size:15px;
 }
 html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
   background:linear-gradient(180deg,rgba(13,17,23,0) 0%,var(--surface-page,#0d1117) 28%);
@@ -1297,6 +1306,60 @@ html[data-user-theme="dark"] .onb-sheet-save{background:#1f6feb}
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   padding-top:6px;
+}
+.rb-bottom-sheet-body:has(.rb-bottom-sheet-shell){
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.rb-bottom-sheet-shell{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+}
+.rb-bottom-sheet-scroll{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:4px;
+}
+.rb-bottom-sheet-footer{
+  align-items:center;
+  background:var(--surface-card,#fff);
+  border-top:1px solid var(--border);
+  display:flex;
+  flex-shrink:0;
+  gap:10px;
+  justify-content:flex-end;
+  padding:14px 0 0;
+  margin-top:12px;
+  position:sticky;
+  bottom:0;
+  z-index:2;
+}
+.rb-bottom-sheet-footer--split{justify-content:space-between;flex-wrap:wrap;gap:12px}
+.rb-bottom-sheet-footer-note{
+  margin:0 auto 0 0;
+  flex:1;
+  min-width:0;
+  font-size:13px;
+  line-height:1.45;
+}
+.rb-bottom-sheet-footer-actions{display:flex;gap:10px;align-items:center;flex-shrink:0;margin-left:auto}
+.rb-bottom-sheet-footer .onb-sheet-cancel{flex:0 0 auto}
+.rb-bottom-sheet-footer .onb-sheet-save{flex:0 0 auto;min-width:126px}
+html[data-user-theme="dark"] .rb-bottom-sheet-footer{background:var(--surface-card)}
+@media (max-width:860px){
+  .rb-bottom-sheet-footer{padding-top:12px;margin-top:10px}
+  .rb-bottom-sheet-footer--split .rb-bottom-sheet-footer-actions{width:100%;justify-content:stretch}
+  .rb-bottom-sheet-footer--split .rb-bottom-sheet-footer-actions .onb-sheet-cancel,
+  .rb-bottom-sheet-footer--split .rb-bottom-sheet-footer-actions .onb-sheet-save{
+    flex:1;
+    min-height:48px;
+    justify-content:center;
+  }
 }
 .knowledge-address-sheet-trigger{
   width:100%;
@@ -2146,7 +2209,8 @@ html[data-user-theme="dark"] .plan-chip{
     width:100%;
     justify-items:stretch;
   }
-  .service-catalog-actions--mobile-full .service-group-add-cta{
+  .service-catalog-actions--mobile-full .service-group-add-cta,
+  .service-catalog-actions--mobile-full .faq-add-cta{
     width:100%;
     min-height:48px;
     box-sizing:border-box;
