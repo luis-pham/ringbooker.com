@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { IconTrash } from '@tabler/icons-react';
 
 export type OnboardingAddGroupSheetProps = {
   isOpen: boolean;
@@ -68,6 +69,7 @@ export function OnboardingAddGroupSheet({
         <div className="onb-sheet-actions">
           {onRemove ? (
             <button type="button" className="onb-sheet-remove" disabled={actionDisabled} onClick={onRemove}>
+              <IconTrash size={16} stroke={1.8} aria-hidden />
               {removeLabel}
             </button>
           ) : null}

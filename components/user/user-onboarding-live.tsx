@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { IconPencil, IconTrash } from '@tabler/icons-react';
 
 import { canUseBilingualWorkflow } from '@/src/backend/domain/shop-plan-capabilities';
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
@@ -2352,7 +2353,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,.35);background:rgba(56,139,253,.14);color:var(--text-dark,#e6edf3)}
 .profile-review-alert{margin:8px 0 12px}
 .onb-warning p{margin:0}
-.profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
+.profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#6b7280;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box;transition:background .15s ease,color .15s ease}.profile-review-edit:hover{background:#f3f4f6;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0;stroke-width:1.8}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-profile-source-footnote{font-size:11px;color:#9ca3af;margin:6px 0 0;line-height:1.35}
 .onb-step2-hours-preview{margin-top:2px}
@@ -2411,8 +2412,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-group-title-mobile{display:none;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
 @media(max-width:640px){.onb-group-title-desktop{display:none!important}.onb-group-title-mobile{display:flex!important}.service-group-main .service-group-meta{grid-column:1/-1}}
 @media(min-width:641px){.onb-group-title-mobile{display:none!important}}
-.onb-group-rename-pencil{border:0;background:transparent;padding:0 2px;margin-left:5px;color:#9ca3af;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
-.onb-group-rename-pencil svg{display:block;flex-shrink:0}
+.onb-group-rename-pencil{border:0;background:transparent;padding:0;margin-left:2px;color:#6b7280;cursor:pointer;line-height:1;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;transition:background .15s ease,color .15s ease}
+.onb-group-rename-pencil:hover{background:#f3f4f6;color:#111827}
+.onb-group-rename-pencil svg{display:block;flex-shrink:0;stroke-width:1.8}
 .onb-group-add-header-desktop{margin-left:auto;display:none}
 @media(min-width:641px){.onb-group-add-header-desktop{display:inline-flex;align-items:center;justify-content:center;gap:6px}}
 .service-group-collapse-btn{border:0;background:transparent;padding:4px 6px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;flex-shrink:0;margin-left:4px}
@@ -2433,13 +2435,13 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .service-group-body{display:grid;gap:0;padding:12px 16px 16px}
 .onb-service-row-wrap{position:relative;border-bottom:1px solid #f3f4f6}.onb-service-row-wrap:last-of-type{border-bottom:0}
 .onb-service-row{width:100%;border:0;background:transparent;padding:11px 0;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;cursor:pointer;color:#111}
-.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-ai-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;vertical-align:middle;text-transform:none;white-space:nowrap}.onb-service-variants-preview{display:block;margin-top:3px;color:#6b7280;font-size:12px;text-transform:none;white-space:normal}.svc-variants{margin:0 0 3px;color:#9ca3af;font-size:12px;line-height:1.35}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
+.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-ai-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;vertical-align:middle;text-transform:none;white-space:nowrap}.onb-service-variants-preview{display:block;margin-top:3px;color:#6b7280;font-size:12px;text-transform:none;white-space:normal}.svc-variants{margin:0 0 3px;color:#9ca3af;font-size:12px;line-height:1.35}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{width:30px;height:30px;border-radius:8px;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:opacity .15s ease,background .15s ease,color .15s ease}.onb-service-edit-link svg{display:block;flex-shrink:0;stroke-width:1.8}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1;background:#f3f4f6;color:#111827}
 .onb-service-row-mobile{display:none}.onb-service-mobile-meta{color:#6b7280;font-size:12px;text-align:right;white-space:nowrap}.onb-service-mobile-arrow{color:#9ca3af;font-size:22px;line-height:1}
-.svc-row{display:none}.svc-body{flex:1;min-width:0}.svc-name{font-size:13px;font-weight:400;color:#111;text-transform:capitalize;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}.svc-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;flex-wrap:nowrap;min-width:0}.svc-price{color:#374151;font-weight:500;white-space:nowrap}.svc-price.zero{color:#dc2626}.svc-duration{white-space:nowrap}.svc-duration.missing{color:#f59e0b}.svc-remove{margin-left:auto;font-size:12px;color:#9ca3af;background:none;border:none;padding:0;cursor:pointer;flex-shrink:0}.svc-remove:active{color:#dc2626}.svc-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;align-self:flex-start;margin-top:1px}
+.svc-row{display:none}.svc-body{flex:1;min-width:0}.svc-name{font-size:13px;font-weight:400;color:#111;text-transform:capitalize;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}.svc-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;flex-wrap:nowrap;min-width:0}.svc-price{color:#374151;font-weight:500;white-space:nowrap}.svc-price.zero{color:#dc2626}.svc-duration{white-space:nowrap}.svc-duration.missing{color:#f59e0b}.svc-remove{align-items:center;background:none;border:none;color:#9ca3af;cursor:pointer;display:inline-flex;flex-shrink:0;font-size:12px;gap:4px;margin-left:auto;padding:0}.svc-remove:active{color:#dc2626}.svc-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;align-self:flex-start;margin-top:1px}
 .onb-service-edit-row{display:grid;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-main-row{display:flex;gap:8px;align-items:center}.onb-service-edit-main-row>input:first-child{flex:1;min-width:0}.onb-service-edit-main-row>.onb-service-price-input,.onb-service-edit-main-row>input[aria-label="Duration"]{width:90px;flex:0 0 90px}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}.onb-service-variants-editor{grid-column:1 / -1;display:grid;gap:8px;border:1px solid #ede9fe;border-radius:10px;background:#faf5ff;padding:10px}.onb-service-variants-label{font-size:12px;font-weight:700;color:#6d28d9}.onb-service-variant-edit{display:grid;gap:8px}.onb-svc-var-row1{display:flex;gap:8px;align-items:center}.onb-svc-var-row1>input{flex:1;min-width:0}.onb-svc-var-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.onb-service-variant-edit button{border:0;border-radius:999px;background:#f3f4f6;color:#6b7280;cursor:pointer}.onb-service-add-option{grid-column:1 / -1;border:1px dashed #ddd6fe;border-radius:8px;background:#fff;color:#7c3aed;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer}
 .onb-service-save-dot,.onb-service-cancel-dot{width:30px;height:30px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:600;flex:0 0 30px}.onb-service-save-dot{background:#111;color:#fff}.onb-service-cancel-dot{background:#f3f4f6;color:#6b7280}
 .onb-group-add-service-mobile{display:none}
-.service-remove-btn{min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
+.service-remove-btn{align-items:center;display:inline-flex;gap:6px;min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
 .service-group-select-label{display:inline-flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:500}.service-group-select-label select{width:auto;min-width:150px;min-height:34px;padding:6px 10px;font-size:16px}
 .service-empty{font-size:13px;color:#9ca3af;padding:14px 16px;margin-bottom:10px;border:none;background:transparent}
 .onb-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;font-family:inherit}
@@ -2851,12 +2853,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
         z.country.toLowerCase().includes(tzSearchLower),
     );
 
-    const pencilIcon = (
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-      </svg>
-    );
+    const pencilIcon = <IconPencil size={18} stroke={1.8} aria-hidden />;
 
     const profileCard = (
       field: Exclude<ProfileEditField, null>,
@@ -2984,20 +2981,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
               {editing ? (
                 'done'
               ) : (
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  aria-hidden="true"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
+                pencilIcon
               )}
             </button>
           </div>
@@ -3780,10 +3764,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                       {titleCaseServiceLabel(group)}
                     </button>
                     <button type="button" className="onb-group-rename-pencil onb-group-rename-pencil--desktop" aria-label="Rename group" onClick={openDesktopGroupRename}>
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
+                      <IconPencil size={18} stroke={1.8} aria-hidden />
                     </button>
                   </>
                 )}
@@ -3801,10 +3782,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                     setGroupRenameMobileDraft(titleCaseServiceLabel(group));
                   }}
                 >
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
+                  <IconPencil size={18} stroke={1.8} aria-hidden />
                 </button>
               </span>
               <span className="service-group-meta">{items.length} {items.length === 1 ? 'service' : 'services'}</span>
@@ -3863,7 +3841,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                           <span className={`onb-service-duration ${duration ? '' : 'warn'}`} title={!duration ? "No duration set. AI won't estimate appointment length." : undefined}>
                             {duration || 'Add time ⚠'}
                           </span>
-                          <span className="onb-service-edit-link">Edit</span>
+                          <span className="onb-service-edit-link" aria-hidden>
+                            <IconPencil size={18} stroke={1.8} aria-hidden />
+                          </span>
                         </button>
                         <div
                           className="svc-row"
@@ -3900,6 +3880,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                                   removeServiceRow(index);
                                 }}
                               >
+                                <IconTrash size={16} stroke={1.8} aria-hidden />
                                 Remove
                               </button>
                             </div>
@@ -3910,6 +3891,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                     )}
                     {!editingInline ? (
                       <button type="button" className="service-remove-btn onb-service-remove-compact" onClick={() => removeServiceRow(index)} aria-label={`Remove ${service.name || 'service'}`}>
+                        <IconTrash size={16} stroke={1.8} aria-hidden />
                         Remove
                       </button>
                     ) : null}

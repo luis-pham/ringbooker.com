@@ -1958,12 +1958,7 @@ export function UserSettingsLive({
   }
 
   function renderEditIcon() {
-    return (
-      <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
-        <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-      </svg>
-    );
+    return <IconPencil size={18} aria-hidden />;
   }
 
   function updateFaq(index: number, patch: Partial<BusinessFaqItem>) {
@@ -2480,6 +2475,7 @@ export function UserSettingsLive({
                   })();
                 }}
               >
+                <IconTrash size={16} stroke={1.8} aria-hidden />
                 Remove
               </button>
             ) : null}
@@ -2506,7 +2502,7 @@ export function UserSettingsLive({
           .staff-drawer-secondary{background:#fff;border:1px solid #d9dde5;color:#111827}
           .staff-drawer-primary{background:#111827;border:1px solid #111827;color:#fff;min-width:126px}
           .staff-drawer-error{color:#b91c1c;font-size:13px}
-          .staff-drawer-remove{background:transparent;border:0;color:#b91c1c;cursor:pointer;font:inherit;font-weight:650;min-height:40px;padding:9px 0}
+          .staff-drawer-remove{align-items:center;background:transparent;border:0;color:#b91c1c;cursor:pointer;display:inline-flex;font:inherit;font-weight:650;gap:6px;min-height:40px;padding:9px 0}
           .staff-drawer-primary:disabled,.staff-drawer-secondary:disabled,.staff-drawer-remove:disabled{cursor:not-allowed;opacity:.55}
           @media(max-width:860px){
             .staff-drawer-scroll{max-height:calc(85vh - 88px);padding:16px}
@@ -2580,6 +2576,7 @@ export function UserSettingsLive({
                   })();
                 }}
               >
+                <IconTrash size={16} stroke={1.8} aria-hidden />
                 Remove
               </button>
             ) : (
@@ -2978,7 +2975,7 @@ export function UserSettingsLive({
 	                                <div className="service-item-footer">
 			                                  <button
 			                                    type="button"
-			                                    className="subtle-link"
+				                                    className="subtle-link remove-link"
 			                                    onClick={() => {
 			                                      const label = service.name.trim() || 'this service';
 			                                      if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
@@ -2986,7 +2983,8 @@ export function UserSettingsLive({
 			                                    }}
 			                                    disabled={savingSection !== null}
 			                                  >
-			                                    Remove service
+				                                    <IconTrash size={16} stroke={1.8} aria-hidden />
+				                                    Remove service
 			                                  </button>
 		                                  <button
 		                                    type="button"
@@ -3072,7 +3070,7 @@ export function UserSettingsLive({
 	                            <footer className="catalog-service-dialog-footer service-editor-drawer-footer">
 	                              <button
 	                                type="button"
-	                                className="subtle-link catalog-service-dialog-link-remove"
+		                                className="subtle-link catalog-service-dialog-link-remove"
 	                                onClick={() => {
 	                                  if (legacyDialogIndex === null) return;
 	                                  const label = legacyDialogDraft.name.trim() || 'this service';
@@ -3081,7 +3079,8 @@ export function UserSettingsLive({
 		                                }}
 		                                disabled={savingSection !== null}
 		                              >
-		                                Remove
+			                                <IconTrash size={16} stroke={1.8} aria-hidden />
+			                                Remove
 		                              </button>
 	                              <div className="catalog-service-dialog-footer-actions">
 	                                <button type="button" className="btn catalog-service-dialog-btn-cancel" onClick={closeLegacyServiceDialog}>
@@ -3109,8 +3108,8 @@ export function UserSettingsLive({
 	                        {editableCatalog.categories.length} groups · {activeServiceCount} services
 	                      </p>
 	                    </div>
-                    <div className="service-catalog-actions">
-	                      <button type="button" className="btn" onClick={() => setCatalogGroupSheet({ mode: 'add' })} disabled={savingSection !== null}>
+                    <div className="service-catalog-actions service-catalog-actions--mobile-full">
+		                      <button type="button" className="btn service-group-add-cta" onClick={() => setCatalogGroupSheet({ mode: 'add' })} disabled={savingSection !== null}>
                         <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
                           <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H9l2 2h7.5A2.5 2.5 0 0 1 21 8.5v1" />
                           <path d="M12 16h8" />
@@ -3282,13 +3281,14 @@ export function UserSettingsLive({
                                                 </select>
 	                                                <button
 	                                                  type="button"
-	                                                  className="subtle-link"
+		                                                  className="subtle-link remove-link"
 	                                                  onClick={() => {
 	                                                    if (!window.confirm('Remove this option? This cannot be undone.')) return;
 	                                                    removeCatalogServiceVariant(service.id, variantIndex);
 	                                                  }}
 	                                                >
-	                                                  Remove
+		                                                  <IconTrash size={16} stroke={1.8} aria-hidden />
+		                                                  Remove
 	                                                </button>
                                               </div>
                                             ))}
@@ -3303,7 +3303,7 @@ export function UserSettingsLive({
 	                                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 mt-1">
 		                                          <button
 		                                            type="button"
-		                                            className="subtle-link catalog-service-dialog-link-remove"
+			                                            className="subtle-link catalog-service-dialog-link-remove"
 			                                            onClick={() => {
 			                                              const label = service.name.trim() || 'this service';
 			                                              if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
@@ -3311,7 +3311,8 @@ export function UserSettingsLive({
 			                                            }}
 			                                            disabled={savingSection !== null}
 			                                          >
-		                                            Remove
+			                                            <IconTrash size={16} stroke={1.8} aria-hidden />
+			                                            Remove
 		                                          </button>
 		                                          <button
 		                                            type="button"
@@ -3559,12 +3560,13 @@ export function UserSettingsLive({
                                     </select>
                                     <button
                                       type="button"
-                                      className="subtle-link"
+                                      className="subtle-link remove-link"
 	                                      onClick={() => {
 	                                        if (!window.confirm('Remove this option? This cannot be undone.')) return;
 	                                        removeCatalogDialogVariantRow(variantIndex);
 	                                      }}
 	                                    >
+                                      <IconTrash size={16} stroke={1.8} aria-hidden />
                                       Remove
                                     </button>
                                   </div>
@@ -3596,7 +3598,8 @@ export function UserSettingsLive({
 	                            }}
 	                            disabled={savingSection !== null}
 	                          >
-	                            Remove
+		                            <IconTrash size={16} stroke={1.8} aria-hidden />
+		                            Remove
 	                          </button>
                           <div className="catalog-service-dialog-footer-actions">
                             <button
@@ -3815,18 +3818,11 @@ export function UserSettingsLive({
 	                      </div>
 	                    </div>
 	                  ) : null}
-		                  {shopStaff.map((member) => {
-		                    const mobileActionStyle = knowledgeMobile
-		                      ? { display: 'grid', gridTemplateColumns: '1fr 1fr auto', width: '100%', alignItems: 'center' } as const
-		                      : undefined;
-		                    const actionButtonClassName = knowledgeMobile ? 'staff-action-btn' : 'service-edit-icon';
-		                    const actionButtonStyle = knowledgeMobile
-		                      ? { alignItems: 'center', display: 'inline-flex', gap: 6, justifyContent: 'center', width: '100%' } as const
-		                      : undefined;
-		                    return (
-		                      <div
-		                        className={`staff-card ${member.active === false ? 'inactive' : ''}`}
-		                        key={member.id}
+			                  {shopStaff.map((member) => {
+			                    return (
+			                      <div
+			                        className={`staff-card ${member.active === false ? 'inactive' : ''}`}
+			                        key={member.id}
 		                      >
 		                        <div className="staff-card-main">
 		                          <div className="staff-info">
@@ -3843,42 +3839,47 @@ export function UserSettingsLive({
 		                              </span>
 		                            </div>
 		                          </div>
-		                          <div className="staff-card-actions" style={mobileActionStyle}>
-		                            <button
-		                              type="button"
-		                              className={actionButtonClassName}
-		                              style={actionButtonStyle}
-		                              aria-label="Manage services"
-		                              onClick={() => {
-		                                setSelectedStaff(member);
-		                                setStaffDrawerOpen(true);
-		                              }}
-		                            >
-		                              <IconAdjustmentsHorizontal size={18} aria-hidden />
-		                              {knowledgeMobile ? <span>Services</span> : null}
-		                            </button>
-		                            <button
-		                              type="button"
-		                              className={actionButtonClassName}
-		                              style={actionButtonStyle}
-		                              aria-label="Edit staff profile"
-		                              onClick={() => openEditStaffSheet(member)}
-		                            >
-		                              <IconPencil size={18} aria-hidden />
-		                              {knowledgeMobile ? <span>Edit</span> : null}
-		                            </button>
-		                            {knowledgeMobile ? null : <span className="staff-action-divider" aria-hidden="true" />}
-		                            <button
-		                              type="button"
-		                              className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
-		                              aria-pressed={member.active !== false}
-		                              aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
-		                              onClick={() => updateShopStaffMember(member.id, { active: member.active === false })}
-		                            />
-		                          </div>
-		                        </div>
-		                      </div>
-		                    );
+			                          <div className="staff-card-side">
+			                            <div className="staff-status-control">
+			                              <span className="staff-status-label">{member.active === false ? 'Inactive' : 'Active'}</span>
+			                              <button
+			                                type="button"
+			                                className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
+			                                aria-pressed={member.active !== false}
+			                                aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
+			                                onClick={() => updateShopStaffMember(member.id, { active: member.active === false })}
+			                              />
+			                            </div>
+			                          <div className="staff-card-actions">
+			                            <button
+			                              type="button"
+			                              className="service-edit-icon staff-card-action-btn staff-card-action-btn--manage"
+			                              aria-label="Manage services"
+			                              title="Manage services"
+			                              onClick={() => {
+			                                setSelectedStaff(member);
+			                                setStaffDrawerOpen(true);
+			                              }}
+			                            >
+			                              <IconAdjustmentsHorizontal size={18} aria-hidden />
+			                              <span className="staff-card-action-label">Manage services</span>
+			                            </button>
+			                            <span className="staff-action-divider" aria-hidden="true" />
+			                            <button
+			                              type="button"
+			                              className="service-edit-icon staff-card-action-btn staff-card-action-btn--edit"
+			                              aria-label="Edit staff profile"
+			                              title="Edit"
+			                              onClick={() => openEditStaffSheet(member)}
+			                            >
+			                              <IconPencil size={18} aria-hidden />
+			                              <span className="staff-card-action-label">Edit</span>
+			                            </button>
+			                          </div>
+			                          </div>
+			                        </div>
+			                      </div>
+			                    );
 		                  })}
 		                </div>
 	                <StaffDrawer
@@ -3994,7 +3995,7 @@ export function UserSettingsLive({
 		                            <div className="actions-row">
 		                              <button
 		                                type="button"
-		                                className="subtle-link"
+		                                  className="subtle-link remove-link"
 		                                style={{ color: 'var(--danger-text)' }}
 		                                onClick={() => {
 		                                  const label = item.question.trim() || 'this FAQ';
@@ -4002,8 +4003,8 @@ export function UserSettingsLive({
 		                                  patchState('faqs', currentForm.faqs.filter((_, itemIndex) => itemIndex !== index));
 		                                }}
 		                              >
-		                                <IconTrash size={16} stroke={1.8} aria-hidden />
-		                                Remove
+			                                  <IconTrash size={16} stroke={1.8} aria-hidden />
+			                                  Remove
 		                              </button>
 		                            </div>
 		                          </div>
@@ -4873,13 +4874,14 @@ export function UserSettingsLive({
                                 </select>
 	                                <button
 	                                  type="button"
-	                                  className="subtle-link"
+		                                  className="subtle-link remove-link"
 	                                  onClick={() => {
 	                                    if (!window.confirm('Remove this option? This cannot be undone.')) return;
 	                                    removeKnowledgeMobileVariantRow(variantIndex);
 	                                  }}
 	                                >
-	                                  Remove
+		                                  <IconTrash size={16} stroke={1.8} aria-hidden />
+		                                  Remove
 	                                </button>
                               </div>
                             ))}
@@ -4909,7 +4911,8 @@ export function UserSettingsLive({
 	                          }}
 	                          disabled={savingSection !== null}
 	                        >
-	                          Remove
+		                          <IconTrash size={16} stroke={1.8} aria-hidden />
+		                          Remove
                         </button>
                         <div className="flex gap-2">
                           <button
