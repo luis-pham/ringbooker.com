@@ -159,14 +159,6 @@ function cloneStaffProfile(member: StaffWithServices): StaffWithServices {
   };
 }
 
-function parseStaffSpecialtiesInput(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 10);
-}
-
 function sanitizeStaffProfile(member: StaffWithServices): StaffUpdateData {
   return {
     name: member.name.trim(),
@@ -910,11 +902,11 @@ export function UserSettingsLive({
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
   const [editingLegacyServiceIndex, setEditingLegacyServiceIndex] = useState<number | null>(null);
   const [editingCatalogServiceId, setEditingCatalogServiceId] = useState<string | null>(null);
-  const catalogServiceDialogRef = useRef<HTMLDialogElement>(null);
   const [catalogDialogServiceId, setCatalogDialogServiceId] = useState<string | null>(null);
   const [catalogDialogDraft, setCatalogDialogDraft] = useState<ShopService | null>(null);
   const [catalogDialogError, setCatalogDialogError] = useState<string | null>(null);
   const [catalogGroupSheet, setCatalogGroupSheet] = useState<CatalogGroupSheetState>(null);
+  const staffProfileDialogRef = useRef<HTMLDialogElement>(null);
   const knowledgeMobile = useIsKnowledgeMobile();
   const [knowledgeAddressSheetOpen, setKnowledgeAddressSheetOpen] = useState(false);
   const [knowledgeAddressDraft, setKnowledgeAddressDraft] = useState('');
@@ -926,12 +918,11 @@ export function UserSettingsLive({
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffLoaded, setStaffLoaded] = useState(false);
   const [staffLoadError, setStaffLoadError] = useState<string | null>(null);
-  const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
   const [staffDrawerOpen, setStaffDrawerOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffWithServices | null>(null);
+  const [staffProfileSheet, setStaffProfileSheet] = useState<StaffProfileSheetState>(null);
   const [knowledgeFaqCreateSheetOpen, setKnowledgeFaqCreateSheetOpen] = useState(false);
   const [knowledgeFaqCreateDraft, setKnowledgeFaqCreateDraft] = useState<BusinessFaqItem>(() => emptyFaqItem());
-  const legacyServiceDialogRef = useRef<HTMLDialogElement>(null);
   const [legacyDialogIndex, setLegacyDialogIndex] = useState<number | null>(null);
   const [legacyDialogDraft, setLegacyDialogDraft] = useState<ServiceItem | null>(null);
   const [legacyFormError, setLegacyFormError] = useState<string | null>(null);
@@ -1395,16 +1386,26 @@ export function UserSettingsLive({
   }, [portal, activeTab]);
 
   useEffect(() => {
-    if (!catalogDialogServiceId || !catalogDialogDraft) return;
-    const el = catalogServiceDialogRef.current;
+    if (!staffProfileSheet || knowledgeMobile) return;
+    const el = staffProfileDialogRef.current;
     if (el && !el.open) el.showModal();
-  }, [catalogDialogServiceId, catalogDialogDraft]);
+  }, [staffProfileSheet, knowledgeMobile]);
 
   useEffect(() => {
-    if (legacyDialogIndex === null || !legacyDialogDraft) return;
-    const el = legacyServiceDialogRef.current;
-    if (el && !el.open) el.showModal();
-  }, [legacyDialogIndex, legacyDialogDraft]);
+    if ((!catalogDialogServiceId || !catalogDialogDraft) && (legacyDialogIndex === null || !legacyDialogDraft)) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      if (catalogDialogServiceId && catalogDialogDraft) closeCatalogServiceDialog();
+      if (legacyDialogIndex !== null && legacyDialogDraft) closeLegacyServiceDialog();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [catalogDialogServiceId, catalogDialogDraft, legacyDialogIndex, legacyDialogDraft]);
 
   function patchState<K extends keyof SettingsState>(key: K, value: SettingsState[K]) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
@@ -1469,10 +1470,7 @@ export function UserSettingsLive({
         setKnowledgeLegacyMobileError(null);
       }
       if (legacyDialogIndex === index) {
-        setLegacyDialogIndex(null);
-        setLegacyDialogDraft(null);
-        setLegacyFormError(null);
-        legacyServiceDialogRef.current?.close();
+        closeLegacyServiceDialog();
       }
     };
     if (index < 0 || index >= currentForm.services.length) {
@@ -1658,10 +1656,7 @@ export function UserSettingsLive({
         setKnowledgeCatalogMobileError(null);
       }
       if (catalogDialogServiceId === serviceId) {
-        setCatalogDialogServiceId(null);
-        setCatalogDialogDraft(null);
-        setCatalogDialogError(null);
-        catalogServiceDialogRef.current?.close();
+        closeCatalogServiceDialog();
       }
     };
     if (!currentForm.service_catalog.services.some((service) => service.id === serviceId)) {
@@ -1680,7 +1675,9 @@ export function UserSettingsLive({
   }
 
   function closeCatalogServiceDialog() {
-    catalogServiceDialogRef.current?.close();
+    setCatalogDialogServiceId(null);
+    setCatalogDialogDraft(null);
+    setCatalogDialogError(null);
   }
 
   function openCatalogServiceEditor(service: ShopService) {
@@ -1859,7 +1856,9 @@ export function UserSettingsLive({
   }
 
   function closeLegacyServiceDialog() {
-    legacyServiceDialogRef.current?.close();
+    setLegacyDialogIndex(null);
+    setLegacyDialogDraft(null);
+    setLegacyFormError(null);
   }
 
   function openLegacyServiceEditor(index: number) {
@@ -1995,15 +1994,31 @@ export function UserSettingsLive({
     setHourPreset('custom');
   }
 
-  function addStaffDraft() {
-    const draft = createStaffDraft();
-    setShopStaff((current) => [...current, draft]);
-    setExpandedStaffId(draft.id);
-  }
-
   function updateShopStaffMember(staffId: string, patch: Partial<StaffWithServices>) {
     setShopStaff((current) => current.map((member) => (member.id === staffId ? { ...member, ...patch } : member)));
     setSelectedStaff((current) => (current?.id === staffId ? { ...current, ...patch } : current));
+  }
+
+  function openAddStaffSheet() {
+    setStaffProfileSheet({
+      mode: 'add',
+      draft: { ...createStaffDraft(), role: STAFF_ROLE_OPTIONS[0] },
+      error: null,
+    });
+  }
+
+  function openEditStaffSheet(member: StaffWithServices) {
+    setStaffProfileSheet({
+      mode: 'edit',
+      draft: cloneStaffProfile(member),
+      error: null,
+    });
+  }
+
+  function updateStaffProfileDraft(patch: Partial<StaffWithServices>) {
+    setStaffProfileSheet((current) => (
+      current ? { ...current, draft: { ...current.draft, ...patch }, error: null } : current
+    ));
   }
 
   async function createStaffMemberRecord(data: StaffUpdateData, allServices: boolean, serviceIds: string[]) {
@@ -2032,7 +2047,9 @@ export function UserSettingsLive({
     return body.staff;
   }
 
-  async function saveAllStaffProfiles() {
+  async function saveStaffProfileSheet() {
+    const sheet = staffProfileSheet;
+    if (!sheet) return;
     if (!settingsReady) {
       showToast({
         type: 'error',
@@ -2040,42 +2057,51 @@ export function UserSettingsLive({
       });
       return;
     }
+    const draft = {
+      ...sheet.draft,
+      role: normalizeStaffRoleOption(sheet.draft.role),
+    };
+    const payload = sanitizeStaffProfile(draft);
+    if (!payload.name) {
+      setStaffProfileSheet((current) => (
+        current ? { ...current, error: 'Staff name is required.' } : current
+      ));
+      return;
+    }
     setSavingSection('staff');
     setStatus(null);
     try {
-      const saved: StaffWithServices[] = [];
-      for (const member of shopStaff) {
-        const payload = sanitizeStaffProfile(member);
-        if (!payload.name) {
-          if (isDraftStaffId(member.id)) continue;
-          throw new Error('staff_name_required');
-        }
-        const result = isDraftStaffId(member.id)
-          ? await createStaffMemberRecord(payload, member.allServices !== false, member.allServices ? [] : member.serviceIds)
-          : await saveStaffProfileRecord(member.id, payload);
-        saved.push(result);
+      const result = sheet.mode === 'add'
+        ? await createStaffMemberRecord(payload, draft.allServices !== false, draft.allServices ? [] : draft.serviceIds)
+        : await saveStaffProfileRecord(draft.id, payload);
+      if (sheet.mode === 'add') {
+        setShopStaff((current) => [...current, result].sort((a, b) => a.name.localeCompare(b.name)));
+      } else {
+        setShopStaff((current) => (
+          current.map((member) => (member.id === result.id ? result : member))
+        ));
+        setSelectedStaff((current) => (current?.id === result.id ? result : current));
       }
-      setShopStaff(saved.sort((a, b) => a.name.localeCompare(b.name)));
-      setExpandedStaffId((current) => {
-        if (!current || isDraftStaffId(current)) return null;
-        return saved.some((member) => member.id === current) ? current : null;
-      });
+      setStaffProfileSheet(null);
       showToast({ type: 'success', message: 'Staff saved' });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'staff_save_failed';
-      showToast({ type: 'error', message: formatSaveErrorMessage(message, 'Staff saved') });
+      const formatted = formatSaveErrorMessage(message, 'Staff saved');
+      setStaffProfileSheet((current) => (
+        current ? { ...current, error: formatted } : current
+      ));
+      showToast({ type: 'error', message: formatted });
     } finally {
       setSavingSection(null);
     }
   }
 
-  async function removeStaffMember(member: StaffWithServices) {
+  async function removeStaffMember(member: StaffWithServices): Promise<boolean> {
     if (isDraftStaffId(member.id)) {
       setShopStaff((current) => current.filter((item) => item.id !== member.id));
-      setExpandedStaffId((current) => (current === member.id ? null : current));
-      return;
+      return true;
     }
-    if (!window.confirm(`Remove ${member.name.trim() || 'this staff member'}? This cannot be undone.`)) return;
+    if (!window.confirm(`Remove ${member.name.trim() || 'this staff member'}? This cannot be undone.`)) return false;
     setSavingSection('staff');
     try {
       const response = await fetch(`/api/backend/user/staff/${encodeURIComponent(member.id)}`, {
@@ -2086,12 +2112,13 @@ export function UserSettingsLive({
         throw new Error(body.error ?? 'staff_delete_failed');
       }
       setShopStaff((current) => current.filter((item) => item.id !== member.id));
-      setExpandedStaffId((current) => (current === member.id ? null : current));
       setSelectedStaff((current) => (current?.id === member.id ? null : current));
       showToast({ type: 'success', message: 'Staff removed' });
+      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'staff_delete_failed';
       showToast({ type: 'error', message: formatSaveErrorMessage(message, 'Staff removed') });
+      return false;
     } finally {
       setSavingSection(null);
     }
@@ -2404,6 +2431,172 @@ export function UserSettingsLive({
           ? 'Available on Professional'
           : `Available on ${requiredPlan[0].toUpperCase()}${requiredPlan.slice(1)}`;
     return <span className="tag orange knowledge-plan-lock-badge">{label}</span>;
+  }
+
+  function renderStaffProfileSheet() {
+    if (!staffProfileSheet) return null;
+    const isSavingStaff = savingSection === 'staff';
+    const title = staffProfileSheet.mode === 'add' ? 'Add staff' : 'Edit staff';
+    const staffName = staffProfileSheet.draft.name.trim() || 'Staff member';
+    const roleValue = normalizeStaffRoleOption(staffProfileSheet.draft.role);
+    const mobileContent = (
+      <div className="staff-drawer-shell">
+        <div className="staff-drawer-scroll">
+          <section className="staff-drawer-section">
+            <div className="staff-profile-fields">
+              <label className="field-label">
+                Name
+                <input
+                  value={staffProfileSheet.draft.name}
+                  onChange={(event) => updateStaffProfileDraft({ name: event.target.value })}
+                  placeholder="Jessica Lee"
+                />
+              </label>
+              <label className="field-label">
+                Role
+                <select
+                  value={roleValue}
+                  onChange={(event) => updateStaffProfileDraft({ role: event.target.value })}
+                >
+                  {STAFF_ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+        </div>
+        <div className="staff-drawer-footer staff-profile-footer">
+          <div className="staff-profile-footer-left">
+            {staffProfileSheet.mode === 'edit' ? (
+              <button
+                type="button"
+                className="staff-drawer-remove"
+                disabled={isSavingStaff}
+                onClick={() => {
+                  void (async () => {
+                    const removed = await removeStaffMember(staffProfileSheet.draft);
+                    if (removed) setStaffProfileSheet(null);
+                  })();
+                }}
+              >
+                Remove
+              </button>
+            ) : null}
+            {staffProfileSheet.error ? <div className="staff-drawer-error">{staffProfileSheet.error}</div> : null}
+          </div>
+          <div className="staff-profile-footer-actions">
+            <button type="button" className="staff-drawer-secondary" onClick={() => setStaffProfileSheet(null)} disabled={isSavingStaff}>
+              Cancel
+            </button>
+            <button type="button" className="staff-drawer-primary" onClick={() => void saveStaffProfileSheet()} disabled={isSavingStaff}>
+              {isSavingStaff ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+        <style jsx>{`
+          .staff-drawer-shell{display:flex;min-height:100%;flex-direction:column;background:#fff;color:#111827}
+          .staff-drawer-scroll{flex:1;overflow:auto;padding:20px}
+          .staff-drawer-section{padding:0 0 20px}
+          .staff-profile-fields{display:grid;gap:16px}
+          .staff-drawer-footer{align-items:center;background:#fff;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:space-between;padding:14px 20px;position:sticky;bottom:0}
+          .staff-profile-footer-left{align-items:center;display:flex;gap:12px;margin-right:auto;min-width:0}
+          .staff-profile-footer-actions{display:flex;gap:10px}
+          .staff-drawer-secondary,.staff-drawer-primary{border-radius:8px;cursor:pointer;font:inherit;min-height:40px;padding:9px 12px}
+          .staff-drawer-secondary{background:#fff;border:1px solid #d9dde5;color:#111827}
+          .staff-drawer-primary{background:#111827;border:1px solid #111827;color:#fff;min-width:126px}
+          .staff-drawer-error{color:#b91c1c;font-size:13px}
+          .staff-drawer-remove{background:transparent;border:0;color:#b91c1c;cursor:pointer;font:inherit;font-weight:650;min-height:40px;padding:9px 0}
+          .staff-drawer-primary:disabled,.staff-drawer-secondary:disabled,.staff-drawer-remove:disabled{cursor:not-allowed;opacity:.55}
+          @media(max-width:860px){
+            .staff-drawer-scroll{max-height:calc(85vh - 88px);padding:16px}
+            .staff-drawer-footer{align-items:stretch;flex-wrap:wrap;padding:12px 16px}
+            .staff-profile-footer-left,.staff-profile-footer-actions{width:100%}
+            .staff-profile-footer-actions button{flex:1}
+          }
+        `}</style>
+      </div>
+    );
+
+    if (knowledgeMobile) {
+      return (
+        <BottomSheet isOpen onClose={() => setStaffProfileSheet(null)} title={title}>
+          {mobileContent}
+        </BottomSheet>
+      );
+    }
+
+    return (
+      <dialog
+        ref={staffProfileDialogRef}
+        className="catalog-service-dialog"
+        onClose={() => setStaffProfileSheet(null)}
+      >
+        <div className="catalog-service-dialog-panel">
+          <header className="catalog-service-dialog-header">
+            <div className="catalog-service-dialog-header-main">
+              <span className="catalog-service-dialog-header-name">{title}</span>
+              <span className="catalog-service-dialog-header-meta">
+                {staffProfileSheet.mode === 'add' ? 'Staff profile' : staffName}
+              </span>
+            </div>
+            <button type="button" className="catalog-service-dialog-close" aria-label="Close" onClick={() => staffProfileDialogRef.current?.close()}>
+              ✕
+            </button>
+          </header>
+          <div className="catalog-service-dialog-body">
+            <div className="catalog-service-dialog-grid">
+              <div className="catalog-service-dialog-row1">
+                <div className="field">
+                  <label>name</label>
+                  <input
+                    value={staffProfileSheet.draft.name}
+                    onChange={(event) => updateStaffProfileDraft({ name: event.target.value })}
+                    placeholder="Jessica Lee"
+                  />
+                </div>
+                <div className="field">
+                  <label>role</label>
+                  <select value={roleValue} onChange={(event) => updateStaffProfileDraft({ role: event.target.value })}>
+                    {STAFF_ROLE_OPTIONS.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {staffProfileSheet.error ? <p className="catalog-service-dialog-error">{staffProfileSheet.error}</p> : null}
+            </div>
+          </div>
+          <footer className="catalog-service-dialog-footer">
+            {staffProfileSheet.mode === 'edit' ? (
+              <button
+                type="button"
+                className="subtle-link catalog-service-dialog-link-remove"
+                disabled={isSavingStaff}
+                onClick={() => {
+                  void (async () => {
+                    const removed = await removeStaffMember(staffProfileSheet.draft);
+                    if (removed) staffProfileDialogRef.current?.close();
+                  })();
+                }}
+              >
+                Remove
+              </button>
+            ) : (
+              <div className="catalog-service-dialog-footer-spacer" />
+            )}
+            <div className="catalog-service-dialog-footer-actions">
+              <button type="button" className="btn catalog-service-dialog-btn-cancel" onClick={() => staffProfileDialogRef.current?.close()} disabled={isSavingStaff}>
+                Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
+              </button>
+              <button type="button" className="btn user-save" onClick={() => void saveStaffProfileSheet()} disabled={isSavingStaff}>
+                {isSavingStaff ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </footer>
+        </div>
+      </dialog>
+    );
   }
 
   const pageContentClass = useMemo(() => {
@@ -2812,104 +3005,96 @@ export function UserSettingsLive({
 	                          </div>
 	                        ))}
 	                      </div>
-                      <dialog
-                        ref={legacyServiceDialogRef}
-                        className="catalog-service-dialog catalog-service-dialog--legacy"
-                        onClose={() => {
-                          setLegacyDialogIndex(null);
-                          setLegacyDialogDraft(null);
-                          setLegacyFormError(null);
-                        }}
-                      >
-                        <div className="catalog-service-dialog-panel">
-                          <header className="catalog-service-dialog-header">
-                            <div className="catalog-service-dialog-header-main">
-                              <span className="catalog-service-dialog-header-name">
-                                {legacyDialogDraft?.name?.trim() ? legacyDialogDraft.name.trim() : 'Untitled service'}
-                              </span>
-                              {legacyDialogDraft ? (
-                                <span className="catalog-service-dialog-header-meta">
-                                  ${Math.round(Number(legacyDialogDraft.price) || 0)} · {legacyDialogDraft.duration_min || 60} min
-                                </span>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              className="catalog-service-dialog-close"
-                              aria-label="Close"
-                              onClick={() => legacyServiceDialogRef.current?.close()}
-                            >
-                              ✕
-                            </button>
-                          </header>
-                          <div className="catalog-service-dialog-body">
-                            {legacyDialogDraft ? (
-                              <div className="catalog-service-dialog-grid">
-                                <div className="catalog-service-dialog-row2">
-                                  <div className="field">
-                                    <label>service name</label>
-                                    <input
-                                      value={legacyDialogDraft.name}
-                                      onChange={(event) => setLegacyDialogDraft({ ...legacyDialogDraft, name: event.target.value })}
-                                      placeholder="Gel Manicure"
-                                    />
-                                    <p className="service-name-edit-hint">Shorten so callers can understand</p>
-                                  </div>
-                                </div>
-                                <div className="catalog-service-dialog-row3">
-                                  <div className="field">
-                                    <label>duration</label>
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={legacyDialogDraft.duration_min || ''}
-                                      onChange={(event) =>
-                                        setLegacyDialogDraft({
-                                          ...legacyDialogDraft,
-                                          duration_min: event.target.value === '' ? 0 : Number(event.target.value),
-                                        })
-                                      }
-                                      placeholder="60"
-                                    />
-                                  </div>
-                                  <div className="field">
-                                    <label>price</label>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      value={legacyDialogDraft.price}
-                                      onChange={(event) => setLegacyDialogDraft({ ...legacyDialogDraft, price: Number(event.target.value) })}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            ) : null}
-                            {legacyFormError ? <p className="catalog-service-dialog-error">{legacyFormError}</p> : null}
-                          </div>
-                          <footer className="catalog-service-dialog-footer">
-                            <div className="catalog-service-dialog-footer-spacer" />
-                            <button
-                              type="button"
-                              className="subtle-link catalog-service-dialog-link-remove"
-                              onClick={() => {
-                                if (legacyDialogIndex === null || !legacyDialogDraft) return;
-                                const label = legacyDialogDraft.name.trim() || 'this service';
-                                if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
-	                                void removeLegacyService(legacyDialogIndex);
-	                              }}
-	                              disabled={savingSection !== null}
-	                            >
-	                              Remove
-	                            </button>
-                            <button type="button" className="btn catalog-service-dialog-btn-cancel" onClick={() => legacyServiceDialogRef.current?.close()}>
-                              Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
-	                            </button>
-	                            <button type="button" className="btn user-save" onClick={() => void saveLegacyServiceDialog()} disabled={savingSection !== null}>
-	                              {savingSection === 'services' ? 'Saving...' : isNewLegacyServiceDraft(legacyDialogIndex) ? 'Save service' : 'Save changes'}
-	                            </button>
-                          </footer>
-                        </div>
-                      </dialog>
+	                      {legacyDialogIndex !== null && legacyDialogDraft ? (
+	                        <div className="service-editor-drawer-overlay" role="presentation" onClick={closeLegacyServiceDialog}>
+	                          <aside
+	                            className="service-editor-drawer-panel service-editor-drawer-panel--legacy"
+	                            role="dialog"
+	                            aria-modal="true"
+	                            aria-label={isNewLegacyServiceDraft(legacyDialogIndex) ? 'Add service' : 'Edit service'}
+	                            onClick={(event) => event.stopPropagation()}
+	                          >
+	                            <header className="catalog-service-dialog-header service-editor-drawer-header">
+	                              <div className="catalog-service-dialog-header-main">
+	                                <span className="catalog-service-dialog-header-name">
+	                                  {legacyDialogDraft.name.trim() ? legacyDialogDraft.name.trim() : 'Untitled service'}
+	                                </span>
+	                                <span className="catalog-service-dialog-header-meta">
+	                                  ${Math.round(Number(legacyDialogDraft.price) || 0)} · {legacyDialogDraft.duration_min || 60} min
+	                                </span>
+	                              </div>
+	                              <button type="button" className="catalog-service-dialog-close" aria-label="Close" onClick={closeLegacyServiceDialog}>
+	                                ✕
+	                              </button>
+	                            </header>
+	                            <div className="catalog-service-dialog-body service-editor-drawer-body">
+	                              <div className="catalog-service-dialog-grid">
+	                                <div className="catalog-service-dialog-row2">
+	                                  <div className="field">
+	                                    <label>service name</label>
+	                                    <input
+	                                      value={legacyDialogDraft.name}
+	                                      onChange={(event) => setLegacyDialogDraft({ ...legacyDialogDraft, name: event.target.value })}
+	                                      placeholder="Gel Manicure"
+	                                    />
+	                                    <p className="service-name-edit-hint">Shorten so callers can understand</p>
+	                                  </div>
+	                                </div>
+	                                <div className="catalog-service-dialog-row3">
+	                                  <div className="field">
+	                                    <label>duration</label>
+	                                    <input
+	                                      type="number"
+	                                      min={1}
+	                                      value={legacyDialogDraft.duration_min || ''}
+	                                      onChange={(event) =>
+	                                        setLegacyDialogDraft({
+	                                          ...legacyDialogDraft,
+	                                          duration_min: event.target.value === '' ? 0 : Number(event.target.value),
+	                                        })
+	                                      }
+	                                      placeholder="60"
+	                                    />
+	                                  </div>
+	                                  <div className="field">
+	                                    <label>price</label>
+	                                    <input
+	                                      type="number"
+	                                      min={0}
+	                                      value={legacyDialogDraft.price}
+	                                      onChange={(event) => setLegacyDialogDraft({ ...legacyDialogDraft, price: Number(event.target.value) })}
+	                                    />
+	                                  </div>
+	                                </div>
+	                              </div>
+	                              {legacyFormError ? <p className="catalog-service-dialog-error">{legacyFormError}</p> : null}
+	                            </div>
+	                            <footer className="catalog-service-dialog-footer service-editor-drawer-footer">
+	                              <button
+	                                type="button"
+	                                className="subtle-link catalog-service-dialog-link-remove"
+	                                onClick={() => {
+	                                  if (legacyDialogIndex === null) return;
+	                                  const label = legacyDialogDraft.name.trim() || 'this service';
+	                                  if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+		                                  void removeLegacyService(legacyDialogIndex);
+		                                }}
+		                                disabled={savingSection !== null}
+		                              >
+		                                Remove
+		                              </button>
+	                              <div className="catalog-service-dialog-footer-actions">
+	                                <button type="button" className="btn catalog-service-dialog-btn-cancel" onClick={closeLegacyServiceDialog}>
+	                                  Cancel
+		                              </button>
+		                              <button type="button" className="btn user-save" onClick={() => void saveLegacyServiceDialog()} disabled={savingSection !== null}>
+		                                {savingSection === 'services' ? 'Saving...' : isNewLegacyServiceDraft(legacyDialogIndex) ? 'Save service' : 'Save changes'}
+		                              </button>
+	                              </div>
+	                            </footer>
+	                          </aside>
+	                        </div>
+	                      ) : null}
                     </>
                   ) : (
                     <>
@@ -3153,18 +3338,16 @@ export function UserSettingsLive({
                         );
                       })}
                   </div>
-                  <dialog
-                    ref={catalogServiceDialogRef}
-                    className="catalog-service-dialog"
-                    onClose={() => {
-                      setCatalogDialogServiceId(null);
-                      setCatalogDialogDraft(null);
-                      setCatalogDialogError(null);
-                    }}
-                  >
-                    {catalogDialogDraft && catalogDialogServiceId ? (
-                      <div className="catalog-service-dialog-panel">
-                        <header className="catalog-service-dialog-header">
+	                  {catalogDialogDraft && catalogDialogServiceId ? (
+	                    <div className="service-editor-drawer-overlay" role="presentation" onClick={closeCatalogServiceDialog}>
+	                      <aside
+	                        className="service-editor-drawer-panel service-editor-drawer-panel--catalog"
+	                        role="dialog"
+	                        aria-modal="true"
+	                        aria-label={isNewCatalogServiceDraft(catalogDialogServiceId) ? 'Add service' : 'Edit service'}
+	                        onClick={(event) => event.stopPropagation()}
+	                      >
+	                        <header className="catalog-service-dialog-header service-editor-drawer-header">
                           <div className="catalog-service-dialog-header-main">
                             <span
                               className={`catalog-service-dialog-header-name${
@@ -3203,12 +3386,12 @@ export function UserSettingsLive({
                             type="button"
                             className="catalog-service-dialog-close"
                             aria-label="Close"
-                            onClick={() => catalogServiceDialogRef.current?.close()}
+	                            onClick={closeCatalogServiceDialog}
                           >
                             ✕
                           </button>
                         </header>
-                        <div className="catalog-service-dialog-body max-h-[calc(100dvh-160px)] min-h-0 flex-1 overflow-y-auto">
+	                        <div className="catalog-service-dialog-body service-editor-drawer-body">
                           <div className="catalog-service-dialog-grid catalog-service-dialog-grid--desktop">
                             <div className="catalog-service-dialog-desktop-row1">
                               <div className="field">
@@ -3402,7 +3585,7 @@ export function UserSettingsLive({
                           </div>
                           {catalogDialogError ? <p className="catalog-service-dialog-error">{catalogDialogError}</p> : null}
                         </div>
-                        <footer className="catalog-service-dialog-footer">
+	                        <footer className="catalog-service-dialog-footer service-editor-drawer-footer">
                           <button
                             type="button"
                             className="subtle-link catalog-service-dialog-link-remove"
@@ -3419,18 +3602,18 @@ export function UserSettingsLive({
                             <button
                               type="button"
                               className="btn catalog-service-dialog-btn-cancel"
-                              onClick={() => catalogServiceDialogRef.current?.close()}
-                            >
-                              Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
+	                              onClick={closeCatalogServiceDialog}
+	                            >
+	                              Cancel
 	                            </button>
 	                            <button type="button" className="btn user-save" onClick={() => void saveCatalogServiceDialog()} disabled={savingSection !== null}>
 	                              {savingSection === 'services' ? 'Saving...' : isNewCatalogServiceDraft(catalogDialogServiceId) ? 'Save service' : 'Save changes'}
 	                            </button>
                           </div>
                         </footer>
-                      </div>
-                    ) : null}
-                  </dialog>
+	                      </aside>
+	                    </div>
+	                  ) : null}
 	                  <OnboardingAddGroupSheet
 	                    isOpen={catalogGroupSheet !== null}
 	                    onClose={() => setCatalogGroupSheet(null)}
@@ -3571,8 +3754,8 @@ export function UserSettingsLive({
                     <div className="service-catalog-actions">
 	                      <button
 	                        type="button"
-	                        className="btn"
-	                        onClick={addStaffDraft}
+		                        className="btn"
+		                        onClick={openAddStaffSheet}
 	                        disabled={savingSection !== null || staffLoading || !staffLoaded || staffLoadError !== null}
 	                      >
                         <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
@@ -3617,8 +3800,8 @@ export function UserSettingsLive({
 	                      <div className="service-catalog-actions">
 	                      <button
 		                        type="button"
-		                        className="btn staff-empty-add"
-		                        onClick={addStaffDraft}
+			                        className="btn staff-empty-add"
+			                        onClick={openAddStaffSheet}
 		                        disabled={savingSection !== null || staffLoading || !staffLoaded}
 		                      >
 	                        <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
@@ -3632,117 +3815,72 @@ export function UserSettingsLive({
 	                      </div>
 	                    </div>
 	                  ) : null}
-	                  {shopStaff.map((member) => {
-	                    const isExpanded = expandedStaffId === member.id;
-	                    const isDraft = isDraftStaffId(member.id);
-	                    return (
-	                      <div
-	                        className={`staff-card ${member.active === false ? 'inactive' : ''}`}
-	                        key={member.id}
-	                      >
-	                        <div className="staff-card-main">
-	                          <div className="staff-info">
-	                            <div className="staff-name">{member.name.trim() || 'Staff member'}</div>
-	                            <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
-	                            <div className="staff-spec-tags">
-	                              <span className="staff-spec staff-spec--services">
-	                                {member.allServices ? 'All services' : `${member.serviceIds.length} services`}
-	                              </span>
-	                              <span
-	                                className={`staff-spec staff-spec--sync ${member.syncedFromPlatform ? 'is-synced' : 'is-not-synced'}`}
-	                              >
-	                                {member.syncedFromPlatform ? 'Synced' : 'Not synced'}
-	                              </span>
-	                            </div>
-	                          </div>
-	                          <div className="staff-card-actions">
-	                            <button
-	                              type="button"
-	                              className="staff-action-btn"
-	                              disabled={isDraft}
-	                              onClick={() => {
-	                                setSelectedStaff(member);
-	                                setStaffDrawerOpen(true);
-	                              }}
-	                            >
-	                              Services
-	                            </button>
-	                            <button
-	                              type="button"
-	                              className="staff-action-btn"
-	                              aria-expanded={isExpanded}
-	                              aria-label={isExpanded ? 'Collapse staff profile' : 'Edit staff profile'}
-	                              onClick={() => setExpandedStaffId((current) => (current === member.id ? null : member.id))}
-	                            >
-	                              Edit
-	                            </button>
-	                            <span className="staff-action-divider" aria-hidden="true" />
-	                            <button
-	                              type="button"
-	                              className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
-	                              aria-pressed={member.active !== false}
-	                              aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
-	                              onClick={() => updateShopStaffMember(member.id, { active: member.active === false })}
-	                            />
-	                          </div>
-	                        </div>
-	                        {isExpanded ? (
-	                          <div className="staff-card-detail">
-	                            <div className="form-grid">
-	                              <label className="field">
-	                                <span>Name</span>
-	                                <input
-	                                  value={member.name}
-	                                  onChange={(event) => updateShopStaffMember(member.id, { name: event.target.value })}
-	                                  placeholder="Jessica Lee"
-	                                />
-	                              </label>
-	                              <label className="field">
-	                                <span>Role / title</span>
-	                                <input
-	                                  value={member.role ?? ''}
-	                                  onChange={(event) => updateShopStaffMember(member.id, { role: event.target.value })}
-	                                  placeholder="Owner / stylist"
-	                                />
-	                              </label>
-	                              <label className="field field-full">
-	                                <span>Specialties</span>
-	                                <input
-	                                  value={(member.specialties ?? []).join(', ')}
-	                                  onChange={(event) => updateShopStaffMember(member.id, {
-	                                    specialties: parseStaffSpecialtiesInput(event.target.value),
-	                                  })}
-	                                  placeholder="Color, cuts, blowouts"
-	                                />
-	                              </label>
-	                              <label className="field field-full">
-	                                <span>Notes for AI</span>
-	                                <textarea
-	                                  value={member.notes ?? ''}
-	                                  onChange={(event) => updateShopStaffMember(member.id, { notes: event.target.value })}
-	                                  placeholder="Optional context for callers."
-	                                />
-	                              </label>
-	                            </div>
-	                            <div className="staff-detail-actions">
-	                              <button type="button" className="subtle-link" onClick={() => void removeStaffMember(member)}>
-	                                Remove
-	                              </button>
-	                              <span>Service assignment is managed from the Services button.</span>
-	                            </div>
-	                          </div>
-	                        ) : null}
-	                      </div>
-	                    );
-	                  })}
-	                </div>
-	                {!isLocked('edit_staff') && !staffLoadError && shopStaff.length > 0 ? (
-	                  <div className="settings-save-footer settings-tab-content-frame">
-	                    <button type="button" className="btn user-save" disabled={savingSection !== null} onClick={() => void saveAllStaffProfiles()}>
-	                      {savingSection === 'staff' ? 'Saving...' : 'Save staff'}
-	                    </button>
-	                  </div>
-	                ) : null}
+		                  {shopStaff.map((member) => {
+		                    const mobileActionStyle = knowledgeMobile
+		                      ? { display: 'grid', gridTemplateColumns: '1fr 1fr auto', width: '100%', alignItems: 'center' } as const
+		                      : undefined;
+		                    const actionButtonClassName = knowledgeMobile ? 'staff-action-btn' : 'service-edit-icon';
+		                    const actionButtonStyle = knowledgeMobile
+		                      ? { alignItems: 'center', display: 'inline-flex', gap: 6, justifyContent: 'center', width: '100%' } as const
+		                      : undefined;
+		                    return (
+		                      <div
+		                        className={`staff-card ${member.active === false ? 'inactive' : ''}`}
+		                        key={member.id}
+		                      >
+		                        <div className="staff-card-main">
+		                          <div className="staff-info">
+		                            <div className="staff-name">{member.name.trim() || 'Staff member'}</div>
+		                            <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
+		                            <div className="staff-spec-tags">
+		                              <span className="staff-spec staff-spec--services">
+		                                {member.allServices ? 'All services' : `${member.serviceIds.length} services`}
+		                              </span>
+		                              <span
+		                                className={`staff-spec staff-spec--sync ${member.syncedFromPlatform ? 'is-synced' : 'is-not-synced'}`}
+		                              >
+		                                {member.syncedFromPlatform ? 'Synced' : 'Not synced'}
+		                              </span>
+		                            </div>
+		                          </div>
+		                          <div className="staff-card-actions" style={mobileActionStyle}>
+		                            <button
+		                              type="button"
+		                              className={actionButtonClassName}
+		                              style={actionButtonStyle}
+		                              aria-label="Manage services"
+		                              onClick={() => {
+		                                setSelectedStaff(member);
+		                                setStaffDrawerOpen(true);
+		                              }}
+		                            >
+		                              <IconAdjustmentsHorizontal size={18} aria-hidden />
+		                              {knowledgeMobile ? <span>Services</span> : null}
+		                            </button>
+		                            <button
+		                              type="button"
+		                              className={actionButtonClassName}
+		                              style={actionButtonStyle}
+		                              aria-label="Edit staff profile"
+		                              onClick={() => openEditStaffSheet(member)}
+		                            >
+		                              <IconPencil size={18} aria-hidden />
+		                              {knowledgeMobile ? <span>Edit</span> : null}
+		                            </button>
+		                            {knowledgeMobile ? null : <span className="staff-action-divider" aria-hidden="true" />}
+		                            <button
+		                              type="button"
+		                              className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
+		                              aria-pressed={member.active !== false}
+		                              aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
+		                              onClick={() => updateShopStaffMember(member.id, { active: member.active === false })}
+		                            />
+		                          </div>
+		                        </div>
+		                      </div>
+		                    );
+		                  })}
+		                </div>
 	                <StaffDrawer
 	                  isOpen={staffDrawerOpen}
 	                  onClose={() => {
@@ -3750,10 +3888,11 @@ export function UserSettingsLive({
 	                    setSelectedStaff(null);
 	                  }}
 	                  staff={selectedStaff}
-	                  serviceCatalog={currentForm.service_catalog ?? null}
-	                  onSaveServices={saveStaffServices}
-	                />
-              </div>
+		                  serviceCatalog={currentForm.service_catalog ?? null}
+		                  onSaveServices={saveStaffServices}
+		                />
+		                {renderStaffProfileSheet()}
+	              </div>
             </section>
             ) : null}
 
