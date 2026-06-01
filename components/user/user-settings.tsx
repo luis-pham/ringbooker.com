@@ -802,6 +802,13 @@ html[data-user-theme="dark"]{
 .service-catalog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
 .service-catalog-actions .btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .service-catalog-actions .btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.staff-empty .service-catalog-actions,
+.faq-empty-state .service-catalog-actions{
+  width:100%;max-width:280px;margin-left:auto;margin-right:auto;justify-items:stretch;
+}
+.staff-empty .service-catalog-actions{margin-top:16px}
+.faq-empty-state .service-catalog-actions{margin-top:0}
+.faq-empty-state .service-catalog-actions .faq-empty-cta{margin-top:0}
 .service-group-list{display:grid;gap:16px}
 .service-group-card{border:1px solid var(--border);border-radius:14px;background:var(--surface-card);overflow:hidden}
 .service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:1px solid var(--border)}
@@ -2000,7 +2007,12 @@ html[data-user-theme="dark"] .plan-chip{
     border-bottom:1px solid #f0f1f3;
   }
   .service-catalog-heading{display:grid;gap:12px}
-  .service-catalog-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .service-catalog-actions{display:grid;grid-template-columns:1fr;width:100%;margin-left:0}
+  .knowledge-portal-main .panel-head.service-catalog-heading{align-items:stretch}
+  .staff-empty .service-catalog-actions,
+  .faq-empty-state .service-catalog-actions{width:100%;max-width:none;margin-top:16px}
+  .faq-empty-state .service-catalog-actions .faq-empty-cta{width:100%;justify-content:center}
+  .staff-empty .service-catalog-actions .staff-empty-add{width:100%;justify-content:center}
   .service-item-head{grid-template-columns:1fr}
   .sh-hours-thead{display:none}
   .sh-hours-wrap{border:none;border-radius:0;background:transparent;overflow:visible}

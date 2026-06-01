@@ -903,6 +903,7 @@ export function UserSettingsLive({
   const [knowledgeLegacyMobileError, setKnowledgeLegacyMobileError] = useState<string | null>(null);
   const [shopStaff, setShopStaff] = useState<StaffWithServices[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
+  const [staffLoaded, setStaffLoaded] = useState(false);
   const [staffLoadError, setStaffLoadError] = useState<string | null>(null);
   const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
   const [staffDrawerOpen, setStaffDrawerOpen] = useState(false);
@@ -1327,11 +1328,12 @@ export function UserSettingsLive({
   const visibleTabs = useMemo(() => visibleTabsForPortal(portal), [portal]);
 
   const loadStaff = useCallback(async () => {
-    if (!settingsReady) return;
+    if (!settingsReady) return false;
     if (!currentCapabilities.edit_staff) {
       setShopStaff([]);
       setStaffLoadError(null);
-      return;
+      setStaffLoaded(true);
+      return true;
     }
     setStaffLoading(true);
     setStaffLoadError(null);
@@ -1345,19 +1347,24 @@ export function UserSettingsLive({
       if (!response.ok || !body.ok || !Array.isArray(body.staff)) {
         const message = body.error ?? 'staff_load_failed';
         setStaffLoadError(message);
-        return;
+        setStaffLoaded(true);
+        return false;
       }
       setShopStaff(body.staff);
+      setStaffLoaded(true);
+      return true;
     } catch {
       setStaffLoadError('network_error');
+      setStaffLoaded(true);
+      return false;
     } finally {
       setStaffLoading(false);
     }
   }, [currentCapabilities.edit_staff, settingsReady]);
 
   useEffect(() => {
-    if (activeTab === 'staff') void loadStaff();
-  }, [activeTab, loadStaff]);
+    if (settingsReady && portal === 'knowledge' && !staffLoaded && !staffLoading) void loadStaff();
+  }, [settingsReady, portal, staffLoaded, staffLoading, loadStaff]);
 
   useEffect(() => {
     const allowed = SETTINGS_PORTAL_TAB_ORDER[portal];
@@ -1409,8 +1416,6 @@ export function UserSettingsLive({
   function addLegacyService() {
     const idx = currentForm.services.length;
     const draft: ServiceItem = { name: '', duration_min: 60, price: 0 };
-    const next = [...currentForm.services, draft];
-    patchState('services', next);
     if (portal === 'knowledge' && typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches) {
       setKnowledgeLegacyMobileError(null);
       setKnowledgeLegacyMobileSheet({ index: idx, draft });
@@ -1422,7 +1427,9 @@ export function UserSettingsLive({
       setLegacyDialogIndex(idx);
       setLegacyDialogDraft({ name: '', duration_min: 60, price: 0 });
     } else {
-      setEditingLegacyServiceIndex(idx);
+      setLegacyFormError(null);
+      setLegacyDialogIndex(idx);
+      setLegacyDialogDraft({ name: '', duration_min: 60, price: 0 });
     }
   }
 
@@ -1433,19 +1440,26 @@ export function UserSettingsLive({
     );
   }
 
-  function removeLegacyService(index: number) {
-    if (editingLegacyServiceIndex === index) setEditingLegacyServiceIndex(null);
-    if (knowledgeLegacyMobileSheet?.index === index) {
-      setKnowledgeLegacyMobileSheet(null);
-      setKnowledgeLegacyMobileError(null);
+  async function removeLegacyService(index: number) {
+    const clearEditor = () => {
+      if (editingLegacyServiceIndex === index) setEditingLegacyServiceIndex(null);
+      if (knowledgeLegacyMobileSheet?.index === index) {
+        setKnowledgeLegacyMobileSheet(null);
+        setKnowledgeLegacyMobileError(null);
+      }
+      if (legacyDialogIndex === index) {
+        setLegacyDialogIndex(null);
+        setLegacyDialogDraft(null);
+        setLegacyFormError(null);
+        legacyServiceDialogRef.current?.close();
+      }
+    };
+    if (index < 0 || index >= currentForm.services.length) {
+      clearEditor();
+      return;
     }
-    if (legacyDialogIndex === index) {
-      setLegacyDialogIndex(null);
-      setLegacyDialogDraft(null);
-      setLegacyFormError(null);
-      legacyServiceDialogRef.current?.close();
-    }
-    patchState('services', currentForm.services.filter((_, itemIndex) => itemIndex !== index));
+    const saved = await saveLegacyServicesToDb(currentForm.services.filter((_, itemIndex) => itemIndex !== index));
+    if (saved) clearEditor();
   }
 
   function patchServiceCatalog(nextCatalog: ShopServiceCatalog) {
@@ -1453,9 +1467,27 @@ export function UserSettingsLive({
     patchState('services', legacyServicesFromCatalog(nextCatalog));
   }
 
-  function addServiceGroup(name = 'New service group') {
+  function legacyServicesPayload(services: ServiceItem[]) {
+    return services
+      .filter((service) => service.name.trim().length > 0)
+      .map((service) => ({
+        name: service.name.trim(),
+        duration_min: Number.isFinite(service.duration_min) && service.duration_min > 0 ? service.duration_min : 60,
+        price: Number.isFinite(service.price) && service.price > 0 ? service.price : 0,
+      }));
+  }
+
+  async function saveLegacyServicesToDb(nextServices: ServiceItem[]) {
+    return commitSettingsPatch('services', { services: legacyServicesPayload(nextServices) });
+  }
+
+  async function saveServiceCatalogToDb(nextCatalog: ShopServiceCatalog) {
+    return commitSettingsPatch('services', { service_catalog: nextCatalog });
+  }
+
+  async function addServiceGroup(name = 'New service group') {
     const next = ensureEditableCatalog(currentForm.service_catalog, effectiveShop.id);
-    patchServiceCatalog({
+    return saveServiceCatalogToDb({
       ...next,
       categories: [
         ...next.categories,
@@ -1471,8 +1503,8 @@ export function UserSettingsLive({
     });
   }
 
-  function updateServiceGroup(categoryId: string, patch: Partial<ServiceCategory>) {
-    patchServiceCatalog({
+  async function updateServiceGroup(categoryId: string, patch: Partial<ServiceCategory>) {
+    return saveServiceCatalogToDb({
       ...currentForm.service_catalog,
       categories: currentForm.service_catalog.categories.map((category) =>
         category.id === categoryId ? { ...category, ...patch } : category,
@@ -1501,10 +1533,6 @@ export function UserSettingsLive({
       bookingNotes: null,
       variants: [],
     };
-    patchServiceCatalog({
-      ...currentForm.service_catalog,
-      services: [...currentForm.service_catalog.services, newService],
-    });
     if (isKnowledgeWideLayout()) {
       setEditingCatalogServiceId(null);
       setCatalogDialogError(null);
@@ -1518,10 +1546,14 @@ export function UserSettingsLive({
           serviceId,
           draft: JSON.parse(JSON.stringify(newService)) as ShopService,
         });
-      } else {
-        setEditingCatalogServiceId(serviceId);
-      }
-    }
+	      } else {
+	        patchServiceCatalog({
+	          ...currentForm.service_catalog,
+	          services: [...currentForm.service_catalog.services, newService],
+	        });
+	        setEditingCatalogServiceId(serviceId);
+	      }
+	    }
   }
 
   function updateCatalogService(serviceId: string, patch: Partial<ShopService>) {
@@ -1558,22 +1590,29 @@ export function UserSettingsLive({
     updateCatalogService(serviceId, { variants: (service.variants ?? []).filter((_, index) => index !== variantIndex) });
   }
 
-  function removeCatalogService(serviceId: string) {
-    if (editingCatalogServiceId === serviceId) setEditingCatalogServiceId(null);
-    if (knowledgeCatalogMobileSheet?.serviceId === serviceId) {
-      setKnowledgeCatalogMobileSheet(null);
-      setKnowledgeCatalogMobileError(null);
+  async function removeCatalogService(serviceId: string) {
+    const clearEditor = () => {
+      if (editingCatalogServiceId === serviceId) setEditingCatalogServiceId(null);
+      if (knowledgeCatalogMobileSheet?.serviceId === serviceId) {
+        setKnowledgeCatalogMobileSheet(null);
+        setKnowledgeCatalogMobileError(null);
+      }
+      if (catalogDialogServiceId === serviceId) {
+        setCatalogDialogServiceId(null);
+        setCatalogDialogDraft(null);
+        setCatalogDialogError(null);
+        catalogServiceDialogRef.current?.close();
+      }
+    };
+    if (!currentForm.service_catalog.services.some((service) => service.id === serviceId)) {
+      clearEditor();
+      return;
     }
-    if (catalogDialogServiceId === serviceId) {
-      setCatalogDialogServiceId(null);
-      setCatalogDialogDraft(null);
-      setCatalogDialogError(null);
-      catalogServiceDialogRef.current?.close();
-    }
-    patchServiceCatalog({
+    const saved = await saveServiceCatalogToDb({
       ...currentForm.service_catalog,
       services: currentForm.service_catalog.services.filter((service) => service.id !== serviceId),
     });
+    if (saved) clearEditor();
   }
 
   function isKnowledgeWideLayout() {
@@ -1603,7 +1642,11 @@ export function UserSettingsLive({
     }
   }
 
-  function saveCatalogServiceDialog() {
+  function isNewCatalogServiceDraft(serviceId: string | null) {
+    return Boolean(serviceId) && !currentForm.service_catalog.services.some((service) => service.id === serviceId);
+  }
+
+  async function saveCatalogServiceDialog() {
     if (!catalogDialogServiceId || !catalogDialogDraft) return;
     if (!catalogDialogDraft.name.trim()) {
       setCatalogDialogError('Service name is required.');
@@ -1612,11 +1655,15 @@ export function UserSettingsLive({
     setCatalogDialogError(null);
     const id = catalogDialogServiceId;
     const merged = { ...catalogDialogDraft, name: catalogDialogDraft.name.trim() } as ShopService;
-    patchServiceCatalog({
+    const exists = currentForm.service_catalog.services.some((service) => service.id === id);
+    const nextCatalog = {
       ...currentForm.service_catalog,
-      services: currentForm.service_catalog.services.map((s) => (s.id === id ? merged : s)),
-    });
-    closeCatalogServiceDialog();
+      services: exists
+        ? currentForm.service_catalog.services.map((service) => (service.id === id ? merged : service))
+        : [...currentForm.service_catalog.services, merged],
+    };
+    const saved = await saveServiceCatalogToDb(nextCatalog);
+    if (saved) closeCatalogServiceDialog();
   }
 
   function patchKnowledgeCatalogMobileDraft(patch: Partial<ShopService>) {
@@ -1664,7 +1711,7 @@ export function UserSettingsLive({
     });
   }
 
-  function saveKnowledgeCatalogMobileSheet() {
+  async function saveKnowledgeCatalogMobileSheet() {
     if (!knowledgeCatalogMobileSheet) return;
     const id = knowledgeCatalogMobileSheet.serviceId;
     const draft = knowledgeCatalogMobileSheet.draft;
@@ -1674,14 +1721,18 @@ export function UserSettingsLive({
     }
     setKnowledgeCatalogMobileError(null);
     const merged = { ...draft, name: draft.name.trim() } as ShopService;
-    patchServiceCatalog({
+    const exists = currentForm.service_catalog.services.some((service) => service.id === id);
+    const nextCatalog = {
       ...currentForm.service_catalog,
-      services: currentForm.service_catalog.services.map((s) => (s.id === id ? merged : s)),
-    });
-    setKnowledgeCatalogMobileSheet(null);
+      services: exists
+        ? currentForm.service_catalog.services.map((service) => (service.id === id ? merged : service))
+        : [...currentForm.service_catalog.services, merged],
+    };
+    const saved = await saveServiceCatalogToDb(nextCatalog);
+    if (saved) setKnowledgeCatalogMobileSheet(null);
   }
 
-  function saveKnowledgeLegacyMobileSheet() {
+  async function saveKnowledgeLegacyMobileSheet() {
     if (!knowledgeLegacyMobileSheet) return;
     const idx = knowledgeLegacyMobileSheet.index;
     const draft = knowledgeLegacyMobileSheet.draft;
@@ -1690,16 +1741,18 @@ export function UserSettingsLive({
       return;
     }
     setKnowledgeLegacyMobileError(null);
-    patchState(
-      'services',
-      currentForm.services.map((s, i) => (i === idx ? { ...draft, name: draft.name.trim() } : s)),
-    );
-    setKnowledgeLegacyMobileSheet(null);
+    const nextService = { ...draft, name: draft.name.trim() };
+    const nextServices =
+      idx >= currentForm.services.length
+        ? [...currentForm.services, nextService]
+        : currentForm.services.map((service, index) => (index === idx ? nextService : service));
+    const saved = await saveLegacyServicesToDb(nextServices);
+    if (saved) setKnowledgeLegacyMobileSheet(null);
   }
 
   function confirmRemoveCatalogServiceFromDialog(serviceId: string, serviceLabel: string) {
     if (!window.confirm(`Remove ${serviceLabel}? This cannot be undone.`)) return;
-    removeCatalogService(serviceId);
+    void removeCatalogService(serviceId);
   }
 
   function archiveCatalogServiceFromDialog(serviceId: string) {
@@ -1767,7 +1820,11 @@ export function UserSettingsLive({
     }
   }
 
-  function saveLegacyServiceDialog() {
+  function isNewLegacyServiceDraft(index: number | null) {
+    return index !== null && index >= currentForm.services.length;
+  }
+
+  async function saveLegacyServiceDialog() {
     if (legacyDialogIndex === null || !legacyDialogDraft) return;
     if (!legacyDialogDraft.name.trim()) {
       setLegacyFormError('Service name is required.');
@@ -1776,11 +1833,12 @@ export function UserSettingsLive({
     setLegacyFormError(null);
     const idx = legacyDialogIndex;
     const next = { ...legacyDialogDraft, name: legacyDialogDraft.name.trim() };
-    patchState(
-      'services',
-      currentForm.services.map((s, i) => (i === idx ? next : s)),
-    );
-    closeLegacyServiceDialog();
+    const nextServices =
+      idx >= currentForm.services.length
+        ? [...currentForm.services, next]
+        : currentForm.services.map((service, index) => (index === idx ? next : service));
+    const saved = await saveLegacyServicesToDb(nextServices);
+    if (saved) closeLegacyServiceDialog();
   }
 
   function formatServicePriceSummary(service: Pick<ShopService, 'priceType' | 'priceAmount'>) {
@@ -1987,13 +2045,13 @@ export function UserSettingsLive({
     showToast({ type: 'success', message: 'Staff saved' });
   }
 
-  async function commitSettingsPatch(sectionId: string, patch: Record<string, unknown>) {
+  async function commitSettingsPatch(sectionId: string, patch: Record<string, unknown>): Promise<boolean> {
     if (!settingsReady) {
       showToast({
         type: 'error',
         message: formatSaveErrorMessage('settings_still_loading', settingsSaveSuccessMessage(sectionId)),
       });
-      return;
+      return false;
     }
     setSavingSection(sectionId);
     setStatus(null);
@@ -2008,13 +2066,13 @@ export function UserSettingsLive({
         if (body.error === 'plan_feature_locked' && body.fields?.length) {
           const upgradeMsg = `Upgrade required for: ${body.fields.join(', ')}`;
           showToast({ type: 'error', message: upgradeMsg });
-          return;
+          return false;
         }
         showToast({
           type: 'error',
           message: formatSaveErrorMessage(body.error ?? 'save_failed', settingsSaveSuccessMessage(sectionId)),
         });
-        return;
+        return false;
       }
       const nextShop = body.shop;
       setShop(nextShop);
@@ -2037,11 +2095,13 @@ export function UserSettingsLive({
       );
       setHourPreset(getHourPresetId(nextState.hours));
       showToast({ type: 'success', message: settingsSaveSuccessMessage(sectionId) });
+      return true;
     } catch {
       showToast({
         type: 'error',
         message: formatSaveErrorMessage('network_error', settingsSaveSuccessMessage(sectionId)),
       });
+      return false;
     } finally {
       setSavingSection(null);
     }
@@ -2577,27 +2637,11 @@ export function UserSettingsLive({
             {activeTab === 'services-hours' ? (
             <section className="card">
               <form
-                className="card-section-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void commitSettingsPatch(
-                    'services',
-                    serviceCatalogEnabled
-                      ? {
-                          service_catalog: currentForm.service_catalog,
-                        }
-                      : {
-                          services: currentForm.services
-                            .filter((service) => service.name.trim().length > 0)
-                            .map((service) => ({
-                              name: service.name.trim(),
-                              duration_min: Number.isFinite(service.duration_min) && service.duration_min > 0 ? service.duration_min : 60,
-                              price: Number.isFinite(service.price) && service.price > 0 ? service.price : 0,
-                            })),
-                        },
-                  );
-                }}
-              >
+	                className="card-section-form"
+	                onSubmit={(event) => {
+	                  event.preventDefault();
+	                }}
+	              >
                 <div className="card-section settings-tab-content-frame">
                   {!serviceCatalogEnabled ? (
                     <>
@@ -2608,7 +2652,7 @@ export function UserSettingsLive({
 	                            Add the services callers ask about most. Grouped service editing will appear after service catalog migration is enabled.
 	                          </p>
 	                        </div>
-                        <button type="button" className="btn" onClick={addLegacyService}>
+	                        <button type="button" className="btn" onClick={addLegacyService} disabled={savingSection !== null}>
                           Add service
                         </button>
                       </div>
@@ -2670,12 +2714,20 @@ export function UserSettingsLive({
 	                                  </div>
 	                                </div>
 	                                <div className="service-item-footer">
-	                                  <button type="button" className="subtle-link" onClick={() => removeLegacyService(index)}>
-	                                    Remove service
-	                                  </button>
-	                                  <button type="button" className="btn" onClick={() => setEditingLegacyServiceIndex(null)}>
-	                                    Done
-	                                  </button>
+		                                  <button type="button" className="subtle-link" onClick={() => void removeLegacyService(index)} disabled={savingSection !== null}>
+		                                    Remove service
+		                                  </button>
+		                                  <button
+		                                    type="button"
+		                                    className="btn"
+		                                    onClick={async () => {
+		                                      const saved = await saveLegacyServicesToDb(currentForm.services);
+		                                      if (saved) setEditingLegacyServiceIndex(null);
+		                                    }}
+		                                    disabled={savingSection !== null}
+		                                  >
+		                                    {savingSection === 'services' ? 'Saving...' : 'Save changes'}
+		                                  </button>
 	                                </div>
 	                              </div>
 	                            ) : null}
@@ -2765,17 +2817,18 @@ export function UserSettingsLive({
                                 if (legacyDialogIndex === null || !legacyDialogDraft) return;
                                 const label = legacyDialogDraft.name.trim() || 'this service';
                                 if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
-                                removeLegacyService(legacyDialogIndex);
-                              }}
-                            >
-                              Remove
-                            </button>
+	                                void removeLegacyService(legacyDialogIndex);
+	                              }}
+	                              disabled={savingSection !== null}
+	                            >
+	                              Remove
+	                            </button>
                             <button type="button" className="btn catalog-service-dialog-btn-cancel" onClick={() => legacyServiceDialogRef.current?.close()}>
                               Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
-                            </button>
-                            <button type="button" className="btn user-save" onClick={() => void saveLegacyServiceDialog()}>
-                              Save changes
-                            </button>
+	                            </button>
+	                            <button type="button" className="btn user-save" onClick={() => void saveLegacyServiceDialog()} disabled={savingSection !== null}>
+	                              {savingSection === 'services' ? 'Saving...' : isNewLegacyServiceDraft(legacyDialogIndex) ? 'Save service' : 'Save changes'}
+	                            </button>
                           </footer>
                         </div>
                       </dialog>
@@ -2794,7 +2847,7 @@ export function UserSettingsLive({
 	                      </p>
 	                    </div>
                     <div className="service-catalog-actions">
-                      <button type="button" className="btn" onClick={() => setCatalogGroupSheet({ mode: 'add' })}>
+	                      <button type="button" className="btn" onClick={() => setCatalogGroupSheet({ mode: 'add' })} disabled={savingSection !== null}>
                         <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
                           <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H9l2 2h7.5A2.5 2.5 0 0 1 21 8.5v1" />
                           <path d="M12 16h8" />
@@ -2831,8 +2884,9 @@ export function UserSettingsLive({
 	                                  <button
 	                                    type="button"
 	                                    className="service-group-rename-btn"
-	                                    aria-label={`Rename group ${category.name || 'Service group'}`}
-	                                    onClick={(event) => {
+		                                    aria-label={`Rename group ${category.name || 'Service group'}`}
+		                                    disabled={savingSection !== null}
+		                                    onClick={(event) => {
 	                                      event.preventDefault();
 	                                      event.stopPropagation();
 	                                      setCatalogGroupSheet({
@@ -2975,19 +3029,32 @@ export function UserSettingsLive({
 	                                          Bookable by request
 	                                        </label>
 	                                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 mt-1">
-	                                          <button type="button" className="subtle-link catalog-service-dialog-link-remove" onClick={() => removeCatalogService(service.id)}>
-	                                            Remove
-	                                          </button>
-	                                          <button type="button" className="btn" onClick={() => setEditingCatalogServiceId(null)}>
-	                                            Done
-	                                          </button>
+		                                          <button
+		                                            type="button"
+		                                            className="subtle-link catalog-service-dialog-link-remove"
+		                                            onClick={() => void removeCatalogService(service.id)}
+		                                            disabled={savingSection !== null}
+		                                          >
+		                                            Remove
+		                                          </button>
+		                                          <button
+		                                            type="button"
+		                                            className="btn"
+		                                            onClick={async () => {
+		                                              const saved = await saveServiceCatalogToDb(currentForm.service_catalog);
+		                                              if (saved) setEditingCatalogServiceId(null);
+		                                            }}
+		                                            disabled={savingSection !== null}
+		                                          >
+		                                            {savingSection === 'services' ? 'Saving...' : 'Save changes'}
+		                                          </button>
 	                                        </div>
 	                                      </div>
 	                                    </div>
 	                                  ) : null}
 	                                </div>
 	                              ))}
-                              <button type="button" className="btn service-group-add-service" onClick={() => addServiceToGroup(category.id)}>
+	                              <button type="button" className="btn service-group-add-service" onClick={() => addServiceToGroup(category.id)} disabled={savingSection !== null}>
                                 + Add service
                               </button>
                             </div>
@@ -3245,14 +3312,15 @@ export function UserSettingsLive({
                           <button
                             type="button"
                             className="subtle-link catalog-service-dialog-link-remove"
-                            onClick={() => {
-                              if (!catalogDialogServiceId || !catalogDialogDraft) return;
-                              const label = catalogDialogDraft.name.trim() || 'this service';
-                              confirmRemoveCatalogServiceFromDialog(catalogDialogServiceId, label);
-                            }}
-                          >
-                            Remove
-                          </button>
+	                            onClick={() => {
+	                              if (!catalogDialogServiceId || !catalogDialogDraft) return;
+	                              const label = catalogDialogDraft.name.trim() || 'this service';
+	                              confirmRemoveCatalogServiceFromDialog(catalogDialogServiceId, label);
+	                            }}
+	                            disabled={savingSection !== null}
+	                          >
+	                            Remove
+	                          </button>
                           <div className="catalog-service-dialog-footer-actions">
                             <button
                               type="button"
@@ -3260,10 +3328,10 @@ export function UserSettingsLive({
                               onClick={() => catalogServiceDialogRef.current?.close()}
                             >
                               Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
-                            </button>
-                            <button type="button" className="btn user-save" onClick={() => void saveCatalogServiceDialog()}>
-                              Save changes
-                            </button>
+	                            </button>
+	                            <button type="button" className="btn user-save" onClick={() => void saveCatalogServiceDialog()} disabled={savingSection !== null}>
+	                              {savingSection === 'services' ? 'Saving...' : isNewCatalogServiceDraft(catalogDialogServiceId) ? 'Save service' : 'Save changes'}
+	                            </button>
                           </div>
                         </footer>
                       </div>
@@ -3272,16 +3340,18 @@ export function UserSettingsLive({
                   <OnboardingAddGroupSheet
                     isOpen={catalogGroupSheet !== null}
                     onClose={() => setCatalogGroupSheet(null)}
-                    onConfirm={(name) => {
-                      const trimmed = name.trim();
-                      if (!trimmed || !catalogGroupSheet) return;
-                      if (catalogGroupSheet.mode === 'add') {
-                        addServiceGroup(trimmed);
-                      } else {
-                        updateServiceGroup(catalogGroupSheet.categoryId, { name: trimmed });
-                      }
-                      setCatalogGroupSheet(null);
-                    }}
+	                    onConfirm={(name) => {
+	                      const trimmed = name.trim();
+	                      if (!trimmed || !catalogGroupSheet || savingSection !== null) return;
+	                      const sheet = catalogGroupSheet;
+	                      void (async () => {
+	                        const saved =
+	                          sheet.mode === 'add'
+	                            ? await addServiceGroup(trimmed)
+	                            : await updateServiceGroup(sheet.categoryId, { name: trimmed });
+	                        if (saved) setCatalogGroupSheet(null);
+	                      })();
+	                    }}
                     title={
                       catalogGroupSheet?.mode === 'rename' ? 'Rename service group' : catalogGroupSheet?.mode === 'add' ? 'New service group' : ''
                     }
@@ -3290,18 +3360,10 @@ export function UserSettingsLive({
                     confirmLabel={catalogGroupSheet?.mode === 'rename' ? 'Save' : 'Add group'}
                     titleId="knowledge-catalog-group-sheet-title"
                   />
-                  <div className="service-catalog-note">
-                    These services help RingBooker answer caller questions and capture booking requests. They do not turn on direct booking integrations by themselves.
-                  </div>
                     </>
                   )}
                 </div>
-                <div className="settings-save-footer settings-tab-content-frame">
-                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'services' ? 'Saving...' : 'Save services'}
-                  </button>
-                </div>
-	              </form>
+		              </form>
             </section>
             ) : null}
 
@@ -3392,19 +3454,28 @@ export function UserSettingsLive({
             {activeTab === 'staff' ? (
             <section className="card">
               <div className="card-section-form">
-                <div className="panel-head knowledge-tab-panel-head settings-tab-content-frame">
+                <div className="panel-head knowledge-tab-panel-head settings-tab-content-frame service-catalog-heading">
                   <div>
                     <h3>Staff / Technicians</h3>
                     <p className="sub">Manage staff profiles and which services each provider can perform.</p>
                   </div>
                   {!isLocked('edit_staff') ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={addStaffDraft}
-                    >
-                      Add staff
-                    </button>
+                    <div className="service-catalog-actions">
+	                      <button
+	                        type="button"
+	                        className="btn"
+	                        onClick={addStaffDraft}
+	                        disabled={savingSection !== null || staffLoading || !staffLoaded || staffLoadError !== null}
+	                      >
+                        <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                          <path d="M19 8v6" />
+                          <path d="M22 11h-6" />
+                        </svg>
+                        Add staff
+                      </button>
+                    </div>
                   ) : (
                     renderLockCopy('edit_staff')
                   )}
@@ -3415,21 +3486,16 @@ export function UserSettingsLive({
                       <strong>Staff management is locked on this plan.</strong>
                       <p>Upgrade to Professional to edit staff profiles and service assignments.</p>
                     </div>
-                  ) : staffLoading ? (
-                    <div className="sh-empty empty staff-empty">
-                      <strong>Loading staff...</strong>
-                      <p>Pulling staff from the normalized staff table.</p>
-                    </div>
-                  ) : staffLoadError ? (
-                    <div className="sh-empty empty staff-empty">
-                      <strong>Staff could not load.</strong>
-                      <p>{staffLoadError}</p>
-                      <button type="button" className="btn staff-empty-add" onClick={() => void loadStaff()}>
-                        Try again
-                      </button>
-                    </div>
-                  ) : shopStaff.length === 0 ? (
-                    <div className="sh-empty empty staff-empty">
+	                  ) : staffLoadError ? (
+	                    <div className="sh-empty empty staff-empty">
+	                      <strong>Staff could not load.</strong>
+	                      <p>{staffLoadError}</p>
+	                      <button type="button" className="btn staff-empty-add" onClick={() => void loadStaff()} disabled={staffLoading}>
+	                        Try again
+	                      </button>
+	                    </div>
+	                  ) : !staffLoaded ? null : shopStaff.length === 0 ? (
+	                    <div className="sh-empty empty staff-empty">
                       <div className="staff-empty-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
@@ -3440,13 +3506,22 @@ export function UserSettingsLive({
                       </div>
                       <strong>No staff added yet.</strong>
                       <p>Add providers or sync from Square so callers can request them by name.</p>
+	                      <div className="service-catalog-actions">
 	                      <button
-	                        type="button"
-	                        className="btn staff-empty-add"
-	                        onClick={addStaffDraft}
-	                      >
+		                        type="button"
+		                        className="btn staff-empty-add"
+		                        onClick={addStaffDraft}
+		                        disabled={savingSection !== null || staffLoading || !staffLoaded}
+		                      >
+	                        <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+	                          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+	                          <circle cx="12" cy="7" r="4" />
+	                          <path d="M19 8v6" />
+	                          <path d="M22 11h-6" />
+	                        </svg>
 	                        Add staff member
 	                      </button>
+	                      </div>
 	                    </div>
 	                  ) : null}
 	                  {shopStaff.map((member) => {
@@ -3553,7 +3628,7 @@ export function UserSettingsLive({
 	                    );
 	                  })}
 	                </div>
-	                {!isLocked('edit_staff') && !staffLoading && !staffLoadError && shopStaff.length > 0 ? (
+	                {!isLocked('edit_staff') && !staffLoadError && shopStaff.length > 0 ? (
 	                  <div className="settings-save-footer settings-tab-content-frame">
 	                    <button type="button" className="btn user-save" disabled={savingSection !== null} onClick={() => void saveAllStaffProfiles()}>
 	                      {savingSection === 'staff' ? 'Saving...' : 'Save staff'}
@@ -3589,12 +3664,13 @@ export function UserSettingsLive({
                   });
                 }}
               >
-	                <div className="panel-head knowledge-tab-panel-head">
+	                <div className="panel-head knowledge-tab-panel-head service-catalog-heading">
 	                  <div>
 	                    <h3>Policies & FAQ</h3>
-	                    <p className="sub">Approved policies and answers for common caller questions: deposits, cancellations, parking, walk-ins, payment methods, gift cards, or group bookings.</p>
+	                    <p className="sub">Approved answers for common caller questions: deposits, cancellations, walk-ins, payments, and more.</p>
 	                  </div>
 		                  {currentForm.faqs.length > 0 ? (
+	                    <div className="service-catalog-actions">
 		                    <button type="button" className="btn" onClick={() => {
                           if (portal === 'knowledge' && knowledgeMobile) {
                             setKnowledgeFaqCreateDraft(emptyFaqItem());
@@ -3603,13 +3679,19 @@ export function UserSettingsLive({
                           }
                           patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
                         }}>
+                          <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                            <path d="M4 4h16v14H8l-4 4V4z" />
+                            <path d="M12 9v-4" />
+                            <path d="M9 9h6" />
+                          </svg>
 		                      Add FAQ
 		                    </button>
+	                    </div>
 		                  ) : null}
 	                </div>
 	                <div className="card-section settings-tab-content-frame">
 	                  <div className="option-card option-card--bare">
-	                    <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit if your business needs a special case.</span></div>
+	                    <strong className="option-title">Cancellation policy</strong>
 	                    <div className="preset-pills" style={{ marginTop: 12 }}>
 	                      {CANCEL_POLICY_PRESETS.map((item) => (
 	                        <button key={item} type="button" className={`preset-pill ${cancelPreset === item ? 'active' : ''}`} onClick={() => {
@@ -3630,7 +3712,7 @@ export function UserSettingsLive({
 	                    </div>
 	                  </div>
 	                  <div className="option-card option-card--bare">
-	                    <div className="hint-row"><strong className="option-title">Promotion</strong><span className="hint-copy">Optional. Add one active offer so the AI never invents a discount.</span></div>
+	                    <strong className="option-title">Promotion</strong>
 	                    <div className="preset-pills" style={{ marginTop: 12 }}>
 	                      {PROMOTION_PRESETS.map((item, index) => (
 	                        <button key={`${item}-${index}`} type="button" className={`preset-pill ${promoPreset === item ? 'active' : ''}`} onClick={() => {
@@ -3653,6 +3735,7 @@ export function UserSettingsLive({
 		                  {currentForm.faqs.length === 0 ? (
 		                    <div className="sh-empty faq-empty-state">
 		                      <p>No FAQs added yet. Add common answers so RingBooker can respond consistently.</p>
+		                      <div className="service-catalog-actions">
 		                      <button type="button" className="btn faq-empty-cta" onClick={() => {
                             if (portal === 'knowledge' && knowledgeMobile) {
                               setKnowledgeFaqCreateDraft(emptyFaqItem());
@@ -3661,8 +3744,14 @@ export function UserSettingsLive({
                             }
                             patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
                           }}>
+                            <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                              <path d="M4 4h16v14H8l-4 4V4z" />
+                              <path d="M12 9v-4" />
+                              <path d="M9 9h6" />
+                            </svg>
 		                        Add FAQ
 		                      </button>
+		                      </div>
 		                    </div>
 		                  ) : null}
 	                  {currentForm.faqs.map((item, index) => (
@@ -4317,9 +4406,9 @@ export function UserSettingsLive({
                       <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeLegacyMobileSheet(null)}>
                         Cancel
                       </button>
-                      <button type="button" className="onb-sheet-save" onClick={() => saveKnowledgeLegacyMobileSheet()}>
-                        Save
-                      </button>
+	                      <button type="button" className="onb-sheet-save" onClick={() => void saveKnowledgeLegacyMobileSheet()} disabled={savingSection !== null}>
+	                        {savingSection === 'services' ? 'Saving...' : isNewLegacyServiceDraft(knowledgeLegacyMobileSheet.index) ? 'Save service' : 'Save changes'}
+	                      </button>
                     </div>
                   </>
                 ) : null}
@@ -4558,14 +4647,15 @@ export function UserSettingsLive({
                         <button
                           type="button"
                           className="subtle-link catalog-service-dialog-link-remove"
-                          onClick={() => {
-                            const sid = knowledgeCatalogMobileSheet.serviceId;
-                            const label = draft.name.trim() || 'this service';
-                            if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
-                            removeCatalogService(sid);
-                          }}
-                        >
-                          Remove
+	                          onClick={() => {
+	                            const sid = knowledgeCatalogMobileSheet.serviceId;
+	                            const label = draft.name.trim() || 'this service';
+	                            if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+	                            void removeCatalogService(sid);
+	                          }}
+	                          disabled={savingSection !== null}
+	                        >
+	                          Remove
                         </button>
                         <div className="flex gap-2">
                           <button
@@ -4578,9 +4668,9 @@ export function UserSettingsLive({
                           >
                             Cancel
                           </button>
-                          <button type="button" className="onb-sheet-save" onClick={() => saveKnowledgeCatalogMobileSheet()}>
-                            Save
-                          </button>
+	                          <button type="button" className="onb-sheet-save" onClick={() => void saveKnowledgeCatalogMobileSheet()} disabled={savingSection !== null}>
+	                            {savingSection === 'services' ? 'Saving...' : isNewCatalogServiceDraft(knowledgeCatalogMobileSheet.serviceId) ? 'Save service' : 'Save changes'}
+	                          </button>
                         </div>
                       </div>
                       {knowledgeCatalogMobileError ? (
