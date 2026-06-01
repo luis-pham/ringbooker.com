@@ -92,7 +92,7 @@ test('Square createBooking uses matched service externalServiceId before credent
       }),
     );
 
-    await provider.createBooking(bookingInput({ matchedServiceId: 'svc-haircut', teamMemberId: 'TM_DIRECT' }));
+    await provider.createBooking(bookingInput({ matchedServiceId: 'svc-haircut', teamMemberId: 'TM_DIRECT', skipAvailabilitySearch: true }));
     const bookingRequest = requests.find((request) => request.url.endsWith('/v2/bookings'));
     const segment = (bookingRequest?.body as {
       booking?: { appointment_segments?: Array<{ service_variation_id?: string; service_variation_version?: number; team_member_id?: string }> };
@@ -171,6 +171,88 @@ test('Square createBooking auto-selects an available team member when caller say
     })?.booking?.appointment_segments?.[0];
 
     assert.equal(segment?.team_member_id, 'TM_AVAILABLE');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Square checkAvailability returns fallback staff when requested stylist is unavailable', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes('/v2/bookings/availability/search')) {
+      return new Response(
+        JSON.stringify({
+          availabilities: [
+            {
+              start_at: '2099-01-02T18:00:00.000Z',
+              appointment_segments: [{ team_member_id: 'TM_MARCUS', service_variation_id: 'SV_HAIRCUT' }],
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.includes('/v2/team-members/search')) {
+      return new Response(
+        JSON.stringify({
+          team_members: [
+            { id: 'TM_JESSICA', display_name: 'Jessica Lee', given_name: 'Jessica', family_name: 'Lee' },
+            { id: 'TM_MARCUS', display_name: 'Marcus Rivera', given_name: 'Marcus', family_name: 'Rivera' },
+          ],
+        }),
+        { status: 200 },
+      );
+    }
+    return new Response(JSON.stringify({}), { status: 404 });
+  }) as typeof fetch;
+
+  try {
+    const provider = new SquareAppointmentsProvider(
+      buildShop({
+        service_catalog: {
+          categories: [{ id: 'cat-cuts', shopId: 'shop-square-test', name: 'Cuts', sortOrder: 0, active: true }],
+          services: [
+            {
+              id: 'svc-haircut',
+              shopId: 'shop-square-test',
+              categoryId: 'cat-cuts',
+              name: 'Haircut',
+              durationMinutes: 45,
+              priceAmount: 50,
+              priceCurrency: 'USD',
+              priceType: 'fixed',
+              bookable: true,
+              active: true,
+              sortOrder: 0,
+              aliases: [],
+              variants: [],
+              externalProvider: 'square',
+              externalServiceId: 'SV_HAIRCUT',
+              externalMetadata: {},
+            },
+          ],
+        },
+      }),
+    );
+
+    const result = await provider.checkAvailability({
+      date: '2099-01-02',
+      time: '10:00',
+      durationMin: 45,
+      timezone: 'America/Los_Angeles',
+      matchedServiceId: 'svc-haircut',
+      techName: 'Jessica Lee',
+      teamMemberId: 'TM_JESSICA',
+    });
+
+    assert.equal(result.available, true);
+    assert.equal(result.requestedStaffUnavailable, true);
+    assert.equal(result.requestedStaffName, 'Jessica Lee');
+    assert.equal(result.fallbackStaffName, 'Marcus Rivera');
+    assert.equal(result.suggestions?.[0]?.techName, 'Marcus Rivera');
+    assert.equal(result.staffResolution?.resolvedTeamMemberId, 'TM_MARCUS');
+    assert.equal(result.staffResolution?.requestedTeamMemberId, 'TM_JESSICA');
   } finally {
     globalThis.fetch = originalFetch;
   }

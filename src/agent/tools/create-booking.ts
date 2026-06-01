@@ -5,6 +5,7 @@ import { logger } from '@/src/backend/observability/logger';
 import { scheduleBookingFollowupJobs } from '@/src/backend/services/bookings/reminder-scheduling';
 import { resolveBookingProviderReadiness } from '@/src/backend/services/calendar/provider-readiness';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
+import { AVAILABILITY_CACHE_TTL_MS } from '@/src/agent/tools/check-availability';
 import {
   dateSchema,
   isRequestedAppointmentInsideBusinessHours,
@@ -34,6 +35,61 @@ const schema = z.object({
   customerEmail: z.string().email().optional(),
   notes: z.string().min(1).optional(),
 });
+
+function normalized(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function isAvailabilityCacheValid(
+  cache: NonNullable<NonNullable<AgentToolContext['availabilityCheck']>['latest']> | null | undefined,
+  params: { providerId: string; service: string; date: string; time: string },
+): cache is NonNullable<NonNullable<AgentToolContext['availabilityCheck']>['latest']> {
+  if (!cache) return false;
+  if (Date.now() - cache.fetchedAtMs > AVAILABILITY_CACHE_TTL_MS) return false;
+  return (
+    cache.providerId === params.providerId &&
+    normalized(cache.service) === normalized(params.service) &&
+    cache.date === params.date &&
+    cache.time === params.time
+  );
+}
+
+function cachedTeamMemberForBooking(
+  cache: NonNullable<NonNullable<AgentToolContext['availabilityCheck']>['latest']>,
+  techName?: string,
+): { teamMemberId?: string; skipAvailabilitySearch: boolean } | { unavailable: true; message: string } {
+  const requested = normalized(techName);
+  if (requested) {
+    if (
+      cache.requestedStaffUnavailable &&
+      normalized(cache.requestedStaffName ?? cache.requestedTeamMemberName) === requested
+    ) {
+      const fallback = cache.fallbackStaffName ?? cache.fallbackTeamMemberName;
+      return {
+        unavailable: true,
+        message: fallback
+          ? `${techName} is not available at that time, but ${fallback} is. Would you like to book with ${fallback}, or choose a different time for ${techName}?`
+          : `${techName} is not available at that time. Would you like any available stylist, or choose a different time for ${techName}?`,
+      };
+    }
+
+    const resolvedName = normalized(cache.resolvedTeamMemberName);
+    const fallbackName = normalized(cache.fallbackStaffName ?? cache.fallbackTeamMemberName);
+    const requestedName = normalized(cache.requestedStaffName ?? cache.requestedTeamMemberName);
+    if (
+      cache.resolvedTeamMemberId &&
+      (resolvedName === requested || fallbackName === requested || (requestedName === requested && !cache.requestedStaffUnavailable))
+    ) {
+      return { teamMemberId: cache.resolvedTeamMemberId, skipAvailabilitySearch: true };
+    }
+    return { skipAvailabilitySearch: false };
+  }
+
+  if (cache.resolvedTeamMemberId) {
+    return { teamMemberId: cache.resolvedTeamMemberId, skipAvailabilitySearch: true };
+  }
+  return { skipAvailabilitySearch: false };
+}
 
 export async function createBookingTool(
   ctx: AgentToolContext,
@@ -82,6 +138,14 @@ export async function createBookingTool(
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
     const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
     const readiness = resolveBookingProviderReadiness(ctx.shop);
+    const availabilityCache = isAvailabilityCacheValid(ctx.availabilityCheck?.latest, {
+      providerId: providerMeta.id,
+      service: canonicalServiceName,
+      date: parsed.data.date,
+      time: parsed.data.time,
+    })
+      ? ctx.availabilityCheck!.latest!
+      : null;
 
     if (ctx.shop.booking_url?.trim() && providerMeta?.id === 'manual') {
       return toToolError(
@@ -109,8 +173,22 @@ export async function createBookingTool(
     }
 
     let teamMemberId: string | undefined;
+    let skipAvailabilitySearch = false;
+    if (availabilityCache) {
+      const cached = cachedTeamMemberForBooking(availabilityCache, parsed.data.techName);
+      if ('unavailable' in cached) {
+        return {
+          success: false,
+          techNotAvailable: true,
+          requestedTech: parsed.data.techName ?? availabilityCache.requestedStaffName ?? availabilityCache.requestedTeamMemberName ?? 'that stylist',
+          message: cached.message,
+        };
+      }
+      teamMemberId = cached.teamMemberId;
+      skipAvailabilitySearch = cached.skipAvailabilitySearch;
+    }
 
-    if (readiness.canCreateBooking && parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
+    if (!teamMemberId && readiness.canCreateBooking && parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
       try {
         const foundTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(parsed.data.techName);
         if (foundTeamMemberId) {
@@ -124,6 +202,18 @@ export async function createBookingTool(
             matchedServiceId: service.matchedServiceId,
           });
 
+          if (availability.requestedStaffUnavailable) {
+            return {
+              success: false,
+              techNotAvailable: true,
+              requestedTech: parsed.data.techName,
+              message:
+                availability.message ??
+                `${parsed.data.techName} is not available at that time. ` +
+                  `Would you like to book with any available stylist, or choose a different time for ${parsed.data.techName}?`,
+            };
+          }
+
           if (!availability.available) {
             return {
               success: false,
@@ -135,7 +225,7 @@ export async function createBookingTool(
             };
           }
 
-          teamMemberId = foundTeamMemberId;
+          teamMemberId = availability.staffResolution?.resolvedTeamMemberId ?? foundTeamMemberId;
         } else {
           logger.warn(
             { shopId: ctx.shop.id, techName: parsed.data.techName },
@@ -178,6 +268,7 @@ export async function createBookingTool(
           service: canonicalServiceName,
           techName: parsed.data.techName,
           teamMemberId,
+          skipAvailabilitySearch,
           datetimeIso: utcIso,
           timezone: ctx.shop.timezone,
           durationMin,

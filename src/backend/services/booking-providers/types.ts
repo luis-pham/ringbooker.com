@@ -1,4 +1,4 @@
-import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
+import type { AvailabilityCheckResult, BookingInput, BookingResult, Shop } from '@/src/backend/domain/types';
 
 export interface BookingProvider {
   shop: Shop;
@@ -11,7 +11,7 @@ export interface BookingProvider {
     teamMemberId?: string;
     timezone: string;
     matchedServiceId?: string | null;
-  }): Promise<{ available: boolean; suggestions?: TimeSlot[] }>;
+  }): Promise<AvailabilityCheckResult>;
   getTeamMembers?(): Promise<Array<{ id: string; displayName: string; givenName?: string; familyName?: string }>>;
   findTeamMemberByName?(name: string): Promise<string | null>;
   createBooking(input: BookingInput): Promise<BookingResult>;

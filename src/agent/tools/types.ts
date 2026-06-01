@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
-import type { Shop, ToolError } from '@/src/backend/domain/types';
+import type { Shop, TimeSlot, ToolError } from '@/src/backend/domain/types';
 import {
   matchServiceFromCallerText,
   normalizeServiceText,
@@ -64,7 +64,19 @@ export type AgentToolContext = {
       time: string;
       techName?: string;
       available: boolean;
-      suggestions?: unknown;
+      suggestions?: TimeSlot[];
+      message?: string;
+      requestedStaffUnavailable?: boolean;
+      requestedStaffName?: string | null;
+      fallbackStaffName?: string | null;
+      resolvedTeamMemberId?: string | null;
+      resolvedTeamMemberName?: string | null;
+      requestedTeamMemberId?: string | null;
+      requestedTeamMemberName?: string | null;
+      fallbackTeamMemberId?: string | null;
+      fallbackTeamMemberName?: string | null;
+      serviceVariationId?: string | null;
+      locationId?: string | null;
       raw: unknown;
       fetchedAtMs: number;
       prefetchStartedAtMs?: number;

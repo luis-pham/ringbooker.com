@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 
-import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
+import type { AvailabilityCheckResult, AvailabilityStaffResolution, BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
 import { matchServiceFromCallerText } from '@/src/backend/domain/service-catalog';
 import { logger } from '@/src/backend/observability/logger';
 import type { BookingProvider } from '@/src/backend/services/booking-providers/types';
@@ -128,6 +128,12 @@ type SquareCatalogSearchResponse = {
 type SquareResolvedVariation = {
   variationId: string;
   version?: number;
+};
+
+type SquareResolvedAvailabilitySlot = {
+  startAt: string;
+  teamMemberId: string | null;
+  teamMemberName: string | null;
 };
 
 function parseSquareCredentials(raw: string | null | undefined): Partial<SquareCredentials> {
@@ -720,20 +726,50 @@ export class SquareAppointmentsProvider implements BookingProvider {
     return slot?.appointment_segments?.find((segment) => Boolean(segment.team_member_id))?.team_member_id;
   }
 
-  private async findAvailableTeamMemberId(params: {
-    date: string;
-    time: string;
-    timezone: string;
-    matchedServiceId?: string | null;
-    serviceName?: string;
-  }): Promise<string | undefined> {
-    const requestedStart = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
-    if (!requestedStart.isValid) {
-      throw new Error('square_availability_invalid_datetime');
-    }
+  private async teamMemberName(teamMemberId: string | null | undefined): Promise<string | null> {
+    if (!teamMemberId) return null;
+    const members = await this.getTeamMembers();
+    return members.find((member) => member.id === teamMemberId)?.displayName ?? null;
+  }
 
+  private async toResolvedAvailabilitySlot(slot: SquareAvailability | undefined): Promise<SquareResolvedAvailabilitySlot | null> {
+    if (!slot?.start_at) return null;
+    const teamMemberId = this.teamMemberIdFromAvailability(slot) ?? null;
+    return {
+      startAt: slot.start_at,
+      teamMemberId,
+      teamMemberName: await this.teamMemberName(teamMemberId),
+    };
+  }
+
+  private buildStaffResolution(params: {
+    resolvedSlot: SquareResolvedAvailabilitySlot | null;
+    requestedTeamMemberId?: string | null;
+    requestedTeamMemberName?: string | null;
+    requestedStaffUnavailable: boolean;
+    fallbackSlot: SquareResolvedAvailabilitySlot | null;
+    variation: SquareResolvedVariation;
+  }): AvailabilityStaffResolution {
+    return {
+      resolvedTeamMemberId: params.resolvedSlot?.teamMemberId ?? null,
+      resolvedTeamMemberName: params.resolvedSlot?.teamMemberName ?? null,
+      requestedTeamMemberId: params.requestedTeamMemberId ?? null,
+      requestedTeamMemberName: params.requestedTeamMemberName ?? null,
+      requestedStaffUnavailable: params.requestedStaffUnavailable,
+      fallbackTeamMemberId: params.fallbackSlot?.teamMemberId ?? null,
+      fallbackTeamMemberName: params.fallbackSlot?.teamMemberName ?? null,
+      serviceVariationId: params.variation.variationId,
+      locationId: this.credentials.locationId,
+    };
+  }
+
+  private async searchAvailabilityForDay(params: {
+    date: string;
+    timezone: string;
+    variation: SquareResolvedVariation;
+    teamMemberId?: string | null;
+  }): Promise<SquareAvailability[]> {
     const window = this.buildAvailabilityWindow(params.date, params.timezone);
-    const variation = await this.requireSquareVariationId(params.matchedServiceId, params.serviceName);
     const response = await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
       path: '/v2/bookings/availability/search',
       method: 'POST',
@@ -747,7 +783,14 @@ export class SquareAppointmentsProvider implements BookingProvider {
             location_id: this.credentials.locationId,
             segment_filters: [
               {
-                service_variation_id: variation.variationId,
+                service_variation_id: params.variation.variationId,
+                ...(params.teamMemberId
+                  ? {
+                      team_member_id_filter: {
+                        any: [params.teamMemberId],
+                      },
+                    }
+                  : {}),
               },
             ],
           },
@@ -758,10 +801,32 @@ export class SquareAppointmentsProvider implements BookingProvider {
     if (response.errors?.length) {
       throw new Error(`square_search_availability_failed:${extractSquareError(response.errors)}`);
     }
+    return response.availabilities ?? [];
+  }
 
+  private async findAvailableTeamMember(params: {
+    date: string;
+    time: string;
+    timezone: string;
+    matchedServiceId?: string | null;
+    serviceName?: string;
+    requestedTeamMemberId?: string | null;
+  }): Promise<SquareResolvedAvailabilitySlot | null> {
+    const requestedStart = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
+    if (!requestedStart.isValid) {
+      throw new Error('square_availability_invalid_datetime');
+    }
+
+    const variation = await this.requireSquareVariationId(params.matchedServiceId, params.serviceName);
+    const availabilities = await this.searchAvailabilityForDay({
+      date: params.date,
+      timezone: params.timezone,
+      variation,
+      teamMemberId: params.requestedTeamMemberId,
+    });
     const requestedIso = requestedStart.toUTC().toISO();
-    const exact = (response.availabilities ?? []).find((slot) => slot.start_at === requestedIso);
-    return this.teamMemberIdFromAvailability(exact);
+    const exact = availabilities.find((slot) => slot.start_at === requestedIso);
+    return this.toResolvedAvailabilitySlot(exact);
   }
 
   async prefetchAvailability(params: { date: string; timezone: string }): Promise<void> {
@@ -806,62 +871,104 @@ export class SquareAppointmentsProvider implements BookingProvider {
     teamMemberId?: string;
     timezone: string;
     matchedServiceId?: string | null;
-  }): Promise<{ available: boolean; suggestions?: TimeSlot[] }> {
+  }): Promise<AvailabilityCheckResult> {
     const requestedStart = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
     if (!requestedStart.isValid) {
       throw new Error('square_availability_invalid_datetime');
     }
 
-    const window = this.buildAvailabilityWindow(params.date, params.timezone);
-    const resolvedTeamMemberId = params.teamMemberId ?? this.credentials.teamMemberId;
     const variation = await this.requireSquareVariationId(params.matchedServiceId);
-    const response = await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
-      path: '/v2/bookings/availability/search',
-      method: 'POST',
-      body: {
-        query: {
-          filter: {
-            start_at_range: {
-              start_at: window.startAt,
-              end_at: window.endAt,
-            },
-            location_id: this.credentials.locationId,
-            segment_filters: [
-              {
-                service_variation_id: variation.variationId,
-                ...(resolvedTeamMemberId
-                  ? {
-                      team_member_id_filter: {
-                        any: [resolvedTeamMemberId],
-                      },
-                    }
-                  : {}),
-              },
-            ],
-          },
-        },
-      },
+    const requestedTeamMemberId = params.teamMemberId ?? null;
+    const requestedTeamMemberName = params.techName ?? (await this.teamMemberName(requestedTeamMemberId));
+    const availabilities = await this.searchAvailabilityForDay({
+      date: params.date,
+      timezone: params.timezone,
+      variation,
     });
 
-    if (response.errors?.length) {
-      throw new Error(`square_search_availability_failed:${extractSquareError(response.errors)}`);
+    const requestedIso = requestedStart.toUTC().toISO();
+    const exactSlots = availabilities.filter((slot) => slot.start_at === requestedIso);
+    const requestedSlot = requestedTeamMemberId
+      ? exactSlots.find((slot) => this.teamMemberIdFromAvailability(slot) === requestedTeamMemberId)
+      : null;
+    const fallbackRawSlot = exactSlots[0] ?? null;
+
+    if (requestedTeamMemberId && requestedSlot) {
+      const resolvedSlot = await this.toResolvedAvailabilitySlot(requestedSlot);
+      return {
+        available: true,
+        suggestions: [{
+          date: params.date,
+          time: params.time,
+          ...(requestedTeamMemberName ? { techName: requestedTeamMemberName } : {}),
+        }],
+        staffResolution: this.buildStaffResolution({
+          resolvedSlot,
+          requestedTeamMemberId,
+          requestedTeamMemberName,
+          requestedStaffUnavailable: false,
+          fallbackSlot: null,
+          variation,
+        }),
+      };
     }
 
-    const availabilities = response.availabilities ?? [];
-    const requestedIso = requestedStart.toUTC().toISO();
-    const exact = availabilities.find((slot) => slot.start_at === requestedIso);
-    if (exact) {
-      return { available: true };
+    if (requestedTeamMemberId && fallbackRawSlot) {
+      const fallbackSlot = await this.toResolvedAvailabilitySlot(fallbackRawSlot);
+      const fallbackName = fallbackSlot?.teamMemberName ?? null;
+      return {
+        available: true,
+        message: requestedTeamMemberName && fallbackName
+          ? `${requestedTeamMemberName} isn't available at that time, but ${fallbackName} is.`
+          : undefined,
+        requestedStaffUnavailable: true,
+        ...(requestedTeamMemberName ? { requestedStaffName: requestedTeamMemberName } : {}),
+        ...(fallbackName ? { fallbackStaffName: fallbackName } : {}),
+        suggestions: [{
+          date: params.date,
+          time: params.time,
+          ...(fallbackName ? { techName: fallbackName } : {}),
+        }],
+        staffResolution: this.buildStaffResolution({
+          resolvedSlot: fallbackSlot,
+          requestedTeamMemberId,
+          requestedTeamMemberName,
+          requestedStaffUnavailable: true,
+          fallbackSlot,
+          variation,
+        }),
+      };
+    }
+
+    if (!requestedTeamMemberId && fallbackRawSlot) {
+      const resolvedSlot = await this.toResolvedAvailabilitySlot(fallbackRawSlot);
+      return {
+        available: true,
+        suggestions: [{
+          date: params.date,
+          time: params.time,
+          ...(resolvedSlot?.teamMemberName ? { techName: resolvedSlot.teamMemberName } : {}),
+        }],
+        staffResolution: this.buildStaffResolution({
+          resolvedSlot,
+          requestedTeamMemberId: null,
+          requestedTeamMemberName: null,
+          requestedStaffUnavailable: false,
+          fallbackSlot: null,
+          variation,
+        }),
+      };
     }
 
     const suggestions: TimeSlot[] = [];
     for (const slot of availabilities.slice(0, 6)) {
       const start = slot.start_at ? DateTime.fromISO(slot.start_at, { zone: 'utc' }).setZone(params.timezone) : null;
       if (!start || !start.isValid) continue;
+      const teamMemberName = await this.teamMemberName(this.teamMemberIdFromAvailability(slot));
       suggestions.push({
         date: start.toFormat('yyyy-LL-dd'),
         time: start.toFormat('HH:mm'),
-        techName: params.techName,
+        ...(teamMemberName ? { techName: teamMemberName } : {}),
       });
       if (suggestions.length >= 3) break;
     }
@@ -869,6 +976,14 @@ export class SquareAppointmentsProvider implements BookingProvider {
     return {
       available: false,
       suggestions: suggestions.length > 0 ? suggestions : undefined,
+      staffResolution: this.buildStaffResolution({
+        resolvedSlot: null,
+        requestedTeamMemberId,
+        requestedTeamMemberName,
+        requestedStaffUnavailable: false,
+        fallbackSlot: null,
+        variation,
+      }),
     };
   }
 
@@ -877,18 +992,36 @@ export class SquareAppointmentsProvider implements BookingProvider {
     // C2: pass idempotencyKey so customer creation is idempotency-safe
     const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName, input.idempotencyKey);
     let resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
-    if (!resolvedTeamMemberId) {
+    if (input.teamMemberId && !input.skipAvailabilitySearch) {
       const localStart = DateTime.fromISO(input.datetimeIso, { zone: 'utc' }).setZone(input.timezone);
       if (!localStart.isValid) {
         throw new Error('square_create_booking_invalid_datetime');
       }
-      resolvedTeamMemberId = await this.findAvailableTeamMemberId({
+      const requestedSlot = await this.findAvailableTeamMember({
+        date: localStart.toFormat('yyyy-LL-dd'),
+        time: localStart.toFormat('HH:mm'),
+        timezone: input.timezone,
+        matchedServiceId: input.matchedServiceId,
+        serviceName: input.service,
+        requestedTeamMemberId: input.teamMemberId,
+      });
+      if (!requestedSlot?.teamMemberId) {
+        throw new Error('square_requested_staff_unavailable');
+      }
+      resolvedTeamMemberId = requestedSlot.teamMemberId;
+    } else if (!resolvedTeamMemberId) {
+      const localStart = DateTime.fromISO(input.datetimeIso, { zone: 'utc' }).setZone(input.timezone);
+      if (!localStart.isValid) {
+        throw new Error('square_create_booking_invalid_datetime');
+      }
+      const availableSlot = await this.findAvailableTeamMember({
         date: localStart.toFormat('yyyy-LL-dd'),
         time: localStart.toFormat('HH:mm'),
         timezone: input.timezone,
         matchedServiceId: input.matchedServiceId,
         serviceName: input.service,
       });
+      resolvedTeamMemberId = availableSlot?.teamMemberId ?? undefined;
       if (resolvedTeamMemberId) {
         logger.info(
           { shopId: this.shop.id, bookingProvider: 'square_appointments' },

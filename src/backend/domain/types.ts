@@ -436,6 +436,28 @@ export interface TimeSlot {
   techName?: string;
 }
 
+export interface AvailabilityStaffResolution {
+  resolvedTeamMemberId: string | null;
+  resolvedTeamMemberName: string | null;
+  requestedTeamMemberId: string | null;
+  requestedTeamMemberName: string | null;
+  requestedStaffUnavailable: boolean;
+  fallbackTeamMemberId: string | null;
+  fallbackTeamMemberName: string | null;
+  serviceVariationId: string | null;
+  locationId: string | null;
+}
+
+export interface AvailabilityCheckResult {
+  available: boolean;
+  suggestions?: TimeSlot[];
+  message?: string;
+  requestedStaffUnavailable?: boolean;
+  requestedStaffName?: string;
+  fallbackStaffName?: string;
+  staffResolution?: AvailabilityStaffResolution;
+}
+
 export interface BookingInput {
   shopId: string;
   customerPhone: string;
@@ -453,6 +475,7 @@ export interface BookingInput {
   matchedServiceId?: string | null;
   matchedServiceConfidence?: number | null;
   idempotencyKey: string;
+  skipAvailabilitySearch?: boolean;
 }
 
 export type BookingProviderStatus =

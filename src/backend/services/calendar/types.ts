@@ -1,4 +1,4 @@
-import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
+import type { AvailabilityCheckResult, BookingInput, BookingResult, Shop } from '@/src/backend/domain/types';
 import { AcuityProvider } from '@/src/backend/services/booking-providers/acuity';
 import { GoogleCalendarProvider } from '@/src/backend/services/calendar/google-calendar';
 import { ManualCalendarProvider } from '@/src/backend/services/calendar/manual-provider';
@@ -23,7 +23,7 @@ export interface CalendarProvider {
     teamMemberId?: string;
     timezone: string;
     matchedServiceId?: string | null;
-  }): Promise<{ available: boolean; suggestions?: TimeSlot[] }>;
+  }): Promise<AvailabilityCheckResult>;
   getTeamMembers?(): Promise<Array<{ id: string; displayName: string; givenName?: string; familyName?: string }>>;
   findTeamMemberByName?(name: string): Promise<string | null>;
   createBooking(input: BookingInput): Promise<BookingResult>;

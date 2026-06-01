@@ -1,4 +1,9 @@
-import { checkAvailabilityTool } from '@/src/agent/tools/check-availability';
+import {
+  AVAILABILITY_CACHE_TTL_MS,
+  buildAvailabilityCacheEntry,
+  checkAvailabilityTool,
+  publicAvailabilityResult,
+} from '@/src/agent/tools/check-availability';
 import { endCallTool } from '@/src/agent/tools/end-call';
 import { cancelBookingTool } from '@/src/agent/tools/cancel-booking';
 import { createBookingTool } from '@/src/agent/tools/create-booking';
@@ -31,7 +36,7 @@ import {
 } from '@/src/agent/tools/validate-appointment-time';
 import { resolveRuntimeService, type AgentToolContext } from '@/src/agent/tools/types';
 import { extractAppointmentDateTime } from '@/src/agent/sip/appointment-time-extractor';
-import type { Shop } from '@/src/backend/domain/types';
+import type { Shop, TimeSlot } from '@/src/backend/domain/types';
 import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
@@ -95,6 +100,10 @@ export type AvailabilityCheckPrePopulatePreview =
 type AvailabilityToolResult = {
   available: boolean;
   suggestions?: unknown;
+  message?: string;
+  requestedStaffUnavailable?: boolean;
+  requestedStaffName?: string;
+  fallbackStaffName?: string;
 };
 
 class LazySipCalendarProvider implements CalendarProvider {
@@ -197,6 +206,7 @@ function availabilityCacheMatches(
   request: Pick<AvailabilityCheckRequest, 'providerId' | 'service' | 'date' | 'time' | 'techName'>,
 ): cached is AvailabilityCheckPrePopulateResult {
   if (!cached) return false;
+  if (Date.now() - cached.fetchedAtMs > AVAILABILITY_CACHE_TTL_MS) return false;
   return availabilityCacheKey(cached) === availabilityCacheKey(request);
 }
 
@@ -302,6 +312,10 @@ function availabilityToolResult(result: unknown): AvailabilityToolResult | null 
   return {
     available: record.available,
     ...(record.suggestions !== undefined ? { suggestions: record.suggestions } : {}),
+    ...(typeof record.message === 'string' ? { message: record.message } : {}),
+    ...(typeof record.requestedStaffUnavailable === 'boolean' ? { requestedStaffUnavailable: record.requestedStaffUnavailable } : {}),
+    ...(typeof record.requestedStaffName === 'string' ? { requestedStaffName: record.requestedStaffName } : {}),
+    ...(typeof record.fallbackStaffName === 'string' ? { fallbackStaffName: record.fallbackStaffName } : {}),
   };
 }
 
@@ -558,7 +572,8 @@ export async function prePopulateAvailabilityFromDraft(
       timezone: ctx.shop.timezone,
       matchedServiceId: request.matchedServiceId,
     });
-    const parsedResult = availabilityToolResult(result);
+    const publicResult = publicAvailabilityResult(result);
+    const parsedResult = availabilityToolResult(publicResult);
     if (!parsedResult) return null;
 
     const currentRequest = buildAvailabilityRequestFromDraft(ctx);
@@ -577,18 +592,16 @@ export async function prePopulateAvailabilityFromDraft(
       return null;
     }
 
-    const cached: AvailabilityCheckPrePopulateResult = {
+    const cached: AvailabilityCheckPrePopulateResult = buildAvailabilityCacheEntry({
       providerId: request.providerId,
       service: request.service,
       date: request.date,
       time: request.time,
       ...(request.techName ? { techName: request.techName } : {}),
-      available: parsedResult.available,
-      ...(parsedResult.suggestions !== undefined ? { suggestions: parsedResult.suggestions } : {}),
-      raw: result,
+      result,
       fetchedAtMs: Date.now(),
       prefetchStartedAtMs: startedAt,
-    };
+    });
     ctx.availabilityCheck = { latest: cached };
 
     logger.info(
@@ -826,6 +839,10 @@ export async function executeSipShopToolCall(
           );
           result = {
             available: cached.available,
+            ...(cached.message ? { message: cached.message } : {}),
+            ...(cached.requestedStaffUnavailable !== undefined ? { requestedStaffUnavailable: cached.requestedStaffUnavailable } : {}),
+            ...(cached.requestedStaffName ? { requestedStaffName: cached.requestedStaffName } : {}),
+            ...(cached.fallbackStaffName ? { fallbackStaffName: cached.fallbackStaffName } : {}),
             ...(cached.suggestions !== undefined ? { suggestions: cached.suggestions } : {}),
           };
           break;
@@ -841,19 +858,33 @@ export async function executeSipShopToolCall(
             validation.valid === true
           );
           if (currentValidationMatches) {
-            ctx.availabilityCheck = {
-              latest: {
-                providerId: request.providerId,
-                service: request.service,
-                date: request.date,
-                time: request.time,
-                ...(request.techName ? { techName: request.techName } : {}),
-                available: parsedResult.available,
-                ...(parsedResult.suggestions !== undefined ? { suggestions: parsedResult.suggestions } : {}),
-                raw: result,
-                fetchedAtMs: Date.now(),
-              },
-            };
+            if (!availabilityCacheMatches(ctx.availabilityCheck?.latest, request)) {
+              ctx.availabilityCheck = {
+                latest: {
+                  providerId: request.providerId,
+                  service: request.service,
+                  date: request.date,
+                  time: request.time,
+                  ...(request.techName ? { techName: request.techName } : {}),
+                  available: parsedResult.available,
+                  ...(parsedResult.suggestions !== undefined ? { suggestions: parsedResult.suggestions as TimeSlot[] } : {}),
+                  ...(parsedResult.message ? { message: parsedResult.message } : {}),
+                  requestedStaffUnavailable: parsedResult.requestedStaffUnavailable ?? false,
+                  requestedStaffName: parsedResult.requestedStaffName ?? null,
+                  fallbackStaffName: parsedResult.fallbackStaffName ?? null,
+                  resolvedTeamMemberId: null,
+                  resolvedTeamMemberName: null,
+                  requestedTeamMemberId: null,
+                  requestedTeamMemberName: null,
+                  fallbackTeamMemberId: null,
+                  fallbackTeamMemberName: null,
+                  serviceVariationId: null,
+                  locationId: null,
+                  raw: result,
+                  fetchedAtMs: Date.now(),
+                },
+              };
+            }
           }
         }
         break;

@@ -27,7 +27,11 @@ function createShop(patch: Partial<Shop> = {}): Shop {
   };
 }
 
-function createContext(params?: { shop?: Partial<Shop> }) {
+function createContext(params?: {
+  shop?: Partial<Shop>;
+  findTeamMemberByName?: (name: string) => Promise<string | null>;
+  checkAvailability?: AgentToolContext['calendarProvider']['checkAvailability'];
+}) {
   const availabilityInputs: unknown[] = [];
   const ctx: AgentToolContext = {
     shop: createShop(params?.shop),
@@ -36,8 +40,10 @@ function createContext(params?: { shop?: Partial<Shop> }) {
     roomName: 'room-check-availability-test',
     calendarProvider: {
       shop: createShop(params?.shop),
+      findTeamMemberByName: params?.findTeamMemberByName,
       checkAvailability: async (input) => {
         availabilityInputs.push(input);
+        if (params?.checkAvailability) return params.checkAvailability(input);
         return { available: true };
       },
       createBooking: async () => ({ bookingId: 'unused', confirmed: true }),
@@ -49,6 +55,7 @@ function createContext(params?: { shop?: Partial<Shop> }) {
     callbacksRepository: {} as AgentToolContext['callbacksRepository'],
     shopsRepository: {} as AgentToolContext['shopsRepository'],
     telephonyService: {} as AgentToolContext['telephonyService'],
+    availabilityCheck: { latest: null },
   };
   return { ctx, availabilityInputs };
 }
@@ -116,4 +123,46 @@ test('checkAvailabilityTool uses canonical service duration before provider call
 
   assert.deepEqual(result, { available: true });
   assert.equal((harness.availabilityInputs[0] as { durationMin?: number })?.durationMin, 120);
+});
+
+test('checkAvailabilityTool caches staff resolution without returning raw team member IDs', async () => {
+  const harness = createContext({
+    findTeamMemberByName: async (name) => {
+      assert.equal(name, 'Jessica');
+      return 'TM_JESSICA';
+    },
+    checkAvailability: async () => ({
+      available: true,
+      message: "Jessica isn't available at that time, but Marcus is.",
+      requestedStaffUnavailable: true,
+      requestedStaffName: 'Jessica',
+      fallbackStaffName: 'Marcus',
+      suggestions: [{ date: '2099-01-05', time: '10:00', techName: 'Marcus' }],
+      staffResolution: {
+        resolvedTeamMemberId: 'TM_MARCUS',
+        resolvedTeamMemberName: 'Marcus',
+        requestedTeamMemberId: 'TM_JESSICA',
+        requestedTeamMemberName: 'Jessica',
+        requestedStaffUnavailable: true,
+        fallbackTeamMemberId: 'TM_MARCUS',
+        fallbackTeamMemberName: 'Marcus',
+        serviceVariationId: 'SV_HAIRCUT',
+        locationId: 'LOC_TEST',
+      },
+    }),
+  });
+
+  const result = await checkAvailabilityTool(harness.ctx, {
+    date: '2099-01-05',
+    time: '10:00',
+    service: 'Haircut',
+    techName: 'Jessica',
+  });
+
+  assert.equal('requestedStaffUnavailable' in result ? result.requestedStaffUnavailable : false, true);
+  assert.equal('fallbackStaffName' in result ? result.fallbackStaffName : undefined, 'Marcus');
+  assert.equal(JSON.stringify(result).includes('TM_'), false);
+  assert.equal(harness.ctx.availabilityCheck?.latest?.resolvedTeamMemberId, 'TM_MARCUS');
+  assert.equal(harness.ctx.availabilityCheck?.latest?.requestedTeamMemberId, 'TM_JESSICA');
+  assert.equal((harness.availabilityInputs[0] as { teamMemberId?: string })?.teamMemberId, 'TM_JESSICA');
 });

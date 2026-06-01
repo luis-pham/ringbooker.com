@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { ToolError } from '@/src/backend/domain/types';
+import type { AvailabilityCheckResult, TimeSlot, ToolError } from '@/src/backend/domain/types';
 import { resolveBookingProviderReadiness } from '@/src/backend/services/calendar/provider-readiness';
 import {
   dateSchema,
@@ -15,6 +15,8 @@ import {
   requiresAppointmentTimeValidation,
 } from '@/src/agent/tools/validate-appointment-time';
 
+export const AVAILABILITY_CACHE_TTL_MS = 60_000;
+
 const SERVICE_ERROR_CODE = {
   unknown_service: 'UNKNOWN_SERVICE',
   service_needs_clarification: 'SERVICE_NEEDS_CLARIFICATION',
@@ -28,10 +30,67 @@ const schema = z.object({
   techName: z.string().min(1).optional(),
 });
 
+export type PublicAvailabilityResult = {
+  available: boolean;
+  suggestions?: TimeSlot[];
+  message?: string;
+  requestedStaffUnavailable?: boolean;
+  requestedStaffName?: string;
+  fallbackStaffName?: string;
+};
+
+export function publicAvailabilityResult(result: AvailabilityCheckResult): PublicAvailabilityResult {
+  return {
+    available: result.available,
+    ...(result.message ? { message: result.message } : {}),
+    ...(result.requestedStaffUnavailable !== undefined ? { requestedStaffUnavailable: result.requestedStaffUnavailable } : {}),
+    ...(result.requestedStaffName ? { requestedStaffName: result.requestedStaffName } : {}),
+    ...(result.fallbackStaffName ? { fallbackStaffName: result.fallbackStaffName } : {}),
+    ...(result.suggestions !== undefined ? { suggestions: result.suggestions } : {}),
+  };
+}
+
+export function buildAvailabilityCacheEntry(params: {
+  providerId: string;
+  service: string;
+  date: string;
+  time: string;
+  techName?: string;
+  result: AvailabilityCheckResult;
+  fetchedAtMs: number;
+  prefetchStartedAtMs?: number;
+}): NonNullable<NonNullable<AgentToolContext['availabilityCheck']>['latest']> {
+  const staff = params.result.staffResolution;
+  return {
+    providerId: params.providerId,
+    service: params.service,
+    date: params.date,
+    time: params.time,
+    ...(params.techName ? { techName: params.techName } : {}),
+    available: params.result.available,
+    ...(params.result.suggestions !== undefined ? { suggestions: params.result.suggestions } : {}),
+    ...(params.result.message ? { message: params.result.message } : {}),
+    requestedStaffUnavailable: params.result.requestedStaffUnavailable ?? staff?.requestedStaffUnavailable ?? false,
+    requestedStaffName: params.result.requestedStaffName ?? staff?.requestedTeamMemberName ?? null,
+    fallbackStaffName: params.result.fallbackStaffName ?? staff?.fallbackTeamMemberName ?? null,
+    resolvedTeamMemberId: staff?.resolvedTeamMemberId ?? null,
+    resolvedTeamMemberName: staff?.resolvedTeamMemberName ?? null,
+    requestedTeamMemberId: staff?.requestedTeamMemberId ?? null,
+    requestedTeamMemberName: staff?.requestedTeamMemberName ?? null,
+    fallbackTeamMemberId: staff?.fallbackTeamMemberId ?? null,
+    fallbackTeamMemberName: staff?.fallbackTeamMemberName ?? null,
+    serviceVariationId: staff?.serviceVariationId ?? null,
+    locationId: staff?.locationId ?? null,
+    raw: publicAvailabilityResult(params.result),
+    fetchedAtMs: params.fetchedAtMs,
+    ...(params.prefetchStartedAtMs ? { prefetchStartedAtMs: params.prefetchStartedAtMs } : {}),
+  };
+}
+
 export async function checkAvailabilityTool(
   ctx: AgentToolContext,
   input: unknown,
-): Promise<{ available: boolean; suggestions?: { date: string; time: string; techName?: string }[] } | ToolError> {
+): Promise<PublicAvailabilityResult | ToolError> {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return toToolError('Invalid availability parameters.', { code: 'VALIDATION_ERROR', retryable: false });
 
@@ -66,14 +125,34 @@ export async function checkAvailabilityTool(
       );
     }
 
-    return await ctx.calendarProvider.checkAvailability({
+    let requestedTeamMemberId: string | undefined;
+    if (parsed.data.techName && ctx.calendarProvider.findTeamMemberByName) {
+      requestedTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(parsed.data.techName) ?? undefined;
+    }
+
+    const result = await ctx.calendarProvider.checkAvailability({
       date: parsed.data.date,
       time: parsed.data.time,
       durationMin: service.durationMin,
       techName: parsed.data.techName,
+      teamMemberId: requestedTeamMemberId,
       timezone: ctx.shop.timezone,
       matchedServiceId: service.matchedServiceId,
     });
+
+    if (ctx.availabilityCheck) {
+      ctx.availabilityCheck.latest = buildAvailabilityCacheEntry({
+        providerId: readiness.providerId,
+        service: service.serviceName,
+        date: parsed.data.date,
+        time: parsed.data.time,
+        ...(parsed.data.techName ? { techName: parsed.data.techName } : {}),
+        result,
+        fetchedAtMs: Date.now(),
+      });
+    }
+
+    return publicAvailabilityResult(result);
   } catch {
     return toToolError('I am having trouble checking the schedule right now. Let me have the user follow up.', {
       code: 'CALENDAR_TIMEOUT',

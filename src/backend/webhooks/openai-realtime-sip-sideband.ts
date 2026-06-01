@@ -978,6 +978,12 @@ export function startOpenAiRealtimeSipSideband(
         };
         const availabilityOutput = {
           available: availabilityResult.available,
+          ...(availabilityResult.message ? { message: availabilityResult.message } : {}),
+          ...(availabilityResult.requestedStaffUnavailable !== undefined
+            ? { requestedStaffUnavailable: availabilityResult.requestedStaffUnavailable }
+            : {}),
+          ...(availabilityResult.requestedStaffName ? { requestedStaffName: availabilityResult.requestedStaffName } : {}),
+          ...(availabilityResult.fallbackStaffName ? { fallbackStaffName: availabilityResult.fallbackStaffName } : {}),
           ...(availabilityResult.suggestions !== undefined ? { suggestions: availabilityResult.suggestions } : {}),
         };
         const availabilityCallSent = sendRealtimeEvent(
