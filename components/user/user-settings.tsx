@@ -199,6 +199,221 @@ html[data-user-theme="dark"]{
   margin:0;color:#374151;font-size:12px;font-weight:700;letter-spacing:.08em;
 }
 .settings-sms-panel .field{margin:0}
+.ai-behavior-shell.card{
+  border:none;
+  background:transparent;
+  padding:0;
+}
+.ai-behavior-tab{
+  display:grid;
+  gap:16px;
+}
+.ai-behavior-tab .card{
+  border:none;
+  background:transparent;
+  padding:0;
+}
+.ai-behavior-section-card{
+  border:.5px solid var(--color-border-tertiary,var(--border));
+  border-radius:var(--border-radius-lg,14px);
+  background:var(--color-background-primary,var(--surface-card,#fff));
+  overflow:hidden;
+  box-sizing:border-box;
+}
+.ai-behavior-field{
+  padding:12px 14px;
+  box-sizing:border-box;
+}
+.ai-behavior-field + .ai-behavior-field{
+  border-top:.5px solid var(--color-border-tertiary,var(--border));
+}
+.ai-behavior-toggle-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+.ai-behavior-toggle-row .switch{
+  flex-shrink:0;
+  margin-top:2px;
+}
+.ai-behavior-toggle-row.locked .ai-behavior-copy{
+  opacity:.62;
+}
+.ai-behavior-copy{
+  min-width:0;
+}
+.ai-behavior-copy h4,
+.ai-behavior-returning-head h4{
+  margin:0 0 4px;
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:-.01em;
+  color:var(--color-text-primary,var(--text-dark));
+}
+.ai-behavior-copy p,
+.ai-behavior-sub{
+  margin:0;
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:12px;
+  line-height:1.55;
+}
+.ai-behavior-title-row,
+.ai-behavior-returning-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+}
+.ai-behavior-field-label,
+.ai-behavior-tab .field label.ai-behavior-field-label{
+  display:block;
+  margin:0 0 6px;
+  font-size:11px;
+  font-weight:500;
+  color:var(--color-text-secondary,var(--text-gray));
+  text-transform:none;
+  letter-spacing:0;
+}
+.ai-behavior-tab .field{
+  margin:0;
+}
+.ai-behavior-tab .field input,
+.ai-behavior-tab .field select,
+.ai-behavior-tab .field textarea{
+  font-size:16px;
+  border:.5px solid var(--color-border-secondary,var(--border));
+  border-radius:var(--border-radius-md,10px);
+}
+.ai-behavior-tab .field textarea{
+  min-height:96px;
+}
+.ai-behavior-chip-row{
+  gap:8px;
+}
+.ai-behavior-tab .ai-behavior-chip-row .preset-pill.active{
+  background:#111;
+  color:#fff;
+  border-color:#111;
+}
+.ai-behavior-radio-group{
+  display:grid;
+  gap:8px;
+}
+.ai-behavior-radio-option{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  width:100%;
+  border:.5px solid var(--color-border-secondary,var(--border));
+  border-radius:var(--border-radius-md,10px);
+  background:var(--color-background-primary,var(--surface-card,#fff));
+  color:var(--color-text-primary,var(--text-dark));
+  padding:10px 12px;
+  font:inherit;
+  font-size:13px;
+  text-align:left;
+  cursor:pointer;
+}
+.ai-behavior-radio-option > span{
+  width:14px;
+  height:14px;
+  border-radius:999px;
+  border:1.5px solid var(--color-border-secondary,var(--border));
+  box-sizing:border-box;
+  flex-shrink:0;
+}
+.ai-behavior-radio-option.active{
+  border-color:#111;
+}
+.ai-behavior-radio-option.active > span{
+  border:4px solid #111;
+}
+.ai-behavior-success,
+.ai-behavior-warning{
+  margin:0 0 6px;
+  font-size:12px;
+  line-height:1.45;
+}
+.ai-behavior-success{color:var(--success-text,#16a34a)}
+.ai-behavior-warning{color:var(--warning-text,#b45309)}
+.ai-behavior-error{
+  color:var(--danger-text,#dc2626);
+  font-size:12px;
+}
+.ai-behavior-inline-actions{
+  margin-top:12px;
+}
+.ai-behavior-pro-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  border:.5px solid #C0DD97;
+  border-radius:999px;
+  background:#EAF3DE;
+  color:#3B6D11;
+  padding:4px 9px;
+  font-size:11px;
+  font-weight:600;
+  line-height:1;
+}
+.ai-behavior-group{
+  display:grid;
+  gap:8px;
+}
+.ai-behavior-group-label{
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:11px;
+  font-weight:500;
+  margin-bottom:0;
+  text-transform:uppercase;
+}
+.ai-behavior-info-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:12px;
+  line-height:1.45;
+}
+.ai-behavior-info-row svg{
+  flex-shrink:0;
+}
+.ai-behavior-time-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.ai-behavior-caption{
+  border-top:.5px solid var(--color-border-tertiary,var(--border));
+  margin:0;
+  padding:12px 14px;
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:12px;
+  line-height:1.5;
+}
+.ai-behavior-save-footer{
+  display:flex;
+  justify-content:flex-end;
+  padding:0;
+}
+.ai-behavior-save-footer.settings-save-footer > .btn.user-save{
+  padding:10px 24px;
+}
+@media (max-width:860px){
+  .ai-behavior-save-footer{
+    justify-content:stretch;
+  }
+  .user-app-shell .ai-behavior-save-footer.settings-save-footer > .btn.user-save{
+    width:100%;
+    padding:12px;
+  }
+  .ai-behavior-time-grid{
+    grid-template-columns:1fr;
+  }
+}
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .hint-row .option-title{flex:1;min-width:0}
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
@@ -709,6 +924,12 @@ html[data-user-theme="dark"]{
 }
 .faq-empty-state p{margin:0}
 .faq-empty-state .faq-empty-cta{margin-top:16px;margin-bottom:0}
+.faq-policies-card.card,
+.faq-policies-card .stat-card{
+  background:var(--surface-page,#f6f7fb);
+  border:0;
+  padding:0;
+}
 .faq-policies-form .option-card{cursor:default;display:grid;gap:0}
 .faq-policies-form .option-card:hover{transform:none;box-shadow:none;border-color:var(--border)}
 .faq-policies-form .option-card > .service-catalog-heading{
@@ -1215,7 +1436,13 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
 }
 .onb-sheet-remove:disabled{opacity:.45;cursor:not-allowed}
 .onb-sheet-cancel{
-  flex:1;
+  align-items:center;
+  box-sizing:border-box;
+  display:inline-flex;
+  flex:1 1 0;
+  justify-content:center;
+  min-height:48px;
+  min-width:0;
   padding:13px;
   border:1px solid var(--border);
   border-radius:10px;
@@ -1226,7 +1453,13 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
   font-family:inherit;
 }
 .onb-sheet-save{
-  flex:2;
+  align-items:center;
+  box-sizing:border-box;
+  display:inline-flex;
+  flex:1 1 0;
+  justify-content:center;
+  min-height:48px;
+  min-width:0;
   padding:13px;
   border:none;
   border-radius:10px;
@@ -1348,16 +1581,22 @@ html[data-user-theme="dark"] .onb-sheet-save{background:#1f6feb}
   line-height:1.45;
 }
 .rb-bottom-sheet-footer-actions{display:flex;gap:10px;align-items:center;flex-shrink:0;margin-left:auto}
-.rb-bottom-sheet-footer .onb-sheet-cancel{flex:0 0 auto}
-.rb-bottom-sheet-footer .onb-sheet-save{flex:0 0 auto;min-width:126px}
+.rb-bottom-sheet-footer .onb-sheet-cancel,
+.rb-bottom-sheet-footer .onb-sheet-save{
+  flex:0 0 126px;
+  min-width:126px;
+  width:126px;
+}
 html[data-user-theme="dark"] .rb-bottom-sheet-footer{background:var(--surface-card)}
 @media (max-width:860px){
   .rb-bottom-sheet-footer{padding-top:12px;margin-top:10px}
   .rb-bottom-sheet-footer--split .rb-bottom-sheet-footer-actions{width:100%;justify-content:stretch}
   .rb-bottom-sheet-footer--split .rb-bottom-sheet-footer-actions .onb-sheet-cancel,
   .rb-bottom-sheet-footer--split .rb-bottom-sheet-footer-actions .onb-sheet-save{
-    flex:1;
+    flex:1 1 0;
     min-height:48px;
+    min-width:0;
+    width:auto;
     justify-content:center;
   }
 }
@@ -1616,6 +1855,12 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
   flex-wrap:wrap;
   gap:10px;
   margin-left:auto;
+}
+.catalog-service-dialog-footer-actions .btn{
+  box-sizing:border-box;
+  justify-content:center;
+  min-height:48px;
+  width:136px;
 }
 .catalog-service-dialog-footer-spacer{
   flex:1;
@@ -2221,6 +2466,14 @@ html[data-user-theme="dark"] .plan-chip{
   .faq-empty-state .service-catalog-actions{width:100%;max-width:none;margin-top:16px}
   .faq-empty-state .service-catalog-actions .faq-empty-cta{width:100%;justify-content:center}
   .staff-empty .service-catalog-actions .staff-empty-add{width:100%;justify-content:center}
+  .faq-policies-card.card,
+  .faq-policies-card .stat-card,
+  .faq-policies-card .grid.grid-3 > .stat-card,
+  .faq-policies-card .grid.grid-4 > .stat-card{
+    background:var(--surface-page,#f6f7fb);
+    border:0;
+    padding:0;
+  }
   .faq-policies-form .option-card{padding:12px 14px}
   .faq-policies-form .preset-pill{min-height:44px;box-sizing:border-box}
   .faq-policies-form .field input,

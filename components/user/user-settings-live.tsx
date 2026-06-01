@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { IconAdjustmentsHorizontal, IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconAdjustmentsHorizontal, IconInfoCircle, IconPencil, IconTrash } from '@tabler/icons-react';
 
 import { BottomSheet, useIsKnowledgeMobile } from '@/components/ui/BottomSheet';
 import { UserLayout } from '@/components/user/user-layout';
@@ -2498,9 +2498,9 @@ export function UserSettingsLive({
           .staff-drawer-footer{align-items:center;background:#fff;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:space-between;padding:14px 20px;position:sticky;bottom:0}
           .staff-profile-footer-left{align-items:center;display:flex;gap:12px;margin-right:auto;min-width:0}
           .staff-profile-footer-actions{display:flex;gap:10px}
-          .staff-drawer-secondary,.staff-drawer-primary{border-radius:8px;cursor:pointer;font:inherit;min-height:40px;padding:9px 12px}
+          .staff-drawer-secondary,.staff-drawer-primary{align-items:center;border-radius:8px;box-sizing:border-box;cursor:pointer;display:inline-flex;font:inherit;justify-content:center;min-height:48px;min-width:126px;padding:9px 12px}
           .staff-drawer-secondary{background:#fff;border:1px solid #d9dde5;color:#111827}
-          .staff-drawer-primary{background:#111827;border:1px solid #111827;color:#fff;min-width:126px}
+          .staff-drawer-primary{background:#111827;border:1px solid #111827;color:#fff}
           .staff-drawer-error{color:#b91c1c;font-size:13px}
           .staff-drawer-remove{align-items:center;background:transparent;border:0;color:#b91c1c;cursor:pointer;display:inline-flex;font:inherit;font-weight:650;gap:6px;min-height:40px;padding:9px 0}
           .staff-drawer-primary:disabled,.staff-drawer-secondary:disabled,.staff-drawer-remove:disabled{cursor:not-allowed;opacity:.55}
@@ -2508,7 +2508,7 @@ export function UserSettingsLive({
             .staff-drawer-scroll{max-height:calc(85vh - 88px);padding:16px}
             .staff-drawer-footer{align-items:stretch;flex-wrap:wrap;padding:12px 16px}
             .staff-profile-footer-left,.staff-profile-footer-actions{width:100%}
-            .staff-profile-footer-actions button{flex:1}
+            .staff-profile-footer-actions button{flex:1 1 0;min-width:0}
           }
         `}</style>
       </div>
@@ -3898,7 +3898,7 @@ export function UserSettingsLive({
             ) : null}
 
             {activeTab === 'faq' ? (
-            <section className="card">
+            <section className="card faq-policies-card">
               <form
                 className="card-section-form faq-policies-form"
 	                onSubmit={(event) => {
@@ -4028,7 +4028,7 @@ export function UserSettingsLive({
             ) : null}
 
             {activeTab === 'ai-call-behavior' ? (
-            <section className="card">
+            <section className="card ai-behavior-shell">
               <div className="panel-head knowledge-tab-panel-head" style={{ marginBottom: 12 }}>
                 <div>
                   <h3>AI behavior & Calling handling</h3>
@@ -4048,7 +4048,7 @@ export function UserSettingsLive({
               </div>
               {behaviorSubTab === 'call' ? (
               <form
-                className="card-section-form"
+                className="card-section-form ai-behavior-tab ai-behavior-tab--call"
                 onSubmit={(event) => {
                   event.preventDefault();
                   const patch: Record<string, unknown> = {};
@@ -4057,71 +4057,69 @@ export function UserSettingsLive({
                   void commitSettingsPatch('call-handling', patch);
                 }}
               >
-                <div className="card-section settings-tab-content-frame">
-                  <div className="switch-list">
-                    <div className={`switch-row ${ownerTransferUx.locked ? 'locked' : ''}`}>
-                      <div className="switch-copy">
-                        <div className="switch-title-row">
-                          <h4>{ownerTransferUx.title}</h4>
-                          {ownerTransferUx.locked ? (
-                            <span className="tag orange knowledge-plan-lock-badge">{ownerTransferUx.badge}</span>
-                          ) : null}
-                        </div>
-                        <p>{ownerTransferUx.description}</p>
+                <div className="ai-behavior-section-card">
+                  <div className={`ai-behavior-field ai-behavior-toggle-row ${ownerTransferUx.locked ? 'locked' : ''}`}>
+                    <div className="ai-behavior-copy">
+                      <div className="ai-behavior-title-row">
+                        <h4>Owner transfer</h4>
+                        {ownerTransferUx.locked ? (
+                          <span className="tag orange knowledge-plan-lock-badge">{ownerTransferUx.badge}</span>
+                        ) : null}
                       </div>
-                      <div className="switch-stack">
-                        <button
-                          type="button"
-                          className={`switch ${currentForm.allow_transfers && !ownerTransferUx.locked ? 'on' : ''} ${ownerTransferUx.locked ? 'locked' : ''}`}
-                          disabled={ownerTransferUx.locked}
-                          aria-disabled={ownerTransferUx.locked}
-                          onClick={() => {
-                            if (ownerTransferUx.locked) return;
-                            patchState('allow_transfers', !currentForm.allow_transfers);
-                          }}
-                        >
-                          <span className="sr-only">{ownerTransferUx.locked ? 'Owner transfer is locked' : 'Toggle transfers'}</span>
-                        </button>
-                      </div>
+                      <p>{ownerTransferUx.description}</p>
                     </div>
-                    {!ownerTransferUx.locked && currentForm.allow_transfers ? (
-                      <div className="handoff-phone-section">
-                        <div className="field handoff-transfer-phone">
-                          <label className="handoff-section-label">Transfer calls to</label>
-                          {!effectiveShop.handoff_phone ? (
-                            <p style={{ color: 'var(--warning-text, #b45309)', fontSize: 12, marginBottom: 6 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</p>
-                          ) : handoffPhoneWarnings.includes('matches_business_line') ? (
-                            <p style={{ color: 'var(--warning-text, #b45309)', fontSize: 12, marginBottom: 6 }}>&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</p>
-                          ) : (
-                            <p style={{ color: 'var(--success-text, #16a34a)', fontSize: 12, marginBottom: 6 }}>&#10003; Transfers will go to {effectiveShop.handoff_phone}</p>
-                          )}
-                          <input
-                            value={handoffPhoneDraft}
-                            onChange={(e) => { setHandoffPhoneDraft(e.target.value); setHandoffPhoneStatus('idle'); }}
-                            placeholder="+1 (555) 000-0000"
-                            aria-label="Handoff phone number"
-                          />
-                        </div>
-                        <div className={`field handoff-availability${handoffAvailabilityDraft === 'custom' ? ' handoff-availability--custom' : ''}`}>
-                          <label className="handoff-section-label">Transfer availability</label>
-                          <div className="handoff-radio-group">
-                            {(['business_hours', 'always', 'custom'] as const).map((option) => (
-                              <label key={option} className="handoff-radio-option">
-                                <input
-                                  type="radio"
-                                  name="handoff_availability"
-                                  value={option}
-                                  checked={handoffAvailabilityDraft === option}
-                                  onChange={() => setHandoffAvailabilityDraft(option)}
-                                />
-                                {option === 'business_hours' ? 'During business hours only' : option === 'always' ? 'Always available' : 'Custom hours'}
-                              </label>
-                            ))}
-                          </div>
+                    <button
+                      type="button"
+                      className={`switch ${currentForm.allow_transfers && !ownerTransferUx.locked ? 'on' : ''} ${ownerTransferUx.locked ? 'locked' : ''}`}
+                      disabled={ownerTransferUx.locked}
+                      aria-disabled={ownerTransferUx.locked}
+                      onClick={() => {
+                        if (ownerTransferUx.locked) return;
+                        patchState('allow_transfers', !currentForm.allow_transfers);
+                      }}
+                    >
+                      <span className="sr-only">{ownerTransferUx.locked ? 'Owner transfer is locked' : 'Toggle transfers'}</span>
+                    </button>
+                  </div>
+                  {!ownerTransferUx.locked ? (
+                    <>
+                      <div className="ai-behavior-field field handoff-transfer-phone">
+                        <label className="ai-behavior-field-label">Transfer calls to</label>
+                        {!effectiveShop.handoff_phone ? (
+                          <p className="ai-behavior-warning">&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</p>
+                        ) : handoffPhoneWarnings.includes('matches_business_line') ? (
+                          <p className="ai-behavior-warning">&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</p>
+                        ) : (
+                          <p className="ai-behavior-success">&#10003; Transfers will go to {effectiveShop.handoff_phone}</p>
+                        )}
+                        <input
+                          type="tel"
+                          value={handoffPhoneDraft}
+                          onChange={(e) => { setHandoffPhoneDraft(e.target.value); setHandoffPhoneStatus('idle'); }}
+                          placeholder="+1 (555) 000-0000"
+                          aria-label="Handoff phone number"
+                        />
+                      </div>
+                      <div className="ai-behavior-field field">
+                        <label className="ai-behavior-field-label">Transfer availability</label>
+                        <div className="ai-behavior-radio-group" role="radiogroup" aria-label="Transfer availability">
+                          {(['business_hours', 'always', 'custom'] as const).map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              role="radio"
+                              aria-checked={handoffAvailabilityDraft === option}
+                              className={`ai-behavior-radio-option ${handoffAvailabilityDraft === option ? 'active' : ''}`}
+                              onClick={() => setHandoffAvailabilityDraft(option)}
+                            >
+                              <span aria-hidden="true" />
+                              {option === 'business_hours' ? 'During business hours only' : option === 'always' ? 'Always available' : 'Custom hours'}
+                            </button>
+                          ))}
                         </div>
                         {handoffAvailabilityDraft === 'custom' ? (
-                          <div className="field handoff-custom-hours">
-                            <label className="handoff-section-label">Custom transfer hours</label>
+                          <div className="handoff-custom-hours">
+                            <label className="ai-behavior-field-label">Custom transfer hours</label>
                             <div className="sh-hours-wrap" style={{ marginTop: 8 }}>
                               <div className="sh-hours-thead" aria-hidden="true">
                                 <span>Day</span>
@@ -4169,7 +4167,7 @@ export function UserSettingsLive({
                             </div>
                           </div>
                         ) : null}
-                        <div className="handoff-actions">
+                        <div className="handoff-actions ai-behavior-inline-actions">
                           <button
                             type="button"
                             className="btn user-save"
@@ -4179,51 +4177,53 @@ export function UserSettingsLive({
                             {handoffPhoneStatus === 'saving' ? 'Saving...' : 'Save transfer settings'}
                           </button>
                           {handoffPhoneStatus !== 'idle' && handoffPhoneStatus !== 'saving' && handoffPhoneStatus !== 'saved' ? (
-                            <span style={{ color: 'var(--danger-text, #dc2626)', fontSize: 12 }}>{handoffPhoneStatus}</span>
+                            <span className="ai-behavior-error">{handoffPhoneStatus}</span>
                           ) : null}
                         </div>
                       </div>
-                    ) : null}
-                    <div className={`switch-row ${callRecordingLocked ? 'locked' : ''}`}>
-                      <div className="switch-copy">
-                        <div className="switch-title-row">
-                          <h4>Call recording</h4>
-                          {callRecordingLocked ? (
-                            <span className="tag orange knowledge-plan-lock-badge">Available on Professional</span>
-                          ) : null}
-                        </div>
-                        <p>
-                          {callRecordingLocked
-                            ? 'Record and replay calls from your call log on Professional.'
-                            : 'Record calls for quality review and replay them from your call log. Make sure your recording notice meets local requirements.'}
-                        </p>
+                    </>
+                  ) : null}
+                </div>
+                <div className="ai-behavior-section-card">
+                  <div className={`ai-behavior-field ai-behavior-toggle-row ${callRecordingLocked ? 'locked' : ''}`}>
+                    <div className="ai-behavior-copy">
+                      <div className="ai-behavior-title-row">
+                        <h4>Call recording</h4>
+                        {callRecordingLocked ? (
+                          <span className="tag orange knowledge-plan-lock-badge">Available on Professional</span>
+                        ) : null}
                       </div>
-                      <div className="switch-stack">
-                        <button
-                          type="button"
-                          className={`switch ${currentForm.call_recording_enabled && !callRecordingLocked ? 'on' : ''} ${callRecordingLocked ? 'locked' : ''}`}
-                          disabled={callRecordingLocked}
-                          aria-disabled={callRecordingLocked}
-                          aria-pressed={currentForm.call_recording_enabled && !callRecordingLocked}
-                          onClick={() => {
-                            if (callRecordingLocked) return;
-                            patchState('call_recording_enabled', !currentForm.call_recording_enabled);
-                          }}
-                        >
-                          <span className="sr-only">{callRecordingLocked ? 'Call recording is locked' : 'Toggle call recording'}</span>
-                        </button>
-                      </div>
+                      <p>
+                        {callRecordingLocked
+                          ? 'Record and replay calls from your call log on Professional.'
+                          : 'Record calls for quality review and replay them from your call log. Make sure your recording notice meets local requirements.'}
+                      </p>
                     </div>
-                  </div>
-                  <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`}>
-                    <div className="hint-row">
-                      <strong className="option-title">{returningCallerNotesUx.title}</strong>
-                      <span className={`tag knowledge-plan-lock-badge ${returningCallerNotesUx.locked ? 'orange' : 'green'}`}>{returningCallerNotesUx.badge}</span>
-                    </div>
-                    <p className="sub" style={{ marginTop: 8 }}>{returningCallerNotesUx.description}</p>
+                    <button
+                      type="button"
+                      className={`switch ${currentForm.call_recording_enabled && !callRecordingLocked ? 'on' : ''} ${callRecordingLocked ? 'locked' : ''}`}
+                      disabled={callRecordingLocked}
+                      aria-disabled={callRecordingLocked}
+                      aria-pressed={currentForm.call_recording_enabled && !callRecordingLocked}
+                      onClick={() => {
+                        if (callRecordingLocked) return;
+                        patchState('call_recording_enabled', !currentForm.call_recording_enabled);
+                      }}
+                    >
+                      <span className="sr-only">{callRecordingLocked ? 'Call recording is locked' : 'Toggle call recording'}</span>
+                    </button>
                   </div>
                 </div>
-                <div className="settings-save-footer settings-tab-content-frame">
+                <div className={`ai-behavior-section-card ${returningCallerNotesUx.locked ? 'locked' : ''}`}>
+                  <div className="ai-behavior-field">
+                    <div className="ai-behavior-returning-head">
+                      <h4>{returningCallerNotesUx.title}</h4>
+                      <span className="ai-behavior-pro-badge">Professional</span>
+                    </div>
+                    <p className="ai-behavior-sub">{returningCallerNotesUx.description}</p>
+                  </div>
+                </div>
+                <div className="settings-save-footer settings-tab-content-frame ai-behavior-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'call-handling' ? 'Saving...' : 'Save call handling'}
                   </button>
@@ -4233,7 +4233,7 @@ export function UserSettingsLive({
 
               {behaviorSubTab === 'voice' ? (
               <form
-                className="card-section-form"
+                className="card-section-form ai-behavior-tab ai-behavior-tab--voice"
                 onSubmit={(event) => {
                   event.preventDefault();
                   const patch: Record<string, unknown> = {
@@ -4247,10 +4247,10 @@ export function UserSettingsLive({
                   void commitSettingsPatch('ai-voice', patch);
                 }}
               >
-                <div className="card-section settings-tab-content-frame">
-                  <div className="field">
+                <div className="ai-behavior-section-card">
+                  <div className="ai-behavior-field field">
                     <div className="field-plan-lock-head">
-                      <label>Voice style</label>
+                      <label className="ai-behavior-field-label">Voice style</label>
                       {renderLockCopy('edit_ai_voice')}
                     </div>
                     <select value={currentForm.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
@@ -4258,12 +4258,12 @@ export function UserSettingsLive({
                     </select>
                   </div>
 
-                  <div>
-                    <div className="hint-row">
-                      <strong className="option-title">Greeting preset</strong>
+                  <div className="ai-behavior-field">
+                    <div className="field-plan-lock-head">
+                      <label className="ai-behavior-field-label">Greeting preset</label>
                       {renderLockCopy('edit_ai_greeting')}
                     </div>
-                    <div className="preset-pills" style={{ marginTop: 12 }}>
+                    <div className="preset-pills ai-behavior-chip-row">
                       {AI_GREETING_PRESETS.map((preset, index) => {
                         const resolved = normalizeGreeting(preset, effectiveShop.name);
                         return (
@@ -4283,80 +4283,19 @@ export function UserSettingsLive({
                       })}
                       <button type="button" disabled={isLocked('edit_ai_greeting')} className={`preset-pill ${greetingPreset === 'custom' ? 'active' : ''} ${isLocked('edit_ai_greeting') ? 'locked' : ''}`} onClick={() => setGreetingPreset('custom')}>Custom</button>
                     </div>
-                    <div className="field" style={{ marginTop: 14 }}>
-                      <label>Greeting text</label>
+                  </div>
+
+                  {greetingPreset === 'custom' ? (
+                    <div className="ai-behavior-field field">
+                      <label className="ai-behavior-field-label">Greeting text</label>
                       <textarea value={currentForm.ai_welcome_message} disabled={isLocked('edit_ai_greeting')} onChange={(event) => {
                         setGreetingPreset('custom');
                         patchState('ai_welcome_message', event.target.value);
                       }} />
                     </div>
-                  </div>
-
-                  <div className={`option-card ${bilingualAnsweringUx.locked ? 'locked' : ''}`}>
-                    <div className="hint-row">
-                      <strong className="option-title">{bilingualAnsweringUx.title}</strong>
-                      <span
-                        className={`tag knowledge-plan-lock-badge ${bilingualAnsweringUx.locked ? 'orange' : effectiveShop.plan === 'enterprise' ? 'purple' : 'green'}`}
-                      >
-                        {bilingualAnsweringUx.badge}
-                      </span>
-                    </div>
-                    <p className="sub" style={{ marginTop: 8 }}>{bilingualAnsweringUx.description}</p>
-                    {effectiveShop.plan === 'professional' ? (
-                      <div className="knowledge-lang-chips" role="group" aria-label="Call languages">
-                        {USER_LANGUAGE_OPTIONS.map((language) => {
-                          const selected = currentForm.languages.includes(language.code);
-                          const isEnglish = language.code === 'en';
-                          return (
-                            <button
-                              key={language.code}
-                              type="button"
-                              className={`knowledge-lang-chip${selected ? ' active' : ''}${isEnglish ? ' required' : ''}`}
-                              disabled={isEnglish}
-                              aria-pressed={selected}
-                              onClick={() => {
-                                if (!isEnglish) toggleLanguage(language.code, !selected);
-                              }}
-                            >
-                              <span className="knowledge-lang-chip-check" aria-hidden="true">
-                                {selected ? (
-                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                    <path
-                                      d="M1 4.2L3.6 6.8L9 1.2"
-                                      stroke="#fff"
-                                      strokeWidth="1.5"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
-                                ) : null}
-                              </span>
-                              {language.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="sub" style={{ marginTop: 8 }}>
-                        Current setup language: {normalizeUserLanguages(currentForm.languages).map(languageDisplayName).join(', ')}
-                      </p>
-                    )}
-                    {effectiveShop.plan === 'enterprise' ? (
-                      <a className="btn" href="/contact?topic=implementation" style={{ marginTop: 12 }}>
-                        Contact implementation support
-                      </a>
-                    ) : null}
-                  </div>
-
-                  <div className="field">
-                    <div className="field-plan-lock-head">
-                      <label>Advanced AI instructions</label>
-                      {renderLockCopy('edit_ai_custom_instructions')}
-                    </div>
-                    <textarea value={currentForm.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
-                  </div>
+                  ) : null}
                 </div>
-                <div className="settings-save-footer settings-tab-content-frame">
+                <div className="settings-save-footer settings-tab-content-frame ai-behavior-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'ai-voice' ? 'Saving...' : effectiveShop.plan === 'professional' ? 'Save AI voice & language' : 'Save AI voice & greeting'}
                   </button>
@@ -4366,7 +4305,7 @@ export function UserSettingsLive({
 
               {behaviorSubTab === 'sms' ? (
               <form
-                className="card-section-form"
+                className="card-section-form ai-behavior-tab ai-behavior-tab--sms"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('sms-notifications', {
@@ -4384,96 +4323,108 @@ export function UserSettingsLive({
                   });
                 }}
               >
-                <div className="card-section settings-tab-content-frame">
-                  <div className="settings-sms-grid">
-                    <section className="settings-sms-panel">
-                      <h4>CUSTOMER NOTIFICATIONS</h4>
-                      <div className="switch-list">
-                        <div className="switch-row">
-                          <div className="switch-copy"><h4>Booking confirmations</h4><p>Sent immediately when AI books an appointment.</p></div>
-                          <div className="switch-stack"><button type="button" className="switch on locked" disabled><span className="sr-only">Booking confirmations are always on</span></button></div>
-                        </div>
-                        <div className={`switch-row ${isLocked('edit_reminder_sms') ? 'locked' : ''}`}>
-                          <div className="switch-copy">
-                            <div className="switch-title-row"><h4>Appointment reminders</h4>{renderLockCopy('edit_reminder_sms')}</div>
-                            <p>24 hours before and 2 hours before, based on confirmed appointment time.</p>
-                            <p>Respects quiet hours; blocked reminders are sent next morning.</p>
-                          </div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_reminder_sms ? 'on' : ''}`} disabled={isLocked('edit_reminder_sms')} onClick={() => patchState('send_reminder_sms', !currentForm.send_reminder_sms)}><span className="sr-only">Toggle appointment reminders</span></button></div>
-                        </div>
-                        <div className="switch-row">
-                          <div className="switch-copy"><h4>Missed call follow-up</h4><p>Sent when caller hangs up without reaching anyone.</p></div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !currentForm.send_missed_call_followup_sms)}><span className="sr-only">Toggle missed call follow-up</span></button></div>
-                        </div>
-                        <div className={`switch-row ${isLocked('edit_review_request_sms') ? 'locked' : ''}`}>
-                          <div className="switch-copy">
-                            <div className="switch-title-row"><h4>Review requests</h4>{renderLockCopy('edit_review_request_sms')}</div>
-                            <p>Sent 4 hours after appointment. Only sends when business website is set.</p>
-                          </div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_review_request_sms ? 'on' : ''}`} disabled={isLocked('edit_review_request_sms')} onClick={() => patchState('send_review_request_sms', !currentForm.send_review_request_sms)}><span className="sr-only">Toggle review requests</span></button></div>
-                        </div>
-                        <div className="switch-row locked">
-                          <div className="switch-copy"><h4>Booking link</h4><p>Sent by AI during a call when caller needs a link. AI-initiated and cannot be disabled.</p></div>
-                          <div className="switch-stack"><button type="button" className="switch locked" disabled><span className="sr-only">Booking link SMS is AI initiated</span></button></div>
-                        </div>
+                <div className="ai-behavior-group">
+                  <div className="ai-behavior-group-label">Customer notifications</div>
+                  <section className="ai-behavior-section-card">
+                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                      <div className="ai-behavior-copy"><h4>Booking confirmations</h4><p>Sent immediately when AI books an appointment.</p></div>
+                      <button type="button" className="switch on locked" disabled><span className="sr-only">Booking confirmations are always on</span></button>
+                    </div>
+                    <div className={`ai-behavior-field ai-behavior-toggle-row ${isLocked('edit_reminder_sms') ? 'locked' : ''}`}>
+                      <div className="ai-behavior-copy">
+                        <div className="ai-behavior-title-row"><h4>Appointment reminders</h4>{renderLockCopy('edit_reminder_sms')}</div>
+                        <p>24 hours before and 2 hours before, based on confirmed appointment time.</p>
+                        <p>Respects quiet hours; blocked reminders are sent next morning.</p>
                       </div>
-                    </section>
-
-                    <section className="settings-sms-panel">
-                      <h4>OWNER NOTIFICATIONS</h4>
-                      <div className="switch-list">
-                        <div className="switch-row">
-                          <div className="switch-copy"><h4>Call summaries</h4><p>After each AI-handled call.</p></div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_call_summary_sms ? 'on' : ''}`} onClick={() => patchState('send_call_summary_sms', !currentForm.send_call_summary_sms)}><span className="sr-only">Toggle call summaries</span></button></div>
-                        </div>
-                        <div className="field">
-                          <label>Send during</label>
-                          <select value={currentForm.owner_call_summary_sms_timing} onChange={(event) => patchState('owner_call_summary_sms_timing', event.target.value as 'business_hours' | 'always')}>
-                            <option value="business_hours">Business hours only</option>
-                            <option value="always">Always</option>
-                          </select>
-                        </div>
-                        <div className="switch-row">
-                          <div className="switch-copy"><h4>Follow-up request alerts</h4><p>Text the owner when a caller asks the team to follow up.</p></div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_callback_request_sms ? 'on' : ''}`} onClick={() => patchState('send_callback_request_sms', !currentForm.send_callback_request_sms)}><span className="sr-only">Toggle follow-up request alerts</span></button></div>
-                        </div>
-                        <div className="field">
-                          <label>Send</label>
-                          <select value={currentForm.owner_callback_request_sms_timing} onChange={(event) => patchState('owner_callback_request_sms_timing', event.target.value as 'business_hours' | 'always')}>
-                            <option value="always">Always</option>
-                            <option value="business_hours">Business hours only</option>
-                          </select>
-                        </div>
-                        <div className="switch-row">
-                          <div className="switch-copy"><h4>End of day digest</h4><p>Summary of all calls and bookings.</p></div>
-                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_daily_digest_sms ? 'on' : ''}`} onClick={() => patchState('send_daily_digest_sms', !currentForm.send_daily_digest_sms)}><span className="sr-only">Toggle end of day digest</span></button></div>
-                        </div>
-                        <div className="field">
-                          <label>Send at</label>
-                          <input type="time" value={currentForm.owner_daily_digest_time} onChange={(event) => patchState('owner_daily_digest_time', event.target.value)} />
-                        </div>
-                        <div className="note">Handoff alerts are always on and cannot be disabled.</div>
+                      <button type="button" className={`switch ${currentForm.send_reminder_sms ? 'on' : ''}`} disabled={isLocked('edit_reminder_sms')} onClick={() => patchState('send_reminder_sms', !currentForm.send_reminder_sms)}><span className="sr-only">Toggle appointment reminders</span></button>
+                    </div>
+                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                      <div className="ai-behavior-copy"><h4>Missed call follow-up</h4><p>Sent when caller hangs up without reaching anyone.</p></div>
+                      <button type="button" className={`switch ${currentForm.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !currentForm.send_missed_call_followup_sms)}><span className="sr-only">Toggle missed call follow-up</span></button>
+                    </div>
+                    <div className={`ai-behavior-field ai-behavior-toggle-row ${isLocked('edit_review_request_sms') ? 'locked' : ''}`}>
+                      <div className="ai-behavior-copy">
+                        <div className="ai-behavior-title-row"><h4>Review requests</h4>{renderLockCopy('edit_review_request_sms')}</div>
+                        <p>Sent 4 hours after appointment. Only sends when business website is set.</p>
                       </div>
-                    </section>
+                      <button type="button" className={`switch ${currentForm.send_review_request_sms ? 'on' : ''}`} disabled={isLocked('edit_review_request_sms')} onClick={() => patchState('send_review_request_sms', !currentForm.send_review_request_sms)}><span className="sr-only">Toggle review requests</span></button>
+                    </div>
+                    <div className="ai-behavior-field ai-behavior-toggle-row locked">
+                      <div className="ai-behavior-copy"><h4>Booking link</h4><p>Sent by AI during a call when caller needs a link. AI-initiated and cannot be disabled.</p></div>
+                      <button type="button" className="switch locked" disabled><span className="sr-only">Booking link SMS is AI initiated</span></button>
+                    </div>
+                  </section>
+                </div>
 
-                    <section className="settings-sms-panel">
-                      <h4>QUIET HOURS</h4>
-                      <p className="sub">No SMS sent outside this window in shop local time.</p>
-                      <div className="form-grid">
+                <div className="ai-behavior-group">
+                  <div className="ai-behavior-group-label">Owner notifications</div>
+                  <section className="ai-behavior-section-card">
+                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                      <div className="ai-behavior-copy"><h4>Call summaries</h4><p>After each AI-handled call.</p></div>
+                      <button type="button" className={`switch ${currentForm.send_call_summary_sms ? 'on' : ''}`} onClick={() => patchState('send_call_summary_sms', !currentForm.send_call_summary_sms)}><span className="sr-only">Toggle call summaries</span></button>
+                    </div>
+                    {currentForm.send_call_summary_sms ? (
+                      <div className="ai-behavior-field field">
+                        <label className="ai-behavior-field-label">Send during</label>
+                        <select value={currentForm.owner_call_summary_sms_timing} onChange={(event) => patchState('owner_call_summary_sms_timing', event.target.value as 'business_hours' | 'always')}>
+                          <option value="business_hours">Business hours only</option>
+                          <option value="always">Always</option>
+                        </select>
+                      </div>
+                    ) : null}
+                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                      <div className="ai-behavior-copy"><h4>Follow-up request alerts</h4><p>Text the owner when a caller asks the team to follow up.</p></div>
+                      <button type="button" className={`switch ${currentForm.send_callback_request_sms ? 'on' : ''}`} onClick={() => patchState('send_callback_request_sms', !currentForm.send_callback_request_sms)}><span className="sr-only">Toggle follow-up request alerts</span></button>
+                    </div>
+                    {currentForm.send_callback_request_sms ? (
+                      <div className="ai-behavior-field field">
+                        <label className="ai-behavior-field-label">Send</label>
+                        <select value={currentForm.owner_callback_request_sms_timing} onChange={(event) => patchState('owner_callback_request_sms_timing', event.target.value as 'business_hours' | 'always')}>
+                          <option value="always">Always</option>
+                          <option value="business_hours">Business hours only</option>
+                        </select>
+                      </div>
+                    ) : null}
+                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                      <div className="ai-behavior-copy"><h4>End of day digest</h4><p>Summary of all calls and bookings.</p></div>
+                      <button type="button" className={`switch ${currentForm.send_daily_digest_sms ? 'on' : ''}`} onClick={() => patchState('send_daily_digest_sms', !currentForm.send_daily_digest_sms)}><span className="sr-only">Toggle end of day digest</span></button>
+                    </div>
+                    <div className="ai-behavior-field field">
+                      <label className="ai-behavior-field-label">Send at</label>
+                      <input type="time" value={currentForm.owner_daily_digest_time} onChange={(event) => patchState('owner_daily_digest_time', event.target.value)} />
+                    </div>
+                    <div className="ai-behavior-field ai-behavior-info-row">
+                      <IconInfoCircle size={16} aria-hidden />
+                      <span>Handoff alerts are always on and cannot be disabled.</span>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="ai-behavior-group">
+                  <div className="ai-behavior-group-label">Quiet hours</div>
+                  <section className="ai-behavior-section-card">
+                    <div className="ai-behavior-field">
+                      <div className="ai-behavior-copy">
+                        <h4>No SMS sent outside this window</h4>
+                        <p>In shop local time.</p>
+                      </div>
+                    </div>
+                    <div className="ai-behavior-field">
+                      <div className="ai-behavior-time-grid">
                         <div className="field">
-                          <label>Start</label>
+                          <label className="ai-behavior-field-label">Start</label>
                           <input type="time" value={currentForm.sms_quiet_hours_start} onChange={(event) => patchState('sms_quiet_hours_start', event.target.value)} />
                         </div>
                         <div className="field">
-                          <label>End</label>
+                          <label className="ai-behavior-field-label">End</label>
                           <input type="time" value={currentForm.sms_quiet_hours_end} onChange={(event) => patchState('sms_quiet_hours_end', event.target.value)} />
                         </div>
                       </div>
-                      <p className="sub">Applies to customer and owner notifications above.</p>
-                    </section>
-                  </div>
+                    </div>
+                    <p className="ai-behavior-caption">Applies to all customer and owner notifications above.</p>
+                  </section>
                 </div>
-                <div className="settings-save-footer settings-tab-content-frame">
+                <div className="settings-save-footer settings-tab-content-frame ai-behavior-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'sms-notifications' ? 'Saving...' : 'Save SMS settings'}
                   </button>

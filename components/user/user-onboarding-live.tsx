@@ -2453,8 +2453,8 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-sheet-input{width:100%;font-size:16px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:'Inter',sans-serif;color:#111;outline:none;box-sizing:border-box}
 .onb-sheet-input:focus{border-color:#7c3aed}
 .onb-sheet-actions{display:flex;gap:10px;margin-top:16px}
-.onb-sheet-cancel{flex:1;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;color:#6b7280;background:#fff;cursor:pointer;font-family:'Inter',sans-serif}
-.onb-sheet-save{flex:2;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:500;color:#fff;background:#111;cursor:pointer;font-family:'Inter',sans-serif}
+.onb-sheet-cancel{align-items:center;box-sizing:border-box;display:inline-flex;flex:1 1 0;justify-content:center;min-height:48px;min-width:0;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;color:#6b7280;background:#fff;cursor:pointer;font-family:'Inter',sans-serif}
+.onb-sheet-save{align-items:center;box-sizing:border-box;display:inline-flex;flex:1 1 0;justify-content:center;min-height:48px;min-width:0;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:500;color:#fff;background:#111;cursor:pointer;font-family:'Inter',sans-serif}
 .onb-sheet-save:disabled{background:#d1d5db;cursor:not-allowed}
 @media(min-width:768px){.onb-sheet-overlay{align-items:center;justify-content:center}.onb-sheet{border-radius:14px;max-width:420px;padding:24px}.onb-sheet-handle{display:none}}
 .onb-add-service-group-btn{width:100%;padding:14px;margin-top:8px;border:1.5px dashed #e5e7eb;border-radius:12px;background:transparent;font-size:14px;font-weight:500;color:#7c3aed;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Inter',sans-serif;box-sizing:border-box}
