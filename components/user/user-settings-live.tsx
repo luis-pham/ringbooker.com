@@ -3397,18 +3397,17 @@ export function UserSettingsLive({
                     <h3>Staff / Technicians</h3>
                     <p className="sub">Manage staff profiles and which services each provider can perform.</p>
                   </div>
-	                  <div className="staff-section-toolbar">
-	                    {renderLockCopy('edit_staff')}
-	                    {!isLocked('edit_staff') ? (
-	                      <button
-	                        type="button"
-	                        className="btn"
-	                        onClick={addStaffDraft}
-	                      >
-	                        Add staff
-	                      </button>
-	                    ) : null}
-	                  </div>
+                  {!isLocked('edit_staff') ? (
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={addStaffDraft}
+                    >
+                      Add staff
+                    </button>
+                  ) : (
+                    renderLockCopy('edit_staff')
+                  )}
                 </div>
                 <div className="card-section settings-tab-content-frame">
                   {isLocked('edit_staff') ? (
@@ -3459,34 +3458,24 @@ export function UserSettingsLive({
 	                        key={member.id}
 	                      >
 	                        <div className="staff-card-main">
-	                          <button
-	                            type="button"
-	                            className="staff-card-toggle-area"
-	                            onClick={() => setExpandedStaffId((current) => (current === member.id ? null : member.id))}
-	                            aria-expanded={isExpanded}
-	                          >
-	                            <div className="staff-avatar">
-	                              {(member.name.trim() || 'S').slice(0, 1).toUpperCase()}
+	                          <div className="staff-info">
+	                            <div className="staff-name">{member.name.trim() || 'Staff member'}</div>
+	                            <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
+	                            <div className="staff-spec-tags">
+	                              <span className="staff-spec staff-spec--services">
+	                                {member.allServices ? 'All services' : `${member.serviceIds.length} services`}
+	                              </span>
+	                              <span
+	                                className={`staff-spec staff-spec--sync ${member.syncedFromPlatform ? 'is-synced' : 'is-not-synced'}`}
+	                              >
+	                                {member.syncedFromPlatform ? 'Synced' : 'Not synced'}
+	                              </span>
 	                            </div>
-	                            <div className="staff-info">
-	                              <div className="staff-name">
-	                                {member.name.trim() || 'Staff member'}
-	                                {member.active === false ? <span> · inactive</span> : null}
-	                              </div>
-	                              <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
-	                              <div className="staff-spec-tags">
-	                                <span className="staff-spec">{member.allServices ? 'All services' : `${member.serviceIds.length} services`}</span>
-	                                {member.syncedFromPlatform ? <span className="staff-spec">Synced</span> : null}
-	                                {(member.specialties ?? []).slice(0, 3).map((specialty) => (
-	                                  <span className="staff-spec" key={`${member.id}-${specialty}`}>{specialty}</span>
-	                                ))}
-	                              </div>
-	                            </div>
-	                          </button>
+	                          </div>
 	                          <div className="staff-card-actions">
 	                            <button
 	                              type="button"
-	                              className="staff-services-button"
+	                              className="staff-action-btn"
 	                              disabled={isDraft}
 	                              onClick={() => {
 	                                setSelectedStaff(member);
@@ -3497,19 +3486,21 @@ export function UserSettingsLive({
 	                            </button>
 	                            <button
 	                              type="button"
+	                              className="staff-action-btn"
+	                              aria-expanded={isExpanded}
+	                              aria-label={isExpanded ? 'Collapse staff profile' : 'Edit staff profile'}
+	                              onClick={() => setExpandedStaffId((current) => (current === member.id ? null : member.id))}
+	                            >
+	                              Edit
+	                            </button>
+	                            <span className="staff-action-divider" aria-hidden="true" />
+	                            <button
+	                              type="button"
 	                              className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
 	                              aria-pressed={member.active !== false}
 	                              aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
 	                              onClick={() => updateShopStaffMember(member.id, { active: member.active === false })}
 	                            />
-	                            <button
-	                              type="button"
-	                              className="staff-chevron"
-	                              aria-label={isExpanded ? 'Collapse staff profile' : 'Expand staff profile'}
-	                              onClick={() => setExpandedStaffId((current) => (current === member.id ? null : member.id))}
-	                            >
-	                              {isExpanded ? 'v' : '>'}
-	                            </button>
 	                          </div>
 	                        </div>
 	                        {isExpanded ? (

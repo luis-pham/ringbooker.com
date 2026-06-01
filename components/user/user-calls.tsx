@@ -91,10 +91,13 @@ const callsPortalStyles = String.raw`
 .mobile-call-card.is-high-urgency{border-left:3px solid #dc2626}
 .mobile-call-card.is-follow-up:not(.is-high-urgency){border-left:1px solid #f59e0b}
 .mobile-call-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mobile-call-top .calls-row-caller{flex:1;min-width:0}
+.mobile-call-top-trailing{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.mobile-call-top-trailing .calls-log-icon-btn{width:32px;height:32px;flex-shrink:0}
+.mobile-call-top-trailing .calls-status{flex-shrink:0}
 .mobile-call-meta{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:12px;color:var(--text-gray)}
 .mobile-call-meta-primary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 .mobile-call-meta-datetime{flex-shrink:0;white-space:nowrap;color:var(--text-gray)}
-.mobile-call-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.58);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;z-index:160}
 .modal-card{width:min(760px,100%);max-height:min(88vh,900px);overflow:auto;background:var(--surface-card);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 80px rgba(17,24,39,.18);padding:22px}
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}

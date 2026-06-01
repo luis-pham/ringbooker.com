@@ -779,21 +779,7 @@ export function UserCallsLive({
                                   {call.forwardedTo ? <div className="calls-caller-routed">Forwarded to {formatPhone(call.forwardedTo)}</div> : null}
                                 </div>
                               </div>
-                              <span className={status.className}>{status.label}</span>
-                            </div>
-                            <div className="mobile-call-meta">
-                              <span className="mobile-call-meta-primary">
-                                {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
-                                {call.bookingCaptured ? (
-                                  <span className={`${outcome.className} calls-outcome-link`} role="link" tabIndex={0} onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openBookingForCall(call); } }}>{outcome.label}</span>
-                                ) : (
-                                  <span className={outcome.className}>{outcome.label}</span>
-                                )}
-                              </span>
-                              <span className="mobile-call-meta-datetime">{formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}</span>
-                            </div>
-                            {call.transcriptAvailable || call.recordingAvailable ? (
-                              <div className="mobile-call-actions">
+                              <div className="mobile-call-top-trailing">
                                 {call.transcriptAvailable ? (
                                   <button
                                     className="calls-log-icon-btn"
@@ -816,8 +802,20 @@ export function UserCallsLive({
                                     <IconPlayerPlay size={18} stroke={1.7} />
                                   </button>
                                 ) : null}
+                                <span className={status.className}>{status.label}</span>
                               </div>
-                            ) : null}
+                            </div>
+                            <div className="mobile-call-meta">
+                              <span className="mobile-call-meta-primary">
+                                {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
+                                {call.bookingCaptured ? (
+                                  <span className={`${outcome.className} calls-outcome-link`} role="link" tabIndex={0} onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openBookingForCall(call); } }}>{outcome.label}</span>
+                                ) : (
+                                  <span className={outcome.className}>{outcome.label}</span>
+                                )}
+                              </span>
+                              <span className="mobile-call-meta-datetime">{formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}</span>
+                            </div>
                           </button>
                         );
                       })}
