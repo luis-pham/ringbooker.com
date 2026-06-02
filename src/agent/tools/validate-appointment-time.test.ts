@@ -49,6 +49,8 @@ test('accepts a future appointment within business hours without applying an inf
   });
 
   assert.equal('valid' in result ? result.valid : undefined, true);
+  assert.equal('date' in result ? result.date : undefined, '2099-01-05');
+  assert.equal('time' in result ? result.time : undefined, '10:00');
   assert.equal('reason' in result ? result.reason : undefined, 'within_business_hours');
   assert.equal(ctx.appointmentTimeValidation?.latest?.date, '2099-01-05');
   assert.equal(ctx.appointmentTimeValidation?.latest?.valid, true);

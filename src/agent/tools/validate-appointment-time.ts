@@ -18,6 +18,8 @@ const schema = z.object({
 
 export type AppointmentTimeValidationResult = {
   success: true;
+  date: string;
+  time: string;
   valid: boolean;
   reason: 'within_business_hours' | 'outside_business_hours' | 'business_hours_not_configured' | 'past_datetime';
   normalizedDatetimeUtc: string;
@@ -95,6 +97,8 @@ export async function validateAppointmentTimeTool(
 
   return {
     success: true,
+    date: parsed.data.date,
+    time: parsed.data.time,
     valid,
     reason,
     normalizedDatetimeUtc,

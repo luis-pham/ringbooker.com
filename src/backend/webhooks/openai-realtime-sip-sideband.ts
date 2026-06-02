@@ -79,6 +79,8 @@ export type OpenAiRealtimeSipSidebandParams =
       acceptedAtMs?: number;
       /** Called for each completed transcript segment (AI speech or caller speech). Fire-and-forget. */
       onTranscript?: (speaker: 'caller' | 'assistant', text: string) => void;
+      /** Returns a concise server-side reminder of known booking slots to inject into model context. */
+      getBookingStateReminder?: () => string | null;
       /** Called when the WS successfully opens (useful for reconnect attempt tracking). */
       onConnected?: () => void;
       /**
@@ -676,6 +678,29 @@ export function startOpenAiRealtimeSipSideband(
     }
   }
 
+  function injectBookingStateReminder(reason: 'caller_transcript' | 'validation_result'): void {
+    if (params.variant !== 'shop') return;
+    const reminder = params.getBookingStateReminder?.()?.trim();
+    if (!reminder) return;
+    const sent = sendRealtimeEvent(
+      {
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'system',
+          content: [{ type: 'input_text', text: reminder }],
+        },
+      },
+      'openai_sip_shop_booking_state_reminder_inject_failed',
+    );
+    if (sent) {
+      logger.info(
+        { callId: params.callId, reason, chars: reminder.length },
+        'openai_sip_shop_booking_state_reminder_injected',
+      );
+    }
+  }
+
   function clearTurnStateTimeout(): void {
     if (turnStateTimeoutHandle) {
       clearTimeout(turnStateTimeoutHandle);
@@ -903,6 +928,8 @@ export function startOpenAiRealtimeSipSideband(
     const toolInput = { date: validation.date, time: validation.time };
     const toolOutput = {
       success: true,
+      date: validation.date,
+      time: validation.time,
       valid: validation.valid,
       reason: validation.reason,
       normalizedDatetimeUtc: validation.normalizedDatetimeUtc,
@@ -1063,6 +1090,7 @@ export function startOpenAiRealtimeSipSideband(
     }
 
     lastToolResultSentAtMs = Date.now();
+    injectBookingStateReminder('validation_result');
     const responseInstructions = validationSummaryLines.join('\n');
     const responseToolChoice = (!validation.valid || availabilityInjected || availabilityToolSuppressed) ? 'none' : undefined;
     const responseSent = sendShopResponseCreate({
@@ -1731,6 +1759,9 @@ export function startOpenAiRealtimeSipSideband(
         }
         // Both shop and demo calls persist the full transcript via the callback.
         params.onTranscript?.(speaker, transcript);
+        if (speaker === 'caller') {
+          injectBookingStateReminder('caller_transcript');
+        }
         logger.info(
           {
             callSessionId: params.callId,

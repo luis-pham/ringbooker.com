@@ -271,6 +271,7 @@ test('bridge-gated shop injects appointment validation before responding to a re
         parentCallControlId: 'cc_parent_time_validation',
         openaiLegCallControlId: 'cc_openai_time_validation',
       },
+      getBookingStateReminder: () => 'Known booking details: date=2099-01-06; time=21:00; service=not collected; name=not collected.',
       onCallerTranscriptPrePopulate: () => ({
         preview: { date: '2099-01-06', time: '21:00' },
         result: Promise.resolve({
@@ -309,7 +310,7 @@ test('bridge-gated shop injects appointment validation before responding to a re
   const parsed = messages
     .map((message) => JSON.parse(message) as {
       type?: string;
-      item?: { type?: string; name?: string; call_id?: string; output?: string };
+      item?: { type?: string; name?: string; call_id?: string; output?: string; content?: unknown };
       response?: { tool_choice?: unknown; instructions?: string };
     });
   const injectedCall = parsed.find((message) =>
@@ -326,8 +327,17 @@ test('bridge-gated shop injects appointment validation before responding to a re
     message.type === 'response.create' &&
     /already validated/.test(message.response?.instructions ?? '')
   );
+  const reminder = parsed.find((message) =>
+    message.type === 'conversation.item.create' &&
+    message.item?.type === 'message' &&
+    /Known booking details/.test(JSON.stringify(message.item?.content ?? ''))
+  );
   assert.ok(injectedCall, 'validation function_call should be injected');
   assert.ok(injectedOutput, 'validation function_call_output should be injected');
+  assert.ok(reminder, 'known booking details reminder should be injected');
+  const injectedOutputBody = JSON.parse(injectedOutput?.item?.output ?? '{}') as { date?: string; time?: string };
+  assert.equal(injectedOutputBody.date, '2099-01-06');
+  assert.equal(injectedOutputBody.time, '21:00');
   assert.ok(turnResponse, 'response.create should use injected validation evidence');
   assert.equal(turnResponse?.response?.tool_choice, undefined, 'valid time without availability should leave tool choice unset');
   assert.equal(

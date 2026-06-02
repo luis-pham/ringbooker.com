@@ -8,6 +8,7 @@ import {
 } from '@/src/agent/prompts';
 import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definitions';
 import {
+  buildKnownBookingDetailsReminder,
   createSipAgentToolContext,
   executeSipShopToolCall,
   prePopulateAvailabilityFromDraft,
@@ -1613,6 +1614,7 @@ export async function handleOpenAiRealtimeSipWebhook(
                 });
               }
             },
+            getBookingStateReminder: () => buildKnownBookingDetailsReminder(toolCtx),
             softLimitMs,
             softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
             hardLimitMs,

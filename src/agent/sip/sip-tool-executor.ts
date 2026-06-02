@@ -217,6 +217,36 @@ function latestServiceCandidate(ctx: AgentToolContext): string | null {
   return draft.serviceCandidates[draft.serviceCandidates.length - 1] ?? null;
 }
 
+function latestCandidate(values: string[] | undefined): string | null {
+  if (!values?.length) return null;
+  return values[values.length - 1] ?? null;
+}
+
+export function buildKnownBookingDetailsReminder(ctx: AgentToolContext): string | null {
+  const draft = ctx.bookingDraft;
+  const validation = ctx.appointmentTimeValidation?.latest ?? null;
+  const validatedDate = validation?.valid ? validation.date : null;
+  const validatedTime = validation?.valid ? validation.time : null;
+  const rawDate = validatedDate ? null : latestCandidate(draft?.dateCandidates);
+  const rawTime = validatedTime ? null : latestCandidate(draft?.timeCandidates);
+  const service = latestServiceCandidate(ctx) ?? latestCandidate(draft?.serviceCandidates);
+  const callerName = (draft?.confidence.callerName ?? 0) >= 0.55
+    ? latestCandidate(draft?.callerNameCandidates)
+    : null;
+
+  if (!validatedDate && !validatedTime && !rawDate && !rawTime && !service && !callerName) return null;
+
+  const date = validatedDate ?? (rawDate ? `${rawDate} (unvalidated)` : 'not collected');
+  const time = validatedTime ?? (rawTime ? `${rawTime} (unvalidated)` : 'not collected');
+  const serviceText = service ?? 'not collected';
+  const nameText = callerName ?? 'not collected';
+  return [
+    `Known booking details: date=${date}; time=${time}; service=${serviceText}; name=${nameText}.`,
+    'Do not ask again for known details unless the caller changes or corrects them.',
+    'If date/time is unvalidated, silently validate before proceeding.',
+  ].join(' ');
+}
+
 function resolveDraftServiceName(ctx: AgentToolContext): string | null {
   const candidate = latestServiceCandidate(ctx);
   if (!candidate) return null;
@@ -763,6 +793,8 @@ export async function executeSipShopToolCall(
             );
             result = {
               success: true,
+              date: cached.date,
+              time: cached.time,
               valid: cached.valid,
               reason: cached.reason,
               normalizedDatetimeUtc: cached.normalizedDatetimeUtc,
