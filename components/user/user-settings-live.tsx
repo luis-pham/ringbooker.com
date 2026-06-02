@@ -4295,6 +4295,79 @@ export function UserSettingsLive({
                     </div>
                   ) : null}
                 </div>
+
+                <div className={`ai-behavior-section-card ${bilingualAnsweringUx.locked ? 'locked' : ''}`}>
+                  <div className="ai-behavior-field">
+                    <div className="ai-behavior-returning-head">
+                      <h4>{bilingualAnsweringUx.title}</h4>
+                      <span
+                        className={`tag knowledge-plan-lock-badge ${bilingualAnsweringUx.locked ? 'orange' : effectiveShop.plan === 'enterprise' ? 'purple' : 'green'}`}
+                      >
+                        {bilingualAnsweringUx.badge}
+                      </span>
+                    </div>
+                    <p className="ai-behavior-sub">{bilingualAnsweringUx.description}</p>
+                    {effectiveShop.plan === 'professional' ? (
+                      <div className="knowledge-lang-chips" role="group" aria-label="Call languages">
+                        {USER_LANGUAGE_OPTIONS.map((language) => {
+                          const selected = currentForm.languages.includes(language.code);
+                          const isEnglish = language.code === 'en';
+                          return (
+                            <button
+                              key={language.code}
+                              type="button"
+                              className={`knowledge-lang-chip${selected ? ' active' : ''}${isEnglish ? ' required' : ''}`}
+                              disabled={isEnglish}
+                              aria-pressed={selected}
+                              onClick={() => {
+                                if (!isEnglish) toggleLanguage(language.code, !selected);
+                              }}
+                            >
+                              <span className="knowledge-lang-chip-check" aria-hidden="true">
+                                {selected ? (
+                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                    <path
+                                      d="M1 4.2L3.6 6.8L9 1.2"
+                                      stroke="#fff"
+                                      strokeWidth="1.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                ) : null}
+                              </span>
+                              {language.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="ai-behavior-sub" style={{ marginTop: 8 }}>
+                        Current setup language: {normalizeUserLanguages(currentForm.languages).map(languageDisplayName).join(', ')}
+                      </p>
+                    )}
+                    {effectiveShop.plan === 'enterprise' ? (
+                      <a className="btn" href="/contact?topic=implementation" style={{ marginTop: 12 }}>
+                        Contact implementation support
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="ai-behavior-section-card">
+                  <div className="ai-behavior-field field">
+                    <div className="field-plan-lock-head">
+                      <label className="ai-behavior-field-label">Advanced AI instructions</label>
+                      {renderLockCopy('edit_ai_custom_instructions')}
+                    </div>
+                    <textarea
+                      value={currentForm.ai_custom_instructions}
+                      disabled={isLocked('edit_ai_custom_instructions')}
+                      onChange={(event) => patchState('ai_custom_instructions', event.target.value)}
+                      placeholder="Only show for Enterprise businesses."
+                    />
+                  </div>
+                </div>
                 <div className="settings-save-footer settings-tab-content-frame ai-behavior-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'ai-voice' ? 'Saving...' : effectiveShop.plan === 'professional' ? 'Save AI voice & language' : 'Save AI voice & greeting'}
