@@ -14,7 +14,6 @@ import {
   OnboardingManualVerticalIcon,
   OnboardingMixedGroupChipIcon,
   OnboardingServiceGroupIcon,
-  resolveOnboardingServiceGroupVisual,
   type OnboardingManualVerticalId,
 } from '@/components/user/onboarding-service-icons';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
@@ -2415,7 +2414,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-group-rename-pencil{border:0;background:transparent;padding:0;margin-left:2px;color:#6b7280;cursor:pointer;line-height:1;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;transition:background .15s ease,color .15s ease}
 .onb-group-rename-pencil:hover{background:#f3f4f6;color:#111827}
 .onb-group-rename-pencil svg{display:block;flex-shrink:0;stroke-width:1.8}
-.onb-group-add-header-desktop{margin-left:auto;display:none}
+.onb-group-add-header-desktop{margin-left:auto;display:none;color:#6b7280}
 @media(min-width:641px){.onb-group-add-header-desktop{display:inline-flex;align-items:center;justify-content:center;gap:6px}}
 .service-group-collapse-btn{border:0;background:transparent;padding:4px 6px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;flex-shrink:0;margin-left:4px}
 .onb-step3-section-label{display:block;margin:16px 0 6px;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
@@ -3715,7 +3714,6 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 
     const renderGroupCard = (group: string, items: Array<{ service: ServiceItem; index: number }>) => {
       const collapsed = collapsedServiceGroups.includes(group);
-      const groupVisual = resolveOnboardingServiceGroupVisual(group);
       const groupNeedsReview = items.some(({ service }) => serviceNeedsAttention(service));
       const editingDesktopName = groupRenameDesktop === group;
 
@@ -3729,7 +3727,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
       return (
         <div className="service-group-card" key={group} data-service-group={group}>
           <div className="service-group-head">
-            <span className="service-group-icon" style={{ background: groupVisual.bg }} aria-hidden>
+            <span className="service-group-icon" aria-hidden>
               <OnboardingServiceGroupIcon group={group} />
             </span>
             <span className="service-group-main">
