@@ -147,11 +147,11 @@ html[data-user-theme="dark"]{
   border:1.5px solid var(--color-border-tertiary,#e2e8f0);border-radius:20px;
   padding:7px 14px;background:transparent;
   color:var(--color-text-secondary,var(--text-gray));
-  font-size:13px;font-weight:400;cursor:pointer;font:inherit;
+  font-size:14px;font-weight:400;cursor:pointer;font:inherit;
   transition:border-color .15s ease,color .15s ease;
 }
 .knowledge-lang-chip.active{
-  border-color:#534AB7;color:#3C3489;font-weight:500;background:transparent;
+  border-color:#111827;color:#111827;font-weight:500;background:transparent;
 }
 .knowledge-lang-chip.required:disabled{opacity:1;cursor:default}
 .knowledge-lang-chip-check{
@@ -160,7 +160,7 @@ html[data-user-theme="dark"]{
   box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
 }
 .knowledge-lang-chip.active .knowledge-lang-chip-check{
-  border-color:#534AB7;background:#534AB7;border-width:0;
+  border-color:#111827;background:#111827;border-width:0;
 }
 .switch-list{display:grid;gap:12px}
 .switch-row{
@@ -1013,14 +1013,14 @@ html[data-user-theme="dark"]{
 .faq-policies-form .option-card{cursor:default;display:grid;gap:0}
 .faq-policies-form .option-card:hover{transform:none;box-shadow:none;border-color:var(--border)}
 .faq-policies-form .option-card > .service-catalog-heading{
-  display:grid;gap:12px;align-items:stretch;margin-bottom:0;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:0;
 }
 .faq-policies-form .option-card > .service-catalog-heading .service-catalog-actions{
-  width:100%;margin-left:0;display:grid;grid-template-columns:1fr;
+  width:auto;margin-left:auto;display:flex;
 }
 .faq-policies-form .option-card > .service-catalog-heading .service-catalog-actions .btn,
 .faq-policies-form .option-card > .service-catalog-heading .faq-add-cta{
-  width:100%;justify-content:center;min-height:48px;box-sizing:border-box;
+  width:auto;justify-content:center;min-height:36px;height:36px;box-sizing:border-box;
 }
 .faq-policies-form .faq-item-list{display:grid;gap:12px;margin-top:12px}
 .faq-policies-form .faq-item-list .staff-card{margin-bottom:0}
@@ -1183,7 +1183,8 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
 .faq-empty-state .service-catalog-actions .faq-empty-cta{margin-top:0}
 .service-group-list{display:grid;gap:16px}
 .service-group-card{border:1px solid var(--border);border-radius:14px;background:var(--surface-card);overflow:hidden}
-.service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:1px solid var(--border)}
+.service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:0}
+.service-group-card[open] summary{border-bottom:1px solid var(--border)}
 .service-group-card summary::-webkit-details-marker{display:none}
 .service-group-card summary div{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .service-group-card summary strong{
@@ -2143,10 +2144,10 @@ html[data-user-theme="dark"] .option-card--bare:hover{border-color:transparent}
 html[data-user-theme="dark"] .preset-pill{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .preset-pill.active{background:#58a6ff;color:#fff;border-color:#58a6ff}
 html[data-user-theme="dark"] .knowledge-lang-chip.active{
-  border-color:#AFA9EC;color:#AFA9EC;background:transparent;
+  border-color:#111827;color:#111827;background:#fff;
 }
 html[data-user-theme="dark"] .knowledge-lang-chip.active .knowledge-lang-chip-check{
-  background:#534AB7;border-color:#534AB7;
+  background:#111827;border-color:#111827;
 }
 html[data-user-theme="dark"] .switch-row{border-color:var(--border);background:var(--surface-card)}
 html[data-user-theme="dark"] .switch{background:#30363d}
@@ -2248,13 +2249,34 @@ html[data-user-theme="dark"] .settings-helper-checklist > div.warn > span:last-c
 html[data-user-theme="dark"] .staff-empty{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .staff-empty strong{color:var(--text-dark)}
 html[data-user-theme="dark"] .staff-empty p{color:var(--text-gray)}
+html[data-user-theme="dark"] .knowledge-portal-main .service-catalog-actions .btn{
+  background:#0d1117;
+  border-color:#30363d;
+  color:#f0f6fc;
+}
+html[data-user-theme="dark"] .knowledge-portal-main .service-catalog-actions .btn:hover:not(:disabled){
+  background:#21262d;
+  border-color:#8b949e;
+  color:#f0f6fc;
+}
 html[data-user-theme="dark"] .staff-card{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .staff-card:hover{border-color:#58a6ff}
 html[data-user-theme="dark"] .staff-spec--services{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .staff-spec--sync.is-synced{background:rgba(35,134,54,.18);color:#3fb950}
 html[data-user-theme="dark"] .staff-spec--sync.is-not-synced{background:rgba(248,81,73,.12);color:#f85149}
+html[data-user-theme="dark"] .knowledge-portal-main .staff-card-actions{
+  background:var(--surface-card);
+  border-top-color:var(--border);
+}
 html[data-user-theme="dark"] .staff-card-action-btn{color:var(--text-gray)}
+html[data-user-theme="dark"] .knowledge-portal-main .staff-card-actions .staff-card-action-btn{
+  background:transparent;
+  color:var(--text-dark);
+}
 html[data-user-theme="dark"] .staff-card-action-btn:hover{background:#21262d;color:var(--text-dark)}
+html[data-user-theme="dark"] .knowledge-portal-main .staff-card-actions .staff-card-action-btn--edit{
+  border-left-color:var(--border);
+}
 html[data-user-theme="dark"] .staff-action-divider{background:var(--border)}
 html[data-user-theme="dark"] .staff-card-detail{background:#0d1117;border-top-color:var(--border)}
 html[data-user-theme="dark"] .sh-active-section{border-top-color:var(--border)}
@@ -2532,11 +2554,17 @@ html[data-user-theme="dark"] .plan-chip{
   .service-catalog-actions .btn{width:100%;justify-content:center}
   .service-catalog-actions--mobile-full{
     width:100%;
+    max-width:none;
+    margin-left:0;
+    justify-self:stretch;
+    align-self:stretch;
     justify-items:stretch;
   }
+  .knowledge-portal-main .service-catalog-actions--mobile-full > .service-group-add-cta,
   .service-catalog-actions--mobile-full .service-group-add-cta,
   .service-catalog-actions--mobile-full .faq-add-cta{
     width:100%;
+    max-width:none;
     min-height:48px;
     box-sizing:border-box;
     justify-content:center;
@@ -2553,6 +2581,22 @@ html[data-user-theme="dark"] .plan-chip{
     background:var(--surface-page,#f6f7fb);
     border:0;
     padding:0;
+  }
+  .faq-policies-form .option-card > .service-catalog-heading{
+    display:grid;
+    gap:12px;
+    align-items:stretch;
+  }
+  .faq-policies-form .option-card > .service-catalog-heading .service-catalog-actions{
+    width:100%;
+    margin-left:0;
+    display:grid;
+    grid-template-columns:1fr;
+  }
+  .faq-policies-form .option-card > .service-catalog-heading .faq-add-cta{
+    width:100%;
+    min-height:48px;
+    height:auto;
   }
   .faq-policies-form .option-card{padding:12px 14px}
   .faq-policies-form .preset-pill{min-height:44px;box-sizing:border-box}
