@@ -7,10 +7,10 @@ import {
   IconCalendarCheck,
   IconChartBar,
   IconFileDescription,
+  IconHeadphones,
   IconPhoneCall,
   IconPhoneOff,
   IconLock,
-  IconPlayerPlay,
 } from '@tabler/icons-react';
 
 import { UserLayout } from '@/components/user/user-layout';
@@ -750,7 +750,7 @@ export function UserCallsLive({
                                         aria-label={call.recordingAvailable ? 'Play recording' : 'Recording not available'}
                                         onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
                                       >
-                                        <IconPlayerPlay size={18} stroke={1.7} />
+                                        <IconHeadphones size={18} stroke={1.7} />
                                       </button>
                                     </span>
                                   ) : null}
@@ -799,7 +799,7 @@ export function UserCallsLive({
                                     aria-label="Play recording"
                                     onClick={(event) => { event.stopPropagation(); void listenToCall(call); }}
                                   >
-                                    <IconPlayerPlay size={18} stroke={1.7} />
+                                    <IconHeadphones size={18} stroke={1.7} />
                                   </button>
                                 ) : null}
                                 <span className={status.className}>{status.label}</span>
