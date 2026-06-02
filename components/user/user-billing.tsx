@@ -292,6 +292,9 @@ html[data-user-theme="dark"] .billing-faq-q:hover{background:rgba(255,255,255,.0
 .page-billing .usage-captured-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .page-billing .usage-captured-head > div{flex:1 1 auto;min-width:0}
 .page-billing .usage-captured-head > .tag{flex:0 0 auto;width:auto;align-self:flex-start;margin-left:auto}
+.page-billing .usage-captured-card .panel-head{display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;gap:12px}
+.page-billing .usage-captured-card .panel-head > div{flex:1 1 auto;min-width:0}
+.page-billing .usage-captured-card .panel-head > .tag{flex:0 0 auto;width:auto;max-width:max-content;align-self:flex-start;margin-left:auto;white-space:nowrap}
 
 
 @media (max-width:1200px){

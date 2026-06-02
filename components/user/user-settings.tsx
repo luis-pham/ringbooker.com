@@ -4,11 +4,13 @@ import { userPortalTypographyStyles } from '@/components/user/user-portal-typogr
 
 const userSettingsSpecificStyles = String.raw`
 html{
+  --toggle-purple:#630ed4;
   --warning-text:#b45309;
   --success-text:#16a34a;
   --danger-text:#dc2626;
 }
 html[data-user-theme="dark"]{
+  --toggle-purple:#8957e5;
   --warning-text:#d29922;
   --success-text:#3fb950;
   --danger-text:#f85149;
@@ -188,7 +190,7 @@ html[data-user-theme="dark"]{
 .switch::after{
   content:'';position:absolute;top:4px;left:4px;width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(17,24,39,.12);transition:.18s ease;
 }
-.switch.on{background:var(--purple)}
+.switch.on{background:var(--toggle-purple,#630ed4)}
 .switch.on::after{transform:translateX(23px)}
 .switch:disabled{opacity:.55;cursor:not-allowed}
 .settings-sms-grid{display:grid;gap:16px}
@@ -500,6 +502,19 @@ html[data-user-theme="dark"]{
 /* Link styles: user-portal-typography.ts (.user-link / .user-link--subtle / .subtle-link) */
 .remove-link{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .remove-link svg{flex-shrink:0}
+.knowledge-portal-main .service-catalog-actions .btn,
+.knowledge-portal-main .service-edit-icon,
+.knowledge-portal-main .service-group-rename-btn,
+.knowledge-portal-main .staff-card-action-btn{
+  transition:background .15s ease,border-color .15s ease,color .15s ease,opacity .15s ease;
+}
+.knowledge-portal-main .service-catalog-actions .btn:focus-visible,
+.knowledge-portal-main .service-edit-icon:focus-visible,
+.knowledge-portal-main .service-group-rename-btn:focus-visible,
+.knowledge-portal-main .staff-card-action-btn:focus-visible{
+  outline:2px solid var(--purple-dark);
+  outline-offset:2px;
+}
 .integrations-path-picker{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
 .integrations-path-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 10px}
 .integrations-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;margin-top:4px}
@@ -1073,7 +1088,7 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
   width:36px;height:20px;border-radius:999px;border:0;position:relative;cursor:pointer;flex-shrink:0;
   transition:background .15s ease;
 }
-.staff-toggle.on{background:#534AB7}
+.staff-toggle.on{background:var(--toggle-purple,#630ed4)}
 .staff-toggle.off{background:#d4d4d8}
 .staff-toggle::after{
   content:'';position:absolute;top:2px;width:16px;height:16px;border-radius:999px;background:#fff;
@@ -1129,7 +1144,7 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
     font-size:13px;
     font-weight:600;
   }
-  .staff-card-action-btn:hover{background:#f9fafb}
+  .staff-card-action-btn:hover{background:#f3f4f6;color:var(--text-dark)}
   .staff-card-action-label{display:inline}
   .staff-action-divider{display:none}
   .staff-card-actions .staff-card-action-btn--edit{border-left:1px solid var(--border)}
@@ -1185,6 +1200,7 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
 .service-group-card{border:1px solid var(--border);border-radius:14px;background:var(--surface-card);overflow:hidden}
 .service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:0}
 .service-group-card[open] summary{border-bottom:1px solid var(--border)}
+.service-group-card summary:hover{background:#f3f4f6}
 .service-group-card summary::-webkit-details-marker{display:none}
 .service-group-card summary div{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .service-group-card summary strong{
@@ -1356,7 +1372,7 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
   content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
   background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.14);transition:transform .15s ease;
 }
-.sh-hours-wrap .hours-closed-toggle[aria-checked="true"]{background:#7c3aed}
+.sh-hours-wrap .hours-closed-toggle[aria-checked="true"]{background:var(--toggle-purple,#630ed4)}
 .sh-hours-wrap .hours-closed-toggle[aria-checked="true"]::after{transform:translateX(16px)}
 .sh-hours-wrap .hours-closed-toggle:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 .sh-hours-wrap .hours-row.closed .hours-field-open select,
@@ -2287,10 +2303,11 @@ html[data-user-theme="dark"] .sh-hours-wrap{background:var(--surface-card);borde
 html[data-user-theme="dark"] .sh-hours-thead{background:#161b22;border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle{background:#30363d}
 html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle::after{background:#f0f6fc}
-html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle[aria-checked="true"]{background:#8957e5}
+html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle[aria-checked="true"]{background:var(--toggle-purple,#8957e5)}
 html[data-user-theme="dark"] .sh-active-row .sh-active-service{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card summary{background:#161b22;border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .service-group-card summary:hover{background:#21262d}
 html[data-user-theme="dark"] .service-group-card--compact{border-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card--compact summary{background:#161b22;border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card--compact summary strong{color:var(--text-dark)}
@@ -2303,6 +2320,22 @@ html[data-user-theme="dark"] .service-item-card.archived{background:#161b22}
 html[data-user-theme="dark"] .service-summary-name{color:var(--text-dark)}
 html[data-user-theme="dark"] .knowledge-portal-main .service-summary-name--untitled .service-summary-name-text{color:#f87171}
 html[data-user-theme="dark"] .service-summary-meta{color:var(--text-gray)}
+html[data-user-theme="dark"] .knowledge-portal-main .service-group-rename-btn{
+  color:#8b949e;
+}
+html[data-user-theme="dark"] .knowledge-portal-main .service-group-rename-btn:hover,
+html[data-user-theme="dark"] .knowledge-portal-main .service-group-card--compact summary:hover .service-group-rename-btn{
+  background:#21262d;
+  color:#f0f6fc;
+}
+html[data-user-theme="dark"] .knowledge-portal-main .service-edit-icon{
+  color:#8b949e;
+}
+html[data-user-theme="dark"] .knowledge-portal-main .service-edit-icon:hover,
+html[data-user-theme="dark"] .knowledge-portal-main .service-summary-row--clickable:hover .service-edit-icon{
+  background:#21262d;
+  color:#f0f6fc;
+}
 html[data-user-theme="dark"] .service-inline-editor{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-catalog-note{background:#161b22;border-color:var(--border)}
 html[data-user-theme="dark"] .service-chip{border-color:var(--border);background:var(--surface-card)}
