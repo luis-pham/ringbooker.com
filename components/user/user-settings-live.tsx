@@ -4081,7 +4081,7 @@ export function UserSettingsLive({
                       <span className="sr-only">{ownerTransferUx.locked ? 'Owner transfer is locked' : 'Toggle transfers'}</span>
                     </button>
                   </div>
-                  {!ownerTransferUx.locked ? (
+                  {!ownerTransferUx.locked && currentForm.allow_transfers ? (
                     <>
                       <div className="ai-behavior-field field handoff-transfer-phone">
                         <label className="ai-behavior-field-label">Transfer calls to</label>
@@ -4432,39 +4432,41 @@ export function UserSettingsLive({
                 <div className="ai-behavior-group">
                   <div className="ai-behavior-group-label">Owner notifications</div>
                   <section className="ai-behavior-section-card">
-                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                    <div className="ai-behavior-field ai-behavior-toggle-row ai-behavior-toggle-row--inline-control">
                       <div className="ai-behavior-copy"><h4>Call summaries</h4><p>After each AI-handled call.</p></div>
+                      {currentForm.send_call_summary_sms ? (
+                        <label className="ai-behavior-inline-control">
+                          <span>Send during</span>
+                          <select value={currentForm.owner_call_summary_sms_timing} onChange={(event) => patchState('owner_call_summary_sms_timing', event.target.value as 'business_hours' | 'always')}>
+                            <option value="business_hours">Business hours only</option>
+                            <option value="always">Always</option>
+                          </select>
+                        </label>
+                      ) : null}
                       <button type="button" className={`switch ${currentForm.send_call_summary_sms ? 'on' : ''}`} onClick={() => patchState('send_call_summary_sms', !currentForm.send_call_summary_sms)}><span className="sr-only">Toggle call summaries</span></button>
                     </div>
-                    {currentForm.send_call_summary_sms ? (
-                      <div className="ai-behavior-field field">
-                        <label className="ai-behavior-field-label">Send during</label>
-                        <select value={currentForm.owner_call_summary_sms_timing} onChange={(event) => patchState('owner_call_summary_sms_timing', event.target.value as 'business_hours' | 'always')}>
-                          <option value="business_hours">Business hours only</option>
-                          <option value="always">Always</option>
-                        </select>
-                      </div>
-                    ) : null}
-                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                    <div className="ai-behavior-field ai-behavior-toggle-row ai-behavior-toggle-row--inline-control">
                       <div className="ai-behavior-copy"><h4>Follow-up request alerts</h4><p>Text the owner when a caller asks the team to follow up.</p></div>
+                      {currentForm.send_callback_request_sms ? (
+                        <label className="ai-behavior-inline-control">
+                          <span>Send</span>
+                          <select value={currentForm.owner_callback_request_sms_timing} onChange={(event) => patchState('owner_callback_request_sms_timing', event.target.value as 'business_hours' | 'always')}>
+                            <option value="always">Always</option>
+                            <option value="business_hours">Business hours only</option>
+                          </select>
+                        </label>
+                      ) : null}
                       <button type="button" className={`switch ${currentForm.send_callback_request_sms ? 'on' : ''}`} onClick={() => patchState('send_callback_request_sms', !currentForm.send_callback_request_sms)}><span className="sr-only">Toggle follow-up request alerts</span></button>
                     </div>
-                    {currentForm.send_callback_request_sms ? (
-                      <div className="ai-behavior-field field">
-                        <label className="ai-behavior-field-label">Send</label>
-                        <select value={currentForm.owner_callback_request_sms_timing} onChange={(event) => patchState('owner_callback_request_sms_timing', event.target.value as 'business_hours' | 'always')}>
-                          <option value="always">Always</option>
-                          <option value="business_hours">Business hours only</option>
-                        </select>
-                      </div>
-                    ) : null}
-                    <div className="ai-behavior-field ai-behavior-toggle-row">
+                    <div className="ai-behavior-field ai-behavior-toggle-row ai-behavior-toggle-row--inline-control">
                       <div className="ai-behavior-copy"><h4>End of day digest</h4><p>Summary of all calls and bookings.</p></div>
+                      {currentForm.send_daily_digest_sms ? (
+                        <label className="ai-behavior-inline-control">
+                          <span>Send at</span>
+                          <input type="time" value={currentForm.owner_daily_digest_time} onChange={(event) => patchState('owner_daily_digest_time', event.target.value)} />
+                        </label>
+                      ) : null}
                       <button type="button" className={`switch ${currentForm.send_daily_digest_sms ? 'on' : ''}`} onClick={() => patchState('send_daily_digest_sms', !currentForm.send_daily_digest_sms)}><span className="sr-only">Toggle end of day digest</span></button>
-                    </div>
-                    <div className="ai-behavior-field field">
-                      <label className="ai-behavior-field-label">Send at</label>
-                      <input type="time" value={currentForm.owner_daily_digest_time} onChange={(event) => patchState('owner_daily_digest_time', event.target.value)} />
                     </div>
                     <div className="ai-behavior-field ai-behavior-info-row">
                       <IconInfoCircle size={16} aria-hidden />
@@ -4476,25 +4478,23 @@ export function UserSettingsLive({
                 <div className="ai-behavior-group">
                   <div className="ai-behavior-group-label">Quiet hours</div>
                   <section className="ai-behavior-section-card">
-                    <div className="ai-behavior-field">
+                    <div className="ai-behavior-field ai-behavior-quiet-row">
                       <div className="ai-behavior-copy">
                         <h4>No SMS sent outside this window</h4>
-                        <p>In shop local time.</p>
+                        <p>In shop local time. Applies to all notifications above.</p>
                       </div>
-                    </div>
-                    <div className="ai-behavior-field">
-                      <div className="ai-behavior-time-grid">
-                        <div className="field">
-                          <label className="ai-behavior-field-label">Start</label>
+                      <div className="ai-behavior-quiet-time-group">
+                        <label className="ai-behavior-quiet-time-item">
+                          <span>Start</span>
                           <input type="time" value={currentForm.sms_quiet_hours_start} onChange={(event) => patchState('sms_quiet_hours_start', event.target.value)} />
-                        </div>
-                        <div className="field">
-                          <label className="ai-behavior-field-label">End</label>
+                        </label>
+                        <span className="ai-behavior-quiet-arrow" aria-hidden="true">→</span>
+                        <label className="ai-behavior-quiet-time-item">
+                          <span>End</span>
                           <input type="time" value={currentForm.sms_quiet_hours_end} onChange={(event) => patchState('sms_quiet_hours_end', event.target.value)} />
-                        </div>
+                        </label>
                       </div>
                     </div>
-                    <p className="ai-behavior-caption">Applies to all customer and owner notifications above.</p>
                   </section>
                 </div>
                 <div className="settings-save-footer settings-tab-content-frame ai-behavior-save-footer">

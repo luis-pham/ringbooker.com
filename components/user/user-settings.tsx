@@ -240,8 +240,12 @@ html[data-user-theme="dark"]{
 .ai-behavior-toggle-row.locked .ai-behavior-copy{
   opacity:.62;
 }
+.ai-behavior-toggle-row--inline-control{
+  align-items:center;
+}
 .ai-behavior-copy{
   min-width:0;
+  flex:1 1 auto;
 }
 .ai-behavior-copy h4,
 .ai-behavior-returning-head h4{
@@ -381,6 +385,33 @@ html[data-user-theme="dark"]{
 .ai-behavior-info-row svg{
   flex-shrink:0;
 }
+.ai-behavior-inline-control{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:12px;
+  font-weight:500;
+  white-space:nowrap;
+}
+.ai-behavior-inline-control select,
+.ai-behavior-inline-control input{
+  width:auto;
+  min-height:32px;
+  padding:6px 10px;
+  border:.5px solid var(--color-border-secondary,var(--border));
+  border-radius:var(--border-radius-md,10px);
+  background:var(--color-background-primary,var(--surface-card,#fff));
+  color:var(--color-text-primary,var(--text-dark));
+  font:inherit;
+  font-size:13px;
+  line-height:1.2;
+  box-sizing:border-box;
+}
+.ai-behavior-inline-control input[type="time"]{
+  width:100px;
+}
 .ai-behavior-time-grid{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -402,7 +433,56 @@ html[data-user-theme="dark"]{
 .ai-behavior-save-footer.settings-save-footer > .btn.user-save{
   padding:10px 24px;
 }
+.ai-behavior-quiet-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.ai-behavior-quiet-time-group{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+.ai-behavior-quiet-time-item{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:12px;
+  font-weight:500;
+  white-space:nowrap;
+}
+.ai-behavior-quiet-time-item input{
+  width:100px;
+  min-height:32px;
+  padding:6px 10px;
+  border:.5px solid var(--color-border-secondary,var(--border));
+  border-radius:var(--border-radius-md,10px);
+  background:var(--color-background-primary,var(--surface-card,#fff));
+  color:var(--color-text-primary,var(--text-dark));
+  font:inherit;
+  font-size:13px;
+  line-height:1.2;
+  box-sizing:border-box;
+}
+.ai-behavior-quiet-arrow{
+  color:var(--color-text-secondary,var(--text-gray));
+  font-size:14px;
+  line-height:1;
+}
 @media (max-width:860px){
+  .ai-behavior-toggle-row--inline-control,
+  .ai-behavior-quiet-row,
+  .ai-behavior-quiet-time-group{
+    flex-wrap:wrap;
+  }
+  .ai-behavior-inline-control select,
+  .ai-behavior-inline-control input,
+  .ai-behavior-quiet-time-item input{
+    font-size:16px;
+  }
   .ai-behavior-save-footer{
     justify-content:stretch;
   }
@@ -1073,7 +1153,7 @@ html[data-user-theme="dark"] .faq-policies-form > .settings-save-footer{
 }
 .field .handoff-radio-option input[type="radio"]:focus{outline:2px solid rgba(124,58,237,.28);outline-offset:2px;box-shadow:none}
 .handoff-custom-hours{margin:0 0 16px}
-.handoff-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:4px}
+.handoff-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:15px}
 .sh-active-table{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff}
 .sh-active-thead{
   display:grid;grid-template-columns:minmax(0,1fr) 132px 112px;gap:14px;
