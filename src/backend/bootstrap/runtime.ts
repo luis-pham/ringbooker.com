@@ -25,6 +25,7 @@ import { InMemoryBlogPostsRepository } from '@/src/backend/adapters/memory/blog-
 import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory/contact-requests-repository';
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryWebDemoSessionsRepository } from '@/src/backend/adapters/memory/web-demo-sessions-repository';
+import { InMemorySalesPreparedDemosRepository } from '@/src/backend/adapters/memory/sales-prepared-demos-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryCommercialGoLiveApprovalEventsRepository } from '@/src/backend/adapters/memory/commercial-go-live-approval-events-repository';
 import { InMemoryShopLocationsRepository } from '@/src/backend/adapters/memory/shop-locations-repository';
@@ -63,6 +64,7 @@ import { SupabaseBlogPostsRepository } from '@/src/backend/adapters/supabase/blo
 import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supabase/contact-requests-repository';
 import { SupabaseDemoSessionsRepository } from '@/src/backend/adapters/supabase/demo-sessions-repository';
 import { SupabaseWebDemoSessionsRepository } from '@/src/backend/adapters/supabase/web-demo-sessions-repository';
+import { SupabaseSalesPreparedDemosRepository } from '@/src/backend/adapters/supabase/sales-prepared-demos-repository';
 import { SupabaseShopAccessStatesRepository } from '@/src/backend/adapters/supabase/shop-access-states-repository';
 import { SupabaseCommercialGoLiveApprovalEventsRepository } from '@/src/backend/adapters/supabase/commercial-go-live-approval-events-repository';
 import { SupabaseShopLocationsRepository } from '@/src/backend/adapters/supabase/shop-locations-repository';
@@ -206,6 +208,7 @@ export function createBackendRuntime() {
             contactRequestsRepository: new SupabaseContactRequestsRepository(supabase),
             demoSessionsRepository: new SupabaseDemoSessionsRepository(supabase),
             webDemoSessionsRepository: new SupabaseWebDemoSessionsRepository(supabase),
+            salesPreparedDemosRepository: new SupabaseSalesPreparedDemosRepository(supabase),
             handoffSessionsRepository: new SupabaseHandoffSessionsRepository(supabase),
             voiceCallLegsRepository: new SupabaseVoiceCallLegsRepository(supabase),
           };
@@ -242,6 +245,7 @@ export function createBackendRuntime() {
           contactRequestsRepository: new InMemoryContactRequestsRepository(),
           demoSessionsRepository: new InMemoryDemoSessionsRepository(),
           webDemoSessionsRepository: new InMemoryWebDemoSessionsRepository(),
+          salesPreparedDemosRepository: new InMemorySalesPreparedDemosRepository(),
           handoffSessionsRepository: new InMemoryHandoffSessionsRepository(),
           voiceCallLegsRepository: new InMemoryVoiceCallLegsRepository(),
         };
@@ -370,6 +374,7 @@ export function createBackendRuntime() {
     contactRequestsRepository: repositories.contactRequestsRepository,
     demoSessionsRepository: repositories.demoSessionsRepository,
     webDemoSessionsRepository: repositories.webDemoSessionsRepository,
+    salesPreparedDemosRepository: repositories.salesPreparedDemosRepository,
     billingProvider,
     basePath: '/api/backend',
     runtimeInfo: {
@@ -418,6 +423,7 @@ export function createBackendRuntime() {
     contactRequestsRepository: repositories.contactRequestsRepository,
     demoSessionsRepository: repositories.demoSessionsRepository,
     webDemoSessionsRepository: repositories.webDemoSessionsRepository,
+    salesPreparedDemosRepository: repositories.salesPreparedDemosRepository,
     smsService: services.smsService,
     telephonyService: services.telephonyService,
     phoneProvisioningService: services.phoneProvisioningService,

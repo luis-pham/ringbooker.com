@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 
@@ -105,6 +105,8 @@ import type {
   VagaroWebhookEventsRepository,
 } from '@/src/backend/ports/repositories';
 import type { WebDemoSessionAdminRecord, WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
+import type { SalesPreparedDemoConfig, SalesPreparedDemosRepository } from '@/src/backend/ports/sales-prepared-demos';
+import { notifySalesDemoEvent, notifySalesLifecycle } from '@/src/backend/services/sales-integration/sales-webhook';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
 import {
@@ -342,7 +344,68 @@ const publicDemoRequestSchema = z.object({
 /** Same fields as `publicDemoRequestSchema` except visitor phone (web demo uses browser audio only). */
 const publicDemoWebSessionSchema = publicDemoRequestSchema.omit({ phoneNumber: true }).extend({
   importedSiteUrl: z.string().url().max(500).optional(),
+  /** Set when the demo is opened from a sales prepared demo page (/try/<slug>). */
+  preparedDemoSlug: z.string().max(120).optional(),
 });
+
+/** Payload from sales.ringbooker.com POST /api/backend/internal/sales/demo-context. */
+const salesDemoContextSchema = z.object({
+  salesLeadId: z.string().uuid(),
+  salonName: z.string().min(1).max(200),
+  demoVertical: z.enum(['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic']).default('hair-salon'),
+  city: z.string().max(120).optional().default(''),
+  state: z.string().max(120).optional().default(''),
+  services: z.array(z.string().max(120)).max(60).optional().default([]),
+  staffNames: z.array(z.string().max(120)).max(20).optional().default([]),
+  primaryHours: z.string().max(400).nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  websiteUrl: z.string().max(500).nullable().optional(),
+  instagramUrl: z.string().max(500).nullable().optional(),
+});
+
+/** Verify the HMAC-signed rb_ref attribution cookie set by middleware ("<slug>.<sigB64url>")
+ *  and return the trusted slug, or null if missing/forged. Same key as middleware. */
+function attributionSigningSecret(): string | null {
+  const secret = process.env.APP_SIGNING_SECRET;
+  if (secret && secret.length >= 32) return secret;
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    return 'development-only-insecure-signing-secret-please-override';
+  }
+  return null;
+}
+
+function verifyAttributionCookie(value: string | undefined | null): string | null {
+  if (!value) return null;
+  const secret = attributionSigningSecret();
+  if (!secret) return null;
+  const dot = value.lastIndexOf('.');
+  if (dot <= 0) return null;
+  const slug = value.slice(0, dot);
+  const providedB64 = value.slice(dot + 1);
+  let provided: Buffer;
+  try {
+    provided = Buffer.from(providedB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+  } catch {
+    return null;
+  }
+  const expected = createHmac('sha256', secret).update(slug).digest();
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return null;
+  return slug;
+}
+
+/** Readable, URL-safe slug from a salon name (+ city). */
+function slugifyDemo(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 60)
+    .replace(/^-+|-+$/g, '');
+}
 
 /** E.164 placeholder stored on demo sessions for web-only demos — outbound dial to visitor is never performed. */
 const PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164 = '+15555550100';
@@ -2880,6 +2943,7 @@ export function createBackendApp(deps: {
   contactRequestsRepository?: ContactRequestsRepository;
   demoSessionsRepository?: DemoSessionsRepository;
   webDemoSessionsRepository?: WebDemoSessionsRepository;
+  salesPreparedDemosRepository?: SalesPreparedDemosRepository;
   shopsRepository?: ShopsRepository;
   telephonyService?: TelephonyService;
   phoneProvisioningService?: PhoneProvisioningService;
@@ -3240,6 +3304,7 @@ export function createBackendApp(deps: {
       billingProvider: deps.billingProvider,
       jobsRepository: deps.jobsRepository,
       emailService: deps.emailService,
+      shopsRepository: deps.shopsRepository,
       });
     })(),
   );
@@ -3823,6 +3888,15 @@ export function createBackendApp(deps: {
         });
       }
 
+      // Validate the prepared-demo slug server-side so a forged slug in the payload
+      // can't push a sales lead's stage forward via a spoofed web-session.
+      const verifiedPreparedSlug =
+        parsed.data.preparedDemoSlug && deps.salesPreparedDemosRepository
+          ? (await deps.salesPreparedDemosRepository.findBySlug(parsed.data.preparedDemoSlug))
+            ? parsed.data.preparedDemoSlug
+            : null
+          : null;
+
       if (deps.webDemoSessionsRepository) {
         try {
           await deps.webDemoSessionsRepository.insertStarted({
@@ -3836,10 +3910,16 @@ export function createBackendApp(deps: {
             browser: uaHints.browser,
             deviceType: uaHints.deviceType,
             importedSiteUrl: parsed.data.importedSiteUrl ?? null,
+            preparedDemoSlug: verifiedPreparedSlug,
           });
         } catch (error) {
           logger.warn({ err: error, requestId }, 'web_demo_session_started_persist_failed');
         }
+      }
+
+      // Sales prepared demo (/try/<slug>): report the play so sales advances sent -> viewed.
+      if (verifiedPreparedSlug) {
+        void notifySalesDemoEvent({ slug: verifiedPreparedSlug, event: 'play', pct: 0 });
       }
 
       const demoMode = parsed.data.demoMode ?? 'quick';
@@ -3959,6 +4039,8 @@ export function createBackendApp(deps: {
         if (deps.webDemoSessionsRepository) {
           try {
             await deps.webDemoSessionsRepository.markConnectedByRequestId(requestId);
+            const preparedSlug = await deps.webDemoSessionsRepository.getPreparedDemoSlugByRequestId(requestId);
+            if (preparedSlug) void notifySalesDemoEvent({ slug: preparedSlug, event: 'progress', pct: 50 });
           } catch (error) {
             logger.warn({ err: error, requestId }, 'web_demo_session_mark_connected_failed');
           }
@@ -4061,9 +4143,13 @@ export function createBackendApp(deps: {
     const rid = releaseParsed.data.requestId;
     if (deps.webDemoSessionsRepository && rid.startsWith('demo-direct-')) {
       try {
+        const preparedSlug = await deps.webDemoSessionsRepository.getPreparedDemoSlugByRequestId(rid);
         await deps.webDemoSessionsRepository.finalizeByRequestId(rid, {
           endReason: releaseParsed.data.endReason === 'timeout' ? 'timeout' : 'completed',
         });
+        if (preparedSlug && releaseParsed.data.endReason !== 'timeout') {
+          void notifySalesDemoEvent({ slug: preparedSlug, event: 'complete', pct: 100 });
+        }
       } catch (error) {
         logger.warn({ err: error, requestId: rid }, 'web_demo_session_finalize_failed');
       }
@@ -4672,6 +4758,137 @@ export function createBackendApp(deps: {
     }
   });
 
+  // Internal: sales.ringbooker.com creates a prepared, shareable per-salon demo
+  // served at /try/<slug>. Enriches content from the salon website (primary) and
+  // returns { demoUrl, requestId, sessionId, expiresAt }. Idempotent per lead.
+  app.post(path('/internal/sales/demo-context'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.internal_sales_demo_context, 'internal_sales_demo_context');
+    if (limited) return limited;
+    if (!ensureInternalAccess(c.req.header('x-internal-api-key') ?? null)) {
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    const repo = deps.salesPreparedDemosRepository;
+    if (!repo) return c.json({ ok: false, error: 'sales_prepared_demos_unavailable' }, 503);
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = salesDemoContextSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const p = parsed.data;
+
+    // Enrich demo content from the salon website (primary source). The thin sales
+    // payload is only fallback. Best-effort — a failed import still yields a demo.
+    let importedServices: NonNullable<SalesPreparedDemoConfig['services']> = [];
+    let importedStaff: string[] = [];
+    if (p.websiteUrl && getEnv().WEBSITE_IMPORT_ENABLED) {
+      try {
+        const env = getEnv();
+        const result = await importWebsiteWithCache({ url: p.websiteUrl, qualityBudgetMs: WEBSITE_IMPORT_BUDGET_MS }, () =>
+          importWebsiteForOnboarding({ url: p.websiteUrl! }, {
+            googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+            llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
+            openAiApiKey: env.OPENAI_API_KEY,
+            llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
+            llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
+            maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
+            renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
+            renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
+            deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
+          }),
+        );
+        importedServices = (result.suggestions.serviceCatalog.services ?? []).slice(0, 40).map((s) => ({
+          category: s.categoryName,
+          name: s.name,
+          price: s.priceAmount ?? null,
+          duration: s.durationText ?? null,
+        }));
+        importedStaff = (result.suggestions.staffSuggestions ?? []).slice(0, 8).map((s) => s.name).filter(Boolean);
+      } catch (err) {
+        logger.warn({ err }, 'sales_demo_context_import_failed');
+      }
+    }
+
+    const verticalLabel = p.demoVertical.replace(/-/g, ' ');
+    const services: NonNullable<SalesPreparedDemoConfig['services']> =
+      importedServices.length > 0 ? importedServices : p.services.map((name) => ({ category: verticalLabel, name }));
+    const staffNames = importedStaff.length > 0 ? importedStaff : p.staffNames;
+
+    const demoConfig: SalesPreparedDemoConfig = {
+      services,
+      primaryHours: p.primaryHours ?? null,
+      secondaryHours: null,
+      staffNames,
+    };
+
+    const systemPrompt = buildPublicDemoSystemPrompt({
+      shopName: p.salonName,
+      businessType: verticalLabel,
+      demoVertical: p.demoVertical,
+      notes: p.notes ?? undefined,
+      demoConfig: {
+        city: p.city || undefined,
+        primaryHours: p.primaryHours ?? undefined,
+        staffNames,
+        services,
+      },
+    });
+
+    // Reuse the lead's existing slug if it already has a demo; else mint a readable one.
+    const existing = await repo.findByLead(p.salesLeadId);
+    let slug = existing?.slug;
+    if (!slug) {
+      const base = slugifyDemo(`${p.salonName} ${p.city}`) || 'demo';
+      slug = (await repo.slugExists(base)) ? `${base}-${randomUUID().slice(0, 4)}` : base;
+    }
+
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const prepared = await repo.upsertByLead({
+      salesLeadId: p.salesLeadId,
+      slug,
+      vertical: p.demoVertical,
+      businessName: p.salonName,
+      city: p.city || null,
+      state: p.state || null,
+      websiteUrl: p.websiteUrl ?? null,
+      instagramUrl: p.instagramUrl ?? null,
+      demoConfig,
+      systemPrompt,
+      expiresAt,
+    });
+
+    return c.json({
+      demoUrl: `${getAppBaseUrl(c.req)}/try/${prepared.slug}`,
+      requestId: prepared.id,
+      sessionId: prepared.id,
+      expiresAt: prepared.expiresAt,
+    });
+  });
+
+  // Public: the /try/<slug> page loads a prepared demo by slug. Deliberately does
+  // NOT expose sales_lead_id — attribution resolves slug -> lead server-side at signup.
+  app.get(path('/public/demo/prepared/:slug'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_prepared, 'public_demo_prepared');
+    if (limited) return limited;
+    const repo = deps.salesPreparedDemosRepository;
+    if (!repo) return c.json({ ok: false, error: 'unavailable' }, 503);
+    const slug = c.req.param('slug');
+    if (!slug) return c.json({ ok: false, error: 'not_found' }, 404);
+    const demo = await repo.findBySlug(slug);
+    if (!demo) return c.json({ ok: false, error: 'not_found' }, 404);
+    if (new Date(demo.expiresAt).getTime() < Date.now()) {
+      return c.json({ ok: false, error: 'expired' }, 410);
+    }
+    return c.json({
+      ok: true,
+      demo: {
+        slug: demo.slug,
+        vertical: demo.vertical,
+        businessName: demo.businessName,
+        city: demo.city,
+        services: (demo.demoConfig.services ?? []).map((s) => s.name).filter(Boolean),
+      },
+    });
+  });
+
   // Cost estimate: ~$0.001 per call (gpt-4o-mini, ~150 output tokens)
   // At 1,000 demo sessions/month = ~$1/month; at 10,000 = ~$10/month
   app.post(path('/public/demo/suggested-questions'), async (c) => {
@@ -4994,6 +5211,24 @@ export function createBackendApp(deps: {
             active: true,
           }),
         );
+
+    // Deterministic sales attribution: if this signup came from a /try/<slug> demo
+    // (rb_ref cookie), stamp the shop with the originating lead and report the signup.
+    try {
+      const refSlug = verifyAttributionCookie(getCookie(c, 'rb_ref'));
+      if (refSlug && deps.salesPreparedDemosRepository) {
+        const prepared = await deps.salesPreparedDemosRepository.findBySlug(refSlug);
+        if (prepared) {
+          await deps.shopsRepository.setSalesAttribution(createdShop.id, {
+            salesLeadId: prepared.salesLeadId,
+            method: 'demo_token',
+          });
+          void notifySalesLifecycle({ salesLeadId: prepared.salesLeadId, event: 'signedup' });
+        }
+      }
+    } catch (error) {
+      logger.warn({ err: error }, 'sales_attribution_stamp_failed');
+    }
 
     const authUser = await deps.authUsersRepository.create({
       email: normalizedEmail,

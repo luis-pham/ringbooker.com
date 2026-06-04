@@ -110,6 +110,16 @@ export class InMemoryShopsRepository implements ShopsRepository {
   private readonly shops = new Map<string, Shop>([[defaultShop.id, defaultShop]]);
   private readonly serviceCatalogs = new Map<string, NonNullable<Shop['service_catalog']>>();
   private readonly shopCreatedAt = new Map<string, string>([[defaultShop.id, new Date().toISOString()]]);
+  private readonly salesAttribution = new Map<string, { salesLeadId: string; method: string; at: string }>();
+
+  async setSalesAttribution(shopId: string, params: { salesLeadId: string; method: string }): Promise<void> {
+    if (this.salesAttribution.has(shopId)) return; // stamp once
+    this.salesAttribution.set(shopId, { ...params, at: new Date().toISOString() });
+  }
+
+  async findSalesLeadId(shopId: string): Promise<string | null> {
+    return this.salesAttribution.get(shopId)?.salesLeadId ?? null;
+  }
 
   private hydrateShop(shop: Shop): Shop {
     const catalog = this.serviceCatalogs.get(shop.id);

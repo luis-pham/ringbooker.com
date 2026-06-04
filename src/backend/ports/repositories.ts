@@ -454,6 +454,13 @@ export interface ShopsRepository {
     plan?: Shop['plan'];
     active?: boolean;
   }): Promise<Shop>;
+  /** Deterministic sales attribution — stamped once at signup (no-op if already set). */
+  setSalesAttribution(
+    shopId: string,
+    params: { salesLeadId: string; method: string },
+  ): Promise<void>;
+  /** The sales lead this shop was attributed to, or null. */
+  findSalesLeadId(shopId: string): Promise<string | null>;
   updateUserSettings(
     shopId: string,
     patch: Partial<

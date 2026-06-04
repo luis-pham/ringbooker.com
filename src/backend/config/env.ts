@@ -285,6 +285,11 @@ function createValidatedEnv() {
       APP_ENCRYPTION_KEY: z.string().min(32),
       APP_SIGNING_SECRET: z.string().min(32),
 
+      // Outbound integration with sales.ringbooker.com (demo tracking + lifecycle).
+      // Base, e.g. https://sales.ringbooker.com; secret == sales RINGBOOKER_WEBHOOK_SECRET.
+      SALES_WEBHOOK_BASE_URL: z.string().url().optional(),
+      SALES_WEBHOOK_SECRET: z.string().min(1).optional(),
+
       DEFAULT_SHOP_TIMEZONE: z.string().default('America/Los_Angeles'),
       CALENDAR_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
       BOOKING_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),

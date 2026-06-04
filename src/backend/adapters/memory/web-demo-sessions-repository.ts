@@ -17,6 +17,7 @@ function createId(): string {
 
 export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsRepository {
   private readonly rows = new Map<string, WebDemoSessionAdminRecord>();
+  private readonly preparedSlugByRequestId = new Map<string, string>();
 
   private matchesAdminFilters(
     row: WebDemoSessionAdminRecord,
@@ -55,9 +56,11 @@ export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsReposit
     deviceType: string | null;
     demoSource?: WebDemoSessionDemoSource;
     importedSiteUrl?: string | null;
+    preparedDemoSlug?: string | null;
   }): Promise<void> {
     const t = nowIso();
     const id = createId();
+    if (params.preparedDemoSlug) this.preparedSlugByRequestId.set(params.requestId, params.preparedDemoSlug);
     this.rows.set(id, {
       id,
       publicSessionId: params.publicSessionId,
@@ -128,6 +131,10 @@ export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsReposit
       createdAt: t,
       updatedAt: t,
     });
+  }
+
+  async getPreparedDemoSlugByRequestId(requestId: string): Promise<string | null> {
+    return this.preparedSlugByRequestId.get(requestId) ?? null;
   }
 
   async markConnectedByRequestId(requestId: string): Promise<void> {

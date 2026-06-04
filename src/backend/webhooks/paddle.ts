@@ -4,7 +4,8 @@ import { z } from 'zod';
 
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
-import type { JobsRepository, ProviderEventsRepository } from '@/src/backend/ports/repositories';
+import type { JobsRepository, ProviderEventsRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import { notifySalesLifecycle } from '@/src/backend/services/sales-integration/sales-webhook';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { getClientIp } from '@/src/backend/security/rate-limit';
@@ -70,6 +71,7 @@ export async function handlePaddleWebhook(
     billingProvider?: BillingProviderAdapter;
     jobsRepository?: JobsRepository;
     emailService?: EmailService;
+    shopsRepository?: ShopsRepository;
   },
 ) {
   const rawBody = await c.req.text();
@@ -226,6 +228,23 @@ export async function handlePaddleWebhook(
         });
         // Return 200 so Paddle stops retrying — the error is recorded in provider_events.
         return c.json({ ok: false }, 200);
+      }
+
+      // Report bottom-of-funnel lifecycle to sales.ringbooker.com for attributed shops.
+      if (syncResult?.shopId && syncResult.subscription && deps.shopsRepository) {
+        const status = syncResult.subscription.status;
+        let lifecycleEvent: 'trial' | 'converted' | 'churned' | null = null;
+        if (['subscription.canceled', 'subscription.paused', 'subscription.past_due'].some((n) => eventType.includes(n))) {
+          lifecycleEvent = 'churned';
+        } else if (status === 'active') {
+          lifecycleEvent = 'converted';
+        } else if (status === 'trialing') {
+          lifecycleEvent = 'trial';
+        }
+        if (lifecycleEvent) {
+          const salesLeadId = await deps.shopsRepository.findSalesLeadId(syncResult.shopId);
+          if (salesLeadId) void notifySalesLifecycle({ salesLeadId, event: lifecycleEvent });
+        }
       }
     }
 

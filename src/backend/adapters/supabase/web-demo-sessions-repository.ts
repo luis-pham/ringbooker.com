@@ -84,6 +84,7 @@ export class SupabaseWebDemoSessionsRepository implements WebDemoSessionsReposit
     deviceType: string | null;
     demoSource?: WebDemoSessionDemoSource;
     importedSiteUrl?: string | null;
+    preparedDemoSlug?: string | null;
   }): Promise<void> {
     const now = new Date().toISOString();
     const { error } = await this.supabase.from('web_demo_sessions').insert({
@@ -92,6 +93,7 @@ export class SupabaseWebDemoSessionsRepository implements WebDemoSessionsReposit
       vertical_slug: params.verticalSlug,
       business_name: params.businessName,
       imported_site_url: params.importedSiteUrl ?? null,
+      prepared_demo_slug: params.preparedDemoSlug ?? null,
       ip_address: params.ipAddress,
       country: params.country,
       user_agent: params.userAgent,
@@ -172,6 +174,15 @@ export class SupabaseWebDemoSessionsRepository implements WebDemoSessionsReposit
       })
       .eq('request_id', requestId);
     if (error) throw new Error(`web_demo_session_mark_failed_failed:${error.message}`);
+  }
+
+  async getPreparedDemoSlugByRequestId(requestId: string): Promise<string | null> {
+    const { data } = await this.supabase
+      .from('web_demo_sessions')
+      .select('prepared_demo_slug')
+      .eq('request_id', requestId)
+      .maybeSingle<{ prepared_demo_slug: string | null }>();
+    return data?.prepared_demo_slug ?? null;
   }
 
   async finalizeByRequestId(requestId: string, params: { endReason: 'completed' | 'timeout' }): Promise<void> {

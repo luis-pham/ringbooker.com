@@ -92,6 +92,31 @@ function base64UrlDecodeJson<T>(value: string): T {
   return JSON.parse(json) as T;
 }
 
+function uint8ArrayToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** HMAC-SHA256 the prepared-demo slug so the rb_ref attribution cookie is tamper-evident.
+ *  Backend (signup) re-derives the same MAC with APP_SIGNING_SECRET to trust the slug. */
+async function signAttributionSlug(slug: string): Promise<string | null> {
+  const key = getSigningKey();
+  if (!key) return null;
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key as unknown as BufferSource,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(slug)));
+  return uint8ArrayToBase64Url(sig);
+}
+
+const ATTRIBUTION_COOKIE = 'rb_ref';
+const ATTRIBUTION_COOKIE_MAX_AGE = 90 * 24 * 60 * 60; // 90 days
+
 function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -199,6 +224,26 @@ export async function middleware(req: NextRequest) {
 
   const blog301 = await maybeBlogPostRedirect301(req);
   if (blog301) return withSecurityHeaders(blog301, pathname);
+
+  // Sales prepared demo (/try/<slug>): drop a tamper-evident, HttpOnly attribution
+  // cookie server-side so signup can deterministically credit the originating lead.
+  if (req.method === 'GET' && pathname.startsWith('/try/')) {
+    const res = NextResponse.next();
+    const slug = decodeURIComponent(pathname.split('/')[2] ?? '');
+    if (slug) {
+      const sig = await signAttributionSlug(slug);
+      if (sig) {
+        res.cookies.set(ATTRIBUTION_COOKIE, `${slug}.${sig}`, {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: ATTRIBUTION_COOKIE_MAX_AGE,
+          secure: process.env.NODE_ENV === 'production',
+        });
+      }
+    }
+    return withSecurityHeaders(res, pathname);
+  }
 
   const isUserRoute = pathname.startsWith('/user');
   const isAdminRoute = pathname.startsWith('/admin');

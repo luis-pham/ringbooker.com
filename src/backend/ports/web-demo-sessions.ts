@@ -49,6 +49,8 @@ export interface WebDemoSessionsRepository {
     deviceType: string | null;
     demoSource?: WebDemoSessionDemoSource;
     importedSiteUrl?: string | null;
+    /** sales_prepared_demos.slug when started from /try/<slug>; null otherwise. */
+    preparedDemoSlug?: string | null;
   }): Promise<void>;
 
   insertRateLimited(params: {
@@ -69,6 +71,9 @@ export interface WebDemoSessionsRepository {
   markFailedByRequestId(requestId: string, params: { errorCode: string; errorMessage?: string | null }): Promise<void>;
 
   finalizeByRequestId(requestId: string, params: { endReason: 'completed' | 'timeout' }): Promise<void>;
+
+  /** sales_prepared_demos.slug for a session, or null if it wasn't a prepared (sales) demo. */
+  getPreparedDemoSlugByRequestId(requestId: string): Promise<string | null>;
 
   /** Persist the captured browser-demo transcript (array of conversation turns). */
   saveTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void>;

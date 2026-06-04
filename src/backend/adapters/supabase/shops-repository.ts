@@ -887,6 +887,31 @@ export class SupabaseShopsRepository implements ShopsRepository {
     return this.hydrateServiceCatalog(toShop(data));
   }
 
+  async setSalesAttribution(shopId: string, params: { salesLeadId: string; method: string }): Promise<void> {
+    // Stamp once — `is('sales_lead_id', null)` keeps the first attribution immutable.
+    const now = new Date().toISOString();
+    const { error } = await this.supabase
+      .from('shops')
+      .update({
+        sales_lead_id: params.salesLeadId,
+        sales_attribution_method: params.method,
+        sales_attributed_at: now,
+        updated_at: now,
+      })
+      .eq('id', shopId)
+      .is('sales_lead_id', null);
+    if (error) throw new Error(`shop_set_sales_attribution_failed:${error.message}`);
+  }
+
+  async findSalesLeadId(shopId: string): Promise<string | null> {
+    const { data } = await this.supabase
+      .from('shops')
+      .select('sales_lead_id')
+      .eq('id', shopId)
+      .maybeSingle<{ sales_lead_id: string | null }>();
+    return data?.sales_lead_id ?? null;
+  }
+
   async updateUserSettings(
     shopId: string,
     patch: Partial<

@@ -836,25 +836,45 @@ function microphoneErrorMessage(error: unknown): string {
 export function MarketingVerticalDemoTemplate({
   vertical,
   demoPhoneE164,
+  preparedDemoSlug,
+  initialBusinessName,
+  initialCity,
+  initialServices,
 }: {
   vertical: DemoVerticalSlug;
   /** E.164 from server `DEMO_PHONE_*` env; falls back to legacy shared line when unset. */
   demoPhoneE164?: string | null;
+  /** Set on the sales /try/<slug> page so demo tracking is reported back to sales. */
+  preparedDemoSlug?: string;
+  /** Seed values for a sales prepared demo — pre-fills the business so the demo is personalized. */
+  initialBusinessName?: string;
+  initialCity?: string | null;
+  initialServices?: string[];
 }) {
   const config = DEMO_VERTICALS[vertical];
+  // Sales /try demo skips the URL/customize flow, so the start button is a direct
+  // "listen now" action — shorter, curiosity-driven label lifts clicks.
+  const ctaLabel = preparedDemoSlug ? 'Hear your AI now' : 'Start Demo Call';
   const otherDemoVerticals = useMemo((): DemoVerticalConfig[] => [], []);
   const resolvedDemoPhoneE164 = useMemo(() => normalizeDemoPhoneE164(demoPhoneE164), [demoPhoneE164]);
   const verticalDemoPhoneTel = useMemo(() => `tel:${resolvedDemoPhoneE164}`, [resolvedDemoPhoneE164]);
   const verticalDemoPhoneDisplay = useMemo(() => formatE164ForDisplay(resolvedDemoPhoneE164), [resolvedDemoPhoneE164]);
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
-    businessName: config.defaultBusinessName,
-    city: config.defaultCity,
+    businessName: initialBusinessName?.trim() || config.defaultBusinessName,
+    city: initialCity?.trim() || config.defaultCity,
     primaryHours: config.hours.primary,
     secondaryHours: config.hours.secondary,
     staff: config.staffPlaceholder,
     notes: '',
-    services: cloneServices(config.serviceCategories),
+    services:
+      initialServices && initialServices.length > 0
+        ? [{
+            id: 'services',
+            label: 'Services',
+            items: initialServices.slice(0, 40).map((name) => ({ name, price: 0, enabled: true })),
+          }]
+        : cloneServices(config.serviceCategories),
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(config.serviceCategories[0]?.id ?? '');
@@ -1351,6 +1371,7 @@ export function MarketingVerticalDemoTemplate({
       demoMode: 'quick',
       demoSource: 'vertical_demo_page',
       importedSiteUrl: sitePhase === 'ready' ? siteUrl.trim() || undefined : undefined,
+      ...(preparedDemoSlug ? { preparedDemoSlug } : {}),
     };
   }
 
@@ -2364,7 +2385,18 @@ export function MarketingVerticalDemoTemplate({
         <MarketingChromeStyles />
         <MarketingHeader active="demo" />
 
-        <div className={`vd-page vd-theme-${config.slug}`}>
+        <div className={`vd-page vd-theme-${config.slug}${preparedDemoSlug ? ' vd-sales' : ''}`}>
+
+          {/* Sales prepared demo (/try/<slug>): the demo is already personalized, so hide the
+              website-import and call-the-number sections — leave just the start button. */}
+          {preparedDemoSlug ? (
+            <style
+              dangerouslySetInnerHTML={{
+                __html:
+                  '.vd-sales .vd-phone-demo-secondary,.vd-sales .vd-m-card,.vd-sales .vd-m-divider,.vd-sales .vd-url-section{display:none!important}',
+              }}
+            />
+          ) : null}
 
           {/* ══ PAGE HEADER (centered, full-width) ════════════════ */}
           <div className="vd-page-header">
@@ -2523,7 +2555,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       ) : null}
                       <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                        {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                        {isSubmitting ? 'Starting…' : ctaLabel}
                       </button>
                       <p className="vd-cta-note">AI receptionist configured with your real salon data.</p>
                       <div className="vd-phone-demo-secondary">
@@ -2611,7 +2643,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       ) : null}
                       <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                        {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                        {isSubmitting ? 'Starting…' : ctaLabel}
                       </button>
                       <p className="vd-cta-note">Talk to RingBooker in your browser. No phone number required.</p>
                       <div className="vd-phone-demo-secondary">
@@ -2725,7 +2757,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       ) : null}
                       <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                        {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                        {isSubmitting ? 'Starting…' : ctaLabel}
                       </button>
                       <p className="vd-cta-note">
                         Talk to RingBooker in your browser using this demo setup. No phone number required.
@@ -2843,7 +2875,7 @@ export function MarketingVerticalDemoTemplate({
                     ) : null}
 
                     <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                      {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                      {isSubmitting ? 'Starting…' : ctaLabel}
                     </button>
                     <p className="vd-cta-note">AI receptionist configured with your real salon data.</p>
                   </div>
@@ -2950,7 +2982,7 @@ export function MarketingVerticalDemoTemplate({
 
                   {/* CTA */}
                   <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                    {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                    {isSubmitting ? 'Starting…' : ctaLabel}
                   </button>
                   <p className="vd-cta-note">
                     Talk to RingBooker in your browser using this demo setup. No phone number required.
@@ -3214,14 +3246,14 @@ export function MarketingVerticalDemoTemplate({
                   ) : null}
                   {stage === 'idle' ? (
                     <div className="vd-phone-ios-act">
-                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--accept" onClick={() => void startWebDemo()} disabled={isSubmitting || sitePhase === 'loading'} aria-label="Start Demo Call">
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--accept" onClick={() => void startWebDemo()} disabled={isSubmitting || sitePhase === 'loading'} aria-label={ctaLabel}>
                         <span className="vd-phone-ios-btn-face" aria-hidden>
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                           </svg>
                         </span>
                       </button>
-                      <span className="vd-phone-ios-label">{sitePhase === 'ready' ? 'Start Your Demo' : 'Start Demo Call'}</span>
+                      <span className="vd-phone-ios-label">{sitePhase === 'ready' ? 'Start Your Demo' : ctaLabel}</span>
                     </div>
                   ) : null}
                   {stage === 'completed' || stage === 'failed' ? (

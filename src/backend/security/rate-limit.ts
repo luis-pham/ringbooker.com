@@ -414,6 +414,12 @@ export const RATE_LIMIT_POLICIES = {
   public_demo_realtime_validate: { name: 'public_demo_realtime_validate', limit: 10, windowMs: 60_000 },
   /** Public demo website import — no auth required, tight per-IP limit. */
   public_demo_import_website: { name: 'public_demo_import_website', limit: 6, windowMs: 60_000, blockMs: 5 * 60_000 },
+  /** Public read of a sales prepared demo (/try/<slug>). Mostly server-rendered; cap
+   *  per-IP to blunt slug enumeration/scraping by external clients. */
+  public_demo_prepared: { name: 'public_demo_prepared', limit: 120, windowMs: 60_000, blockMs: 5 * 60_000 },
+  /** Internal sales demo-context create (key-gated). Generous: the sales worker
+   *  batches demo creation (~3 every 5s) during its nightly window. */
+  internal_sales_demo_context: { name: 'internal_sales_demo_context', limit: 120, windowMs: 60_000, blockMs: 5 * 60_000 },
   /** AI-generated suggested questions for demo — gpt-4o-mini call, 10/hour per IP. */
   public_demo_suggested_questions_ip: { name: 'public_demo_suggested_questions_ip', limit: 10, windowMs: 60 * 60_000 },
   /** Per-session cap for suggested questions — at most 1 AI call per session. */
