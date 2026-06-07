@@ -4,8 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "../../../VAS/utarot-miniapp"
+			"path": "../../leadmapfinder.com"
+		},
+		{
+			"path": "../sales.ringbooker.com"
 		}
-	],
-	"settings": {}
+	]
 }
