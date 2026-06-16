@@ -168,11 +168,11 @@ test('user billing and admin billing endpoints return normalized billing state',
   assert.equal(adminBilling.status, 200);
   const adminBillingBody = (await adminBilling.json()) as {
     ok: boolean;
-    metrics: { activeSubscriptions: number; mrr: number };
+    metrics: { payingSubscriptions: number; mrr: number };
     subscriptions: Array<{ shopId: string; plan: string }>;
   };
   assert.equal(adminBillingBody.ok, true);
-  assert.equal(adminBillingBody.metrics.activeSubscriptions >= 1, true);
+  assert.equal(adminBillingBody.metrics.payingSubscriptions >= 1, true);
   assert.equal(adminBillingBody.metrics.mrr >= 149, true);
   assert.equal(adminBillingBody.subscriptions.some((item) => item.shopId === 'demo-shop'), true);
 });
@@ -1363,6 +1363,12 @@ test('billing checkout creates missing internal trial and opens Paddle sandbox c
       url,
       body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
     });
+    if (url.endsWith('/customers')) {
+      return new Response(JSON.stringify({ data: { id: 'ctm_sandbox_missing_trial' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     return new Response(
       JSON.stringify({
         data: {
@@ -1428,12 +1434,15 @@ test('billing checkout creates missing internal trial and opens Paddle sandbox c
     const body = (await checkout.json()) as { ok: boolean; checkoutUrl?: string };
     assert.equal(body.ok, true);
     assert.equal(body.checkoutUrl, 'https://sandbox-checkout.paddle.com/checkout/test');
-    assert.equal(paddleRequests.length, 1);
-    assert.equal(paddleRequests[0].url, 'https://sandbox-api.paddle.com/transactions');
-    assert.deepEqual(paddleRequests[0].body.checkout, {
+    // First request resolves/creates the Paddle customer, second creates the transaction.
+    assert.equal(paddleRequests.length, 2);
+    assert.equal(paddleRequests[0].url, 'https://sandbox-api.paddle.com/customers');
+    assert.equal(paddleRequests[1].url, 'https://sandbox-api.paddle.com/transactions');
+    assert.equal(paddleRequests[1].body.customer_id, 'ctm_sandbox_missing_trial');
+    assert.deepEqual(paddleRequests[1].body.checkout, {
       url: 'http://localhost:3000/checkout/paddle',
     });
-    assert.deepEqual((paddleRequests[0].body.items as Array<{ price_id: string; quantity: number }>)[0], {
+    assert.deepEqual((paddleRequests[1].body.items as Array<{ price_id: string; quantity: number }>)[0], {
       price_id: process.env.PADDLE_PRICE_STARTER_MONTHLY,
       quantity: 1,
     });
@@ -1666,9 +1675,15 @@ test('billing checkout allows payment setup for incomplete subscriptions', async
   resetEnvCacheForTests();
 
   const originalFetch = globalThis.fetch;
-  let paddleRequestCount = 0;
-  globalThis.fetch = (async () => {
-    paddleRequestCount += 1;
+  let paddleTransactionRequestCount = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    if (String(input).endsWith('/customers')) {
+      return new Response(JSON.stringify({ data: { id: 'ctm_sandbox_incomplete' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    paddleTransactionRequestCount += 1;
     return new Response(
       JSON.stringify({
         data: {
@@ -1730,7 +1745,7 @@ test('billing checkout allows payment setup for incomplete subscriptions', async
     const body = (await checkout.json()) as { ok: boolean; checkoutUrl?: string };
     assert.equal(body.ok, true);
     assert.equal(body.checkoutUrl, 'https://sandbox-checkout.paddle.com/checkout/incomplete');
-    assert.equal(paddleRequestCount, 1);
+    assert.equal(paddleTransactionRequestCount, 1);
   } finally {
     globalThis.fetch = originalFetch;
     applyRequiredTestEnv({
@@ -1788,9 +1803,15 @@ test('billing checkout normalizes legacy unknown self-serve trial before Paddle 
   resetEnvCacheForTests();
 
   const originalFetch = globalThis.fetch;
-  let paddleRequestCount = 0;
-  globalThis.fetch = (async () => {
-    paddleRequestCount += 1;
+  let paddleTransactionRequestCount = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    if (String(input).endsWith('/customers')) {
+      return new Response(JSON.stringify({ data: { id: 'ctm_sandbox_legacy_unknown' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    paddleTransactionRequestCount += 1;
     return new Response(
       JSON.stringify({
         data: {
@@ -1850,7 +1871,7 @@ test('billing checkout normalizes legacy unknown self-serve trial before Paddle 
     const body = (await checkout.json()) as { ok: boolean; checkoutUrl?: string };
     assert.equal(body.ok, true);
     assert.equal(body.checkoutUrl, 'https://sandbox-checkout.paddle.com/checkout/legacy-unknown');
-    assert.equal(paddleRequestCount, 1);
+    assert.equal(paddleTransactionRequestCount, 1);
     const normalized = await billingSubscriptionsRepository.findCurrentByShopId(shop.id);
     assert.equal(normalized?.provider, 'internal');
     assert.equal(normalized?.status, 'trialing');

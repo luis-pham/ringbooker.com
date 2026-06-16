@@ -24,7 +24,7 @@ function realtimeDemoHeaders(ipv4: string): Record<string, string> {
     'content-type': 'application/json',
     origin: 'http://localhost:3000',
     host: 'localhost:3000',
-    'x-forwarded-for': ipv4,
+    'x-rb-remote-addr': ipv4,
   };
 }
 
@@ -100,7 +100,7 @@ test('public demo request returns 410 and never calls telephony outbound', async
     headers: {
       'content-type': 'application/json',
       'origin': 'http://localhost:3000',
-      'x-forwarded-for': '10.10.10.10',
+      'x-rb-remote-addr': '10.10.10.10',
     },
     body: JSON.stringify({
       shopName: 'Luxe Hair Studio',
@@ -152,7 +152,7 @@ test('public demo web-session returns join token and does not require visitor ph
     headers: {
       'content-type': 'application/json',
       origin: 'http://localhost:3000',
-      'x-forwarded-for': '10.10.10.11',
+      'x-rb-remote-addr': '10.10.10.11',
     },
     body: JSON.stringify({
       shopName: 'Luxe Hair Studio',
@@ -1026,7 +1026,7 @@ test('public demo realtime-session rejects missing origin with 403', async () =>
       headers: {
         'content-type': 'application/json',
         host: 'localhost:3000',
-        'x-forwarded-for': '10.10.90.2',
+        'x-rb-remote-addr': '10.10.90.2',
       },
       body: JSON.stringify(realtimeDemoJsonBody('no_origin_sess')),
     });

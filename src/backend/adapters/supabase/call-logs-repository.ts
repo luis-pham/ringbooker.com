@@ -10,13 +10,16 @@ import { observeDurationMs } from '@/src/backend/observability/metrics';
 import { getCapturedCallerReason } from '@/src/backend/services/usage/captured-caller';
 
 
-function applyCallLogFilters<T extends { gte: (column: string, value: string) => T; lte: (column: string, value: string) => T; eq: (column: string, value: unknown) => T; in: (column: string, values: unknown[]) => T }>(
+function applyCallLogFilters<T extends { gte: (column: string, value: string) => T; lt: (column: string, value: string) => T; eq: (column: string, value: unknown) => T; in: (column: string, values: unknown[]) => T }>(
   query: T,
   params?: CallLogsQueryParams,
 ): T {
   let q = query;
   if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
-  if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+  // Half-open [startedAfter, startedBefore): billing periods are contiguous (period N
+  // ends exactly where N+1 starts), so an inclusive end would count a boundary call in
+  // both periods and double-charge overage.
+  if (params?.startedBefore) q = q.lt('started_at', params.startedBefore.toISOString());
   if (params?.outcome) q = q.eq('outcome', params.outcome);
   if (params?.transcriptStatus) q = q.eq('transcript_status', params.transcriptStatus);
   if (params?.summaryFollowUpRequired !== undefined) q = q.eq('summary_follow_up_required', params.summaryFollowUpRequired);

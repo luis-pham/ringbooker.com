@@ -46,6 +46,13 @@ type ImportOptions = {
   openAiApiKey?: string | null;
   llmModel?: string | null;
   llmMaxTokens?: number | null;
+  /**
+   * Optional global budget gate, consumed once right before the (single) LLM call.
+   * Return `false` to skip LLM enrichment when a cross-instance daily cap is reached;
+   * the import still completes with static + Google Places extraction. Injected by the
+   * app layer so this service stays decoupled from the rate-limit module.
+   */
+  acquireLlmBudget?: () => Promise<boolean>;
   /** Overall wall-clock budget for the whole import (crawl + Google Places + LLM). */
   deadlineMs?: number;
   /** Maximum number of parallel page fetches. */
@@ -492,6 +499,16 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const staticHints = (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey)
     ? buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews })
     : null;
+  // Decide whether to run the LLM before kicking off enrichment. The global budget gate
+  // is consumed only when we would actually call the LLM (enabled + enough time left), so
+  // a capped day or a budget-starved import never burns a token.
+  const llmWantsToRun = Boolean(opts.llmEnabled) && budgetForEnrichment >= MIN_LLM_BUDGET_MS;
+  let llmGloballyCapped = false;
+  let runLlm = llmWantsToRun;
+  if (llmWantsToRun && opts.acquireLlmBudget) {
+    runLlm = await opts.acquireLlmBudget().catch(() => false);
+    llmGloballyCapped = !runLlm;
+  }
   const [googlePlacesResult, llmResult] = await Promise.allSettled([
     staticHints
       ? lookupGooglePlaces({
@@ -511,8 +528,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     extractWebsiteImportWithLlm(
       { sourceUrl: startUrl.toString(), previews: finalPreviews, googlePlaces: null, selectedPages: selected.map(toDiagnostic) },
       {
-        // Skip the LLM entirely when there is not enough budget left for a useful call.
-        enabled: opts.llmEnabled && budgetForEnrichment >= MIN_LLM_BUDGET_MS,
+        enabled: runLlm,
         apiKey: opts.openAiApiKey,
         model: opts.llmModel,
         maxTokens: opts.llmMaxTokens,
@@ -531,6 +547,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     ...(spaWarning ? [spaWarning] : []),
     ...(thinContentWarning ? [thinContentWarning] : []),
     ...(siteBuilder && !spaWarning ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
+    ...(llmGloballyCapped ? ['AI enrichment was skipped due to a temporary daily limit; details came from static extraction. Please review carefully.'] : []),
   ];
   const result = {
     ok: suggestions.status !== 'failed',

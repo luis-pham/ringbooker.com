@@ -272,7 +272,7 @@ test('follow-up filtering uses the resolvable follow-up flag and clearing it als
 
   const resolved = await app.request('/user/calls/req-flagged-call/follow-up-done', {
     method: 'PATCH',
-    headers: { cookie },
+    headers: { cookie, origin: 'http://localhost:3000' },
   });
   assert.equal(resolved.status, 200);
 

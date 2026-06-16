@@ -574,3 +574,67 @@ test('missing response body fails safely without unbounded text fallback', async
   assert.equal(result.ok, false);
   assert.equal(result.suggestions.status, 'failed');
 });
+
+function llmHtml(): Record<string, string> {
+  return {
+    'https://capdemo.test': '<html><head><title>Cap Demo Salon</title></head><body><h1>Cap Demo Salon</h1><a href="/services">Services</a><p>Gel Manicure $32 45 minutes</p></body></html>',
+    'https://capdemo.test/robots.txt': '',
+    'https://capdemo.test/services': '<h1>Services</h1><p>Gel Manicure $32 45 minutes</p>',
+  };
+}
+
+const LLM_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+
+function llmFetcher(html: Record<string, string>, onLlmCall: () => void) {
+  return async (url: string) => {
+    if (url === LLM_ENDPOINT) {
+      onLlmCall();
+      const content = JSON.stringify({
+        serviceCatalog: { confidence: 0.9, categories: [{ name: 'Manicure', confidence: 0.9 }], services: [{ name: 'Gel Manicure', priceType: 'fixed', confidence: 0.9 }] },
+      });
+      return response(JSON.stringify({ choices: [{ message: { content } }] }), url, 'application/json');
+    }
+    return response(html[url] ?? '<h1>Not found</h1>', url, url.endsWith('.xml') ? 'application/xml' : 'text/html');
+  };
+}
+
+test('website import skips the LLM and warns when the global budget gate denies', async () => {
+  let llmCalls = 0;
+  const result = await importWebsiteForOnboarding({ url: 'https://capdemo.test' }, {
+    lookup,
+    fetcher: llmFetcher(llmHtml(), () => { llmCalls += 1; }),
+    llmEnabled: true,
+    openAiApiKey: 'sk-test',
+    acquireLlmBudget: async () => false,
+  });
+  assert.equal(llmCalls, 0);
+  assert.ok(!result.diagnostics.fallbackUsed.includes('llm'));
+  assert.ok(result.diagnostics.warnings.some((w) => /daily limit/i.test(w)));
+});
+
+test('website import calls the LLM when the global budget gate allows', async () => {
+  let llmCalls = 0;
+  let gateCalls = 0;
+  const result = await importWebsiteForOnboarding({ url: 'https://capdemo.test' }, {
+    lookup,
+    fetcher: llmFetcher(llmHtml(), () => { llmCalls += 1; }),
+    llmEnabled: true,
+    openAiApiKey: 'sk-test',
+    acquireLlmBudget: async () => { gateCalls += 1; return true; },
+  });
+  assert.equal(gateCalls, 1);
+  assert.equal(llmCalls, 1);
+  assert.ok(result.diagnostics.fallbackUsed.includes('llm'));
+});
+
+test('website import does not consume the budget gate when LLM is disabled', async () => {
+  let gateCalls = 0;
+  await importWebsiteForOnboarding({ url: 'https://capdemo.test' }, {
+    lookup,
+    fetcher: llmFetcher(llmHtml(), () => { /* no-op */ }),
+    llmEnabled: false,
+    openAiApiKey: 'sk-test',
+    acquireLlmBudget: async () => { gateCalls += 1; return true; },
+  });
+  assert.equal(gateCalls, 0);
+});

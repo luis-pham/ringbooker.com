@@ -77,7 +77,7 @@ test('paddle webhook is idempotent by event_id', async () => {
     async syncWebhookEvent(params) {
       syncCount += 1;
       assert.equal(params.eventType, 'transaction.completed');
-      return null;
+      return { provider: 'paddle', shopId: 'demo-shop', customer: null, subscription: null, shopPlanChanged: false };
     },
   };
   const app = createBackendApp({
@@ -114,6 +114,47 @@ test('paddle webhook is idempotent by event_id', async () => {
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
   assert.equal(syncCount, 1);
+});
+
+test('paddle webhook re-runs sync after a failed processing attempt', async () => {
+  applyRequiredTestEnv({ PADDLE_WEBHOOK_SECRET: 'paddle_test_secret' });
+  resetEnvCacheForTests();
+  let syncCount = 0;
+  const billingProvider: BillingProviderAdapter = {
+    provider: 'paddle',
+    async createCheckoutSession() {
+      throw new Error('not_used');
+    },
+    async syncWebhookEvent() {
+      syncCount += 1;
+      if (syncCount === 1) throw new Error('transient_sync_failure');
+      return { provider: 'paddle', shopId: 'demo-shop', customer: null, subscription: null, shopPlanChanged: false };
+    },
+  };
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    billingProvider,
+  });
+  const rawBody = JSON.stringify({
+    event_id: 'evt_retry_after_failure_1',
+    event_type: 'transaction.completed',
+    data: { custom_data: { shop_id: 'demo-shop' } },
+  });
+  const signature = signPaddlePayload(rawBody);
+  const headers = {
+    'content-type': 'application/json',
+    'paddle-signature': signature,
+  };
+
+  const first = await app.request('/webhooks/paddle', { method: 'POST', headers, body: rawBody });
+  const second = await app.request('/webhooks/paddle', { method: 'POST', headers, body: rawBody });
+  const third = await app.request('/webhooks/paddle', { method: 'POST', headers, body: rawBody });
+
+  assert.equal(first.status, 500);
+  assert.equal(second.status, 200);
+  // Once processed successfully, further redeliveries dedupe again.
+  assert.equal(third.status, 200);
+  assert.equal(syncCount, 2);
 });
 
 test('paddle duplicate webhooks racing run one billing sync', async () => {

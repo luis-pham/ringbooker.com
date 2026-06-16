@@ -11,6 +11,7 @@ import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
+import { getPlanUsageLimits } from '@/src/backend/domain/plan-usage-limits';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 import { buildTelnyxTexmlDialOpenAiXml } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
@@ -362,7 +363,10 @@ test('TeXML production shop Dial always includes usage duration cap', async () =
   });
 
   const text = await res.text();
-  assert.ok(text.includes('<Dial timeLimit="720">'));
+  // Professional plan hard cap from getPlanUsageLimits('professional').maxCallDurationSeconds.
+  const expectedCapSecs = getPlanUsageLimits('professional').maxCallDurationSeconds;
+  assert.ok(typeof expectedCapSecs === 'number' && expectedCapSecs > 0);
+  assert.ok(text.includes(`<Dial timeLimit="${expectedCapSecs}">`));
 });
 
 test('TeXML production shop rejects when usage limits cannot be loaded', async () => {

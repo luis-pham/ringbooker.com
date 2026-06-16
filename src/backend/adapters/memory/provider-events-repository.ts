@@ -20,13 +20,22 @@ export class InMemoryProviderEventsRepository implements ProviderEventsRepositor
     return this.processed.has(getDedupeKey(provider, providerEventId));
   }
 
-  async tryMarkProcessing(event: ProviderEventRecord): Promise<{
+  async tryMarkProcessing(
+    event: ProviderEventRecord,
+    options?: { reacquireFailed?: boolean },
+  ): Promise<{
     acquired: boolean;
     state?: ProviderEventProcessingState;
   }> {
     const dedupeKey = getDedupeKey(event.provider, event.providerEventId);
     const existing = this.processed.get(dedupeKey);
-    if (existing) return { acquired: false, state: existing.state };
+    if (existing) {
+      if (options?.reacquireFailed && existing.state === 'failed') {
+        this.processed.set(dedupeKey, { ...event, state: 'processing' });
+        return { acquired: true, state: 'processing' };
+      }
+      return { acquired: false, state: existing.state };
+    }
     this.processed.set(dedupeKey, { ...event, state: 'processing' });
     return { acquired: true, state: 'processing' };
   }

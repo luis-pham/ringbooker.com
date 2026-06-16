@@ -7,13 +7,12 @@ import { apiUserVisibleMessage } from '@/lib/api-user-message';
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
 const FORGOT_ADMIN_MSG = {
-  sent: 'Reset instructions were sent. Check your inbox (including Spam).',
-  not_found: 'No admin account found for this email. Double-check the address.',
+  sent: 'If an admin account exists for this email, reset instructions are on the way. Check your inbox (including Spam).',
 } as const;
 
 export function AdminForgotPasswordForm() {
   const [email, setEmail] = useState('');
-  const [feedback, setFeedback] = useState<'sent' | 'not_found' | 'error' | null>(null);
+  const [feedback, setFeedback] = useState<'sent' | 'error' | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
@@ -31,7 +30,6 @@ export function AdminForgotPasswordForm() {
     });
     const body = (await response.json().catch(() => null)) as {
       ok?: boolean;
-      outcome?: 'reset_email_sent' | 'account_not_found';
       resetToken?: string;
       error?: string;
       message?: string;
@@ -41,7 +39,7 @@ export function AdminForgotPasswordForm() {
       setErrorDetail(apiUserVisibleMessage(body, 'Something went wrong. Please try again.'));
       return;
     }
-    setFeedback(body.outcome === 'reset_email_sent' ? 'sent' : 'not_found');
+    setFeedback('sent');
     setResetToken(body.resetToken ?? null);
   }
 
@@ -106,11 +104,9 @@ export function AdminForgotPasswordForm() {
         <p style={{ marginTop: 12, minHeight: 22, color: feedback === 'sent' ? '#86efac' : feedback ? '#fca5a5' : 'transparent' }}>
           {feedback === 'sent'
             ? FORGOT_ADMIN_MSG.sent
-            : feedback === 'not_found'
-              ? FORGOT_ADMIN_MSG.not_found
-              : feedback === 'error'
-                ? errorDetail ?? 'Something went wrong. Please try again.'
-                : ''}
+            : feedback === 'error'
+              ? errorDetail ?? 'Something went wrong. Please try again.'
+              : ''}
         </p>
         {showDevResetToken && resetToken ? (
           <p style={{ marginTop: 2, color: '#cbd5e1', fontSize: 13 }}>

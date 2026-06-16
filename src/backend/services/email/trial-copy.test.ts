@@ -102,10 +102,11 @@ test('phone setup lifecycle emails clearly state live answering state', () => {
     appBaseUrl,
   });
 
-  assert.match(paymentMethodAdded.text, /Live answering is still off until phone setup is complete/i);
+  // Current copy communicates the not-live-yet state via the go-live instruction.
+  assert.match(paymentMethodAdded.text, /To go live, call your business number from another phone/i);
   assert.match(forwardingReady.text, /Keep your current business number/i);
   assert.match(forwardingReady.text, /Live answering is not active until forwarding is verified and you enable it/i);
-  assert.match(forwardingVerified.text, /Live answering is still off until you enable it/i);
+  assert.match(forwardingVerified.text, /return to Go Live to switch on live answering/i);
   assert.match(billingPaused.text, /RingBooker will not answer forwarded live calls/i);
 });
 

@@ -62,7 +62,8 @@ function matchesStartedRange(
   const t = log.startedAt;
   if (!t) return false;
   if (params.startedAfter && t < params.startedAfter) return false;
-  if (params.startedBefore && t > params.startedBefore) return false;
+  // Half-open [startedAfter, startedBefore) — keep in sync with the Supabase adapter.
+  if (params.startedBefore && t >= params.startedBefore) return false;
   return true;
 }
 

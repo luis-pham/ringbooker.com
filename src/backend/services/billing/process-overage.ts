@@ -9,6 +9,9 @@ import type {
   ShopOverageChargesRepository,
   ShopUsageAlertsRepository,
 } from '@/src/backend/ports/repositories';
+import { buildInternalAlertEmailPayload } from '@/src/backend/services/email/base-email-builders';
+import { renderBaseEmailHtml } from '@/src/backend/services/email/base-email-mjml';
+import { emailDefaultFrom, emailSupportAddress } from '@/src/backend/services/email/config';
 import type { EmailService } from '@/src/backend/services/email/types';
 import { maybeSendOverageChargeReceipt } from '@/src/backend/services/usage/usage-alerts';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
@@ -125,6 +128,37 @@ export async function processOverageForPeriod(
   } catch (err) {
     await deps.overageRepository.updateStatus(idempotencyKey, 'failed');
     logger.error({ err, shopId: shop.id, idempotencyKey, amountCents }, 'captured_caller_overage_charge_failed');
+    // Failed overage rows have no automatic retry, so alert support instead of
+    // letting unbilled revenue sit silently in the table.
+    if (deps.emailService) {
+      const { input, text } = buildInternalAlertEmailPayload({
+        title: 'Paddle overage charge failed',
+        summary: 'A captured-call overage charge failed and needs manual follow-up (no automatic retry).',
+        fields: {
+          shop_id: shop.id,
+          shop_name: shop.name ?? null,
+          idempotency_key: idempotencyKey,
+          paddle_subscription_id: subscription.providerSubscriptionId,
+          amount_cents: String(amountCents),
+          overage_callers: String(overageCallers),
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+      await deps.emailService
+        .sendEmail({
+          to: emailSupportAddress(),
+          subject: input.title,
+          text,
+          html: await renderBaseEmailHtml(input),
+          category: 'internal_alert',
+          idempotencyKey: `internal:overage_charge_failed:${idempotencyKey}`,
+          from: emailDefaultFrom(),
+          replyTo: emailSupportAddress(),
+        })
+        .catch((emailErr) => {
+          logger.error({ err: emailErr, shopId: shop.id, idempotencyKey }, 'captured_caller_overage_failed_alert_email_failed');
+        });
+    }
   }
 }
 

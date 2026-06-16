@@ -517,6 +517,45 @@ async function createOpenAiRealtimeClientSecret(params: {
  */
 const WEBSITE_IMPORT_BUDGET_MS = 28_000;
 
+const WEBSITE_IMPORT_LLM_GLOBAL_IDENTITY = 'global:website_import_llm';
+const WEBSITE_IMPORT_LLM_CAP_ALERT_COOLDOWN_MS = 60 * 60_000;
+let lastWebsiteImportLlmCapAlertAt: number | undefined;
+
+/**
+ * Cross-instance daily budget gate for website-import LLM extraction. Consumed once per
+ * import that would actually call the LLM (see importer `acquireLlmBudget`). Returns true
+ * when a token is available; on exhaustion returns false so the import falls back to
+ * static + Google Places extraction instead of burning OpenAI spend. Fails open on a
+ * rate-limiter error so a Redis outage never blocks enrichment.
+ */
+async function acquireWebsiteImportLlmBudget(): Promise<boolean> {
+  const env = getEnv();
+  try {
+    const result = await consumeRateLimit(
+      {
+        name: 'website_import_llm_global',
+        limit: env.WEBSITE_IMPORT_LLM_GLOBAL_DAILY_LIMIT,
+        windowMs: env.WEBSITE_IMPORT_LLM_GLOBAL_WINDOW_SECONDS * 1000,
+      },
+      WEBSITE_IMPORT_LLM_GLOBAL_IDENTITY,
+    );
+    if (!result.ok) {
+      const now = Date.now();
+      if (!lastWebsiteImportLlmCapAlertAt || now - lastWebsiteImportLlmCapAlertAt >= WEBSITE_IMPORT_LLM_CAP_ALERT_COOLDOWN_MS) {
+        lastWebsiteImportLlmCapAlertAt = now;
+        logger.warn(
+          { alert: true, key: 'website_import_llm_global_cap_reached', globalLimit: env.WEBSITE_IMPORT_LLM_GLOBAL_DAILY_LIMIT },
+          'Website-import LLM daily cap reached — enrichment is falling back to static extraction',
+        );
+      }
+    }
+    return result.ok;
+  } catch (err) {
+    logger.warn({ err }, 'website_import_llm_budget_check_failed_open');
+    return true;
+  }
+}
+
 const contactIntentValues = ['demo', 'enterprise', 'sales', 'support', 'general'] as const;
 const contactPlanInterestValues = ['starter', 'professional', 'enterprise', 'unknown'] as const;
 
@@ -1237,6 +1276,11 @@ const adminShopCallsQuerySchema = z.object({
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
+/** How long after a checkout session is created we treat its webhooks as still in flight
+ *  and block a duplicate checkout. Past this window the previous attempt is considered
+ *  abandoned and the user may start payment setup again. */
+const PADDLE_CHECKOUT_PENDING_WINDOW_MS = 5 * 60 * 1000;
+
 const USER_CALLS_PAGE_SIZE = 25;
 const userCallsTabSchema = z.enum(['all', 'follow_up', 'follow_up_needed', 'high_urgency', 'missed']);
 const userCallsListQuerySchema = z.object({
@@ -1937,16 +1981,23 @@ function toAdminFacingShop(shop: Shop): Shop {
   };
 }
 
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const aBuffer = Buffer.from(a);
+  const bBuffer = Buffer.from(b);
+  if (aBuffer.length !== bBuffer.length) return false;
+  return timingSafeEqual(aBuffer, bBuffer);
+}
+
 function ensureInternalAccess(headerValue: string | null): boolean {
   const internalKey = process.env.BACKEND_INTERNAL_API_KEY;
   if (!internalKey) return process.env.NODE_ENV !== 'production';
-  return headerValue === internalKey;
+  return headerValue != null && timingSafeStringEqual(headerValue, internalKey);
 }
 
 function ensureRealtimeDispatchAccess(authHeader: string | null, internalHeader: string | null): boolean {
   const dispatchToken = process.env.AGENT_DISPATCH_AUTH_TOKEN;
   if (dispatchToken) {
-    return authHeader === `Bearer ${dispatchToken}`;
+    return authHeader != null && timingSafeStringEqual(authHeader, `Bearer ${dispatchToken}`);
   }
   return ensureInternalAccess(internalHeader);
 }
@@ -4724,6 +4775,10 @@ export function createBackendApp(deps: {
   });
 
   app.post(path('/public/demo/import-website'), async (c) => {
+    // Same-origin guard like the other public demo endpoints: this one fans out outbound
+    // fetches and optionally calls OpenAI, so it must not be drivable cross-site.
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_import_website, 'public_demo_import_website');
     if (limited) return limited;
 
@@ -4748,6 +4803,7 @@ export function createBackendApp(deps: {
           maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
           renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
           renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
+          acquireLlmBudget: acquireWebsiteImportLlmBudget,
           deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
         }),
       );
@@ -4792,6 +4848,7 @@ export function createBackendApp(deps: {
             maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
             renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
             renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
+            acquireLlmBudget: acquireWebsiteImportLlmBudget,
             deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
           }),
         );
@@ -4893,6 +4950,9 @@ export function createBackendApp(deps: {
   // At 1,000 demo sessions/month = ~$1/month; at 10,000 = ~$10/month
   app.post(path('/public/demo/suggested-questions'), async (c) => {
     const ip = getClientIp({ get: (n: string) => c.req.header(n) ?? null });
+    // Same-origin guard like the other public demo endpoints — this one proxies to OpenAI.
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
     const ipLimited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_suggested_questions_ip, ip);
     if (ipLimited) {
       return c.json({ ok: true, questions: null, source: 'default' });
@@ -4999,6 +5059,9 @@ export function createBackendApp(deps: {
   // At 1,000 demo sessions/month = ~$1/month; at 10,000 = ~$10/month
   app.post(path('/public/demo/extract-call-summary'), async (c) => {
     const ip = getClientIp({ get: (n: string) => c.req.header(n) ?? null });
+    // Same-origin guard like the other public demo endpoints — this one proxies to OpenAI.
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
     const ipLimited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_extract_call_ip, ip);
     if (ipLimited) return c.json({ ok: true, hasRealData: false });
 
@@ -5831,9 +5894,7 @@ export function createBackendApp(deps: {
     const email = parsed.data.email.toLowerCase();
     const authUser = await deps.authUsersRepository.findByEmail(email);
     let resetToken: string | undefined;
-    let outcome: 'reset_email_sent' | 'account_not_found' = 'account_not_found';
     if (authUser && authUser.role === 'user' && authUser.active) {
-      outcome = 'reset_email_sent';
       resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
       await deps.authUsersRepository.createPasswordResetToken({
         userId: authUser.id,
@@ -5856,10 +5917,11 @@ export function createBackendApp(deps: {
       });
     }
 
+    // Identical response whether or not the account exists — anything else lets an
+    // attacker enumerate registered emails.
     return c.json({
       ok: true,
-      outcome,
-      accepted: outcome === 'reset_email_sent',
+      accepted: true,
       ...(process.env.NODE_ENV !== 'production' && resetToken ? { resetToken } : {}),
     });
   });
@@ -5875,9 +5937,7 @@ export function createBackendApp(deps: {
     const email = parsed.data.email.toLowerCase();
     const authUser = await deps.authUsersRepository.findByEmail(email);
     let resetToken: string | undefined;
-    let outcome: 'reset_email_sent' | 'account_not_found' = 'account_not_found';
     if (authUser && authUser.role === 'admin' && authUser.active) {
-      outcome = 'reset_email_sent';
       resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
       await deps.authUsersRepository.createPasswordResetToken({
         userId: authUser.id,
@@ -5900,10 +5960,11 @@ export function createBackendApp(deps: {
       });
     }
 
+    // Identical response whether or not the account exists — anything else lets an
+    // attacker enumerate registered admin emails.
     return c.json({
       ok: true,
-      outcome,
-      accepted: outcome === 'reset_email_sent',
+      accepted: true,
       ...(process.env.NODE_ENV !== 'production' && resetToken ? { resetToken } : {}),
     });
   });
@@ -6296,6 +6357,7 @@ export function createBackendApp(deps: {
           maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
           renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
           renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
+          acquireLlmBudget: acquireWebsiteImportLlmBudget,
           deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
         }),
       );
@@ -10125,19 +10187,52 @@ export function createBackendApp(deps: {
       existingPaddleCustomer?.providerCustomerId?.trim() &&
       !['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)
     ) {
-      return c.json(
+      // Block only while a completed checkout's webhooks may still be in flight (Paddle
+      // delivers within seconds). An older customer record means the previous checkout
+      // was abandoned — without this window check the user would be locked out of
+      // payment setup for the whole trial.
+      const customerTouchedAtMs = Date.parse(existingPaddleCustomer.updatedAt ?? existingPaddleCustomer.createdAt ?? '');
+      const withinPendingWindow =
+        Number.isFinite(customerTouchedAtMs) && Date.now() - customerTouchedAtMs < PADDLE_CHECKOUT_PENDING_WINDOW_MS;
+      if (withinPendingWindow) {
+        return c.json(
+          {
+            ok: false,
+            error: 'payment_setup_pending',
+            message: 'Payment setup is already pending. Refresh Billing in a minute; if it does not update, contact support.',
+          },
+          409,
+        );
+      }
+      logger.info(
         {
-          ok: false,
-          error: 'payment_setup_pending',
-          message: 'Payment setup is already pending. Refresh Billing in a minute; if it does not update, contact support.',
+          shopId: shop.id,
+          providerCustomerId: existingPaddleCustomer.providerCustomerId,
+          customerTouchedAt: existingPaddleCustomer.updatedAt ?? existingPaddleCustomer.createdAt ?? null,
         },
-        409,
+        'user_billing_checkout_retry_after_stale_pending',
       );
     }
     const checkoutPlan = subscription.plan;
     const billingInterval = parsed.data.billing_interval === 'annual' ? 'year' : 'month';
     if (!isSelfServeTrialPlan(checkoutPlan)) {
       return c.json({ ok: false, error: 'plan_not_self_serve', message: 'Please contact sales for custom plans.' }, 400);
+    }
+    if (process.env.NODE_ENV === 'production' && !getEnv().PADDLE_TRIAL_CONFIG_VERIFIED && subscription.status === 'trialing') {
+      // Without verified trial config on the Paddle price, this checkout would charge the
+      // card immediately instead of at trial end. Fail closed in production.
+      logger.error(
+        { shopId: shop.id, plan: checkoutPlan, trialEndsAt: subscription.trialEndsAt ?? null },
+        'user_billing_checkout_blocked_trial_config_unverified',
+      );
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_trial_config_unverified',
+          message: 'Payment setup is temporarily unavailable. Please try again later or contact support.',
+        },
+        503,
+      );
     }
 
     const appBaseUrl = getAppBaseUrl(c.req);

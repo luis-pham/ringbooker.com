@@ -55,7 +55,18 @@ export type ProviderEventProcessingState = 'processing' | 'processed' | 'failed'
 
 export interface ProviderEventsRepository {
   hasProcessed(provider: string, providerEventId: string): Promise<boolean>;
-  tryMarkProcessing(event: ProviderEventRecord): Promise<{
+  tryMarkProcessing(
+    event: ProviderEventRecord,
+    options?: {
+      /**
+       * Re-acquire events whose previous processing attempt failed (`processing_error` set)
+       * so provider retries re-run the sync instead of being swallowed as duplicates.
+       * Keep disabled for providers where automatic replay is unsafe (e.g. Telnyx
+       * callback/SMS side effects — see README reconciliation runbook).
+       */
+      reacquireFailed?: boolean;
+    },
+  ): Promise<{
     acquired: boolean;
     state?: ProviderEventProcessingState;
   }>;

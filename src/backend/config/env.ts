@@ -46,6 +46,11 @@ function createValidatedEnv() {
         .transform((value) => value === 'true'),
       WEBSITE_IMPORT_LLM_MODEL: optionalNonEmptyStringEnv,
       WEBSITE_IMPORT_LLM_MAX_TOKENS: optionalPositiveIntEnv,
+      // Cross-IP daily cap on website-import LLM extraction calls (cost guardrail).
+      // Each import makes at most one LLM call; when the cap is hit, imports still
+      // succeed using static + Google Places extraction, just without LLM enrichment.
+      WEBSITE_IMPORT_LLM_GLOBAL_DAILY_LIMIT: z.coerce.number().int().positive().default(500),
+      WEBSITE_IMPORT_LLM_GLOBAL_WINDOW_SECONDS: z.coerce.number().int().positive().default(86_400),
       WEBSITE_IMPORT_MAX_BYTES: z.coerce.number().int().min(100_000).max(5_000_000).default(1_500_000),
       WEBSITE_IMPORT_RENDER_URL: optionalNonEmptyStringEnv,
       WEBSITE_IMPORT_RENDER_API_KEY: optionalNonEmptyStringEnv,
@@ -173,7 +178,6 @@ function createValidatedEnv() {
       ACUITY_CLIENT_SECRET: z.string().min(1).optional(),
       ACUITY_REDIRECT_URI: z.string().url().optional(),
       VAGARO_REGION: z.string().min(1).default('us'),
-      VAGARO_WEBHOOK_VERIFICATION_TOKEN: z.string().min(1).optional(),
 
       OPENAI_API_KEY: z.string().min(1).optional(),
       OPENAI_REALTIME_URL: z.string().url().optional(),
@@ -322,20 +326,10 @@ function createValidatedEnv() {
 }
 
 let cachedEnv: ReturnType<typeof createValidatedEnv> | null = null;
-let warnedMissingVagaroWebhookToken = false;
-
 export function getEnv() {
   if (!cachedEnv) {
     cachedEnv = createValidatedEnv();
     validateVoiceArchitectureAtStartup();
-  }
-  const vagaroLooksEnabled =
-    process.env.CALENDAR_PROVIDER_DEFAULT === 'vagaro' ||
-    Boolean(process.env.VAGARO_CLIENT_ID) ||
-    Boolean(process.env.VAGARO_CLIENT_SECRET_KEY);
-  if (vagaroLooksEnabled && !cachedEnv.VAGARO_WEBHOOK_VERIFICATION_TOKEN && !warnedMissingVagaroWebhookToken) {
-    warnedMissingVagaroWebhookToken = true;
-    console.warn('VAGARO_WEBHOOK_VERIFICATION_TOKEN is not configured; Vagaro webhooks will be rejected.');
   }
   return cachedEnv;
 }

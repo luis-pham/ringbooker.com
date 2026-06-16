@@ -1,192 +1,133 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
+import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryVagaroWebhookEventsRepository } from '@/src/backend/adapters/memory/vagaro-webhook-events-repository';
-import type { ProviderEventRecord, ProviderEventsRepository } from '@/src/backend/ports/repositories';
+import { verifyVagaroWebhookHmac } from '@/src/backend/webhooks/vagaro';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
-applyRequiredTestEnv({
-  VAGARO_WEBHOOK_VERIFICATION_TOKEN: 'correct-token',
-});
+applyRequiredTestEnv();
 
-class MockProviderEventsRepository implements ProviderEventsRepository {
-  readonly processed: ProviderEventRecord[] = [];
-  readonly errors: Array<{ provider: string; providerEventId: string; reason: string }> = [];
+const SHOP_TOKEN = 'whk_testtoken';
 
-  async hasProcessed(provider: string, providerEventId: string): Promise<boolean> {
-    return this.processed.some((event) => event.provider === provider && event.providerEventId === providerEventId);
-  }
-
-  async tryMarkProcessing(event: ProviderEventRecord): Promise<{ acquired: boolean; state?: 'processing' | 'processed' | 'failed' }> {
-    if (await this.hasProcessed(event.provider, event.providerEventId)) {
-      return { acquired: false, state: 'processed' };
-    }
-    this.processed.push(event);
-    return { acquired: true, state: 'processing' };
-  }
-
-  async markProcessed(event: ProviderEventRecord): Promise<void> {
-    if (!(await this.hasProcessed(event.provider, event.providerEventId))) this.processed.push(event);
-  }
-
-  async markProcessingError(provider: string, providerEventId: string, reason: string): Promise<void> {
-    this.errors.push({ provider, providerEventId, reason });
-  }
-
-  async clearProcessingError(): Promise<void> {
-    // no-op for this test double
-  }
+function signBody(body: string, secret = SHOP_TOKEN): string {
+  return createHmac('sha256', secret).update(body).digest('hex');
 }
 
-function createVagaroTestApp(providerEventsRepository = new MockProviderEventsRepository()) {
-  return {
-    app: createBackendApp({ providerEventsRepository }),
-    providerEventsRepository,
-  };
-}
-
-function postVagaroWebhook(app: ReturnType<typeof createBackendApp>, signature: string, body: unknown) {
-  return app.request('/webhooks/vagaro', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'X-Vagaro-Signature': signature,
-    },
-    body: JSON.stringify(body),
-  });
-}
-
-test('vagaro webhook rejects wrong signature', async () => {
-  const { app, providerEventsRepository } = createVagaroTestApp();
-
-  const response = await postVagaroWebhook(app, 'wrong-token', {
-    id: 'evt-wrong-signature',
-    createdDate: '2026-04-30T00:00:00Z',
-    type: 'appointment',
-    action: 'created',
-    payload: {
-      appointmentId: 'apt-123',
-    },
-  });
-
-  assert.equal(response.status, 401);
-  assert.equal(providerEventsRepository.processed.length, 0);
-});
-
-test('vagaro webhook accepts correct signature', async () => {
-  const { app } = createVagaroTestApp();
-
-  const response = await postVagaroWebhook(app, 'correct-token', {
-    id: 'evt-appointment-created',
-    createdDate: '2026-04-30T00:00:00Z',
-    type: 'appointment',
-    action: 'created',
-    payload: {
-      appointmentId: 'apt-123',
-    },
-  });
-
-  assert.equal(response.status, 200);
-});
-
-test('vagaro duplicate webhook is ignored', async () => {
-  const { app, providerEventsRepository } = createVagaroTestApp();
-  const body = {
-    id: 'evt-duplicate',
-    createdDate: '2026-04-30T00:00:00Z',
-    type: 'appointment',
-    action: 'created',
-    payload: {
-      appointmentId: 'apt-duplicate',
-    },
-  };
-
-  const firstResponse = await postVagaroWebhook(app, 'correct-token', body);
-  const secondResponse = await postVagaroWebhook(app, 'correct-token', body);
-
-  assert.equal(firstResponse.status, 200);
-  assert.equal(secondResponse.status, 200);
-  assert.equal(providerEventsRepository.processed.length, 1);
-});
-
-test('vagaro appointment created event handled', async () => {
-  const { app, providerEventsRepository } = createVagaroTestApp();
-
-  const response = await postVagaroWebhook(app, 'correct-token', {
-    id: 'evt-appointment-object-created',
-    createdDate: '2026-04-30T00:00:00Z',
-    type: 'appointment',
-    action: 'created',
-    payload: {
-      appointmentId: 'apt-123',
-    },
-  });
-
-  assert.equal(response.status, 200);
-  assert.equal(providerEventsRepository.processed.length, 1);
-  assert.deepEqual(providerEventsRepository.processed[0], {
-    provider: 'vagaro',
-    providerEventId: 'evt-appointment-object-created',
-    eventType: 'appointment.created',
-    payload: {
-      id: 'evt-appointment-object-created',
-      createdDate: '2026-04-30T00:00:00Z',
-      type: 'appointment',
-      action: 'created',
-      payload: {
-        appointmentId: 'apt-123',
-      },
-    },
-  });
-});
-
-test('vagaro customer created event handled', async () => {
-  const { app, providerEventsRepository } = createVagaroTestApp();
-
-  const response = await postVagaroWebhook(app, 'correct-token', {
-    id: 'evt-customer-object-created',
-    createdDate: '2026-04-30T00:00:00Z',
-    type: 'customer',
-    action: 'created',
-    payload: {
-      customerId: 'cust-456',
-    },
-  });
-
-  assert.equal(response.status, 200);
-  assert.equal(providerEventsRepository.processed.length, 1);
-  assert.deepEqual(providerEventsRepository.processed[0], {
-    provider: 'vagaro',
-    providerEventId: 'evt-customer-object-created',
-    eventType: 'customer.created',
-    payload: {
-      id: 'evt-customer-object-created',
-      createdDate: '2026-04-30T00:00:00Z',
-      type: 'customer',
-      action: 'created',
-      payload: {
-        customerId: 'cust-456',
-      },
-    },
-  });
-});
-
-test('vagaro tokenized webhook stores per-shop raw event', async () => {
-  const providerEventsRepository = new MockProviderEventsRepository();
+async function createVagaroTestApp() {
   const shopsRepository = new InMemoryShopsRepository();
   const vagaroWebhookEventsRepository = new InMemoryVagaroWebhookEventsRepository();
   await shopsRepository.updateVagaroSettings('demo-shop', {
-    vagaro_webhook_token: 'whk_testtoken',
+    vagaro_webhook_token: SHOP_TOKEN,
   });
   const app = createBackendApp({
-    providerEventsRepository,
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
     shopsRepository,
     vagaroWebhookEventsRepository,
   });
+  return { app, shopsRepository, vagaroWebhookEventsRepository };
+}
 
-  const response = await app.request('/webhooks/vagaro/whk_testtoken', {
+test('vagaro webhook without shop token is rejected', async () => {
+  const { app, vagaroWebhookEventsRepository } = await createVagaroTestApp();
+
+  const response = await app.request('/webhooks/vagaro', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'appointment', action: 'created', payload: {} }),
+  });
+
+  assert.equal(response.status, 401);
+  assert.equal(vagaroWebhookEventsRepository.list().length, 0);
+});
+
+test('vagaro webhook rejects wrong HMAC signature for a valid shop token', async () => {
+  const { app, vagaroWebhookEventsRepository } = await createVagaroTestApp();
+  const body = JSON.stringify({
+    id: 'evt-wrong-signature',
+    type: 'appointment',
+    action: 'created',
+    payload: { appointmentId: 'apt-123' },
+  });
+
+  const response = await app.request('/webhooks/vagaro', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-ringbooker-shop-token': SHOP_TOKEN,
+      'x-vagaro-signature': signBody(body, 'some-other-secret'),
+    },
+    body,
+  });
+
+  assert.equal(response.status, 401);
+  assert.equal(vagaroWebhookEventsRepository.list().length, 0);
+});
+
+test('vagaro webhook accepts valid HMAC signature and stores raw event', async () => {
+  const { app, vagaroWebhookEventsRepository } = await createVagaroTestApp();
+  const body = JSON.stringify({
+    id: 'evt-appointment-created',
+    type: 'appointment',
+    action: 'created',
+    payload: { appointmentId: 'apt-123' },
+  });
+
+  const response = await app.request('/webhooks/vagaro', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-ringbooker-shop-token': SHOP_TOKEN,
+      'x-vagaro-signature': signBody(body),
+    },
+    body,
+  });
+
+  assert.equal(response.status, 200);
+  const events = vagaroWebhookEventsRepository.list();
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.shop_id, 'demo-shop');
+  assert.equal(events[0]?.event_type, 'appointment');
+  assert.equal(events[0]?.action, 'created');
+  assert.deepEqual(events[0]?.payload, { appointmentId: 'apt-123' });
+});
+
+test('vagaro webhook without signature header falls back to token auth', async () => {
+  const { app, vagaroWebhookEventsRepository } = await createVagaroTestApp();
+
+  const response = await app.request('/webhooks/vagaro', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-ringbooker-shop-token': SHOP_TOKEN,
+    },
+    body: JSON.stringify({
+      id: 'evt-token-auth-only',
+      type: 'customer',
+      action: 'created',
+      payload: { customerId: 'cust-456' },
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const events = vagaroWebhookEventsRepository.list();
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.event_type, 'customer');
+});
+
+test('vagaro tokenized webhook stores per-shop raw event with redacted headers', async () => {
+  const { app, vagaroWebhookEventsRepository } = await createVagaroTestApp();
+  const body = JSON.stringify({
+    id: 'evt-tokenized',
+    type: 'appointment',
+    action: 'created',
+    payload: { appointmentId: 'apt-tokenized' },
+  });
+
+  const response = await app.request(`/webhooks/vagaro/${SHOP_TOKEN}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -194,14 +135,9 @@ test('vagaro tokenized webhook stores per-shop raw event', async () => {
       authorization: 'Bearer secret',
       cookie: 'secret=true',
       'x-vagaro-event-id': 'evt-tokenized',
-      'x-vagaro-signature': 'do-not-store',
+      'x-vagaro-signature': signBody(body),
     },
-    body: JSON.stringify({
-      id: 'evt-tokenized',
-      type: 'appointment',
-      action: 'created',
-      payload: { appointmentId: 'apt-tokenized' },
-    }),
+    body,
   });
 
   assert.equal(response.status, 200);
@@ -219,7 +155,7 @@ test('vagaro tokenized webhook stores per-shop raw event', async () => {
 
 test('vagaro tokenized webhook returns 404 for unknown token', async () => {
   const app = createBackendApp({
-    providerEventsRepository: new MockProviderEventsRepository(),
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
     shopsRepository: new InMemoryShopsRepository(),
     vagaroWebhookEventsRepository: new InMemoryVagaroWebhookEventsRepository(),
   });
@@ -231,4 +167,17 @@ test('vagaro tokenized webhook returns 404 for unknown token', async () => {
   });
 
   assert.equal(response.status, 404);
+});
+
+test('verifyVagaroWebhookHmac accepts prefixed signature formats and rejects mismatches', () => {
+  const rawBody = '{"hello":"world"}';
+  const secret = 'whk_secret';
+  const digest = createHmac('sha256', secret).update(rawBody).digest('hex');
+
+  assert.equal(verifyVagaroWebhookHmac({ rawBody, secret, signature: digest }), true);
+  assert.equal(verifyVagaroWebhookHmac({ rawBody, secret, signature: `sha256=${digest}` }), true);
+  assert.equal(verifyVagaroWebhookHmac({ rawBody, secret, signature: `HMAC-SHA256=${digest}` }), true);
+  assert.equal(verifyVagaroWebhookHmac({ rawBody, secret, signature: 'not-a-signature' }), false);
+  assert.equal(verifyVagaroWebhookHmac({ rawBody, secret: '', signature: digest }), false);
+  assert.equal(verifyVagaroWebhookHmac({ rawBody, secret, signature: null }), false);
 });

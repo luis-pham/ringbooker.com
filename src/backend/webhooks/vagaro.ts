@@ -1,79 +1,4 @@
-import type { Context } from 'hono';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { z } from 'zod';
-
-import type { ProviderEventsRepository } from '@/src/backend/ports/repositories';
-import { withLogContext } from '@/src/backend/observability/logger';
-import { incrementMetric } from '@/src/backend/observability/metrics';
-import { securityAudit } from '@/src/backend/security/audit-log';
-import { getClientIp } from '@/src/backend/security/rate-limit';
-
-const vagaroAppointmentPayloadSchema = z.object({
-  appointmentId: z.string().optional(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
-  bookingStatus: z.string().optional(),
-  serviceTitle: z.string().optional(),
-  serviceId: z.string().optional(),
-  calendarEventId: z.string().nullable().optional(),
-  amount: z.number().optional(),
-  eventType: z.string().optional(),
-  onlineVsInhouse: z.string().optional(),
-  appointmentTypeCode: z.string().optional(),
-  appointmentTypeName: z.string().optional(),
-  customerId: z.string().optional(),
-  bookingSource: z.string().optional(),
-  serviceProviderId: z.string().optional(),
-  businessId: z.string().optional(),
-  businessAlias: z.string().optional(),
-  businessGroupId: z.string().optional(),
-  serviceCategory: z.string().optional(),
-  createdDate: z.string().nullable().optional(),
-  createdBy: z.string().nullable().optional(),
-  modifiedDate: z.string().nullable().optional(),
-  modifiedBy: z.string().nullable().optional(),
-  formResponseIds: z.array(z.string()).optional(),
-});
-
-const vagaroCustomerPayloadSchema = z.object({
-  customerId: z.string().optional(),
-  businessIds: z.array(z.string()).optional(),
-  customerFirstName: z.string().optional(),
-  customerLastName: z.string().optional(),
-  businessGroupId: z.string().optional(),
-  email: z.string().optional(),
-  mobilePhone: z.string().optional(),
-  dayPhone: z.string().optional(),
-  nightPhone: z.string().optional(),
-  streetAddress: z.string().optional(),
-  city: z.string().optional(),
-  regionCode: z.string().optional(),
-  regionName: z.string().optional(),
-  countryCode: z.string().optional(),
-  countryName: z.string().optional(),
-  postalCode: z.string().optional(),
-  createdDate: z.string().nullable().optional(),
-  createdBy: z.string().nullable().optional(),
-  modifiedDate: z.string().nullable().optional(),
-  modifiedBy: z.string().nullable().optional(),
-});
-
-const vagaroWebhookSchema = z.discriminatedUnion('type', [
-  z.object({
-    id: z.string(),
-    createdDate: z.string(),
-    type: z.literal('appointment'),
-    action: z.enum(['created', 'updated', 'deleted']),
-    payload: vagaroAppointmentPayloadSchema,
-  }),
-  z.object({
-    id: z.string(),
-    createdDate: z.string(),
-    type: z.literal('customer'),
-    action: z.enum(['created', 'updated']),
-    payload: vagaroCustomerPayloadSchema,
-  }),
-]);
 
 function timingSafeEqualString(a: string, b: string): boolean {
   const aBuffer = Buffer.from(a);
@@ -82,13 +7,12 @@ function timingSafeEqualString(a: string, b: string): boolean {
   return timingSafeEqual(aBuffer, bBuffer);
 }
 
-function verifyVagaroSignature(params: { expectedToken?: string; signature?: string | null }): boolean {
-  const expected = params.expectedToken?.trim();
-  const signature = params.signature?.trim();
-  if (!expected || !signature) return false;
-  return timingSafeEqualString(signature, expected);
-}
-
+/**
+ * Verifies the optional `X-Vagaro-Signature` header against the per-shop webhook token
+ * (used as the HMAC secret). The webhook ingestion itself lives in `api/app.ts`
+ * (`/webhooks/vagaro` + `/webhooks/vagaro/:token`): the per-shop token is the primary
+ * auth and this HMAC is enforced only when the signature header is present.
+ */
 export function verifyVagaroWebhookHmac(params: {
   rawBody: string;
   secret: string;
@@ -104,90 +28,4 @@ export function verifyVagaroWebhookHmac(params: {
     signature.replace(/^hmac-sha256=/i, ''),
   ].map((value) => value.trim().toLowerCase());
   return normalizedCandidates.some((candidate) => /^[a-f0-9]{64}$/.test(candidate) && timingSafeEqualString(candidate, expected));
-}
-
-export async function handleVagaroWebhook(
-  c: Context,
-  deps: {
-    providerEventsRepository: ProviderEventsRepository;
-  },
-) {
-  const signature = c.req.header('x-vagaro-signature') ?? c.req.header('X-Vagaro-Signature') ?? null;
-  const expectedToken = process.env.VAGARO_WEBHOOK_VERIFICATION_TOKEN;
-
-  if (!verifyVagaroSignature({ expectedToken, signature })) {
-    incrementMetric('webhook_requests_total', {
-      provider: 'vagaro',
-      outcome: 'invalid_signature',
-    });
-    securityAudit({
-      action: 'webhook_signature_invalid',
-      actorType: 'provider',
-      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
-      path: c.req.path,
-      provider: 'vagaro',
-    });
-    return c.json({ ok: false }, 401);
-  }
-
-  const body = await c.req.json().catch(() => null);
-  const parsed = vagaroWebhookSchema.safeParse(body);
-  if (!parsed.success) {
-    incrementMetric('webhook_requests_total', {
-      provider: 'vagaro',
-      outcome: 'failed',
-    });
-    return c.json({ ok: false }, 400);
-  }
-
-  const event = parsed.data;
-  const log = withLogContext({
-    requestId: c.req.header('x-request-id') ?? undefined,
-    provider: 'vagaro',
-  });
-
-  try {
-    const processing = await deps.providerEventsRepository.tryMarkProcessing({
-      provider: 'vagaro',
-      providerEventId: event.id,
-      eventType: `${event.type}.${event.action}`,
-      payload: event,
-    });
-    if (!processing.acquired) {
-      incrementMetric('webhook_requests_total', {
-        provider: 'vagaro',
-        outcome: 'duplicate',
-      });
-      log.info({ eventId: event.id }, 'vagaro_webhook_duplicate');
-      return c.json({ ok: true }, 200);
-    }
-
-    await deps.providerEventsRepository.markProcessed({
-      provider: 'vagaro',
-      providerEventId: event.id,
-      eventType: `${event.type}.${event.action}`,
-      payload: event,
-    });
-
-    // Vagaro webhook payloads are persisted as provider events for now.
-    // Local appointment/customer sync needs a dedicated mapping layer before mutating RingBooker records.
-    incrementMetric('webhook_requests_total', {
-      provider: 'vagaro',
-      outcome: 'processed',
-    });
-    log.info({ eventId: event.id, eventType: `${event.type}.${event.action}` }, 'vagaro_webhook_processed');
-    return c.json({ ok: true }, 200);
-  } catch (error) {
-    await deps.providerEventsRepository.markProcessingError(
-      'vagaro',
-      event.id,
-      error instanceof Error ? error.message : 'webhook_processing_failed',
-    );
-    incrementMetric('webhook_requests_total', {
-      provider: 'vagaro',
-      outcome: 'failed',
-    });
-    log.error({ err: error, eventId: event.id, eventType: `${event.type}.${event.action}` }, 'vagaro_webhook_failed');
-    return c.json({ ok: false }, 500);
-  }
 }

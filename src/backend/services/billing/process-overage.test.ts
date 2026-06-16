@@ -7,6 +7,7 @@ import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-l
 import { InMemoryShopOverageChargesRepository } from '@/src/backend/adapters/memory/shop-overage-charges-repository';
 import { InMemoryShopUsageAlertsRepository } from '@/src/backend/adapters/memory/shop-usage-alerts-repository';
 import type { Shop } from '@/src/backend/domain/types';
+import { emailSupportAddress } from '@/src/backend/services/email/config';
 import type { EmailService } from '@/src/backend/services/email/types';
 import { processOverageForPeriod } from '@/src/backend/services/billing/process-overage';
 
@@ -234,5 +235,8 @@ test('processOverageForPeriod marks failed Paddle charge without throwing', asyn
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.status, 'failed');
   assert.equal(rows[0]?.amountCents, 375);
-  assert.equal(emailService.sent.length, 0);
+  // No customer receipt — only an internal support alert about the failed charge.
+  assert.equal(emailService.sent.length, 1);
+  assert.equal(emailService.sent[0]?.category, 'internal_alert');
+  assert.equal(emailService.sent[0]?.to, emailSupportAddress());
 });

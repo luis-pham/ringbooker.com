@@ -14,13 +14,12 @@ const plusJakarta = Plus_Jakarta_Sans({
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
 const FORGOT_USER_MSG = {
-  sent: 'Password reset instructions were sent. Check your inbox (including Spam).',
-  not_found: 'No account found for this email. Double-check the address or sign up.',
+  sent: 'If an account exists for this email, reset instructions are on the way. Check your inbox (including Spam).',
 } as const;
 
 export function UserForgotPasswordForm() {
   const [email, setEmail] = useState('');
-  const [feedback, setFeedback] = useState<'sent' | 'not_found' | 'error' | null>(null);
+  const [feedback, setFeedback] = useState<'sent' | 'error' | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
@@ -38,7 +37,6 @@ export function UserForgotPasswordForm() {
     });
     const body = (await response.json().catch(() => null)) as {
       ok?: boolean;
-      outcome?: 'reset_email_sent' | 'account_not_found';
       resetToken?: string;
       error?: string;
       message?: string;
@@ -48,7 +46,7 @@ export function UserForgotPasswordForm() {
       setErrorDetail(apiUserVisibleMessage(body, 'Something went wrong. Please try again.'));
       return;
     }
-    setFeedback(body.outcome === 'reset_email_sent' ? 'sent' : 'not_found');
+    setFeedback('sent');
     setResetToken(body.resetToken ?? null);
   }
 
@@ -84,11 +82,7 @@ export function UserForgotPasswordForm() {
           </form>
           {feedback ? (
             <p className={feedback === 'sent' ? styles.success : styles.error}>
-              {feedback === 'sent'
-                ? FORGOT_USER_MSG.sent
-                : feedback === 'not_found'
-                  ? FORGOT_USER_MSG.not_found
-                  : errorDetail ?? 'Something went wrong. Please try again.'}
+              {feedback === 'sent' ? FORGOT_USER_MSG.sent : errorDetail ?? 'Something went wrong. Please try again.'}
             </p>
           ) : null}
           {showDevResetToken && resetToken ? <p className={styles.fine}>Dev reset token: <code>{resetToken}</code></p> : null}

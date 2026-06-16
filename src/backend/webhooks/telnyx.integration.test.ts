@@ -25,7 +25,17 @@ test('telnyx webhook dedupes and enqueues one missed-call followup job', async (
   const shopsRepository = new InMemoryShopsRepository();
   const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
   const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
-  await shopAccessStatesRepository.upsert({ shopId: 'demo-shop', liveCallsEnabled: true });
+  // Followup SMS is gated on full live-answering access: the shop needs a provisioned
+  // forwarding number and verified forwarding setup, not just liveCallsEnabled.
+  await shopsRepository.updateUserSettings('demo-shop', {
+    telnyx_number: '+17145551200',
+    forwarding_number_status: 'provisioned',
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: 'demo-shop',
+    liveCallsEnabled: true,
+    forwardingVerifiedAt: new Date().toISOString(),
+  });
 
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),

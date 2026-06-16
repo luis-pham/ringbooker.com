@@ -574,8 +574,9 @@ test('paddle subscription.updated renewal processes overage for previous billing
     assert.equal(overages[0]?.status, 'charged');
     assert.equal(overages[0]?.periodStart, '2026-03-15T00:00:00.000Z');
     assert.equal(overages[0]?.periodEnd, '2026-04-15T00:00:00.000Z');
-    assert.equal(overages[0]?.overageCallers, 2);
-    assert.equal(overages[0]?.amountCents, 50);
+    // 302 captured callers - 200 included on professional = 102 overage at $0.75/call
+    assert.equal(overages[0]?.overageCallers, 102);
+    assert.equal(overages[0]?.amountCents, 7650);
     assert.equal(calls.length, 1);
   } finally {
     globalThis.fetch = originalFetch;

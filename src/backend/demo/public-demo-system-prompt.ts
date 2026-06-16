@@ -283,7 +283,10 @@ export function buildPublicDemoSystemPrompt(input: {
         : ['English'],
     services: services.length > 0 ? services : undefined,
     demoContext,
-    customInstructions: renderPublicDemoFallbackCustomInstructions(input.notes),
+    // Sanitize like every other free-text field: notes can carry website-imported or
+    // visitor-supplied text into the live demo agent's system prompt, so strip newlines
+    // and section separators to prevent prompt-injection breakout.
+    customInstructions: renderPublicDemoFallbackCustomInstructions(sanitizeDemoTextField(input.notes, 500) || undefined),
   };
 
   const callType: VoicePromptCallType = input.voiceCallType ?? 'demo_outbound';

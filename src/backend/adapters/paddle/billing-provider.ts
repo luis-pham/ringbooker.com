@@ -340,8 +340,10 @@ function pickPaddlePortalUrl(data: Record<string, unknown> | undefined, provider
   return typeof generalOverview === 'string' && generalOverview.startsWith('https://') ? generalOverview : null;
 }
 
-function extractMoneyAmount(data: Record<string, unknown> | undefined): { amount: number; currency: string } {
-  if (!data || typeof data !== 'object') return { amount: 0, currency: 'USD' };
+/** Returns `null` when the payload carries no recognizable amount (e.g. `payment_method.*`
+ *  events) so callers can preserve the previously stored amount instead of zeroing it. */
+function extractMoneyAmount(data: Record<string, unknown> | undefined): { amount: number; currency: string } | null {
+  if (!data || typeof data !== 'object') return null;
   const totals = data as {
     currency_code?: unknown;
     unit_totals?: { total?: unknown };
@@ -352,11 +354,30 @@ function extractMoneyAmount(data: Record<string, unknown> | undefined): { amount
       ? Number(totals.unit_totals.total)
       : typeof totals.totals?.total === 'string'
         ? Number(totals.totals.total)
-        : 0;
-  return {
-    amount: Number.isFinite(rawAmount) ? rawAmount / 100 : 0,
-    currency: typeof totals.currency_code === 'string' ? totals.currency_code : 'USD',
-  };
+        : null;
+  if (rawAmount !== null && Number.isFinite(rawAmount)) {
+    return {
+      amount: rawAmount / 100,
+      currency: typeof totals.currency_code === 'string' ? totals.currency_code : 'USD',
+    };
+  }
+  // subscription.* payloads carry the price under items[].price.unit_price instead of totals
+  for (const item of nestedArray(data.items)) {
+    const unitPrice = nestedRecord(nestedRecord(nestedRecord(item)?.price)?.unit_price);
+    const itemAmount = typeof unitPrice?.amount === 'string' ? Number(unitPrice.amount) : null;
+    if (itemAmount !== null && Number.isFinite(itemAmount)) {
+      return {
+        amount: itemAmount / 100,
+        currency:
+          typeof unitPrice?.currency_code === 'string'
+            ? unitPrice.currency_code
+            : typeof totals.currency_code === 'string'
+              ? totals.currency_code
+              : 'USD',
+      };
+    }
+  }
+  return null;
 }
 
 function extractPeriod(data: Record<string, unknown> | undefined): {
@@ -559,6 +580,53 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     },
   ) {}
 
+  /**
+   * Paddle `POST /transactions` only links a customer via `customer_id` (there is no
+   * `customer_email` field), so resolve or create the customer up front to prefill
+   * checkout. Failures fall back to `null` and let Paddle checkout collect the email.
+   */
+  private async ensurePaddleCustomerId(shop: Shop, email?: string | null): Promise<string | null> {
+    const existing = await this.deps.billingCustomersRepository.findByShopId(shop.id, 'paddle');
+    if (existing?.providerCustomerId?.trim()) return existing.providerCustomerId.trim();
+    const normalizedEmail = email?.trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getEnv().PADDLE_API_KEY}`,
+    };
+    try {
+      const createResponse = await fetch(`${getPaddleApiBaseUrl()}/customers`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: normalizedEmail, custom_data: { shop_id: shop.id } }),
+      });
+      if (createResponse.ok) {
+        const json = (await createResponse.json()) as { data?: { id?: string } };
+        return json.data?.id?.trim() || null;
+      }
+      // Conflict (customer already exists for this email): look it up instead.
+      const searchUrl = new URL(`${getPaddleApiBaseUrl()}/customers`);
+      searchUrl.searchParams.set('email', normalizedEmail);
+      const searchResponse = await fetch(searchUrl.toString(), { method: 'GET', headers });
+      if (searchResponse.ok) {
+        const json = (await searchResponse.json()) as { data?: Array<{ id?: string; email?: string }> };
+        const match = (Array.isArray(json.data) ? json.data : []).find(
+          (entry) => typeof entry?.id === 'string' && entry.id.trim() && entry.email?.toLowerCase() === normalizedEmail,
+        );
+        if (match?.id) return match.id.trim();
+      }
+      logger.warn(
+        { shopId: shop.id, createStatus: createResponse.status },
+        'paddle_ensure_customer_failed_falling_back_to_checkout_collection',
+      );
+      return null;
+    } catch (err) {
+      logger.warn({ err, shopId: shop.id }, 'paddle_ensure_customer_failed_falling_back_to_checkout_collection');
+      return null;
+    }
+  }
+
   async createCheckoutSession(params: {
     shop: Shop;
     plan: Shop['plan'];
@@ -584,6 +652,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         'paddle_trial_config_not_verified_checkout_may_charge_immediately',
       );
     }
+    const ensuredCustomerId = await this.ensurePaddleCustomerId(params.shop, params.email);
     const response = await fetch(`${getPaddleApiBaseUrl()}/transactions`, {
       method: 'POST',
       headers: {
@@ -592,7 +661,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       },
       body: JSON.stringify({
         items: [{ price_id: priceId, quantity: 1 }],
-        customer_email: params.email ?? undefined,
+        customer_id: ensuredCustomerId ?? undefined,
         custom_data: {
           shop_id: params.shop.id,
           internal_subscription_id: params.internalSubscriptionId ?? undefined,
@@ -631,11 +700,12 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       throw new Error('paddle_create_checkout_missing_url');
     }
 
-    if (json.data?.customer_id) {
+    const resolvedCustomerId = json.data?.customer_id ?? ensuredCustomerId;
+    if (resolvedCustomerId) {
       await this.deps.billingCustomersRepository.upsert({
         shopId: params.shop.id,
         provider: 'paddle',
-        providerCustomerId: json.data.customer_id,
+        providerCustomerId: resolvedCustomerId,
         email: params.email ?? null,
       });
     }
@@ -644,7 +714,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       provider: 'paddle' as const,
       checkoutUrl,
       providerTransactionId: json.data?.id ?? null,
-      providerCustomerId: json.data?.customer_id ?? null,
+      providerCustomerId: resolvedCustomerId ?? null,
       trialConfigVerified,
     };
   }
@@ -682,9 +752,30 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       throw new Error(`paddle_charge_overage_failed:${response.status}:${bodyText}`);
     }
 
-    const json = (await response.json()) as { data?: { id?: string; transaction_id?: string; transaction?: { id?: string } } };
-    const providerTransactionId = json.data?.id ?? json.data?.transaction_id ?? json.data?.transaction?.id;
+    const json = (await response.json()) as {
+      data?: {
+        id?: string;
+        transaction_id?: string;
+        transaction?: { id?: string };
+        immediate_transaction?: { id?: string };
+      };
+    };
+    // POST /subscriptions/{id}/charge returns the subscription entity, so data.id is
+    // `sub_...`; only accept it as last resort and prefer txn-shaped identifiers.
+    const candidates = [
+      json.data?.immediate_transaction?.id,
+      json.data?.transaction_id,
+      json.data?.transaction?.id,
+      json.data?.id,
+    ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    const providerTransactionId = candidates.find((value) => value.startsWith('txn_')) ?? candidates[0];
     if (!providerTransactionId) throw new Error('paddle_charge_overage_missing_transaction_id');
+    if (!providerTransactionId.startsWith('txn_')) {
+      logger.warn(
+        { providerSubscriptionId: params.providerSubscriptionId, providerTransactionId },
+        'paddle_charge_overage_transaction_id_fallback_non_txn',
+      );
+    }
     return { providerTransactionId };
   }
 
@@ -991,7 +1082,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
           shopPlanChanged: false,
         };
       }
-      const amount = extractMoneyAmount(params.payload);
+      const money = extractMoneyAmount(params.payload);
       const period = extractPeriod(params.payload);
       const mappedInterval = mapPaddlePriceToInterval(params.payload);
       const providerPriceId = extractProviderPriceId(params.payload);
@@ -1005,6 +1096,10 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
             ? 'valid'
             : 'unknown';
       const now = new Date().toISOString();
+      // Preserve existing status when the event carries no meaningful status (e.g. payment_method.saved)
+      const resolvedStatus = mappedStatus === 'unknown' ? (staleTarget?.status ?? 'unknown') : mappedStatus;
+      const previousStatus = staleTarget?.status ?? null;
+      const fallbackAmount = staleTarget?.amount ?? 0;
 
       const subscriptionPatch = {
         provider: 'paddle' as const,
@@ -1013,23 +1108,36 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         providerPriceId,
         providerProductId: null,
         plan: mappedPlan,
-        // Preserve existing status when the event carries no meaningful status (e.g. payment_method.saved)
-        status: mappedStatus === 'unknown' ? (staleTarget?.status ?? 'unknown') : mappedStatus,
+        status: resolvedStatus,
         interval: mappedInterval ?? period.interval,
-        currency: amount.currency,
-        amount: amount.amount,
-        amountCents: Math.round(amount.amount * 100),
+        currency: money?.currency ?? staleTarget?.currency ?? 'USD',
+        amount: money?.amount ?? fallbackAmount,
+        amountCents: money ? Math.round(money.amount * 100) : staleTarget?.amountCents ?? Math.round(fallbackAmount * 100),
         cancelAtPeriodEnd: period.cancelAtPeriodEnd,
-        currentPeriodStart: period.currentPeriodStart ?? internalSubscription?.currentPeriodStart ?? null,
-        currentPeriodEnd: period.currentPeriodEnd ?? internalSubscription?.currentPeriodEnd ?? null,
-        trialStartedAt: internalSubscription?.trialStartedAt ?? null,
-        trialEndsAt: period.trialEndsAt ?? internalSubscription?.trialEndsAt ?? null,
+        currentPeriodStart: period.currentPeriodStart ?? staleTarget?.currentPeriodStart ?? null,
+        currentPeriodEnd: period.currentPeriodEnd ?? staleTarget?.currentPeriodEnd ?? null,
+        trialStartedAt: staleTarget?.trialStartedAt ?? null,
+        trialEndsAt: period.trialEndsAt ?? staleTarget?.trialEndsAt ?? null,
         paymentMethodStatus,
-        paymentMethodAddedAt: paymentMethodStatus === 'valid' ? now : null,
-        activatedAt: mappedStatus === 'active' || mappedStatus === 'trialing' ? now : null,
-        pausedAt: mappedStatus === 'paused' ? now : null,
-        canceledAt: mappedStatus === 'canceled' ? now : null,
+        // First-seen / transition timestamps: keep history instead of restamping or
+        // nulling on every webhook.
+        paymentMethodAddedAt:
+          paymentMethodStatus === 'valid' ? (staleTarget?.paymentMethodAddedAt ?? now) : staleTarget?.paymentMethodAddedAt ?? null,
+        activatedAt:
+          resolvedStatus === 'active' || resolvedStatus === 'trialing'
+            ? (previousStatus === 'active' || previousStatus === 'trialing' ? staleTarget?.activatedAt ?? now : now)
+            : staleTarget?.activatedAt ?? null,
+        pausedAt:
+          resolvedStatus === 'paused'
+            ? (previousStatus === 'paused' ? staleTarget?.pausedAt ?? now : now)
+            : staleTarget?.pausedAt ?? null,
+        canceledAt:
+          resolvedStatus === 'canceled'
+            ? (previousStatus === 'canceled' ? staleTarget?.canceledAt ?? now : now)
+            : staleTarget?.canceledAt ?? null,
         metadata: {
+          // Keep internal flags (no_card_trial, pending_plan_upgrade, ...) across webhook syncs.
+          ...(staleTarget?.metadata ?? {}),
           ...params.payload,
           internal_subscription_id: internalSubscriptionId,
           latest_paddle_event_at: eventTimestamp ?? existingProviderSubscription?.metadata?.latest_paddle_event_at ?? internalSubscription?.metadata?.latest_paddle_event_at,
@@ -1125,7 +1233,8 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
           provider: 'paddle',
           providerCustomerId: providerCustomerId ?? current.providerCustomerId ?? null,
           paymentMethodStatus,
-          paymentMethodAddedAt: paymentMethodStatus === 'valid' ? new Date().toISOString() : current.paymentMethodAddedAt ?? null,
+          paymentMethodAddedAt:
+            paymentMethodStatus === 'valid' ? (current.paymentMethodAddedAt ?? new Date().toISOString()) : current.paymentMethodAddedAt ?? null,
           metadata: {
             ...(current.metadata ?? {}),
             last_paddle_event_type: params.eventType,

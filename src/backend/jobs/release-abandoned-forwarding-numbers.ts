@@ -298,28 +298,22 @@ export async function runReleaseAbandonedForwardingNumbersJob(
         if (!runtime.phoneProvisioningService?.releaseNumber) {
           throw new Error('phone_provisioning_release_unavailable');
         }
-        await runtime.phoneProvisioningService.releaseNumber({
-          phoneNumber: forwardingNumber,
-          orderId: shop.forwarding_number_provider_order_id ?? undefined,
-          reason: RELEASE_REASON,
-        });
-        await sendEmailOnce({
-          runtime,
-          shop,
-          subscriptionId,
-          type,
-          milestone: '72h',
-          cancelInstructions: cancelInfo.text,
-          released: true,
-        });
-        await sendSmsOnce({
-          runtime,
-          shop,
-          subscriptionId,
-          type,
-          cancelInstructions: cancelInfo.text,
-          released: true,
-        });
+        try {
+          await runtime.phoneProvisioningService.releaseNumber({
+            phoneNumber: forwardingNumber,
+            orderId: shop.forwarding_number_provider_order_id ?? undefined,
+            reason: RELEASE_REASON,
+          });
+        } catch (releaseError) {
+          // A 404 means the number is already gone at Telnyx (released by a previous
+          // run that failed before clearing shop state). Proceed to cleanup instead of
+          // retrying the release forever while the shop keeps a stale telnyx_number.
+          const message = releaseError instanceof Error ? releaseError.message : '';
+          if (!message.endsWith(':404')) throw releaseError;
+          logger.warn({ shopId: shop.id }, 'release_abandoned_forwarding_number_already_released_at_provider');
+        }
+        // Clear shop state immediately after the provider release: a stale telnyx_number
+        // would keep matching inbound DID resolution for a number we no longer own.
         await runtime.shopAccessStatesRepository.upsert({
           shopId: shop.id,
           forwardingClaimedAt: null,
@@ -336,6 +330,25 @@ export async function runReleaseAbandonedForwardingNumbersJob(
         });
         result.released += 1;
         logger.info({ shopId: shop.id }, 'release_abandoned_forwarding_number_released');
+        // Notifications are best-effort: a failed email/SMS must not leave released
+        // provider state out of sync with the shop record.
+        await sendEmailOnce({
+          runtime,
+          shop,
+          subscriptionId,
+          type,
+          milestone: '72h',
+          cancelInstructions: cancelInfo.text,
+          released: true,
+        }).catch((err) => logger.error({ err, shopId: shop.id }, 'release_abandoned_forwarding_number_email_failed'));
+        await sendSmsOnce({
+          runtime,
+          shop,
+          subscriptionId,
+          type,
+          cancelInstructions: cancelInfo.text,
+          released: true,
+        }).catch((err) => logger.error({ err, shopId: shop.id }, 'release_abandoned_forwarding_number_sms_failed'));
         continue;
       }
 

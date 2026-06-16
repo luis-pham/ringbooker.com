@@ -14,6 +14,11 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const PRICE_TO_PLAN = new Map(
   [
+    [process.env.PADDLE_PRICE_STARTER_MONTHLY, 'starter'],
+    [process.env.PADDLE_PRICE_STARTER_ANNUAL, 'starter'],
+    [process.env.PADDLE_PRICE_PROFESSIONAL_MONTHLY, 'professional'],
+    [process.env.PADDLE_PRICE_PROFESSIONAL_ANNUAL, 'professional'],
+    // Legacy single-interval price ids (older environments)
     [process.env.PADDLE_PRICE_STARTER, 'starter'],
     [process.env.PADDLE_PRICE_PROFESSIONAL, 'professional'],
     [process.env.PADDLE_PRICE_ENTERPRISE, 'enterprise'],

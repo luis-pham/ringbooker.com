@@ -111,12 +111,18 @@ export async function handlePaddleWebhook(
   const event = parsed.data;
   const dedupeKey = event.event_id;
   try {
-    const processing = await deps.providerEventsRepository.tryMarkProcessing({
-      provider: 'paddle',
-      providerEventId: dedupeKey,
-      eventType: event.event_type,
-      payload: event,
-    });
+    // reacquireFailed: a previous attempt that errored (returned 500) must be re-runnable
+    // when Paddle retries — without it the retry insert dedupes as duplicate and the event
+    // is lost until a manual replay. Paddle sync is idempotent, so re-running is safe.
+    const processing = await deps.providerEventsRepository.tryMarkProcessing(
+      {
+        provider: 'paddle',
+        providerEventId: dedupeKey,
+        eventType: event.event_type,
+        payload: event,
+      },
+      { reacquireFailed: true },
+    );
     if (!processing.acquired) {
       incrementMetric('webhook_requests_total', {
         provider: 'paddle',

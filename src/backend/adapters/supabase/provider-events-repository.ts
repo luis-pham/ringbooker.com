@@ -28,7 +28,10 @@ export class SupabaseProviderEventsRepository implements ProviderEventsRepositor
     return Boolean(data);
   }
 
-  async tryMarkProcessing(event: ProviderEventRecord): Promise<{
+  async tryMarkProcessing(
+    event: ProviderEventRecord,
+    options?: { reacquireFailed?: boolean },
+  ): Promise<{
     acquired: boolean;
     state?: ProviderEventProcessingState;
   }> {
@@ -42,6 +45,27 @@ export class SupabaseProviderEventsRepository implements ProviderEventsRepositor
     });
 
     if (isUniqueViolation(error)) {
+      if (options?.reacquireFailed) {
+        // Conditional UPDATE keeps this race-safe: concurrent retries serialize on the row
+        // lock and only the first one still sees `processing_error` set.
+        const { data: reacquired, error: reacquireError } = await this.supabase
+          .from('provider_events')
+          .update({
+            payload_raw: event.payload,
+            processed_at: null,
+            processing_error: null,
+          })
+          .eq('provider', event.provider)
+          .eq('provider_event_id', event.providerEventId)
+          .not('processing_error', 'is', null)
+          .select('id');
+        if (reacquireError) {
+          throw new Error(`provider_events_try_mark_processing_failed:${reacquireError.message}`);
+        }
+        if ((reacquired ?? []).length > 0) {
+          return { acquired: true, state: 'processing' };
+        }
+      }
       return { acquired: false, state: 'processing' };
     }
     if (error) {

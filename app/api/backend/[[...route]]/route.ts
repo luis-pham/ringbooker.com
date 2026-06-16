@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { Hono } from 'hono';
 
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
@@ -15,6 +17,15 @@ import {
  * during `next build` (collect page data). Env is only validated on first API request.
  */
 let honoApp: Hono | null = null;
+
+function internalKeyDenied(providedKey: string | null | undefined): boolean {
+  const internalKey = process.env.BACKEND_INTERNAL_API_KEY;
+  if (!internalKey) return process.env.NODE_ENV === 'production';
+  if (!providedKey) return true;
+  const provided = Buffer.from(providedKey);
+  const expected = Buffer.from(internalKey);
+  return provided.length !== expected.length || !timingSafeEqual(provided, expected);
+}
 
 function getHonoApp(): Hono {
   if (honoApp) return honoApp;
@@ -49,9 +60,7 @@ function getHonoApp(): Hono {
       );
     }
 
-    const internalKey = process.env.BACKEND_INTERNAL_API_KEY;
-    const providedKey = c.req.header('x-backend-key');
-    if ((internalKey && providedKey !== internalKey) || (!internalKey && process.env.NODE_ENV === 'production')) {
+    if (internalKeyDenied(c.req.header('x-backend-key'))) {
       securityAudit({
         action: 'authz_denied',
         actorType: 'public',
@@ -72,9 +81,7 @@ function getHonoApp(): Hono {
 
   app.post('/api/backend/jobs/trial-lifecycle', async (c) => {
     const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
-    const internalKey = process.env.BACKEND_INTERNAL_API_KEY;
-    const providedKey = c.req.header('x-backend-key');
-    if ((internalKey && providedKey !== internalKey) || (!internalKey && process.env.NODE_ENV === 'production')) {
+    if (internalKeyDenied(c.req.header('x-backend-key'))) {
       securityAudit({
         action: 'authz_denied',
         actorType: 'public',
