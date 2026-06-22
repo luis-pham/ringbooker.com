@@ -97,7 +97,7 @@ function VerticalHeroCtaActions({
 }) {
   return (
     <div className="hero-btns mt-6">
-      <a href={demoHref} className="btn-hero-live" data-demo-picker>
+      <a href={demoHref} className="btn-hero-live">
         <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
         {demoLabel}
         {HERO_LIVE_ARROW}
@@ -122,7 +122,7 @@ function VerticalFinalCtaActions({
 }) {
   return (
     <div className="hero-btns vertical-final-cta-btns mt-8">
-      <a href={demoHref} className="btn-hero-live" data-demo-picker>
+      <a href={demoHref} className="btn-hero-live">
         <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
         {demoLabel}
         {HERO_LIVE_ARROW}
@@ -926,7 +926,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
               Không cần đổi số. Không cần thay đổi phần mềm đặt lịch. Setup 15 phút.
             </p>
             <div className="hero-btns vertical-final-cta-btns mt-8">
-              <a href="/demo/nail-salon" className="btn-hero-live" data-demo-picker>
+              <a href="/demo/nail-salon" className="btn-hero-live">
                 <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
                 Xem demo trực tiếp
                 {HERO_LIVE_ARROW}
