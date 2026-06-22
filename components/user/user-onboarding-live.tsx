@@ -13,7 +13,6 @@ import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-
 import {
   OnboardingManualVerticalIcon,
   OnboardingMixedGroupChipIcon,
-  OnboardingServiceGroupIcon,
   type OnboardingManualVerticalId,
 } from '@/components/user/onboarding-service-icons';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
@@ -2353,7 +2352,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .profile-review-alert{margin:8px 0 12px}
 .onb-warning p{margin:0}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#6b7280;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box;transition:background .15s ease,color .15s ease}.profile-review-edit:hover{background:#f3f4f6;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0;stroke-width:1.8}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
-.profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
+.profile-review-value{color:#111827;font-size:13px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}.profile-review-editor input,.profile-review-editor textarea{font-size:13px!important}
 .onb-step2-address-textarea{width:80%!important;max-width:80%}
 .onb-profile-source-footnote{font-size:11px;color:#9ca3af;margin:6px 0 0;line-height:1.35}
 .onb-step2-hours-preview{margin-top:2px}
@@ -2361,7 +2360,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-step2-hours-preview .hours-grid-col{display:flex;flex-direction:column;gap:4px}
 .onb-step2-hours-preview .hours-row{display:flex;gap:8px;align-items:center}
 .onb-step2-hours-preview .hours-day{font-size:12px;color:#9ca3af;width:28px;flex-shrink:0;font-weight:400}
-.onb-step2-hours-preview .hours-time{font-size:13px;color:#111}
+.onb-step2-hours-preview .hours-time{font-size:13px;color:#111827}
 .onb-step2-hours-preview .hours-closed{font-size:13px;color:#9ca3af}
 .onb-step2-languages-card{margin-top:0}
 .onb-step2-lang-chips.preset-row{margin-bottom:0}
@@ -2376,6 +2375,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-step2-sheet-handle{width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px}
 .onb-step2-sheet-title{font-size:15px;font-weight:600;color:#111;margin-bottom:16px}
 .onb-step2-sheet input,.onb-step2-sheet select,.onb-step2-sheet textarea{font-size:15px!important;width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit;color:#111;box-sizing:border-box;background:#fff;-webkit-text-size-adjust:100%}
+.onb-step2-sheet input,.onb-step2-sheet textarea{font-size:13px!important}
 .onb-step2-sheet input:focus,.onb-step2-sheet select:focus,.onb-step2-sheet textarea:focus{outline:none;border-color:#7c3aed}
 .onb-step2-sheet-actions{display:flex;gap:10px;margin-top:20px}
 .onb-step2-sheet-cancel{flex:1;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;color:#6b7280;background:#fff;cursor:pointer;font-family:inherit}
@@ -2429,7 +2429,6 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 .onb-group-rename-sheet-actions button{flex:1;height:48px;border-radius:10px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .onb-group-rename-sheet-cancel{border:1px solid #e5e7eb;background:#fff;color:#6b7280}
 .onb-group-rename-sheet-save{border:none;background:#111;color:#fff;flex:2}
-.service-group-icon{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#6d28d9}
 .service-group-main{display:grid;gap:2px;min-width:0;flex:1}.service-group-title{margin:0;color:#111827;font-size:15px;font-weight:500;line-height:1.25}.service-group-meta{color:#9ca3af;font-size:12px;font-weight:400;line-height:1.25}
 .service-group-warning{border-radius:999px;background:#fffbeb;color:#f59e0b;padding:3px 8px;font-size:11px;font-weight:500;white-space:nowrap}.service-group-chevron{color:#6b7280;font-size:18px;line-height:1;transition:transform .18s ease}.service-group-chevron.open{transform:rotate(180deg)}
 .service-group-body{display:grid;gap:0;padding:12px 16px 16px}
@@ -3729,9 +3728,6 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
       return (
         <div className="service-group-card" key={group} data-service-group={group}>
           <div className="service-group-head">
-            <span className="service-group-icon" aria-hidden>
-              <OnboardingServiceGroupIcon group={group} />
-            </span>
             <span className="service-group-main">
               <span className="onb-group-title-desktop service-group-title-row">
                 {editingDesktopName ? (
