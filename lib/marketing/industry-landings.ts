@@ -8,6 +8,13 @@ export const MARKETING_INDUSTRY_URL_SEGMENTS = ['nail-salon', 'hair-salon', 'spa
 
 export type MarketingIndustryUrlSegment = (typeof MARKETING_INDUSTRY_URL_SEGMENTS)[number];
 
+export const VI_NAIL_SALON_LANDING_SEO = {
+  path: '/industries/nail-salon/vi',
+  title: 'Lễ Tân AI Cho Tiệm Nail | Square & Vagaro | RingBooker',
+  description:
+    'RingBooker là lễ tân AI cho tiệm nail — đọc website tự động, tích hợp Square và Vagaro, trả lời tiếng Việt. Setup 15 phút.',
+} as const;
+
 export function industryLandingPath(segment: string): string {
   const s = segment.replace(/^\/+|\/+$/g, '');
   return `/industries/${s}`;
@@ -50,6 +57,14 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
   },
 };
 
+export function marketingIndustryLandingSeo(segment: MarketingIndustryUrlSegment): {
+  title: string;
+  description: string;
+  path: string;
+} {
+  return { ...LANDING_META[segment], path: industryLandingPath(segment) };
+}
+
 export function marketingIndustryLandingMetadata(segment: string): Metadata {
   const key = segment as MarketingIndustryUrlSegment;
   const m = LANDING_META[key];
@@ -60,18 +75,18 @@ export function marketingIndustryLandingMetadata(segment: string): Metadata {
       path: '/industries',
     });
   }
-  const path = industryLandingPath(segment);
-  const metadata = buildMetadata({ ...m, path });
+  const seo = marketingIndustryLandingSeo(key);
+  const metadata = buildMetadata(seo);
   if (key === 'nail-salon') {
     return {
       ...metadata,
       alternates: {
-        canonical: path,
+        canonical: seo.path,
         languages: {
-          en: path,
-          'en-US': path,
+          en: seo.path,
+          'en-US': seo.path,
           vi: '/industries/nail-salon/vi',
-          'x-default': path,
+          'x-default': seo.path,
         },
       },
     };

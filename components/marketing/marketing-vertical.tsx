@@ -12,9 +12,43 @@ import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketin
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
+import { marketingIndustryLandingSeo, VI_NAIL_SALON_LANDING_SEO } from '@/lib/marketing/industry-landings';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
+import { siteConfig } from '@/lib/site';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
+
+const VERTICAL_ARTICLE_DATE_PUBLISHED = '2026-05-28T00:00:00+07:00';
+const VERTICAL_ARTICLE_DATE_MODIFIED = '2026-06-23T00:00:00+07:00';
+const VERTICAL_ARTICLE_IMAGE = `${siteConfig.url}/images/og_ringbooker.jpg`;
+const VERTICAL_ARTICLE_ORGANIZATION = 'RingBooker.com';
+
+type VerticalArticleSeo = { title: string; description: string; path: string };
+
+function buildVerticalArticleSchema(seo: VerticalArticleSeo): Record<string, unknown> {
+  const pageUrl = new URL(seo.path, siteConfig.url).toString();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: seo.title,
+    description: seo.description,
+    image: [VERTICAL_ARTICLE_IMAGE],
+    author: {
+      '@type': 'Organization',
+      name: VERTICAL_ARTICLE_ORGANIZATION,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: VERTICAL_ARTICLE_ORGANIZATION,
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': pageUrl,
+    },
+    datePublished: VERTICAL_ARTICLE_DATE_PUBLISHED,
+    dateModified: VERTICAL_ARTICLE_DATE_MODIFIED,
+  };
+}
 
 /** Shared marketing card border + light shadow (see --mk-card-* in marketing-typography.css). */
 const VERTICAL_CARD_SURFACE =
@@ -154,7 +188,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
     finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
-    accentClass: 'text-amber-600',
+    accentClass: 'text-amber-700',
   },
   spa: {
     pageShellBg:
@@ -731,6 +765,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
       { '@type': 'ListItem', position: 3, name: 'Tiếng Việt', item: 'https://ringbooker.com/industries/nail-salon/vi' },
     ],
   };
+  const articleSchema = buildVerticalArticleSchema(VI_NAIL_SALON_LANDING_SEO);
 
   return (
     <>
@@ -941,6 +976,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
       <MarketingFooter descriptionOverride="Lễ tân AI cho tiệm nail người Việt tại Mỹ — nghe máy tiếng Việt và tiếng Anh, giữ nguyên số tiệm, đọc website tự động, và hỗ trợ giảm cuộc gọi nhỡ trong giờ cao điểm." />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <Script
         id="vertical-step-carousel"
         strategy="afterInteractive"
@@ -984,7 +1020,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accentClass="text-amber-600"
+        accentClass="text-amber-700"
         stats={[
           {
             eyebrow: 'Missed calls',
@@ -1037,7 +1073,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Features */}
       <FeatureGrid
-        accent="bg-amber-50 text-amber-600"
+        accent="bg-amber-50 text-amber-700"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for hair salon calls')}
         features={[
@@ -1851,6 +1887,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       { '@type': 'ListItem', position: 2, name: VERTICAL_LABEL[vertical], item: `https://ringbooker.com${verticalPath}` },
     ],
   };
+  const articleSchema = buildVerticalArticleSchema(marketingIndustryLandingSeo(vertical));
 
   const ctaMap: Record<MarketingVerticalKey, { label: string; title: string; subtitle: string }> = {
     'nail-salon': {
@@ -1910,6 +1947,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <Script
         id="vertical-step-carousel"
         strategy="afterInteractive"

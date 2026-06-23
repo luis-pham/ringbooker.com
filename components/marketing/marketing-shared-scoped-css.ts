@@ -414,7 +414,7 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   font-style:italic;
   font-weight:400;
   line-height:1.45;
-  color:var(--mk-text-soft,#94a3b8);
+  color:var(--mk-text-soft,#64748b);
 }
 @media (max-width:639px){
   .vertical-stat-strip-section .vertical-stat-strip{

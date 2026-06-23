@@ -3186,7 +3186,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
               }}
               placeholder="Street, city, region"
             />,
-            { wide: true, imported: importSuggestions?.businessProfile.address ?? null },
+            { imported: importSuggestions?.businessProfile.address ?? null },
           )}
           {profileCard(
             'hours',

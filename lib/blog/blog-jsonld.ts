@@ -117,7 +117,7 @@ export function buildBlogDetailJsonLd(post: PostWithRelations): BlogDetailJsonLd
   const path = postPublicPath(post.pathPrefix, post.slug);
   const canonicalUrl = new URL(path, siteConfig.url).toString();
   const cover = post.coverImageUrl?.trim();
-  const imageUrl = cover ? absoluteOgImageUrl(cover) : null;
+  const imageUrl = cover ? absoluteOgImageUrl(cover) : 'https://ringbooker.com/images/og_ringbooker.jpg';
 
   const keywords = [
     ...post.categories.map((c) => c.category.name),

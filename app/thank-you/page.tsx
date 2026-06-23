@@ -5,24 +5,7 @@ import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { buildMetadata } from '@/lib/site';
 
 const thankYouStyles = [
-  String.raw`
-.thank-you-page{background:#fff;min-height:50vh}
-.thank-you-main{max-width:640px;margin:0 auto;padding:160px 24px 60px;text-align:center}
-.thank-you-check{width:56px;height:56px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:26px;line-height:1;color:#16a34a}
-.thank-you-h1{font-size:24px;font-weight:500;margin:20px 0 0;color:#111827}
-.thank-you-lead{font-size:15px;color:#64748b;margin:12px auto 48px;max-width:420px;line-height:1.55}
-.thank-you-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:40px;text-align:left}
-@media(max-width:960px){.thank-you-cards{grid-template-columns:1fr}}
-.thank-you-card{background:#fff;border:0.5px solid #e5e7eb;border-radius:12px;padding:20px;transition:box-shadow .2s ease}
-.thank-you-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08)}
-.thank-you-card-icon{font-size:22px;line-height:1;margin-bottom:12px}
-.thank-you-card-title{font-size:15px;font-weight:500;margin:0 0 8px;color:#111827}
-.thank-you-card-desc{font-size:14px;color:#64748b;line-height:1.5;margin:0 0 14px}
-.thank-you-card-link{font-size:14px;font-weight:600;color:#7c3aed;text-decoration:none}
-.thank-you-card-link:hover{text-decoration:underline}
-.thank-you-back{display:inline-block;font-size:13px;color:#64748b;text-decoration:none}
-.thank-you-back:hover{text-decoration:underline}
-`,
+  String.raw`.thank-you-page{background:#fff;min-height:50vh}.thank-you-main{max-width:640px;margin:0 auto;padding:160px 24px 60px;text-align:center}.thank-you-check{width:56px;height:56px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:26px;line-height:1;color:#16a34a}.thank-you-h1{font-size:24px;font-weight:500;margin:20px 0 0;color:#111827}.thank-you-lead{font-size:15px;color:#64748b;margin:12px auto 48px;max-width:420px;line-height:1.55}.thank-you-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:40px;text-align:left}@media(max-width:960px){.thank-you-cards{grid-template-columns:1fr}}.thank-you-card{background:#fff;border:0.5px solid #e5e7eb;border-radius:12px;padding:20px;transition:box-shadow .2s ease}.thank-you-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08)}.thank-you-card-icon{font-size:22px;line-height:1;margin-bottom:12px}.thank-you-card-title{font-size:15px;font-weight:500;margin:0 0 8px;color:#111827}.thank-you-card-desc{font-size:14px;color:#64748b;line-height:1.5;margin:0 0 14px}.thank-you-card-link{font-size:14px;font-weight:600;color:#7c3aed;text-decoration:none}.thank-you-card-link:hover{text-decoration:underline}.thank-you-back{display:inline-block;font-size:13px;color:#64748b;text-decoration:none}.thank-you-back:hover{text-decoration:underline}`,
 ];
 
 const baseMetadata = buildMetadata({
