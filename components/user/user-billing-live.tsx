@@ -686,7 +686,9 @@ export function UserBillingLive({
   const subscription = data?.billing?.subscription ?? null;
   const currentPlan = subscription?.plan ?? data?.shop?.plan ?? 'starter';
   const paymentMethodStatus = data?.billing?.paymentMethodStatus ?? subscription?.paymentMethodStatus ?? 'none';
-  const hasPaymentMethod = data?.billing?.hasPaymentMethod === true;
+  const hasPaymentMethod =
+    data?.billing?.hasPaymentMethod === true &&
+    !['past_due', 'paused', 'canceled'].includes(subscription?.status ?? '');
   const liveEnabled = data?.billing?.liveCallsEnabled;
   const catalog = useMemo(() => BILLING_PLANS_CATALOG.find((p) => p.key === currentPlan) ?? BILLING_PLANS_CATALOG[0], [currentPlan]);
   const shopTimezone = getShopTimezone(data?.shop);
@@ -763,6 +765,25 @@ export function UserBillingLive({
     billingState !== 'trialing_valid' &&
     billingState !== 'active' &&
     billingState !== 'checkout_pending';
+  // Banner suppression flags based on priority order.
+  const hasLoadError = !loading && !data?.ok;
+  const hasCheckoutNotice = ['checkout_success', 'checkout_cancelled', 'manage_returned'].includes(billingNotice ?? '');
+  const hasBillingIssue = ['past_due', 'paused', 'canceled'].includes(billingState) && !isEnterprisePlan;
+  const hasCheckoutError = !!checkoutError;
+
+  const showForwardingNudgeFinal = showForwardingNudge && !hasBillingIssue && !hasCheckoutNotice && !hasLoadError;
+  const showTrialCtaRowFinal =
+    showTrialCtaRow &&
+    !hasBillingIssue &&
+    !hasCheckoutNotice &&
+    !planChangePending &&
+    !hasCheckoutError &&
+    !showForwardingNudgeFinal &&
+    !hasLoadError;
+  const showPlanChangePending = planChangePending && !hasBillingIssue && !hasLoadError;
+  const showBillingIssueBanner = hasBillingIssue && !hasLoadError;
+  const showCheckoutNotice = hasCheckoutNotice && !hasLoadError;
+  const showCheckoutError = hasCheckoutError;
 
   const selectBillingTab = useCallback((tab: BillingSectionTab) => {
     setBillingTab(tab);
@@ -925,7 +946,7 @@ export function UserBillingLive({
             />
 
             <UserPortalPageContent pageClass="page-billing">
-            {!loading && !data?.ok ? (
+            {hasLoadError ? (
               <section className="card">
                 <h3>Unable to load billing</h3>
                 <p className="sub">{data?.error ?? 'unknown_error'}</p>
@@ -956,38 +977,40 @@ export function UserBillingLive({
                   </div>
                 </section>
 
-                {billingNotice === 'checkout_success' ? (
-                  <section className="billing-alert-strip success">
-                    <p>
-                      <strong>{forwardingState === 'verified' ? 'Payment confirmed — switch on live answering now!' : 'Payment confirmed — verify forwarding to go live.'}</strong>
-                    </p>
-                    <a className="btn purple" href="/user/go-live#go-live-forwarding">
-                      {forwardingState === 'verified' ? 'Switch it on →' : 'Verify forwarding →'}
-                    </a>
-                  </section>
-                ) : billingNotice === 'checkout_cancelled' ? (
-                  <section className="billing-alert-strip">
-                    <p>
-                      <strong>Checkout was cancelled.</strong> Your live answering trial was not started. Setup and test calls still work.
-                    </p>
-                    {checkoutAvailable ? (
-                      <button type="button" className="btn user-save" disabled={checkoutPlan !== null} onClick={() => void openStartOrReactivateCheckout(currentPlan)}>
-                        {checkoutPlan ? 'Starting…' : 'Try again'}
+                {showCheckoutNotice ? (
+                  billingNotice === 'checkout_success' ? (
+                    <section className="billing-alert-strip success">
+                      <p>
+                        <strong>{forwardingState === 'verified' ? 'Payment confirmed — switch on live answering now!' : 'Payment confirmed — verify forwarding to go live.'}</strong>
+                      </p>
+                      <a className="btn purple" href="/user/go-live#go-live-forwarding">
+                        {forwardingState === 'verified' ? 'Switch it on →' : 'Verify forwarding →'}
+                      </a>
+                    </section>
+                  ) : billingNotice === 'checkout_cancelled' ? (
+                    <section className="billing-alert-strip">
+                      <p>
+                        <strong>Checkout was cancelled.</strong> Your live answering trial was not started. Setup and test calls still work.
+                      </p>
+                      {checkoutAvailable ? (
+                        <button type="button" className="btn user-save" disabled={checkoutPlan !== null} onClick={() => void openStartOrReactivateCheckout(currentPlan)}>
+                          {checkoutPlan ? 'Starting…' : 'Try again'}
+                        </button>
+                      ) : null}
+                    </section>
+                  ) : billingNotice === 'manage_returned' ? (
+                    <section className="billing-alert-strip info">
+                      <p>
+                        <strong>Billing management closed.</strong> Changes made in billing management may take a minute to appear here.
+                      </p>
+                      <button type="button" className="btn" onClick={() => void refreshBilling()}>
+                        Refresh status
                       </button>
-                    ) : null}
-                  </section>
-                ) : billingNotice === 'manage_returned' ? (
-                  <section className="billing-alert-strip info">
-                    <p>
-                      <strong>Billing management closed.</strong> Changes made in billing management may take a minute to appear here.
-                    </p>
-                    <button type="button" className="btn" onClick={() => void refreshBilling()}>
-                      Refresh status
-                    </button>
-                  </section>
+                    </section>
+                  ) : null
                 ) : null}
 
-                {planChangePending ? (
+                {showPlanChangePending ? (
                   <section className="billing-alert-strip info">
                     <p>
                       <strong>Plan change pending.</strong>{' '}
@@ -1002,7 +1025,7 @@ export function UserBillingLive({
                   </section>
                 ) : null}
 
-                {showForwardingNudge ? (
+                {showForwardingNudgeFinal ? (
                   <section className="billing-alert-strip info" aria-label="Complete forwarding setup">
                     <p style={{ margin: 0 }}>
                       <strong>{forwardingState === 'configured' ? 'One more step after this — verify your call forwarding to go live.' : 'Set up call forwarding to continue.'}</strong>{' '}
@@ -1016,7 +1039,7 @@ export function UserBillingLive({
                   </section>
                 ) : null}
 
-                {showTrialCtaRow ? (
+                {showTrialCtaRowFinal ? (
                   <section className="billing-trial-cta" aria-label="Start trial">
                     <div className="billing-trial-cta__copy">
                       <h3>Start your 14-day free trial</h3>
@@ -1225,7 +1248,7 @@ export function UserBillingLive({
                             </div>
                           ) : null}
 
-                          {['past_due', 'paused', 'canceled'].includes(billingState) && !isEnterprisePlan ? (
+                          {showBillingIssueBanner ? (
                             <section className="billing-alert-strip" style={{ marginBottom: 16 }}>
                               <p style={{ margin: 0 }}>
                                 <strong>{billingCopy.title}</strong> {billingCopy.body}
@@ -1347,7 +1370,7 @@ export function UserBillingLive({
                         </section>
                       ) : null}
 
-                      {checkoutError ? (
+                      {showCheckoutError ? (
                         <section className="card" style={{ marginTop: 0 }}>
                           <h3>Payment setup could not start</h3>
                           <p className="sub">{checkoutError}</p>
