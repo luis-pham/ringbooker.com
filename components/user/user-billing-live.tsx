@@ -782,7 +782,7 @@ export function UserBillingLive({
     !hasLoadError;
   const showPlanChangePending = planChangePending && !hasBillingIssue && !hasLoadError;
   const showBillingIssueBanner = hasBillingIssue && !hasLoadError;
-  const showCheckoutNotice = hasCheckoutNotice && !hasLoadError;
+  const showCheckoutNotice = hasCheckoutNotice && !hasLoadError && !hasBillingIssue;
   const showCheckoutError = hasCheckoutError;
 
   const selectBillingTab = useCallback((tab: BillingSectionTab) => {
