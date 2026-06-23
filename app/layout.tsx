@@ -96,6 +96,13 @@ const softwareSchema = {
   operatingSystem: 'Web',
   url: siteConfig.url,
   description: siteConfig.description,
+  availableLanguage: [
+    { '@type': 'Language', name: 'English' },
+    { '@type': 'Language', name: 'Spanish' },
+    { '@type': 'Language', name: 'Korean' },
+    { '@type': 'Language', name: 'Chinese' },
+    { '@type': 'Language', name: 'Vietnamese' },
+  ],
   offers: {
     '@type': 'Offer',
     price: '0',

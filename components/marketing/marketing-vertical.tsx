@@ -1544,11 +1544,11 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can it handle nail salon overflow during peak hours?',
-      a: 'Yes. RingBooker is built for busy service windows when techs are with clients and the desk cannot answer every call.',
+      a: 'Yes. During peak windows, RingBooker answers when technicians are mid-service and the desk cannot reach every caller. It captures the service request, preferred time, caller name, and callback details, then shows the team a dashboard summary so the lead is not lost.',
     },
     {
       q: 'Does RingBooker support missed-call text back for nail salons?',
-      a: 'Yes. Missed-call text back can help recover callers who hang up during busy periods or after hours.',
+      a: 'Yes. When a caller hangs up or reaches an uncovered window, missed-call text back can respond within seconds with a short prompt like "We missed your call — how can we help?" The caller can reply by SMS, and the response gives your team enough context to book, call back, or follow up.',
     },
     {
       q: 'Does RingBooker work with my current nail salon phone number?',
@@ -1559,12 +1559,12 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       a: 'Yes. You load your service menu and prices during setup. RingBooker can answer "how much for a full set?" or "what\'s the price for dip powder?" from your configured prices.',
     },
     {
-      q: 'Is RingBooker an AI receptionist for nail salons?',
-      a: 'Yes — RingBooker functions as an AI receptionist for nail salons, handling pricing questions, walk-in availability, and English and Vietnamese call flows on the current number during service hours and after closing.',
+      q: 'How long does it take to set up RingBooker for a nail salon?',
+      a: 'Setup takes about 15 minutes. Paste your website URL and RingBooker reads your services, prices, and hours automatically. Add call forwarding on your existing number, run a test call, and you are live. No new hardware, no new phone number required.',
     },
     {
-      q: 'Is RingBooker an AI answering service for nail salons?',
-      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for nail salons, handling pricing questions, walk-in availability, and Vietnamese call flows on the current number.',
+      q: 'Is there a contract or minimum commitment for nail salons?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start.',
     },
   ],
   'hair-salon': [
@@ -1582,7 +1582,7 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Will it work on my existing salon number?',
-      a: 'Yes. Forward overflow or after-hours from your current number. Clients never need to call a different number.',
+      a: 'Yes. RingBooker works by forwarding overflow or after-hours calls from your current salon number, so clients keep dialing the number they already know. There is no new public number to publish, and your team can keep answering live calls normally when available.',
     },
     {
       q: 'What happens during after-hours booking attempts?',
@@ -1601,12 +1601,12 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       a: 'Yes. Bridal inquiries involving multiple people, stylists, and occasion-specific details are captured with party size, preferred date, service mix, and contact information for the team to confirm.',
     },
     {
-      q: 'Is RingBooker an AI receptionist for hair salons?',
-      a: 'Yes — RingBooker functions as an AI receptionist for hair salons, handling preferred stylist requests, color slot inquiries, and reschedule calls on the current number.',
+      q: 'How long does it take to set up RingBooker for a hair salon?',
+      a: 'Setup takes about 15 minutes. Enter your stylist list, services, and pricing — or paste your website URL and RingBooker pulls that information automatically. Add call forwarding on your current number and you are ready to go.',
     },
     {
-      q: 'Is RingBooker an AI answering service for hair salons?',
-      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for hair salons, handling preferred stylist requests, color inquiries, and reschedule calls on the current number.',
+      q: 'Is there a contract or minimum commitment for hair salons?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start.',
     },
   ],
   spa: [
@@ -1624,15 +1624,15 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Does it send reminders to reduce no-shows?',
-      a: 'Yes. Automated SMS reminders can be configured before appointments to help reduce last-minute confusion and no-shows.',
+      a: 'Yes. Automated SMS reminders can be configured before appointments, including the appointment time, service or package name, and any short confirmation detail your workflow uses. The goal is to reduce confusion before arrival and give clients a simple reminder without adding desk work.',
     },
     {
       q: 'Does it work on our existing spa phone number?',
-      a: 'Yes. Just forward overflow or after-hours calls — no new number required.',
+      a: 'Yes. RingBooker works through forwarding from your existing spa number, so callers do not see a different public number. You can start with after-hours or overflow coverage and keep your normal phone workflow in place.',
     },
     {
       q: 'Can it escalate complex requests to a real person?',
-      a: 'Yes. Callback and escalation workflows can be configured for requests that need a human follow-up.',
+      a: 'Yes. Complex requests can trigger callback or escalation workflows when the caller asks for a human, has a sensitive request, or needs staff judgment. The team receives the caller context and a summary so follow-up starts with the details already captured.',
     },
     {
       q: 'Can RingBooker capture gift certificate inquiries after hours?',
@@ -1640,25 +1640,25 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can it handle prenatal massage booking calls?',
-      a: 'Yes — for standard intake and FAQ (certification, trimester policy, session structure). Any clinical question is escalated immediately to a qualified staff member with full call context.',
+      a: 'Yes — for standard intake and FAQ (certification, trimester policy, session structure). Any clinical question is escalated immediately to a qualified staff member with full call context. RingBooker captures the safe booking details first, then routes anything medical to your team.',
     },
     {
-      q: 'Is RingBooker an AI receptionist for day spas?',
-      a: 'Yes — RingBooker functions as an AI receptionist for day spas, handling couples massage inquiries, package questions, and after-hours calls on the current number.',
+      q: 'How long does it take to set up RingBooker for a spa?',
+      a: 'Setup takes about 15 minutes. Enter your treatment menu, room availability rules, and staff schedule — or paste your website URL and RingBooker reads that information automatically. Add call forwarding and you are ready to take calls.',
     },
     {
-      q: 'Is RingBooker an AI answering service for day spas?',
-      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for day spas, handling couples massage inquiries, package questions, and after-hours calls on the current number.',
+      q: 'Is there a contract or minimum commitment for spas?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start.',
     },
   ],
   'med-spa': [
     {
       q: 'Can RingBooker handle med spa consultation calls after hours?',
-      a: 'Yes. RingBooker is a strong fit for after-hours consultation calls when a busy desk or voicemail would otherwise lose the inquiry.',
+      a: 'Yes. RingBooker captures treatment interest, preferred timing, caller name, contact details, and any provider preference without giving clinical advice. The clinical coordinator can review a structured summary the next business day and follow up with the right context.',
     },
     {
       q: 'Can RingBooker handle med spa front-desk overflow during treatment hours?',
-      a: 'Yes. RingBooker is a strong fit when the front desk is juggling check-in, checkout, and phone calls during active treatment windows.',
+      a: 'Yes. When the front desk is handling check-in, checkout, or active treatment traffic, RingBooker can answer the overflow call on the current number. The caller gets a response instead of voicemail, and the front desk sees a summary with treatment interest, timing preference, and follow-up need.',
     },
     {
       q: 'Can it capture Botox, filler, or laser consultation interest?',
@@ -1689,12 +1689,12 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       a: 'Yes. High-value procedure calls — laser bookings ($300–$600/session) and body contouring consultations ($1,500–$5,000) — are captured with treatment interest and timing preference logged for clinical follow-up.',
     },
     {
-      q: 'Is RingBooker an AI receptionist for med spas?',
-      a: 'Yes — RingBooker functions as an AI receptionist for med spas, capturing Botox, filler, and aesthetic consultation calls on the current number. Pre-clinical intake only.',
+      q: 'How long does it take to set up RingBooker for a med spa?',
+      a: 'Setup takes about 15 minutes. Enter your treatment menu, provider list, and intake rules. RingBooker can also read your website automatically to pull service and pricing information. Add call forwarding on your existing number and go live with a test call first.',
     },
     {
-      q: 'Is RingBooker an AI answering service for med spas?',
-      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for med spas, capturing Botox, filler, and aesthetic consultation calls on the current number. Pre-clinical intake only.',
+      q: 'Is there a contract or minimum commitment for med spas?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start.',
     },
   ],
   'beauty-clinic': [
@@ -1704,15 +1704,15 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can RingBooker help with beauty clinic missed calls?',
-      a: 'Yes. It works well for missed consultation and follow-up calls, not just basic reception.',
+      a: 'Yes. RingBooker can help with missed consultation calls, follow-up calls, pricing questions, and provider preference requests that would otherwise land in voicemail. It captures the caller\'s intent, contact details, preferred service, and next-step need so your team has a clean follow-up path.',
     },
     {
       q: 'Can it capture consultation calls on our current number?',
-      a: 'Yes. RingBooker works through the current business number, which keeps continuity for callers and staff.',
+      a: 'Yes. RingBooker works through forwarding from the current business number, so callers keep using the number already on your website, Google profile, and client reminders. The call is captured on that familiar line and summarized for staff follow-up.',
     },
     {
       q: 'Can it help with aesthetic clinic post-treatment calls?',
-      a: 'Yes. It can help capture post-treatment questions and route approved follow-up information or handoff context to your team.',
+      a: 'Yes. It can capture post-treatment questions, aftercare follow-up requests, scheduling needs, and concerns that require staff review. Approved information can be shared when configured, and anything sensitive is handed off with context for your team.',
     },
     {
       q: 'Does RingBooker work for wax studios?',
@@ -1728,15 +1728,15 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Does RingBooker work for beauticians and beauty therapists?',
-      a: 'Yes — RingBooker works for estheticians, beauticians, beauty therapists, and any hands-on beauty professional who cannot answer the phone during service sessions.',
+      a: 'Yes — RingBooker works for estheticians, beauticians, beauty therapists, and any hands-on beauty professional who cannot answer the phone during service sessions. It captures caller intent on the current number and gives the provider a summary after the appointment or treatment is finished.',
     },
     {
-      q: 'Is RingBooker an AI receptionist for beauty clinics?',
-      a: 'Yes — RingBooker functions as an AI receptionist for beauty clinics, wax studios, lash studios, and aesthetic clinics — handling consultation calls, pricing questions, and after-hours inquiries on the current number.',
+      q: 'How long does it take to set up RingBooker for a beauty clinic?',
+      a: 'Setup takes about 15 minutes. Enter your treatment list, pricing, and staff availability — or paste your website URL and RingBooker pulls that information automatically. Add call forwarding on your current number and run a test call before going live.',
     },
     {
-      q: 'Is RingBooker an AI answering service for beauty clinics?',
-      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for beauty clinics, wax studios, lash studios, and aesthetic clinics — handling consultation calls and after-hours inquiries on the current number.',
+      q: 'Is there a contract or minimum commitment for beauty clinics?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start.',
     },
   ],
 };

@@ -302,6 +302,10 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
       q: 'Is missed booking protection different for nail salons vs. med spas?',
       a: 'Yes. Nail salons often lose bookings during peak-hour overload; med spas are more vulnerable to after-hours consultation inquiries. Each vertical has its own call pattern and approach to missed booking protection.',
     },
+    {
+      q: 'Is there a contract or minimum commitment?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start — a payment method is only required when you are ready to go live with real callers.',
+    },
   ],
   breadcrumbLabel: 'Missed booking protection',
   cta: {
@@ -314,7 +318,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
 
 const CURRENT_NUMBER_FAQ_FORWARDING: ContentHubFaq = {
   q: 'Can you forward salon calls to AI?',
-  a: 'Yes. RingBooker works through call forwarding, so your current salon number stays public while AI covers selected calls.',
+  a: 'Yes. RingBooker works through common call-forwarding setups such as missed-call, busy-line, after-hours, or full forwarding depending on your provider. Your current salon number stays public, and callers experience the same number they already dial while AI covers selected calls behind the scenes.',
 };
 
 const CURRENT_NUMBER_FAQ_REPLACE_SETUP: ContentHubFaq = {
@@ -491,16 +495,20 @@ export const currentNumberHub: ContentHubPageConfig = {
     CURRENT_NUMBER_FAQ_FORWARDING,
     {
       q: 'How do I set up call forwarding for a nail salon?',
-      a: 'Most salons start by forwarding after-hours or overflow calls first, then widen coverage once the setup is tested.',
+      a: 'Most salons start by forwarding after-hours or overflow calls first, then widen coverage once the setup is tested. The exact steps depend on your phone provider, but the public number remains the same and your team can test before live callers are routed.',
     },
     {
       q: 'Can I start with after-hours only?',
-      a: 'Yes. That is one of the cleanest ways to test RingBooker without changing your daytime phone workflow.',
+      a: 'Yes. That is one of the cleanest ways to test RingBooker without changing your daytime phone workflow. You can keep daytime calls with staff first, review summaries from after-hours calls, and expand coverage later when the workflow feels right.',
     },
     CURRENT_NUMBER_FAQ_REPLACE_SETUP,
     {
       q: 'Can I keep my number and my booking tools?',
-      a: 'Yes. Keeping your current number and booking tools is the default. RingBooker complements what you already use.',
+      a: 'Yes. Keeping your current number and booking tools is the default. RingBooker handles the phone conversation layer, then sends booking context, summaries, or links into the workflow your team already uses.',
+    },
+    {
+      q: 'Is there a contract or minimum commitment?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start — a payment method is only required when you are ready to go live with real callers.',
     },
   ],
   breadcrumbLabel: 'Current number',
@@ -721,11 +729,11 @@ export const worksWithHub: ContentHubPageConfig = {
     },
     {
       q: 'What does booking link mean for Vagaro, Booksy, Boulevard, or GlossGenius?',
-      a: 'RingBooker texts your existing booking URL after the call so callers can finish booking in the tool your team already uses — without replacing your calendar or front-desk workflow.',
+      a: 'RingBooker texts your existing booking URL after the call so callers can finish booking in the tool your team already uses — without replacing your calendar or front-desk workflow. The booking system remains the place of record; RingBooker captures call context and sends the link or summary so the caller and team stay in the existing workflow.',
     },
     {
       q: 'Can salons keep their current workflow?',
-      a: 'Yes. RingBooker complements the booking workflow instead of replacing it.',
+      a: 'Yes. Your calendar, front-desk process, and booking tool can stay in place. RingBooker adds phone coverage, caller summaries, and booking-link or integration support on top of the workflow you already use.',
     },
     {
       q: 'Do I need to replace my booking software?',
@@ -733,7 +741,11 @@ export const worksWithHub: ContentHubPageConfig = {
     },
     {
       q: 'Does this work with my current phone number?',
-      a: 'Yes. RingBooker works via forwarding on your current number.',
+      a: 'Yes. RingBooker works via forwarding on your current number, so callers do not need a new number. Your existing booking software remains separate unless you choose to connect a supported integration.',
+    },
+    {
+      q: 'Is there a contract or minimum commitment?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start — a payment method is only required when you are ready to go live with real callers.',
     },
   ],
   breadcrumbLabel: 'Works with',
@@ -1070,7 +1082,11 @@ export const compareHub: ContentHubPageConfig = {
     },
     {
       q: 'Do I still need front-desk staff?',
-      a: 'In most cases, yes. RingBooker handles calls your staff cannot reach — it is designed to complement your team.',
+      a: 'In most cases, yes. RingBooker handles missed, overflow, and after-hours calls your staff cannot reach, while your front desk still owns in-person service, complex judgment calls, and the conversations they want to handle directly. It is designed as support, not a staff replacement.',
+    },
+    {
+      q: 'Is there a contract or minimum commitment?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start — a payment method is only required when you are ready to go live with real callers.',
     },
   ],
   breadcrumbLabel: 'Compare',
@@ -1288,7 +1304,7 @@ export const trustHub: ContentHubPageConfig = {
   faqs: [
     {
       q: 'Can AI handle salon booking calls reliably?',
-      a: 'For after-hours and overflow, where the alternative is often voicemail or no answer, RingBooker is built for appointment-style workflows in beauty businesses.',
+      a: 'For after-hours and overflow, where the alternative is often voicemail or no answer, RingBooker is built for appointment-style workflows in beauty businesses. It captures the caller’s request, follows configured rules, and hands off context when a human should step in.',
     },
     {
       q: 'Will RingBooker replace my team?',
@@ -1296,15 +1312,19 @@ export const trustHub: ContentHubPageConfig = {
     },
     {
       q: 'What if I only want after-hours coverage at first?',
-      a: 'That is the most common starting point — minimal disruption to daytime workflow.',
+      a: 'That is the most common starting point because it creates minimal disruption to daytime workflow. Configure forwarding for closed hours first, review summaries and call quality, then expand later to overflow or busy-hour coverage when the team is comfortable.',
     },
     {
       q: 'Can I keep my current number?',
-      a: 'Yes. RingBooker works with your existing number via forwarding.',
+      a: 'Yes. RingBooker works with your existing number via forwarding, so callers keep dialing the number they already know. The forwarding rule can route only selected calls, such as after-hours or busy-line calls, while your public listings stay unchanged.',
     },
     {
       q: 'How do I reduce rollout risk?',
-      a: 'Start after-hours only, review summaries, then expand to overflow when you are satisfied with quality.',
+      a: 'Start after-hours only, review summaries, then expand to overflow when you are satisfied with quality. You can keep staff in control of normal daytime calls and add more coverage gradually as the team gets comfortable.',
+    },
+    {
+      q: 'Is there a contract or minimum commitment?',
+      a: 'No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start — a payment method is only required when you are ready to go live with real callers.',
     },
   ],
   breadcrumbLabel: 'Trust',
