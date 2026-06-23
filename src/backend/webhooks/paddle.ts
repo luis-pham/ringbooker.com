@@ -162,6 +162,32 @@ export async function handlePaddleWebhook(
           eventType.includes('transaction.payment_failed') ||
           ['subscription.canceled', 'subscription.paused', 'subscription.past_due'].some((name) => eventType.includes(name))
         ) {
+          if (eventType.includes('transaction.payment_failed')) {
+            await deps.jobsRepository.enqueue({
+              shopId: syncResult.shopId,
+              type: 'lifecycle_email',
+              payload: {
+                kind: 'payment_failed',
+                subscriptionId,
+                status: syncResult.subscription.status,
+              },
+              runAt: new Date(),
+              idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:payment_failed`,
+            });
+          }
+          if (eventType.includes('subscription.canceled') && syncResult.subscription.status === 'canceled') {
+            await deps.jobsRepository.enqueue({
+              shopId: syncResult.shopId,
+              type: 'lifecycle_email',
+              payload: {
+                kind: 'subscription_canceled',
+                subscriptionId,
+                status: syncResult.subscription.status,
+              },
+              runAt: new Date(),
+              idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:subscription_canceled`,
+            });
+          }
           await deps.jobsRepository.enqueue({
             shopId: syncResult.shopId,
             type: 'lifecycle_email',
@@ -178,6 +204,19 @@ export async function handlePaddleWebhook(
           ['subscription.activated', 'subscription.resumed'].some((name) => eventType.includes(name)) &&
           ['active', 'trialing'].includes(syncResult.subscription.status)
         ) {
+          if (syncResult.subscription.status === 'active') {
+            await deps.jobsRepository.enqueue({
+              shopId: syncResult.shopId,
+              type: 'lifecycle_email',
+              payload: {
+                kind: 'subscription_active',
+                subscriptionId,
+                status: syncResult.subscription.status,
+              },
+              runAt: new Date(),
+              idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:subscription_active`,
+            });
+          }
           await deps.jobsRepository.enqueue({
             shopId: syncResult.shopId,
             type: 'lifecycle_email',

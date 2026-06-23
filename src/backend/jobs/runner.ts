@@ -24,7 +24,10 @@ import {
   buildLiveAnsweringBillingPausedEmailPayload,
   buildLiveAnsweringBillingRestoredEmailPayload,
   buildLiveAnsweringEnabledEmailPayload,
+  buildPaymentFailedEmailPayload,
   buildPaymentMethodAddedEmailPayload,
+  buildSubscriptionActivatedEmailPayload,
+  buildSubscriptionCanceledEmailPayload,
   buildTrialEndedEmailPayload,
   buildTrialReminderEmailPayload,
 } from '@/src/backend/services/email/base-email-builders';
@@ -38,6 +41,7 @@ import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backen
 import { formatShopDate, formatShopTime } from '@/src/shared/timezone';
 import { isWithinBusinessHours as checkWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
 import type { BookingRecord } from '@/src/backend/ports/repositories';
+import { getPlanCatalogEntry } from '@/src/backend/domain/plan-catalog';
 
 type WorkerControls = {
   stop: () => void;
@@ -49,6 +53,9 @@ const lifecycleEmailPayloadSchema = z.object({
     'finish_onboarding_reminder_2',
     'add_payment_method_go_live',
     'payment_method_added',
+    'payment_failed',
+    'subscription_active',
+    'subscription_canceled',
     'forwarding_number_ready',
     'forwarding_number_failed_user',
     'forwarding_number_failed_internal',
@@ -114,6 +121,9 @@ const lifecycleNotificationTypeByKind: Record<LifecycleEmailKind, BillingNotific
   finish_onboarding_reminder_2: 'finish_onboarding_reminder_2',
   add_payment_method_go_live: 'add_payment_method_go_live',
   payment_method_added: 'payment_method_added',
+  payment_failed: 'payment_failed',
+  subscription_active: 'subscription_active',
+  subscription_canceled: 'subscription_canceled',
   forwarding_number_ready: 'forwarding_number_ready',
   forwarding_number_failed_user: 'forwarding_number_failed_user',
   forwarding_number_failed_internal: 'forwarding_number_failed_internal',
@@ -1661,6 +1671,33 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
             shopName: shop.name,
             appBaseUrl,
             forwardingVerified: Boolean((accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt)?.trim()),
+          });
+          break;
+        case 'payment_failed':
+          if (!shop || !subscription || (subscription.paymentMethodStatus !== 'failed' && !['past_due', 'unpaid'].includes(subscription.status))) return;
+          category = 'billing_payment_failed';
+          built = buildPaymentFailedEmailPayload({
+            shopName: shop.name,
+            appBaseUrl,
+          });
+          break;
+        case 'subscription_active':
+          if (!shop || !subscription || subscription.status !== 'active') return;
+          category = 'billing_subscription_active';
+          built = buildSubscriptionActivatedEmailPayload({
+            shopName: shop.name,
+            planName: getPlanCatalogEntry(subscription.plan).label,
+            periodStart: subscription.currentPeriodStart,
+            periodEnd: subscription.currentPeriodEnd,
+            appBaseUrl,
+          });
+          break;
+        case 'subscription_canceled':
+          if (!shop || !subscription || subscription.status !== 'canceled') return;
+          category = 'live_answering_billing_paused';
+          built = buildSubscriptionCanceledEmailPayload({
+            shopName: shop.name,
+            appBaseUrl,
           });
           break;
         case 'forwarding_number_ready':

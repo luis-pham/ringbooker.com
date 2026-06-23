@@ -370,6 +370,99 @@ export function buildPaymentMethodAddedEmailPayload(params: {
   return { input, text };
 }
 
+export function buildPaymentFailedEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const billingUrl = `${base}/user/billing`;
+  const businessName = escapeHtmlText(params.shopName);
+  const input: BaseEmailInput = {
+    title: 'Action required: Update your payment method',
+    previewText: 'Your payment did not go through. Update your payment method to restore live answering.',
+    heroTitle: "Your payment didn't go through",
+    heroSubtitleHtml: `<p style="margin:0">We were unable to charge your card for <strong>${businessName}</strong>.</p>`,
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">We were unable to charge your card for <strong>${businessName}</strong>. Your live answering has been paused until your payment method is updated.</p>`,
+      '<p style="margin:0">Your account setup, call history, and data are safe.</p>',
+    ].join(''),
+    ctaLabel: 'Update payment method',
+    ctaUrl: billingUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Billing</p>',
+  };
+  const text = [
+    "Your payment didn't go through",
+    `We were unable to charge your card for "${params.shopName}". Your live answering has been paused until your payment method is updated.`,
+    'Your account setup, call history, and data are safe.',
+    `Update payment method: ${billingUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildSubscriptionCanceledEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const billingUrl = `${base}/user/billing`;
+  const businessName = escapeHtmlText(params.shopName);
+  const input: BaseEmailInput = {
+    title: 'Your RingBooker subscription has been canceled',
+    previewText: 'Live answering has been disabled. You can reactivate anytime.',
+    heroTitle: 'Your subscription has been canceled',
+    heroSubtitleHtml: `<p style="margin:0">Your RingBooker subscription for <strong>${businessName}</strong> has been canceled.</p>`,
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">Your RingBooker subscription for <strong>${businessName}</strong> has been canceled. Live answering has been disabled.</p>`,
+      '<p style="margin:0">Your account, call history, and setup are saved. You can reactivate anytime.</p>',
+    ].join(''),
+    ctaLabel: 'Reactivate subscription',
+    ctaUrl: billingUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Billing</p>',
+  };
+  const text = [
+    'Your subscription has been canceled',
+    `Your RingBooker subscription for "${params.shopName}" has been canceled. Live answering has been disabled.`,
+    'Your account, call history, and setup are saved. You can reactivate anytime.',
+    `Reactivate subscription: ${billingUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildSubscriptionActivatedEmailPayload(params: {
+  shopName: string;
+  planName: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const dashboardUrl = `${base}/user`;
+  const businessName = escapeHtmlText(params.shopName);
+  const planName = escapeHtmlText(params.planName);
+  const periodStart = formatShopLongDate(params.periodStart, 'UTC');
+  const periodEnd = formatShopLongDate(params.periodEnd, 'UTC');
+  const input: BaseEmailInput = {
+    title: "You're live — RingBooker is answering your calls",
+    previewText: 'Live answering is active for your business.',
+    heroTitle: 'Live answering is active',
+    heroSubtitleHtml: `<p style="margin:0">Your <strong>${planName}</strong> subscription for <strong>${businessName}</strong> is now active.</p>`,
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">Your <strong>${planName}</strong> subscription for <strong>${businessName}</strong> is now active. RingBooker will answer your calls 24/7.</p>`,
+      `<p style="margin:0">Your billing period runs from <strong>${escapeHtmlText(periodStart)}</strong> to <strong>${escapeHtmlText(periodEnd)}</strong>.</p>`,
+    ].join(''),
+    ctaLabel: 'Go to dashboard',
+    ctaUrl: dashboardUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Billing</p>',
+  };
+  const text = [
+    'Live answering is active',
+    `Your ${params.planName} subscription for "${params.shopName}" is now active. RingBooker will answer your calls 24/7.`,
+    `Your billing period runs from ${periodStart} to ${periodEnd}.`,
+    `Go to dashboard: ${dashboardUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
 export function buildForwardingNumberReadyEmailPayload(params: {
   shopName: string;
   forwardingNumber: string;
@@ -513,6 +606,21 @@ export function buildLiveAnsweringEnabledEmailPayload(params: {
   return { input, text };
 }
 
+function billingIssueStatusLabel(status: string): string {
+  switch (status.trim().toLowerCase()) {
+    case 'past_due':
+      return 'Payment failed';
+    case 'canceled':
+      return 'Subscription canceled';
+    case 'paused':
+      return 'Subscription paused';
+    case 'unpaid':
+      return 'Payment overdue';
+    default:
+      return 'Billing issue';
+  }
+}
+
 export function buildLiveAnsweringBillingPausedEmailPayload(params: {
   shopName: string;
   status: string;
@@ -520,11 +628,12 @@ export function buildLiveAnsweringBillingPausedEmailPayload(params: {
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
   const billingUrl = `${base}/user/billing`;
+  const statusLabel = billingIssueStatusLabel(params.status);
   const input: BaseEmailInput = {
     title: 'Live answering is paused',
     previewText: 'Resolve your billing issue to restore live answering.',
     heroTitle: 'Live answering is paused',
-    heroSubtitleHtml: `<p style="margin:0">Billing status for <strong>${escapeHtmlText(params.shopName)}</strong>: <strong>${escapeHtmlText(params.status)}</strong>.</p>`,
+    heroSubtitleHtml: `<p style="margin:0">Billing status for <strong>${escapeHtmlText(params.shopName)}</strong>: <strong>${escapeHtmlText(statusLabel)}</strong>.</p>`,
     bodyHtml: [
       '<p style="margin:0 0 12px 0">Live answering is paused until billing is resolved. RingBooker will not answer forwarded live calls while this issue is active.</p>',
       '<p style="margin:0">Your dashboard and call history are still available.</p>',
@@ -535,7 +644,7 @@ export function buildLiveAnsweringBillingPausedEmailPayload(params: {
   };
   const text = [
     `Live answering is paused for "${params.shopName}".`,
-    `Billing status: ${params.status}`,
+    `Billing status: ${statusLabel}`,
     'RingBooker will not answer forwarded live calls while this issue is active.',
     `Resolve billing issue: ${billingUrl}`,
   ].join('\n');

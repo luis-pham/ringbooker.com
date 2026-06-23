@@ -703,6 +703,7 @@ export type BillingNotificationType =
   | 'forwarding_verified'
   | 'subscription_active'
   | 'payment_failed'
+  | 'subscription_canceled'
   | 'live_answering_enabled'
   | 'live_answering_billing_paused'
   | 'live_answering_billing_paused_canceled'
