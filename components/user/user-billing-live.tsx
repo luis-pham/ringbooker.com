@@ -1044,7 +1044,7 @@ export function UserBillingLive({
                     <div className="billing-trial-cta__copy">
                       <h3>Start your 14-day free trial</h3>
                       <p>
-                        No charge today · RingBooker answers live calls once your trial is active.
+                        No charge today · RingBooker answers live calls once your trial is active. Prices exclude applicable taxes.
                       </p>
                     </div>
                     {checkoutAvailable && availableBillingIntervals.length > 1 ? (
@@ -1383,7 +1383,7 @@ export function UserBillingLive({
                     <div role="tabpanel" id="billing-panel-plans" aria-labelledby="billing-tab-plans">
                       {checkoutAvailable && availableBillingIntervals.length > 1 && !showTrialCtaRow ? (
                         <div className="billing-plans-head">
-                          <p>Billing cycle for displayed prices</p>
+                          <p>Billing cycle for displayed prices, excluding tax</p>
                           <div className="billing-cycle-pill" role="group" aria-label="Billing cycle">
                             <button
                               type="button"
@@ -1540,6 +1540,7 @@ export function UserBillingLive({
                               <p className="billing-plan-card__desc">{plan.description}</p>
                               <div className="billing-plan-card__price">{bigPrice}</div>
                               {priceNote ? <p className="billing-plan-card__price-note">{priceNote}</p> : null}
+                              {priceNote ? <p className="billing-plan-card__price-note">+ tax where applicable</p> : null}
                               <ul className="billing-plan-card__feats">
                                 {plan.features.map((feature) => (
                                   <li key={feature}>{feature}</li>

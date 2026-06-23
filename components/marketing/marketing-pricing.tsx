@@ -306,6 +306,7 @@ export function MarketingPricingTemplate() {
                           plan.price
                         )}
                       </div>
+                      {plan.priceId ? <p className="plan-cta-subnote">+ tax where applicable</p> : null}
                       <div className="plan-div" />
                       <ul className="plan-feats">
                         {plan.benefits.map((benefit) => (
@@ -321,7 +322,7 @@ export function MarketingPricingTemplate() {
                 </div>
 
                 <p className="pricing-foot">
-                  14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime
+                  14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime. Prices exclude applicable taxes. Final total shown at checkout.
                 </p>
               </div>
             </div>

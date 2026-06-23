@@ -930,7 +930,7 @@ export function MarketingHomeTemplate() {
                 <em>you need.</em>
               </h2>
               <p className="pricing-lead reveal">
-                14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime
+                14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime. Prices exclude applicable taxes. Final total shown at checkout.
               </p>
             </div>
             <div className="price-toggle">
@@ -947,6 +947,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-name">Starter</div>
                 <div className="plan-desc">For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.</div>
                 <div className="plan-price" id="ps">$79<span className="plan-price-period">/mo</span></div>
+                <p className="plan-cta-subnote">+ tax where applicable</p>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Up to 100 captured calls/month</li>
@@ -968,6 +969,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-name">Professional</div>
                 <div className="plan-desc">For busier teams that need stronger follow-up, caller context, and provider preference capture.</div>
                 <div className="plan-price" id="pp">$149<span className="plan-price-period">/mo</span></div>
+                <p className="plan-cta-subnote">+ tax where applicable</p>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Up to 200 captured calls/month</li>
@@ -1013,7 +1015,7 @@ export function MarketingHomeTemplate() {
               </div>
             </div>
             <p className="pricing-foot rv d2">
-              14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime
+              14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime. Prices exclude applicable taxes. Final total shown at checkout.
             </p>
           </div>
         </section>
