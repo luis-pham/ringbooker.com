@@ -1058,7 +1058,13 @@ html[data-user-theme="dark"] .overview-left > .checklist-card{
 }
 html[data-user-theme="dark"] .overview-left > .checklist-card .card-title{color:var(--text-dark)}
 html[data-user-theme="dark"] .overview-left > .checklist-card .card-sub{color:var(--text-gray)}
-html[data-user-theme="dark"] .overview-left > .checklist-card .cl-item{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .overview-left > .checklist-card .cl-item{
+  border-bottom-color:var(--border);
+  background:transparent;
+}
+html[data-user-theme="dark"] .overview-left > .checklist-card .cl-item:hover{
+  background:var(--bg-gray);
+}
 html[data-user-theme="dark"] .overview-left > .checklist-card .cl-name{color:var(--text-dark)}
 html[data-user-theme="dark"] .overview-left > .checklist-card .cl-desc{color:var(--text-gray)}
 html[data-user-theme="dark"] .overview-left > .checklist-card .cl-arrow{color:var(--text-light)}
@@ -1069,31 +1075,35 @@ html[data-user-theme="dark"] .overview-left > .checklist-card .cl-circle.done{
   color:#3fb950;
 }
 html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-item--active{
-  background:#F5F2FF;
+  background:rgba(35,134,54,.14);
+  box-shadow:inset 4px 0 0 #3fb950;
+}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-item--active:hover{
+  background:rgba(35,134,54,.2);
 }
 html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-item--active .cl-name{
-  color:#3D2494;
+  color:#3fb950;
 }
 html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle{
-  border-color:#D0CBF0;
-  background:#fff;
-  color:#8b86a3;
+  border-color:#484f58;
+  background:#0d1117;
+  color:var(--text-light);
 }
 html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle.active{
-  border-color:#5C3AC7;
-  background:#5C3AC7;
-  color:#fff;
-  box-shadow:0 0 0 4px #EDE9F8;
+  border-color:#3fb950;
+  background:rgba(35,134,54,.28);
+  color:#3fb950;
+  box-shadow:0 0 0 4px rgba(35,134,54,.16);
 }
 html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle.done{
-  border-color:#10B981;
-  background:#10B981;
-  color:#fff;
+  border-color:#3fb950;
+  background:#3fb950;
+  color:#0d1117;
 }
 html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle.locked{
-  border-color:#D0CBF0;
-  background:#fff;
-  color:#8b86a3;
+  border-color:#484f58;
+  background:#0d1117;
+  color:var(--text-light);
 }
 html[data-user-theme="dark"] .overview-system-status-card.checklist-card,
 html[data-user-theme="dark"] .overview-quick-access-card.shortcuts-card{
