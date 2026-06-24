@@ -1,5 +1,9 @@
 import type { RuntimeBusinessConfig, RuntimeService, VoicePromptVertical } from './types';
 
+type RuntimeBusinessConfigWithPlanGates = RuntimeBusinessConfig & {
+  thirdPartyIntegrationsEnabled?: boolean;
+};
+
 const MAX_SERVICES_IN_PROMPT = 28;
 const MAX_LINE_CHARS = 280;
 
@@ -139,7 +143,14 @@ function renderCallerPhoneStatus(callerPhone: string | null | undefined): string
   return 'CALLER PHONE STATUS: Caller ID is unavailable. If booking, follow-up, callback, or SMS requires contact, ask once for the best callback number.';
 }
 
+function selectedIntegrationForPrompt(config: RuntimeBusinessConfig): string | null {
+  const gatedConfig = config as RuntimeBusinessConfigWithPlanGates;
+  if (gatedConfig.thirdPartyIntegrationsEnabled === false) return null;
+  return config.selectedIntegration ?? null;
+}
+
 export function renderRuntimeEssentials(config: RuntimeBusinessConfig): string {
+  const selectedIntegration = selectedIntegrationForPrompt(config);
   return [
     'RUNTIME BUSINESS CONFIG',
     `BUSINESS NAME: ${compactPromptLine(config.businessName, 120)}`,
@@ -153,7 +164,7 @@ export function renderRuntimeEssentials(config: RuntimeBusinessConfig): string {
     config.hours ? `WEEKLY SCHEDULE (answer hours questions from this -- always Monday through Sunday order, use AM/PM format): ${compactPromptLine(config.hours, 700)}` : null,
     config.providers?.length ? `PROVIDERS / STAFF: ${config.providers.slice(0, 12).join(', ')}` : null,
     config.bookingMethod ? `booking_method: ${config.bookingMethod}` : null,
-    config.selectedIntegration ? `selected_integration: ${config.selectedIntegration}` : null,
+    selectedIntegration ? `selected_integration: ${selectedIntegration}` : null,
     config.vagaroMode ? `vagaro_mode: ${config.vagaroMode}` : null,
     config.vagaroConnectionStatus ? `vagaro_connection_status: ${config.vagaroConnectionStatus}` : null,
     config.bookingUrl ? `BOOKING URL: ${config.bookingUrl}` : null,

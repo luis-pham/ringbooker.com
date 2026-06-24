@@ -1,5 +1,6 @@
 import { getEnv } from '@/src/backend/config/env';
 import { resolvePaddlePriceIdFromCatalog } from '@/src/backend/domain/plan-catalog';
+import { isCapabilityAllowed } from '@/src/backend/domain/shop-plan-capabilities';
 import { logger } from '@/src/backend/observability/logger';
 import type {
   BillingInterval,
@@ -1173,6 +1174,16 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         plan: subscription.plan,
         active: shouldBeActive,
       });
+      if (!isCapabilityAllowed(subscription.plan, 'third_party_integrations')) {
+        await this.deps.shopsRepository.updateUserSettings(shopId, {
+          selected_integration: null,
+          booking_method: 'app',
+        });
+        await this.deps.shopsRepository.updateCalendarConnection(shopId, {
+          google_cal_id: shop.google_cal_id ?? null,
+          google_cal_credentials_encrypted: null,
+        });
+      }
       if (shouldDisableLiveCalls) {
         await this.deps.shopAccessStatesRepository?.upsert({
           shopId,

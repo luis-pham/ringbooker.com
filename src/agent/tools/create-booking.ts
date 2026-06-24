@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
+import { isCapabilityAllowed } from '@/src/backend/domain/shop-plan-capabilities';
 import { logger } from '@/src/backend/observability/logger';
 import { scheduleBookingFollowupJobs } from '@/src/backend/services/bookings/reminder-scheduling';
 import { resolveBookingProviderReadiness } from '@/src/backend/services/calendar/provider-readiness';
+import { ManualCalendarProvider } from '@/src/backend/services/calendar/manual-provider';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import { AVAILABILITY_CACHE_TTL_MS } from '@/src/agent/tools/check-availability';
 import {
@@ -138,8 +140,15 @@ export async function createBookingTool(
     const canonicalServiceName = service.serviceName;
     const requestedTechName = normalizeStaffPreferenceName(parsed.data.techName);
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
-    const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
-    const readiness = resolveBookingProviderReadiness(ctx.shop);
+    const squareRuntimeBlocked =
+      ctx.shop.selected_integration === 'square_appointments' &&
+      !isCapabilityAllowed(ctx.shop.plan, 'third_party_integrations');
+    const providerShop = squareRuntimeBlocked ? { ...ctx.shop, selected_integration: null } : ctx.shop;
+    const calendarProvider: AgentToolContext['calendarProvider'] = squareRuntimeBlocked
+      ? new ManualCalendarProvider(providerShop)
+      : ctx.calendarProvider;
+    const providerMeta = getShopCalendarProviderMetadata(providerShop);
+    const readiness = resolveBookingProviderReadiness(providerShop);
     const availabilityCache = isAvailabilityCacheValid(ctx.availabilityCheck?.latest, {
       providerId: providerMeta.id,
       service: canonicalServiceName,
@@ -190,11 +199,11 @@ export async function createBookingTool(
       skipAvailabilitySearch = cached.skipAvailabilitySearch;
     }
 
-    if (!teamMemberId && readiness.canCreateBooking && requestedTechName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
+    if (!teamMemberId && readiness.canCreateBooking && requestedTechName && providerMeta?.id === 'square_appointments' && calendarProvider.findTeamMemberByName) {
       try {
-        const foundTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(requestedTechName);
+        const foundTeamMemberId = await calendarProvider.findTeamMemberByName(requestedTechName);
         if (foundTeamMemberId) {
-          const availability = await ctx.calendarProvider.checkAvailability({
+          const availability = await calendarProvider.checkAvailability({
             date: parsed.data.date,
             time: parsed.data.time,
             durationMin,
@@ -262,7 +271,7 @@ export async function createBookingTool(
       };
     } else {
       try {
-        result = await ctx.calendarProvider.createBooking({
+        result = await calendarProvider.createBooking({
           shopId: ctx.shop.id,
           customerPhone: ctx.callerPhone,
           customerName: parsed.data.customerName,

@@ -8984,10 +8984,6 @@ export function createBackendApp(deps: {
         );
       }
 
-      const exchanged = await squareExchangeAuthorizationCode({
-        code,
-        redirectUri: buildSquareCallbackUrl(appBaseUrl),
-      });
       const existingShop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
       if (!existingShop) {
         return c.redirect(
@@ -9000,15 +8996,12 @@ export function createBackendApp(deps: {
         );
       }
       if (!isCapabilityAllowed(existingShop.plan, 'third_party_integrations')) {
-        return c.redirect(
-          buildCalendarSettingsRedirect({
-            appBaseUrl,
-            result: 'error',
-            provider,
-            message: 'plan_feature_locked',
-          }),
-        );
+        return planFeatureLockedJson(c, 'third_party_integrations');
       }
+      const exchanged = await squareExchangeAuthorizationCode({
+        code,
+        redirectUri: buildSquareCallbackUrl(appBaseUrl),
+      });
       const current = parseSquareConnectionCredentials(existingShop.google_cal_credentials_encrypted);
       let payload = buildSquareConnectionPayload(current, exchanged);
       let squareOptions: Awaited<ReturnType<typeof squareFetchConnectionOptions>>['options'] | null = null;

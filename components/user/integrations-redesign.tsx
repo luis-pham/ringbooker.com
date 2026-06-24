@@ -1335,6 +1335,9 @@ function ConfiguredIntegrationView({
   const displayName = app?.key === 'custom' ? 'Any booking link' : app?.name ?? 'Booking link';
   const statusDotConnected = Boolean(isFullSync || (!isFullSyncApp && !needsReconnect && !needsSetup));
   const statusDotWarning = Boolean(!providerStatusPending && (needsReconnect || needsSetup));
+  const planAllowsIntegrations = canUseThirdPartyIntegrations;
+  const showLiveSyncBadge = Boolean(isFullSync && !needsReconnect && planAllowsIntegrations);
+  const showBookingLinkBadge = !isFullSyncApp;
 
   useEffect(() => {
     setUrlDraft(bookingUrl ?? '');
@@ -1371,11 +1374,11 @@ function ConfiguredIntegrationView({
           <div className="integration-configured-copy">
             <div className="integration-configured-title-row">
               <strong>{displayName}</strong>
-              {isFullSync || needsReconnect || needsSetup ? (
+              {showLiveSyncBadge ? (
                 <SectionBadge icon="refresh" label="Live sync" variant="teal" />
-              ) : (
+              ) : showBookingLinkBadge ? (
                 <SectionBadge icon="link" label="Booking link" variant="gray" />
-              )}
+              ) : null}
             </div>
             <span className="integration-status-line">
               <StatusDot connected={statusDotConnected} warning={statusDotWarning} />

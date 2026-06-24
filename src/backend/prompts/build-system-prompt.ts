@@ -238,13 +238,18 @@ function buildProductionBusinessConfig(
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
   const effectiveRuntimeConfig = resolveEffectiveRuntimeConfig(shop);
-  const providerMeta = getShopCalendarProviderMetadata(shop);
+  const thirdPartyIntegrationsEnabled = isCapabilityAllowed(shop.plan, 'third_party_integrations');
+  const selectedIntegration = thirdPartyIntegrationsEnabled ? shop.selected_integration ?? null : null;
+  const promptProviderShop = selectedIntegration === (shop.selected_integration ?? null)
+    ? shop
+    : { ...shop, selected_integration: selectedIntegration };
+  const providerMeta = getShopCalendarProviderMetadata(promptProviderShop);
   const timeContext = resolveShopTimeContext(shop, new Date());
-  const hasBookingIntegration = Boolean(shop.selected_integration?.trim() || shop.booking_url?.trim());
+  const hasBookingIntegration = Boolean(selectedIntegration?.trim() || shop.booking_url?.trim());
   const businessType = shop.vertical
     ? shop.vertical.replace(/_/g, ' ')
     : 'service business';
-  return {
+  const runtimeConfig = {
     businessName: compactLine(shop.name, 120),
     businessType,
     additionalServices: shop.vertical_detail ? shop.vertical_detail.replace(/_/g, ' ') : null,
@@ -260,7 +265,8 @@ function buildProductionBusinessConfig(
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
     bookingMethod: shop.booking_method ?? null,
-    selectedIntegration: shop.selected_integration ?? null,
+    selectedIntegration,
+    thirdPartyIntegrationsEnabled,
     vagaroMode: shop.vagaro_mode ?? null,
     vagaroConnectionStatus: shop.vagaro_connection_status ?? null,
     bookingUrl: shop.booking_url ?? null,
@@ -280,7 +286,8 @@ function buildProductionBusinessConfig(
     handoffPolicy: renderHandoffPolicy(shop),
     ...(callerPhone !== undefined ? { callerPhone } : {}),
     callerContext: buildCustomerSection(promptCustomer),
-  };
+  } as RuntimeBusinessConfig & { thirdPartyIntegrationsEnabled?: boolean };
+  return runtimeConfig;
 }
 
 export function buildSystemPrompt(input: {
