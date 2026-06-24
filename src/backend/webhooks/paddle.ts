@@ -64,6 +64,75 @@ function shouldEmailUnmappedPaddleWebhook(eventType: string): boolean {
   return true;
 }
 
+type SelfServePaddlePlan = 'starter' | 'professional';
+
+function firstTrimmedString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asSelfServePaddlePlan(value: unknown): SelfServePaddlePlan | null {
+  if (value === 'starter' || value === 'professional') return value;
+  return null;
+}
+
+function extractPaddlePayloadShopId(data: Record<string, unknown> | undefined): string | null {
+  if (!data) return null;
+  const customData = asRecord(data.custom_data) ?? asRecord(data.customData) ?? asRecord(data.metadata);
+  return firstTrimmedString(
+    customData?.shop_id,
+    customData?.shopId,
+    data.shop_id,
+    data.shopId,
+  );
+}
+
+function extractPaddlePayloadPriceId(data: Record<string, unknown> | undefined): string | null {
+  if (!data) return null;
+  const direct = firstTrimmedString(data.price_id);
+  if (direct) return direct;
+  const items = Array.isArray(data.items) ? data.items : [];
+  for (const itemValue of items) {
+    const item = asRecord(itemValue);
+    if (!item) continue;
+    const nestedPrice = asRecord(item.price);
+    const candidate = firstTrimmedString(item.price_id, nestedPrice?.id);
+    if (candidate) return candidate;
+  }
+  return null;
+}
+
+function mapPaddlePayloadPlan(data: Record<string, unknown> | undefined): SelfServePaddlePlan | null {
+  const priceId = extractPaddlePayloadPriceId(data);
+  if (!priceId) return null;
+  const env = getEnv();
+  const matches: Array<[string | undefined, SelfServePaddlePlan]> = [
+    [env.PADDLE_PRICE_STARTER_MONTHLY, 'starter'],
+    [env.PADDLE_PRICE_STARTER_ANNUAL, 'starter'],
+    [env.PADDLE_PRICE_STARTER, 'starter'],
+    [env.PADDLE_PRICE_PROFESSIONAL_MONTHLY, 'professional'],
+    [env.PADDLE_PRICE_PROFESSIONAL_ANNUAL, 'professional'],
+    [env.PADDLE_PRICE_PROFESSIONAL, 'professional'],
+  ];
+  for (const [candidate, plan] of matches) {
+    if (candidate?.trim() && candidate.trim() === priceId) return plan;
+  }
+  return null;
+}
+
+function inferPendingPlanChangeTarget(subscriptionMetadata: Record<string, unknown> | null | undefined): SelfServePaddlePlan | null {
+  const pending = asRecord(subscriptionMetadata?.pending_plan_upgrade);
+  return asSelfServePaddlePlan(pending?.targetPlan);
+}
+
 export async function handlePaddleWebhook(
   c: Context,
   deps: {
@@ -132,6 +201,17 @@ export async function handlePaddleWebhook(
     }
 
     let syncResult: Awaited<ReturnType<BillingProviderAdapter['syncWebhookEvent']>> | null = null;
+    const eventType = event.event_type.toLowerCase();
+    const mappedPlanFromPayload = mapPaddlePayloadPlan(event.data);
+    const preSyncShopId = eventType === 'subscription.updated'
+      ? extractPaddlePayloadShopId(event.data)
+      : null;
+    const preSyncShop = preSyncShopId && deps.shopsRepository
+      ? await deps.shopsRepository.findById(preSyncShopId).catch((error) => {
+          logger.warn({ err: error, shopId: preSyncShopId }, 'paddle_plan_change_pre_sync_shop_lookup_failed');
+          return null;
+        })
+      : null;
     if (deps.billingProvider?.provider === 'paddle' && event.data) {
       syncResult = await deps.billingProvider.syncWebhookEvent({
         eventType: event.event_type,
@@ -141,13 +221,65 @@ export async function handlePaddleWebhook(
           __paddle_event_occurred_at: event.occurred_at,
         },
       });
-      const eventType = event.event_type.toLowerCase();
       if (syncResult?.shopId && syncResult.subscription && deps.jobsRepository) {
+        const syncedStatus = syncResult.subscription.status;
         const subscriptionId = syncResult.subscription.id;
+        if (eventType === 'subscription.updated' && syncResult.shopPlanChanged) {
+          const currentPlan = asSelfServePaddlePlan(syncResult.subscription.plan) ?? mappedPlanFromPayload;
+          const pendingTargetPlan = inferPendingPlanChangeTarget(syncResult.subscription.metadata);
+          const previousPlan = asSelfServePaddlePlan(preSyncShop?.plan) ??
+            (pendingTargetPlan && pendingTargetPlan === currentPlan
+              ? currentPlan === 'professional'
+                ? 'starter'
+                : 'professional'
+              : null);
+          const squareDisconnected = currentPlan === 'starter' && preSyncShop?.selected_integration === 'square_appointments';
+          if (currentPlan === 'professional' && previousPlan !== null && previousPlan !== 'professional') {
+            await deps.jobsRepository.enqueue({
+              shopId: syncResult.shopId,
+              type: 'lifecycle_email',
+              payload: {
+                kind: 'plan_upgraded',
+                shopId: syncResult.shopId,
+                subscriptionId,
+                planName: currentPlan,
+              },
+              runAt: new Date(),
+              idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:plan_upgraded:${currentPlan}`,
+            });
+          } else if (currentPlan === 'starter' && previousPlan === 'professional') {
+            await deps.jobsRepository.enqueue({
+              shopId: syncResult.shopId,
+              type: 'lifecycle_email',
+              payload: {
+                kind: 'plan_downgraded',
+                shopId: syncResult.shopId,
+                subscriptionId,
+                planName: currentPlan,
+                squareDisconnected,
+              },
+              runAt: new Date(),
+              idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:plan_downgraded:${currentPlan}`,
+            });
+          }
+        }
+        if (eventType === 'subscription.created' && syncedStatus === 'trialing') {
+          await deps.jobsRepository.enqueue({
+            shopId: syncResult.shopId,
+            type: 'lifecycle_email',
+            payload: {
+              kind: 'trial_started',
+              shopId: syncResult.shopId,
+              subscriptionId,
+            },
+            runAt: new Date(),
+            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:trial_started`,
+          });
+        }
         if (
           eventType.includes('payment_method.saved') &&
           syncResult.subscription.paymentMethodStatus === 'valid' &&
-          ['trialing', 'active'].includes(syncResult.subscription.status)
+          ['trialing', 'active'].includes(syncedStatus)
         ) {
           await deps.jobsRepository.enqueue({
             shopId: syncResult.shopId,
@@ -200,18 +332,38 @@ export async function handlePaddleWebhook(
             idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_paused:${syncResult.subscription.status}:${syncResult.subscription.paymentMethodStatus ?? 'unknown'}`,
           });
         }
+        if ((eventType === 'transaction.completed' || eventType === 'transaction.paid') && syncedStatus === 'active') {
+          const transactionId =
+            typeof event.data.id === 'string'
+              ? event.data.id
+              : typeof (event.data as { transaction_id?: unknown }).transaction_id === 'string'
+                ? (event.data as { transaction_id: string }).transaction_id
+                : event.event_id;
+          await deps.jobsRepository.enqueue({
+            shopId: syncResult.shopId,
+            type: 'lifecycle_email',
+            payload: {
+              kind: 'subscription_active',
+              shopId: syncResult.shopId,
+              subscriptionId,
+              status: syncedStatus,
+            },
+            runAt: new Date(),
+            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:first_charge:${transactionId}`,
+          });
+        }
         if (
           ['subscription.activated', 'subscription.resumed'].some((name) => eventType.includes(name)) &&
-          ['active', 'trialing'].includes(syncResult.subscription.status)
+          ['active', 'trialing'].includes(syncedStatus)
         ) {
-          if (syncResult.subscription.status === 'active') {
+          if (syncedStatus === 'active') {
             await deps.jobsRepository.enqueue({
               shopId: syncResult.shopId,
               type: 'lifecycle_email',
               payload: {
                 kind: 'subscription_active',
                 subscriptionId,
-                status: syncResult.subscription.status,
+                status: syncedStatus,
               },
               runAt: new Date(),
               idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:subscription_active`,
@@ -223,10 +375,10 @@ export async function handlePaddleWebhook(
             payload: {
               kind: 'live_answering_billing_restored',
               subscriptionId,
-              status: syncResult.subscription.status,
+              status: syncedStatus,
             },
             runAt: new Date(),
-            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_restored:${syncResult.subscription.status}`,
+            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_restored:${syncedStatus}`,
           });
         }
       } else if (!syncResult && shouldEmailUnmappedPaddleWebhook(event.event_type)) {

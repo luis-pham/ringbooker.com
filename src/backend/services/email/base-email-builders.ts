@@ -676,6 +676,83 @@ export function buildLiveAnsweringBillingRestoredEmailPayload(params: {
   return { input, text };
 }
 
+export function buildPlanUpgradedEmailPayload(params: {
+  shopName: string;
+  planName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const dashboardUrl = `${base}/user`;
+  const input: BaseEmailInput = {
+    title: "You're now on RingBooker Pro",
+    previewText: 'Pro features are now unlocked for your account.',
+    heroTitle: 'Welcome to Pro',
+    heroSubtitleHtml: '<p style="margin:0">Your plan has been upgraded to <strong>Professional</strong>.</p>',
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">Pro features are now active for ${escapeHtmlText(params.shopName)}, including 200 captured calls per month and Square Appointments integration.</p>`,
+      "<p style=\"margin:0\">Head to your dashboard to explore what's new.</p>",
+    ].join(''),
+    ctaLabel: 'Go to dashboard',
+    ctaUrl: dashboardUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  const text = [
+    "You're now on RingBooker Pro.",
+    '',
+    `Pro features are now active for "${params.shopName}", including 200 captured calls per month and Square Appointments integration.`,
+    '',
+    dashboardUrl,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildPlanDowngradedEmailPayload(params: {
+  shopName: string;
+  planName: string;
+  appBaseUrl: string;
+  squareDisconnected: boolean;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const billingUrl = `${base}/user/billing`;
+  const input: BaseEmailInput = {
+    title: 'Your RingBooker plan has changed to Starter',
+    previewText: "Your plan has been updated — here's what changed.",
+    heroTitle: 'Plan changed to Starter',
+    heroSubtitleHtml: '<p style="margin:0">Your account has been updated to the <strong>Starter</strong> plan.</p>',
+    bodyHtml: params.squareDisconnected
+      ? [
+          '<p style="margin:0 0 12px 0">Your RingBooker plan is now Starter, which includes 100 captured calls per month.</p>',
+          '<p style="margin:0 0 12px 0"><strong>Important:</strong> Square Appointments integration is not available on Starter. Your Square connection has been disconnected. Bookings will fall back to your booking link.</p>',
+          '<p style="margin:0">You can upgrade back to Pro anytime to reconnect Square.</p>',
+        ].join('')
+      : [
+          '<p style="margin:0 0 12px 0">Your RingBooker plan is now Starter, which includes 100 captured calls per month.</p>',
+          '<p style="margin:0">You can upgrade back to Pro anytime from your billing settings.</p>',
+        ].join(''),
+    ctaLabel: 'Manage billing',
+    ctaUrl: billingUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  const text = params.squareDisconnected
+    ? [
+        'Your RingBooker plan has changed to Starter.',
+        '',
+        'Your plan now includes 100 captured calls per month.',
+        '',
+        'Important: Square Appointments has been disconnected. Bookings will fall back to your booking link.',
+        '',
+        `You can upgrade back to Pro anytime: ${billingUrl}`,
+      ].join('\n')
+    : [
+        'Your RingBooker plan has changed to Starter.',
+        '',
+        'Your plan now includes 100 captured calls per month.',
+        '',
+        `You can upgrade back to Pro anytime: ${billingUrl}`,
+      ].join('\n');
+  return { input, text };
+}
+
 export function buildInternalAlertEmailPayload(params: {
   title: string;
   summary: string;
