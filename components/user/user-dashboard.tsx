@@ -517,9 +517,9 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .overview-go-live-checklist .card-title{margin-bottom:8px}
 .overview-go-live-checklist .card-sub{margin-bottom:12px}
 .cl-progress{display:grid;gap:7px;margin-bottom:12px}
-.cl-progress-label{font-size:12px;font-weight:600;line-height:1;color:#5C3AC7}
-.cl-progress-track{height:6px;border-radius:999px;background:#EDE9F8;overflow:hidden}
-.cl-progress-fill{height:100%;border-radius:999px;background:#5C3AC7;transition:width .2s ease}
+.cl-progress-label{font-size:12px;font-weight:600;line-height:1;color:#047857}
+.cl-progress-track{height:6px;border-radius:999px;background:#d1fae5;overflow:hidden}
+.cl-progress-fill{height:100%;border-radius:999px;background:#10B981;transition:width .2s ease}
 .cl-item{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px;border-bottom:1px solid #f9fafb;border-radius:8px;cursor:pointer;transition:background .15s ease,opacity .1s;text-decoration:none;color:inherit}
 .cl-item:last-child{border:none}
 .cl-item:hover{background:#fafafa}
@@ -1058,6 +1058,9 @@ html[data-user-theme="dark"] .overview-left > .checklist-card{
 }
 html[data-user-theme="dark"] .overview-left > .checklist-card .card-title{color:var(--text-dark)}
 html[data-user-theme="dark"] .overview-left > .checklist-card .card-sub{color:var(--text-gray)}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-progress-label{color:#3fb950}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-progress-track{background:rgba(35,134,54,.16)}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-progress-fill{background:#3fb950}
 html[data-user-theme="dark"] .overview-left > .checklist-card .cl-item{
   border-bottom-color:var(--border);
   background:transparent;
