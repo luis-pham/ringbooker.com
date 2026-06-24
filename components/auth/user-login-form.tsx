@@ -1,16 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus_Jakarta_Sans } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-});
 
 export function UserLoginForm() {
   const router = useRouter();
@@ -81,7 +75,7 @@ export function UserLoginForm() {
   }
 
   return (
-    <main className={`${styles.page} ${plusJakarta.className}`}>
+    <main className={styles.page}>
       <div className={styles.topbar}>
         <a className={styles.brand} href="/">
           <span className={styles.brandMark}>

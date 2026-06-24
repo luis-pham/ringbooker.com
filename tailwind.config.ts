@@ -28,8 +28,8 @@ const config: Config = {
         xl3: '2rem',
       },
       fontFamily: {
-        serif: ['Lora', 'Georgia', 'serif'],
-        sans: ['Plus Jakarta Sans', 'Mona Sans Variable', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['Georgia', 'serif'],
+        sans: ['Mona Sans Variable', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         soft: '0 16px 48px rgba(17, 24, 39, 0.08)',

@@ -41,7 +41,7 @@ html{scrollbar-gutter:stable;background:var(--surface-page)}
 body{
   margin:0;
   min-height:100vh;
-  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-family:inherit;
   color:var(--text-dark);
   background:var(--surface-page);
   -webkit-font-smoothing:antialiased;
@@ -437,8 +437,8 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .overview-banner.post-live .banner-title{color:#15803d}
 .overview-banner.post-live .banner-sub{color:#16a34a;opacity:.8}
 .banner-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
-.btn-ghost-sm{padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;background:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
-.btn-primary-sm{padding:7px 16px;background:#111;border:none;border-radius:8px;font-size:13px;font-weight:500;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn-ghost-sm{padding:7px 14px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;background:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn-primary-sm{padding:7px 16px;background:#111;border:none;border-radius:8px;font-size:13px;font-weight:500;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .overview-banner-footnote{font-size:12px;color:#b45309;margin:-8px 0 14px;padding:0 4px}
 .overview-banner-test-status{font-size:12px;color:var(--text-gray);margin:0}
 .overview-bk-nudge{

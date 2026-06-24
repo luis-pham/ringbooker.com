@@ -1,16 +1,10 @@
 'use client';
 
 import { useLayoutEffect, useState } from 'react';
-import { Plus_Jakarta_Sans } from 'next/font/google';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-});
 
 function isTrialPlan(value: string | null): value is 'starter' | 'professional' {
   return value === 'starter' || value === 'professional';
@@ -92,7 +86,7 @@ export function UserSignupForm() {
   const googleStartUrl = `/api/backend/auth/user/google/start?intent=signup&plan=${encodeURIComponent(trialPlan)}`;
 
   return (
-    <main className={`${styles.page} ${plusJakarta.className}`}>
+    <main className={styles.page}>
       <div className={styles.topbar}>
         <a className={styles.brand} href="/">
           <span className={styles.brandMark}>
