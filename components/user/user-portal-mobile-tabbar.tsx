@@ -3,11 +3,35 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { IconAlertCircleFilled } from '@tabler/icons-react';
 
 import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
 import { readCachedGoLiveNavVisible, writeCachedGoLiveNavVisible } from '@/components/user/user-portal-go-live-cache';
 
 export type { UserPortalNavKey };
+
+const BILLING_ALERT_NAV_VARIANTS = new Set(['billing_issue', 'past_due', 'paused', 'canceled', 'trial_expired']);
+const BILLING_ALERT_SUBSCRIPTION_STATUSES = new Set(['past_due', 'unpaid', 'paused', 'canceled', 'trial_expired']);
+
+type UserNavStateForMobileTabbar = {
+  ok?: boolean;
+  onboardingRequired?: boolean;
+  liveCallsEnabled?: boolean;
+  billingBannerVariant?: string | null;
+  blockReason?: string | null;
+  subscriptionStatus?: string | null;
+  billingStatus?: string | null;
+};
+
+function shouldShowBillingAlertFromNavState(data: UserNavStateForMobileTabbar): boolean {
+  const billingVariant = data.billingBannerVariant ?? '';
+  const subscriptionStatus = data.subscriptionStatus ?? data.billingStatus ?? '';
+  return (
+    BILLING_ALERT_NAV_VARIANTS.has(billingVariant) ||
+    BILLING_ALERT_SUBSCRIPTION_STATUSES.has(subscriptionStatus) ||
+    Boolean(data.blockReason)
+  );
+}
 
 type UserPortalMobileTabbarProps = {
   active: UserPortalNavKey;
@@ -109,6 +133,7 @@ function IconMore(): ReactNode {
 /** Fixed bottom navigation for /user/* on small viewports (see globals.css `.user-mobile-tabbar`). */
 export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) {
   const [showGoLive, setShowGoLive] = useState(() => active === 'go-live' || readCachedGoLiveNavVisible() === true);
+  const [showBillingAlert, setShowBillingAlert] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,12 +148,13 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
     }
 
     void fetch('/api/backend/user/nav-state')
-      .then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean })
+      .then(async (response) => (await response.json()) as UserNavStateForMobileTabbar)
       .then((body) => {
         if (cancelled || !body.ok) {
           return;
         }
         const next = Boolean(!body.onboardingRequired && !body.liveCallsEnabled);
+        setShowBillingAlert(shouldShowBillingAlertFromNavState(body));
         writeCachedGoLiveNavVisible(next);
         if (active !== 'go-live') {
           setShowGoLive(next);
@@ -141,7 +167,7 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
     };
   }, [active]);
 
-  const item = (key: UserPortalNavKey, href: string, label: string, icon: ReactNode) => {
+  const item = (key: UserPortalNavKey, href: string, label: string, icon: ReactNode, billingAlert = false) => {
     const isActive = active === key;
     return (
       <Link
@@ -150,7 +176,14 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
         prefetch
         className={`user-mobile-tabbar__link${isActive ? ' user-mobile-tabbar__link--active' : ''}`}
       >
-        <span className="user-mobile-tabbar__icon">{icon}</span>
+        <span className="user-mobile-tabbar__icon" style={billingAlert ? { position: 'relative' } : undefined}>
+          {icon}
+          {billingAlert ? (
+            <span aria-label="Billing needs attention" title="Billing needs attention" style={{ position: 'absolute', top: -4, right: -7, display: 'inline-flex', color: '#dc2626', background: 'var(--surface-card, #fff)', borderRadius: 999 }}>
+              <IconAlertCircleFilled size={13} stroke={1.8} aria-hidden="true" />
+            </span>
+          ) : null}
+        </span>
         <span className="user-mobile-tabbar__label">{label}</span>
       </Link>
     );
@@ -169,7 +202,7 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
       {item('calls', '/user/calls', 'Calls', <IconCalls />)}
       {item('bookings', '/user/bookings', 'Bookings', <IconBookings />)}
       {setupSlot}
-      {item('more', '/user/more', 'More', <IconMore />)}
+      {item('more', '/user/more', 'More', <IconMore />, showBillingAlert)}
     </nav>
   );
 }

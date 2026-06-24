@@ -17,7 +17,7 @@ export function adminSubscriptionLabel(s: AdminShopStatus): string {
     case 'paused':
       return 'Paused';
     case 'unpaid':
-      return 'Unpaid';
+      return 'Payment overdue';
     case 'incomplete':
       return 'Incomplete';
     case 'unknown':

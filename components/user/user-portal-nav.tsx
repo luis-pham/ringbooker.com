@@ -3,9 +3,33 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { IconAlertCircleFilled } from '@tabler/icons-react';
 
 import { readCachedGoLiveNavVisible, writeCachedGoLiveNavVisible } from '@/components/user/user-portal-go-live-cache';
 import { useSidebarNavTooltipHandlers, useUserSidebarCollapsed } from '@/components/user/user-portal-sidebar-controls';
+
+const BILLING_ALERT_NAV_VARIANTS = new Set(['billing_issue', 'past_due', 'paused', 'canceled', 'trial_expired']);
+const BILLING_ALERT_SUBSCRIPTION_STATUSES = new Set(['past_due', 'unpaid', 'paused', 'canceled', 'trial_expired']);
+
+type UserNavStateForPortalNav = {
+  ok?: boolean;
+  onboardingRequired?: boolean;
+  liveCallsEnabled?: boolean;
+  billingBannerVariant?: string | null;
+  blockReason?: string | null;
+  subscriptionStatus?: string | null;
+  billingStatus?: string | null;
+};
+
+function shouldShowBillingAlertFromNavState(data: UserNavStateForPortalNav): boolean {
+  const billingVariant = data.billingBannerVariant ?? '';
+  const subscriptionStatus = data.subscriptionStatus ?? data.billingStatus ?? '';
+  return (
+    BILLING_ALERT_NAV_VARIANTS.has(billingVariant) ||
+    BILLING_ALERT_SUBSCRIPTION_STATUSES.has(subscriptionStatus) ||
+    Boolean(data.blockReason)
+  );
+}
 
 export type UserPortalNavKey =
   | 'overview'
@@ -31,6 +55,7 @@ function NavItem({
   active,
   badgeCount,
   attentionDot,
+  billingAlert,
 }: {
   navKey: UserPortalNavKey;
   href: string;
@@ -39,6 +64,7 @@ function NavItem({
   active: UserPortalNavKey;
   badgeCount?: number;
   attentionDot?: boolean;
+  billingAlert?: boolean;
 }) {
   const { collapsed } = useUserSidebarCollapsed();
   const tooltipHandlers = useSidebarNavTooltipHandlers(label);
@@ -55,6 +81,11 @@ function NavItem({
     >
       <div className="nav-icon">{icon}</div>
       <span className="nav-item-label">{label}</span>
+      {billingAlert ? (
+        <span aria-label="Billing needs attention" title="Billing needs attention" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, color: '#dc2626' }}>
+          <IconAlertCircleFilled size={13} stroke={1.8} aria-hidden="true" />
+        </span>
+      ) : null}
       {attentionDot ? <span className="nav-attention-dot" aria-label={`${label} needs attention`} /> : null}
       {badgeCount && badgeCount > 0 ? (
         <span
@@ -90,6 +121,7 @@ function navLink(
   active: UserPortalNavKey,
   badgeCount?: number,
   attentionDot?: boolean,
+  billingAlert?: boolean,
 ) {
   return (
     <NavItem
@@ -101,6 +133,7 @@ function navLink(
       active={active}
       badgeCount={badgeCount}
       attentionDot={attentionDot}
+      billingAlert={billingAlert}
     />
   );
 }
@@ -205,6 +238,7 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
   const [followUpCount, setFollowUpCount] = useState(0);
   const [showGoLive, setShowGoLive] = useState(() => active === 'go-live');
   const [goLiveNavResolved, setGoLiveNavResolved] = useState(() => active === 'go-live');
+  const [showBillingAlert, setShowBillingAlert] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,7 +259,7 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
 
     void Promise.allSettled([
       fetch('/api/backend/user/calls/summary').then(async (response) => (await response.json()) as { ok?: boolean; followUpCount?: number }),
-      fetch('/api/backend/user/nav-state').then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean }),
+      fetch('/api/backend/user/nav-state').then(async (response) => (await response.json()) as UserNavStateForPortalNav),
     ])
       .then(([callsResult, navResult]) => {
         if (cancelled) return;
@@ -234,6 +268,7 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
         }
         if (navResult.status === 'fulfilled' && navResult.value.ok) {
           const next = Boolean(!navResult.value.onboardingRequired && !navResult.value.liveCallsEnabled);
+          setShowBillingAlert(shouldShowBillingAlertFromNavState(navResult.value));
           writeCachedGoLiveNavVisible(next);
           if (active !== 'go-live') {
             setShowGoLive(next);
@@ -273,7 +308,7 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
         {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active)}
         {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active)}
         <div className="nav-label">Account</div>
-        {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}
+        {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active, undefined, undefined, showBillingAlert)}
         {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
       </div>
     </div>

@@ -1,3 +1,6 @@
+// NOTE: This helper is currently not imported by any rendered UI component.
+// Logic order fixed: payment method check must precede forwarding verified check.
+
 export type PhoneSetupState =
   | 'onboarding_incomplete'
   | 'setup_ready_for_test'
@@ -45,11 +48,6 @@ export function resolvePhoneSetupState(input: PhoneSetupStatusInput): PhoneSetup
     return 'billing_issue';
   }
   if (input.liveCallsEnabled && input.blockReason !== 'subscription_inactive') return 'live_answering_active';
-  if (input.primaryCta === 'enable_live_answering' || input.forwardingSetupVerified) return 'ready_to_enable_live';
-  if (input.hasForwardingNumber && !input.forwardingSetupVerified) return 'forwarding_verification_needed';
-  if (input.primaryCta === 'set_up_call_forwarding' || (input.hasPaymentMethod && !input.hasForwardingNumber)) {
-    return 'forwarding_number_needed';
-  }
   if (
     ['unknown', 'pending'].includes(input.paymentMethodStatus ?? '') &&
     ['active', 'trialing'].includes(input.subscriptionStatus ?? '') &&
@@ -58,6 +56,11 @@ export function resolvePhoneSetupState(input: PhoneSetupStatusInput): PhoneSetup
     return 'payment_verification_pending';
   }
   if ((input.paymentMethodStatus ?? 'none') !== 'valid' || !input.hasPaymentMethod) return 'payment_method_required';
+  if (input.primaryCta === 'enable_live_answering' || input.forwardingSetupVerified) return 'ready_to_enable_live';
+  if (input.hasForwardingNumber && !input.forwardingSetupVerified) return 'forwarding_verification_needed';
+  if (input.primaryCta === 'set_up_call_forwarding' || !input.hasForwardingNumber) {
+    return 'forwarding_number_needed';
+  }
   if (input.hasForwardingNumber) return 'forwarding_number_ready';
   return 'setup_ready_for_test';
 }

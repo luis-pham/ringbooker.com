@@ -27,6 +27,20 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { integrationErrorMessage, normalizeIntegrationError } from '@/hooks/useIntegrations';
 import type { IntegrationError, VagaroConnectionStatus, VagaroMode } from '@/hooks/useIntegrations';
 
+const BILLING_BLOCKED_SUBSCRIPTION_STATUSES = new Set(['past_due', 'unpaid', 'paused', 'canceled', 'trial_expired']);
+
+function BillingIssueBanner() {
+  return (
+    <div
+      className="note integration-error-note"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+    >
+      <span>Some features are unavailable due to a billing issue.</span>
+      <a className="btn user-save integrations-primary-button" href="/user/billing">Resolve billing issue</a>
+    </div>
+  );
+}
+
 function AppLogo({ app }: { app: IntegrationApp }) {
   if (app.logoSrc) {
     return (
@@ -1291,6 +1305,7 @@ function ConfiguredIntegrationView({
   fullSyncProviderStatusLoaded = true,
   fullSyncSetupNeeded = false,
   canUseThirdPartyIntegrations,
+  canShowStarterUpgradeBanner = true,
   onChange,
   onReconnect,
   onSaveBookingUrl,
@@ -1302,6 +1317,7 @@ function ConfiguredIntegrationView({
   fullSyncProviderStatusLoaded?: boolean;
   fullSyncSetupNeeded?: boolean;
   canUseThirdPartyIntegrations: boolean;
+  canShowStarterUpgradeBanner?: boolean;
   onChange: () => void;
   onReconnect?: () => void;
   onSaveBookingUrl: (url: string) => Promise<void>;
@@ -1342,7 +1358,7 @@ function ConfiguredIntegrationView({
     return (
       <>
         <DirectBookingConfirm onChange={onChange} configured />
-        {!canUseThirdPartyIntegrations ? <StarterUpgradeBanner /> : null}
+        {!canUseThirdPartyIntegrations && canShowStarterUpgradeBanner ? <StarterUpgradeBanner /> : null}
       </>
     );
   }
@@ -1418,7 +1434,7 @@ function ConfiguredIntegrationView({
         ) : null}
       </section>
       {message ? <div className="note">{message}</div> : null}
-      {!canUseThirdPartyIntegrations ? <StarterUpgradeBanner /> : null}
+      {!canUseThirdPartyIntegrations && canShowStarterUpgradeBanner ? <StarterUpgradeBanner /> : null}
     </>
   );
 }
@@ -1432,10 +1448,11 @@ type IntegrationsRedesignProps = {
   calendarStatusKind?: 'connected' | 'error' | null;
 };
 
-function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegration, initialBookingUrl }: {
+function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegration, initialBookingUrl, canShowStarterUpgradeBanner }: {
   initialBookingMethod?: BookingMethod;
   initialSelectedIntegration?: string | null;
   initialBookingUrl?: string | null;
+  canShowStarterUpgradeBanner: boolean;
 }) {
   const [savedBookingMethod, setSavedBookingMethod] = useState<BookingMethod>(initialBookingMethod ?? null);
   const [savedSelectedApp, setSavedSelectedApp] = useState<IntegrationAppKey | null>(fromBackendProviderKey(initialSelectedIntegration));
@@ -1600,6 +1617,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
           bookingUrl={savedBookingUrl.trim() || null}
           fullSyncConnected={false}
           canUseThirdPartyIntegrations={false}
+          canShowStarterUpgradeBanner={canShowStarterUpgradeBanner}
           onChange={() => {
             setShowSetupFlow(true);
             setBookingMethodState(null);
@@ -1653,7 +1671,7 @@ function StarterIntegrationsView({ initialBookingMethod, initialSelectedIntegrat
 
       <hr className="integration-divider" />
 
-      <StarterUpgradeBanner />
+      {canShowStarterUpgradeBanner ? <StarterUpgradeBanner /> : null}
 
       <button type="button" className="user-link integrations-later-link" onClick={() => void chooseMethod('later')}>
         I&apos;ll set this up later
@@ -1701,6 +1719,7 @@ export function IntegrationsRedesign({
   const [forceMethodQuestion, setForceMethodQuestion] = useState(false);
   const [bookingUrlOverride, setBookingUrlOverride] = useState<string | null>(null);
   const [showCalendarStatusBanner, setShowCalendarStatusBanner] = useState(Boolean(calendarStatus));
+  const [billingSubscriptionStatus, setBillingSubscriptionStatus] = useState<string | null>(null);
   const configuredBookingUrl = bookingUrlOverride ?? status.bookingLinkUrl ?? initialBookingUrl ?? null;
   const configuredSelectedAppKey = status.selectedApp ?? fromBackendProviderKey(initialSelectedIntegration);
   const configuredSelectedApp = useMemo(() => findIntegrationApp(configuredSelectedAppKey), [configuredSelectedAppKey]);
@@ -1723,6 +1742,8 @@ export function IntegrationsRedesign({
 	    )
 	  );
   const showMethodQuestion = status.step === 'question' || forceMethodQuestion;
+  const hasBillingBlock = BILLING_BLOCKED_SUBSCRIPTION_STATUSES.has(billingSubscriptionStatus ?? '');
+  const canShowStarterUpgradeBanner = billingSubscriptionStatus === 'active' || billingSubscriptionStatus === 'trialing';
 
   useEffect(() => {
     if (!calendarStatus) {
@@ -1734,18 +1755,40 @@ export function IntegrationsRedesign({
     return () => window.clearTimeout(timeout);
   }, [calendarStatus]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/backend/user/nav-state')
+      .then(async (response) => (await response.json()) as { ok?: boolean; subscriptionStatus?: string | null; billingStatus?: string | null; blockReason?: string | null })
+      .then((body) => {
+        if (cancelled || !body.ok) return;
+        setBillingSubscriptionStatus(body.subscriptionStatus ?? body.billingStatus ?? body.blockReason ?? null);
+      })
+      .catch(() => {
+        /* Keep integrations usable if billing context is temporarily unavailable. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (!canUseThirdPartyIntegrations) {
     return (
-      <StarterIntegrationsView
-        initialBookingMethod={initialBookingMethod}
-        initialSelectedIntegration={initialSelectedIntegration}
-        initialBookingUrl={initialBookingUrl}
-      />
+      <>
+        {hasBillingBlock ? <BillingIssueBanner /> : null}
+        <StarterIntegrationsView
+          initialBookingMethod={initialBookingMethod}
+          initialSelectedIntegration={initialSelectedIntegration}
+          initialBookingUrl={initialBookingUrl}
+          canShowStarterUpgradeBanner={canShowStarterUpgradeBanner}
+        />
+      </>
     );
   }
 
   return (
     <div className="integrations-redesign">
+      {hasBillingBlock ? <BillingIssueBanner /> : null}
+
       <div className="panel-head integrations-redesign-head">
         <div>
           <h3>Integrations</h3>

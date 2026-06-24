@@ -170,7 +170,7 @@ function bookingsEmptyState(
   shopHasGoneLive: boolean,
   hasAnyBookings: boolean,
   isCallScoped: boolean,
-): { title: string; message: string; showGoLiveCta: boolean } {
+): { title: string; message: string; showGoLiveCta: boolean; ctaHref?: string; ctaLabel?: string } {
   if (isCallScoped) {
     return {
       title: 'No booking linked to this call',
@@ -490,7 +490,16 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
   const activeStatus = activeBooking ? normalizeStatus(activeBooking.status) : 'captured';
   const shopHasGoneLive = shopLiveStatus.liveCallsEnabled || Boolean(shopLiveStatus.goLiveAt);
   const hasAnyBookings = hasAnyStats(stats);
-  const emptyState = bookingsEmptyState(activeFilter, shopHasGoneLive, hasAnyBookings, Boolean(callIdParam));
+  const liveAnsweringPaused = !shopLiveStatus.liveCallsEnabled && Boolean(shopLiveStatus.goLiveAt);
+  const emptyState = liveAnsweringPaused
+    ? {
+        title: 'Live answering is paused',
+        message: 'Resolve your billing issue to resume answering calls.',
+        showGoLiveCta: true,
+        ctaHref: '/user/billing',
+        ctaLabel: 'Manage billing',
+      }
+    : bookingsEmptyState(activeFilter, shopHasGoneLive, hasAnyBookings, Boolean(callIdParam));
 
   return (
     <UserLayout styles={userBookingsStyles} scripts={userBookingsScripts} scriptPrefix="user-bookings-live">
@@ -547,7 +556,9 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
                     <h3>{emptyState.title}</h3>
                     <p>{emptyState.message}</p>
                     {emptyState.showGoLiveCta ? (
-                      <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                      <a className="btn user-save" href={emptyState.ctaHref ?? '/user/go-live'}>
+                        {emptyState.ctaLabel ?? 'Complete Go Live →'}
+                      </a>
                     ) : null}
                   </div>
                 ) : null}

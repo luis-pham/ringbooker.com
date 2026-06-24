@@ -211,7 +211,11 @@ function tabFromSearch(value: string | null): CallFilter {
   return 'all';
 }
 
-function callsEmptyState(filter: CallFilter, shopHasGoneLive: boolean, hasAnyCalls: boolean): { title: string; message: string; showGoLiveCta: boolean } {
+function callsEmptyState(
+  filter: CallFilter,
+  shopHasGoneLive: boolean,
+  hasAnyCalls: boolean,
+): { title: string; message: string; showGoLiveCta: boolean; ctaHref?: string; ctaLabel?: string } {
   if (filter === 'follow_up') {
     return {
       title: 'No follow-ups needed',
@@ -606,7 +610,16 @@ export function UserCallsLive({
   const canGoNext = page < totalPages;
   const shopHasGoneLive = shopLiveStatus.liveCallsEnabled || Boolean(shopLiveStatus.goLiveAt);
   const hasAnyCalls = stats.total > 0;
-  const emptyState = callsEmptyState(activeFilter, shopHasGoneLive, hasAnyCalls);
+  const liveAnsweringPaused = !shopLiveStatus.liveCallsEnabled && Boolean(shopLiveStatus.goLiveAt);
+  const emptyState = liveAnsweringPaused
+    ? {
+        title: 'Live answering is paused',
+        message: 'Resolve your billing issue to resume answering calls.',
+        showGoLiveCta: true,
+        ctaHref: '/user/billing',
+        ctaLabel: 'Manage billing',
+      }
+    : callsEmptyState(activeFilter, shopHasGoneLive, hasAnyCalls);
 
   return (
     <UserLayout styles={userCallsStyles} scripts={userCallsScripts} scriptPrefix="user-calls-live">
@@ -671,7 +684,9 @@ export function UserCallsLive({
                     <h3>{emptyState.title}</h3>
                     <p>{emptyState.message}</p>
                     {emptyState.showGoLiveCta ? (
-                      <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
+                      <a className="btn user-save" href={emptyState.ctaHref ?? '/user/go-live'}>
+                        {emptyState.ctaLabel ?? 'Complete Go Live →'}
+                      </a>
                     ) : null}
                   </div>
                 ) : null}

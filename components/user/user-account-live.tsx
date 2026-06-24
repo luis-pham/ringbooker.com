@@ -26,6 +26,7 @@ export type NavStateResponse = {
   userName?: string;
   plan?: string;
   subscriptionStatus?: string | null;
+  paymentMethodStatus?: string | null;
   error?: string;
 };
 
@@ -60,7 +61,7 @@ function subscriptionFriendlyLabel(status: string | null | undefined): string {
     case 'trial_expired':
       return 'Trial ended';
     case 'unpaid':
-      return 'Unpaid';
+      return 'Payment overdue';
     case 'incomplete':
       return 'Payment incomplete';
     case 'unknown':
@@ -73,6 +74,13 @@ function subscriptionFriendlyLabel(status: string | null | undefined): string {
 function subscriptionLooksHealthy(status: string | null | undefined): boolean {
   return status === 'active' || status === 'trialing';
 }
+
+type BillingPillTone = 'green' | 'purple' | 'orange' | 'red';
+
+type BillingPillLabel = {
+  label: string;
+  tone: BillingPillTone;
+};
 
 const ACCOUNT_TABS: Array<{ id: AccountTabId; label: string; description: string }> = [
   { id: 'details', label: 'Account Details', description: 'Email, name, and workspace summary.' },
@@ -324,6 +332,10 @@ button.rb-account-link{text-align:right}
   display:inline-flex;align-items:center;margin-left:8px;padding:2px 10px;border-radius:999px;
   font-size:11px;font-weight:500;background:#ecfdf5;color:#047857;vertical-align:middle;
 }
+.rb-account-plan-pill--green{background:#ecfdf5;color:#047857}
+.rb-account-plan-pill--purple{background:#f5f3ff;color:#6d28d9}
+.rb-account-plan-pill--orange{background:#fff7ed;color:#c2410c}
+.rb-account-plan-pill--red{background:#fef2f2;color:#b91c1c}
 .rb-account-billing-warn{color:var(--red-deep);font-weight:600}
 .rb-account-callout{
   margin-top:24px;padding:14px 16px;border-radius:10px;background:#f9fafb;
@@ -387,6 +399,10 @@ html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color
 html[data-user-theme="dark"] .rb-account-sign-out{color:#f85149;border-color:color-mix(in srgb,#f85149 35%,var(--border))}
 html[data-user-theme="dark"] .rb-account-sign-out:hover:not(:disabled){background:rgba(248,81,73,.12);border-color:color-mix(in srgb,#f85149 55%,var(--border))}
 html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(35,134,54,0.18);color:#3fb950}
+html[data-user-theme="dark"] .rb-account-plan-pill--green{background:rgba(35,134,54,0.18);color:#3fb950}
+html[data-user-theme="dark"] .rb-account-plan-pill--purple{background:rgba(124,58,237,0.2);color:#c4b5fd}
+html[data-user-theme="dark"] .rb-account-plan-pill--orange{background:rgba(249,115,22,0.18);color:#fdba74}
+html[data-user-theme="dark"] .rb-account-plan-pill--red{background:rgba(239,68,68,0.18);color:#fca5a5}
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-color:var(--border)}
@@ -529,6 +545,19 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
     nav?.ok &&
     !subscriptionLooksHealthy(nav.subscriptionStatus) &&
     (nav.plan ?? '').toLowerCase() !== 'enterprise';
+  const billingPillLabel: BillingPillLabel | null = (() => {
+    const status = nav?.subscriptionStatus ?? null;
+    const pmStatus = nav?.paymentMethodStatus ?? null;
+
+    if (!status || status === 'none') return null;
+    if (status === 'active') return { label: 'Active', tone: 'green' };
+    if (status === 'trialing' && pmStatus === 'valid') return { label: 'Trial', tone: 'purple' };
+    if (status === 'trialing' && pmStatus !== 'valid') return { label: 'Trial — card required', tone: 'orange' };
+    if (status === 'past_due' || status === 'unpaid') return { label: 'Past due', tone: 'red' };
+    if (status === 'paused') return { label: 'Paused', tone: 'orange' };
+    if (status === 'canceled' || status === 'trial_expired') return { label: 'Canceled', tone: 'orange' };
+    return null;
+  })();
 
   return (
     <UserLayout styles={accountStyles} scripts={userDashboardScripts} scriptPrefix="user-account-live">
@@ -685,8 +714,10 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                               <dt>Plan</dt>
                               <dd>
                                 <span>{planLabel(nav.plan)}</span>
-                                {subscriptionLooksHealthy(nav.subscriptionStatus) ? (
-                                  <span className="rb-account-plan-pill">Active</span>
+                                {billingPillLabel ? (
+                                  <span className={`rb-account-plan-pill rb-account-plan-pill--${billingPillLabel.tone}`}>
+                                    {billingPillLabel.label}
+                                  </span>
                                 ) : null}
                               </dd>
                             </div>

@@ -17,6 +17,21 @@ test('phone setup state requires payment before forwarding number creation', () 
   assert.match(copy.explanation, /start your 14-day live answering trial/i);
 });
 
+test('phone setup state requires payment before ready state when forwarding is verified', () => {
+  assert.equal(
+    resolvePhoneSetupState({
+      onboardingRequired: false,
+      subscriptionStatus: 'trialing',
+      paymentMethodStatus: 'none',
+      hasPaymentMethod: false,
+      hasForwardingNumber: true,
+      forwardingSetupVerified: true,
+      liveCallsEnabled: false,
+    }),
+    'payment_method_required',
+  );
+});
+
 test('phone setup state advances from number creation to verification to enable live', () => {
   assert.equal(
     resolvePhoneSetupState({
