@@ -29,18 +29,6 @@ import type { IntegrationError, VagaroConnectionStatus, VagaroMode } from '@/hoo
 
 const BILLING_BLOCKED_SUBSCRIPTION_STATUSES = new Set(['past_due', 'unpaid', 'paused', 'canceled', 'trial_expired']);
 
-function BillingIssueBanner() {
-  return (
-    <div
-      className="note integration-error-note"
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
-    >
-      <span>Some features are unavailable due to a billing issue.</span>
-      <a className="btn user-save integrations-primary-button" href="/user/billing">Resolve billing issue</a>
-    </div>
-  );
-}
-
 function AppLogo({ app }: { app: IntegrationApp }) {
   if (app.logoSrc) {
     return (
@@ -1306,6 +1294,7 @@ function ConfiguredIntegrationView({
   fullSyncSetupNeeded = false,
   canUseThirdPartyIntegrations,
   canShowStarterUpgradeBanner = true,
+  showSquareBillingPausedWarning = false,
   onChange,
   onReconnect,
   onSaveBookingUrl,
@@ -1318,6 +1307,7 @@ function ConfiguredIntegrationView({
   fullSyncSetupNeeded?: boolean;
   canUseThirdPartyIntegrations: boolean;
   canShowStarterUpgradeBanner?: boolean;
+  showSquareBillingPausedWarning?: boolean;
   onChange: () => void;
   onReconnect?: () => void;
   onSaveBookingUrl: (url: string) => Promise<void>;
@@ -1392,6 +1382,11 @@ function ConfiguredIntegrationView({
                     ? 'Connected — checking availability in real time'
                     : 'Link saved — RingBooker will text this to callers'}
             </span>
+            {showSquareBillingPausedWarning ? (
+              <span className="integration-status-line" style={{ color: '#92400e' }}>
+                Sync paused — <a className="user-link--subtle" href="/user/billing">resolve billing to restore</a>
+              </span>
+            ) : null}
           </div>
           {needsReconnect || needsSetup ? (
             <button type="button" className="btn" onClick={handleReconnect}>{needsSetup ? 'Finish setup' : 'Reconnect'}</button>
@@ -1777,7 +1772,6 @@ export function IntegrationsRedesign({
   if (!canUseThirdPartyIntegrations) {
     return (
       <>
-        {hasBillingBlock ? <BillingIssueBanner /> : null}
         <StarterIntegrationsView
           initialBookingMethod={initialBookingMethod}
           initialSelectedIntegration={initialSelectedIntegration}
@@ -1790,8 +1784,6 @@ export function IntegrationsRedesign({
 
   return (
     <div className="integrations-redesign">
-      {hasBillingBlock ? <BillingIssueBanner /> : null}
-
       <div className="panel-head integrations-redesign-head">
         <div>
           <h3>Integrations</h3>
@@ -1819,10 +1811,15 @@ export function IntegrationsRedesign({
           bookingMethod={effectiveBookingMethod}
           selectedAppKey={configuredSelectedAppKey}
           bookingUrl={configuredBookingUrl?.trim() || null}
-	          fullSyncConnected={Boolean(vagaroLiveSyncConnected || (configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderLiveReady))}
+          fullSyncConnected={Boolean(vagaroLiveSyncConnected || (configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderLiveReady))}
           fullSyncProviderStatusLoaded={status.providersLoaded}
           fullSyncSetupNeeded={Boolean(configuredSelectedApp && configuredSelectedApp.category === 'full-sync' && configuredProviderSetupNeeded)}
           canUseThirdPartyIntegrations
+          showSquareBillingPausedWarning={Boolean(
+            hasBillingBlock &&
+            configuredSelectedAppKey &&
+            toBackendProviderKey(configuredSelectedAppKey) === 'square_appointments',
+          )}
           onChange={() => {
             void (async () => {
               await goBack();

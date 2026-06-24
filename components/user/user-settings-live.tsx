@@ -50,7 +50,6 @@ export function userSettingsPortalNavKey(portal: UserSettingsPortal): UserPortal
 }
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
-const BILLING_BLOCKED_SUBSCRIPTION_STATUSES = new Set(['past_due', 'unpaid', 'paused', 'canceled', 'trial_expired']);
 type BusinessHoursEntry =
   | { closed: true }
   | {
@@ -855,7 +854,6 @@ export function UserSettingsLive({
   const initialShop = initialData?.ok && initialData.shop ? initialData.shop : null;
   const initialState = initialShop ? buildInitialState(initialShop) : null;
   const [shop, setShop] = useState<ShopSettings | null>(initialShop);
-  const [billingSubscriptionStatus, setBillingSubscriptionStatus] = useState<string | null>(null);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(
     initialData?.ok ? initialData.capabilities ?? null : null,
   );
@@ -1379,22 +1377,6 @@ export function UserSettingsLive({
   useEffect(() => {
     if (settingsReady && portal === 'knowledge' && !staffLoaded && !staffLoading) void loadStaff();
   }, [settingsReady, portal, staffLoaded, staffLoading, loadStaff]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/backend/user/nav-state')
-      .then(async (response) => (await response.json()) as { ok?: boolean; subscriptionStatus?: string | null; billingStatus?: string | null; blockReason?: string | null })
-      .then((body) => {
-        if (cancelled || !body.ok) return;
-        setBillingSubscriptionStatus(body.subscriptionStatus ?? body.billingStatus ?? body.blockReason ?? null);
-      })
-      .catch(() => {
-        /* Keep settings usable if billing context is temporarily unavailable. */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     const allowed = SETTINGS_PORTAL_TAB_ORDER[portal];
@@ -2620,9 +2602,6 @@ export function UserSettingsLive({
     if (portal === 'knowledge') return 'page-knowledge';
     return knowledgePortalTabPageClass(activeTab);
   }, [portal, activeTab]);
-  const hasBillingBlock = BILLING_BLOCKED_SUBSCRIPTION_STATUSES.has(billingSubscriptionStatus ?? '');
-  const showSettingsBillingBlockBanner = hasBillingBlock && portal !== 'integrations';
-
   return (
     <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
       <>
@@ -2641,13 +2620,6 @@ export function UserSettingsLive({
           {!settingsReady && status ? (
             <div className="note" style={{ marginBottom: 18 }}>
               Unable to load settings: {status}
-            </div>
-          ) : null}
-
-          {showSettingsBillingBlockBanner ? (
-            <div className="note" style={{ marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <span>Some features are unavailable due to a billing issue.</span>
-              <a className="btn user-save" href="/user/billing">Resolve billing issue</a>
             </div>
           ) : null}
 

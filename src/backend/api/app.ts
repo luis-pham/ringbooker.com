@@ -3031,6 +3031,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository) return null;
     return {
       shopsRepository: deps.shopsRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
       shopStaffRepository: deps.shopStaffRepository,
       shopStaffServicesRepository: deps.shopStaffServicesRepository,
       logger,

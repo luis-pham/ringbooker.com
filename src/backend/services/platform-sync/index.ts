@@ -1,6 +1,9 @@
 import type { Shop } from '@/src/backend/domain/types';
+import { isCapabilityAllowed } from '@/src/backend/domain/shop-plan-capabilities';
 import { SquareSyncAdapter } from '@/src/backend/services/platform-sync/adapters/square';
 import type { PlatformSyncAdapter, PlatformSyncDeps, SyncResult } from '@/src/backend/services/platform-sync/types';
+
+const BILLING_BLOCKED_SUBSCRIPTION_STATUSES = new Set(['past_due', 'unpaid', 'paused', 'canceled', 'trial_expired']);
 
 export function getPlatformSyncAdapter(
   shop: Shop,
@@ -14,9 +17,99 @@ export function getPlatformSyncAdapter(
   }
 }
 
+function skippedSyncResult(
+  adapter: PlatformSyncAdapter,
+  shop: Shop,
+  reason: string,
+  start = Date.now(),
+): SyncResult {
+  const error = `sync_skipped:${reason}`;
+  return {
+    platform: adapter.platform,
+    shopId: shop.id,
+    triggeredAt: new Date(),
+    location: {
+      status: 'skipped',
+      locationId: null,
+      locationName: null,
+      error,
+    },
+    services: {
+      status: 'skipped',
+      total: 0,
+      matched: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      items: [],
+      error,
+    },
+    staff: {
+      status: 'skipped',
+      total: 0,
+      matched: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      items: [],
+      error,
+    },
+    mapping: {
+      status: 'skipped',
+      totalMappings: 0,
+      created: 0,
+      skipped: 0,
+      error,
+    },
+    durationMs: Date.now() - start,
+  };
+}
+
+async function resolvePlatformSyncSkipReason(shop: Shop, deps: PlatformSyncDeps): Promise<string | null> {
+  if (!isCapabilityAllowed(shop.plan, 'third_party_integrations')) {
+    return 'plan_locked';
+  }
+
+  if (!deps.billingSubscriptionsRepository) return null;
+
+  try {
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (subscription && BILLING_BLOCKED_SUBSCRIPTION_STATUSES.has(subscription.status)) {
+      return `billing_${subscription.status}`;
+    }
+  } catch (error) {
+    deps.logger.warn(
+      {
+        err: error,
+        shopId: shop.id,
+        platform: shop.selected_integration ?? null,
+      },
+      'platform_sync_billing_status_check_failed',
+    );
+    return 'billing_status_unavailable';
+  }
+
+  return null;
+}
+
 export async function runPlatformSync(shop: Shop, deps: PlatformSyncDeps): Promise<SyncResult | null> {
   const adapter = getPlatformSyncAdapter(shop, deps);
   if (!adapter) return null;
+  const start = Date.now();
+  const skipReason = await resolvePlatformSyncSkipReason(shop, deps);
+  if (skipReason) {
+    deps.logger.info(
+      {
+        shopId: shop.id,
+        platform: adapter.platform,
+        reason: skipReason,
+      },
+      'platform_sync_skipped',
+    );
+    return skippedSyncResult(adapter, shop, skipReason, start);
+  }
   return adapter.syncAll(shop);
 }
 
@@ -26,7 +119,20 @@ export async function triggerPlatformSync(shop: Shop, deps: PlatformSyncDeps): P
 
   const start = Date.now();
   try {
-    const result = await adapter.syncAll(shop);
+    const skipReason = await resolvePlatformSyncSkipReason(shop, deps);
+    if (skipReason) {
+      deps.logger.info(
+        {
+          shopId: shop.id,
+          platform: adapter.platform,
+          reason: skipReason,
+        },
+        'platform_sync_skipped',
+      );
+    }
+    const result = skipReason
+      ? skippedSyncResult(adapter, shop, skipReason, start)
+      : await adapter.syncAll(shop);
     deps.logger.info(
       {
         shopId: shop.id,

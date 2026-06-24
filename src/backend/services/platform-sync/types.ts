@@ -1,5 +1,6 @@
 import type { Shop } from '@/src/backend/domain/types';
 import type {
+  BillingSubscriptionsRepository,
   ShopStaffRepository,
   ShopStaffServicesRepository,
   ShopsRepository,
@@ -93,6 +94,7 @@ export type PlatformSyncLogger = {
 
 export type PlatformSyncDeps = {
   shopsRepository: ShopsRepository;
+  billingSubscriptionsRepository?: BillingSubscriptionsRepository;
   shopStaffRepository?: ShopStaffRepository;
   shopStaffServicesRepository?: ShopStaffServicesRepository;
   logger: PlatformSyncLogger;
