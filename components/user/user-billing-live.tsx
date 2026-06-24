@@ -265,9 +265,11 @@ function subscriptionStatusTone(status: BillingSubscriptionStatus | undefined, h
     case 'trialing':
       return 'purple';
     case 'past_due':
+    case 'unpaid':
       return 'red';
     case 'canceled':
     case 'paused':
+    case 'trial_expired':
     case 'incomplete':
       return 'orange';
     default:
@@ -288,6 +290,10 @@ function subscriptionCardValue(subscription: BillingSubscriptionRow | null) {
       return 'Canceled';
     case 'paused':
       return 'Paused';
+    case 'trial_expired':
+      return 'Trial ended';
+    case 'unpaid':
+      return 'Payment overdue';
     case 'incomplete':
       return 'Payment incomplete';
     case 'unknown':
@@ -335,9 +341,22 @@ function liveAnsweringValue(enabled: boolean | undefined) {
   return 'Not available';
 }
 
-function liveAnsweringMeta(enabled: boolean | undefined, hasPayment: boolean | undefined) {
-  if (enabled === true) return 'RingBooker can answer real callers';
-  if (!hasPayment) return 'Start trial before live answering';
+function liveAnsweringMeta(params: {
+  enabled: boolean | undefined;
+  subscription: BillingSubscriptionRow | null;
+  forwardingState: string;
+  hasPaymentMethod: boolean | undefined;
+}) {
+  if (params.enabled === true) return 'Live answering is active';
+  if (!params.subscription) return 'Start trial before live answering';
+  if (['past_due', 'paused', 'canceled', 'unpaid', 'trial_expired'].includes(params.subscription.status)) {
+    return 'Resolve billing issue to restore';
+  }
+  if (params.subscription.status === 'trialing') {
+    if (params.forwardingState !== 'verified') return 'Verify call forwarding to go live';
+    if (!params.hasPaymentMethod) return 'Add payment method to go live';
+    return 'Turn on go-live when you are ready';
+  }
   return 'Turn on go-live when you are ready';
 }
 
@@ -370,6 +389,10 @@ function getStatusLabel(status: BillingSubscriptionStatus | undefined) {
       return 'Canceled';
     case 'paused':
       return 'Paused';
+    case 'trial_expired':
+      return 'Trial ended';
+    case 'unpaid':
+      return 'Payment overdue';
     case 'incomplete':
       return 'Incomplete';
     default:
@@ -405,8 +428,10 @@ function resolveBillingUiState(params: {
   if (params.checkoutPlan) return 'checkout_pending';
   if (!params.subscription) return 'billing_not_configured';
   if (params.subscription.status === 'past_due') return 'past_due';
+  if (params.subscription.status === 'unpaid') return 'past_due';
   if (params.subscription.status === 'paused') return 'paused';
   if (params.subscription.status === 'canceled') return 'canceled';
+  if (params.subscription.status === 'trial_expired') return 'canceled';
   if (params.subscription.status === 'trialing' && params.hasPaymentMethod) return 'trialing_valid';
   if (params.subscription.status === 'active' && params.hasPaymentMethod) return 'active';
   return params.hasPaymentMethod ? 'setup_allowed_no_payment' : 'payment_method_required';
@@ -689,6 +714,13 @@ export function UserBillingLive({
   const hasPaymentMethod =
     data?.billing?.hasPaymentMethod === true &&
     !['past_due', 'paused', 'canceled'].includes(subscription?.status ?? '');
+  const headerPaymentMethodStatus = (() => {
+    if (['past_due', 'paused', 'canceled'].includes(subscription?.status ?? '')) {
+      if (paymentMethodStatus === 'valid') return 'failed';
+      return paymentMethodStatus;
+    }
+    return paymentMethodStatus;
+  })();
   const liveEnabled = data?.billing?.liveCallsEnabled;
   const catalog = useMemo(() => BILLING_PLANS_CATALOG.find((p) => p.key === currentPlan) ?? BILLING_PLANS_CATALOG[0], [currentPlan]);
   const shopTimezone = getShopTimezone(data?.shop);
@@ -762,7 +794,6 @@ export function UserBillingLive({
     Boolean(data?.billing) &&
     !isEnterprisePlan &&
     forwardingState !== 'verified' &&
-    billingState !== 'trialing_valid' &&
     billingState !== 'active' &&
     billingState !== 'checkout_pending';
   // Banner suppression flags based on priority order.
@@ -967,13 +998,13 @@ export function UserBillingLive({
                   </div>
                   <div className="billing-status-card">
                     <div className="bst-label">Payment method</div>
-                    <div className="bst-value">{paymentCardValue(paymentMethodStatus)}</div>
-                    <div className="bst-meta">{paymentCardMeta(paymentMethodStatus)}</div>
+                    <div className="bst-value">{paymentCardValue(headerPaymentMethodStatus)}</div>
+                    <div className="bst-meta">{paymentCardMeta(headerPaymentMethodStatus)}</div>
                   </div>
                   <div className="billing-status-card">
                     <div className="bst-label">Live answering</div>
                     <div className="bst-value">{liveAnsweringValue(liveEnabled)}</div>
-                    <div className="bst-meta">{liveAnsweringMeta(liveEnabled, hasPaymentMethod)}</div>
+                    <div className="bst-meta">{liveAnsweringMeta({ enabled: liveEnabled, subscription, forwardingState, hasPaymentMethod })}</div>
                   </div>
                 </section>
 

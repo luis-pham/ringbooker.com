@@ -66,6 +66,11 @@ export type UserDashboardResponse = {
     activatedAt?: string | null;
     /** True when subscription is in a valid trialing window (for plan stat badge). */
     billingTrialing?: boolean;
+    billing?: {
+      subscriptionStatus?: string | null;
+      paymentMethodStatus?: string | null;
+      status?: string | null;
+    } | null;
   } | null;
   overviewRail?: UserDashboardOverviewRail;
   /** Shop knowledge/integration snapshot for overview status (mirrors server-side checks). */
@@ -537,6 +542,55 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
 
   const dashboardReady = !loading && data?.ok === true;
   const billingActive = !!(data?.goLive?.paymentMethodValid && data?.goLive?.subscriptionActiveLike);
+  const subscriptionStatus = data?.goLive?.billing?.subscriptionStatus ?? 'none';
+  const paymentMethodStatus = data?.goLive?.billing?.paymentMethodStatus ?? 'none';
+  const derivedBillingState = (() => {
+    if (['past_due', 'unpaid'].includes(subscriptionStatus)) return 'billing_issue';
+    if (subscriptionStatus === 'paused') return 'paused';
+    if (['canceled', 'trial_expired'].includes(subscriptionStatus)) return 'reactivate';
+    if (subscriptionStatus === 'trialing') return 'trialing';
+    if (subscriptionStatus === 'active') return 'active';
+    return 'none';
+  })();
+  const planTagLabel = (() => {
+    if (derivedBillingState === 'trialing') return 'Trial';
+    if (derivedBillingState === 'active') return 'Active';
+    if (derivedBillingState === 'billing_issue') return 'Past due';
+    if (derivedBillingState === 'paused') return 'Paused';
+    if (derivedBillingState === 'reactivate') return 'Canceled';
+    return null;
+  })();
+  const planTagClass = (() => {
+    if (planTagLabel === 'Active') return 'green';
+    if (planTagLabel === 'Trial') return 'orange';
+    if (planTagLabel === 'Past due' || planTagLabel === 'Canceled') return 'red';
+    if (planTagLabel === 'Paused') return 'orange';
+    return 'green';
+  })();
+  const preLiveBillingCopy = (() => {
+    if (derivedBillingState === 'billing_issue') {
+      return {
+        title: 'Billing issue',
+        body: 'Update your payment method to restore live answering.',
+        cta: 'Resolve billing issue',
+      };
+    }
+    if (derivedBillingState === 'paused') {
+      return {
+        title: 'Live answering paused',
+        body: 'Your subscription is paused. Resume to restore live answering.',
+        cta: 'Manage billing',
+      };
+    }
+    if (derivedBillingState === 'reactivate') {
+      return {
+        title: 'Subscription ended',
+        body: 'Your trial or subscription has ended. Reactivate to restore live answering.',
+        cta: 'Reactivate',
+      };
+    }
+    return null;
+  })();
   const expandedOverview =
     dashboardReady &&
     Boolean(data?.goLive) &&
@@ -778,26 +832,34 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     <div className="banner-dot amber" aria-hidden />
                     <div className="banner-text">
                       <span className="banner-title">
-                        {!data.goLive.hasForwardingNumber
-                          ? 'Set up call forwarding to get started'
-                          : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified
-                            ? 'Call forwarding not verified yet'
-                            : data.goLive.forwardingSetupVerified && (!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike)
-                              ? 'Forwarding verified — add your card to go live'
-                              : 'Ready to go live'}
+                        {preLiveBillingCopy
+                          ? preLiveBillingCopy.title
+                          : !data.goLive.hasForwardingNumber
+                            ? 'Set up call forwarding to get started'
+                            : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified
+                              ? 'Call forwarding not verified yet'
+                              : data.goLive.forwardingSetupVerified && (!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike)
+                                ? 'Forwarding verified — add your card to go live'
+                                : 'Ready to go live'}
                       </span>
                       <span className="banner-sub">
-                        {!data.goLive.hasForwardingNumber
-                          ? 'Forward missed calls to RingBooker before enabling live answering.'
-                          : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified
-                            ? 'Call your business number from another phone to confirm forwarding is working.'
-                            : data.goLive.forwardingSetupVerified && (!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike)
-                              ? 'Start your trial, then switch on live answering.'
-                              : 'Billing and forwarding are ready. Switch on live answering when you are ready.'}
+                        {preLiveBillingCopy
+                          ? preLiveBillingCopy.body
+                          : !data.goLive.hasForwardingNumber
+                            ? 'Forward missed calls to RingBooker before enabling live answering.'
+                            : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified
+                              ? 'Call your business number from another phone to confirm forwarding is working.'
+                              : data.goLive.forwardingSetupVerified && (!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike)
+                                ? 'Start your trial, then switch on live answering.'
+                                : 'Billing and forwarding are ready. Switch on live answering when you are ready.'}
                       </span>
                     </div>
                     <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                      {!data.goLive.hasForwardingNumber ? (
+                      {preLiveBillingCopy ? (
+                        <a className="btn user-save" href="/user/billing">
+                          {preLiveBillingCopy.cta} →
+                        </a>
+                      ) : !data.goLive.hasForwardingNumber ? (
                         <a className="btn user-save" href="/user/go-live#go-live-forwarding">
                           Set up forwarding →
                         </a>
@@ -970,9 +1032,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                         <path d="M7 15l3-3 3 2 4-5" />
                       </svg>
                     </div>
-                    <span className={`tag ${data?.goLive?.billingTrialing ? 'orange' : 'green'}`}>
-                      {data?.goLive?.billingTrialing ? 'Trial' : 'Active'}
-                    </span>
+                    {planTagLabel ? <span className={`tag ${planTagClass}`}>{planTagLabel}</span> : null}
                   </div>
                   <div className="stat-label">Plan</div>
                   <div className="stat-value">{planLabel}</div>

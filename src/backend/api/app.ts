@@ -6085,6 +6085,10 @@ export function createBackendApp(deps: {
       blockReason: BillingBlockReason;
       commercialGoLiveApproved: boolean;
       commercialApprovalRequired: boolean;
+      billing: {
+        subscriptionStatus: NonNullable<ShopBillingAccess['subscriptionStatus']> | 'none';
+        paymentMethodStatus: ShopBillingAccess['paymentMethodStatus'];
+      };
     } | null = null;
 
     if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
@@ -6126,6 +6130,10 @@ export function createBackendApp(deps: {
         blockReason: access.blockReason,
         commercialGoLiveApproved: access.commercialGoLiveApproved,
         commercialApprovalRequired,
+        billing: {
+          subscriptionStatus: subscription?.status ?? 'none',
+          paymentMethodStatus: access.paymentMethodStatus,
+        },
       };
     }
 
