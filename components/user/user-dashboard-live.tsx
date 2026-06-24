@@ -49,6 +49,7 @@ export type UserDashboardResponse = {
     voiceMinutesSoftLimit: number | null;
     nearCapturedCallerLimit: boolean;
     overCapturedCallerLimit: boolean;
+    periodEnd?: string | null;
   };
   goLive?: {
     liveCallsEnabled: boolean;
@@ -70,6 +71,7 @@ export type UserDashboardResponse = {
       subscriptionStatus?: string | null;
       paymentMethodStatus?: string | null;
       status?: string | null;
+      trialEndsAt?: string | null;
     } | null;
   } | null;
   overviewRail?: UserDashboardOverviewRail;
@@ -765,9 +767,23 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
   }, [data?.overviewRail]);
 
   const usageResetLabel = useMemo(() => {
-    const { periodEnd } = getShopLocalMonthPeriod(new Date(), shopTimezone);
-    return formatShopLongDate(periodEnd, shopTimezone);
-  }, [shopTimezone]);
+    const isTrialing = data?.goLive?.billing?.subscriptionStatus === 'trialing' || data?.goLive?.billingTrialing === true;
+    const trialEndsAt = data?.goLive?.billing?.trialEndsAt ? new Date(data.goLive.billing.trialEndsAt) : null;
+    const usagePeriodEnd = data?.usage?.periodEnd ? new Date(data.usage.periodEnd) : null;
+    const { periodEnd: calendarPeriodEnd } = getShopLocalMonthPeriod(new Date(), shopTimezone);
+
+    let resetDate = calendarPeriodEnd;
+    let resetPrefix = 'Resets';
+
+    if (isTrialing && (trialEndsAt || usagePeriodEnd)) {
+      resetDate = trialEndsAt ?? usagePeriodEnd ?? calendarPeriodEnd;
+      resetPrefix = 'Trial ends';
+    } else if (usagePeriodEnd) {
+      resetDate = usagePeriodEnd;
+    }
+
+    return `${resetPrefix} ${formatShopLongDate(resetDate, shopTimezone)}`;
+  }, [data?.goLive?.billing?.subscriptionStatus, data?.goLive?.billing?.trialEndsAt, data?.goLive?.billingTrialing, data?.usage?.periodEnd, shopTimezone]);
 
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
@@ -1060,7 +1076,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                   />
                 </div>
                 <div className="usage-captured-footer">
-                  <span className="usage-captured-reset">Resets {usageResetLabel}</span>
+                  <span className="usage-captured-reset">{usageResetLabel}</span>
                 </div>
                 {data.usage.nearCapturedCallerLimit || data.usage.overCapturedCallerLimit ? (
                   <p

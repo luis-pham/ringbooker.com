@@ -619,7 +619,6 @@ export function GoLiveForwardingPanel({
                     />
                   ) : null}
                   {showCarrierGrid ? <CarrierPicker countryCode={goLive.selectedCountry} selected={goLive.selectedCarrier} onSelect={goLive.selectCarrier} /> : null}
-                  <button type="button" className="gl-advanced-toggle gl-country-change" onClick={goLive.showCountryPicker}>Wrong country? Change</button>
                 </div>
                 {selectedCarrierHasDialCodes ? (
                   <div><span className="gl-section-label">When should RingBooker answer?</span><ForwardingTypeSelector selected={goLive.selectedForwardingType} showAdvanced={showAdvancedOptions} onToggleAdvanced={() => setShowAdvancedOptions((value) => !value)} onSelect={goLive.selectForwardingType} /></div>

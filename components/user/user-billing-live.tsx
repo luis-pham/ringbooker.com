@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
@@ -513,6 +514,7 @@ export function UserBillingLive({
   initialTransactions?: BillingTransactionsResponse | null;
   initialGoLiveStatus?: GoLiveStatusResponse | null;
 }) {
+  const router = useRouter();
   const { workspace, setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserBillingResponse | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
@@ -522,8 +524,10 @@ export function UserBillingLive({
   const [upgradePendingMessage, setUpgradePendingMessage] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [billingNotice, setBillingNotice] = useState<BillingNotice>(null);
+  const [checkoutParam, setCheckoutParam] = useState<string | null>(null);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [billingTab, setBillingTab] = useState<BillingSectionTab>('overview');
+  const checkoutPollIntervalRef = useRef<number | null>(null);
   const [transactionsState, setTransactionsState] = useState<{
     loading: boolean;
     available: boolean;
@@ -580,6 +584,7 @@ export function UserBillingLive({
       });
     }
     void refreshGoLiveStatus();
+    return body;
   }, [setWorkspace, refreshGoLiveStatus]);
 
   useEffect(() => {
@@ -599,6 +604,59 @@ export function UserBillingLive({
       active = false;
     };
   }, [initialData, refreshBilling]);
+
+  useEffect(() => {
+    if (checkoutParam !== 'success') return;
+    if (typeof window === 'undefined') return;
+
+    let active = true;
+    let attempts = 0;
+
+    const clearPolling = () => {
+      if (checkoutPollIntervalRef.current !== null) {
+        window.clearInterval(checkoutPollIntervalRef.current);
+        checkoutPollIntervalRef.current = null;
+      }
+    };
+
+    clearPolling();
+    checkoutPollIntervalRef.current = window.setInterval(() => {
+      attempts += 1;
+      void refreshBilling()
+        .then((body) => {
+          if (!active || !body.ok) return;
+          const polledSubscription = body.billing?.subscription ?? null;
+          const polledHasPaymentMethod =
+            body.billing?.hasPaymentMethod === true &&
+            !['past_due', 'paused', 'canceled'].includes(polledSubscription?.status ?? '');
+          const polledBillingState = resolveBillingUiState({
+            subscription: polledSubscription,
+            hasPaymentMethod: polledHasPaymentMethod,
+            checkoutPlan: null,
+          });
+          const polledHasBillingIssue = ['past_due', 'paused', 'canceled'].includes(polledBillingState);
+          if (
+            (polledSubscription?.status === 'active' || polledSubscription?.status === 'trialing') &&
+            !polledHasBillingIssue
+          ) {
+            clearPolling();
+            setCheckoutParam(null);
+            router.replace('/user/billing');
+          }
+        })
+        .catch(() => {
+          /* keep polling until max attempts */
+        })
+        .finally(() => {
+          if (attempts >= 6) clearPolling();
+        });
+    }, 2000);
+
+    return () => {
+      active = false;
+      clearPolling();
+    };
+  }, [checkoutParam, refreshBilling, router]);
 
   useEffect(() => {
     if (initialGoLiveStatus?.ok) setGoLiveStatus(initialGoLiveStatus);
@@ -699,6 +757,7 @@ export function UserBillingLive({
     }
     const checkout = new URLSearchParams(window.location.search).get('checkout');
     const billing = new URLSearchParams(window.location.search).get('billing');
+    setCheckoutParam(checkout);
     if (checkout === 'success') {
       setBillingNotice('checkout_success');
     } else if (checkout === 'cancelled' || checkout === 'canceled') {
@@ -801,6 +860,7 @@ export function UserBillingLive({
   const hasCheckoutNotice = ['checkout_success', 'checkout_cancelled', 'manage_returned'].includes(billingNotice ?? '');
   const hasBillingIssue = ['past_due', 'paused', 'canceled'].includes(billingState) && !isEnterprisePlan;
   const hasCheckoutError = !!checkoutError;
+  const isPostCheckoutSuccess = checkoutParam === 'success';
 
   const showForwardingNudgeFinal = showForwardingNudge && !hasBillingIssue && !hasCheckoutNotice && !hasLoadError;
   const showTrialCtaRowFinal =
@@ -812,7 +872,7 @@ export function UserBillingLive({
     !showForwardingNudgeFinal &&
     !hasLoadError;
   const showPlanChangePending = planChangePending && !hasBillingIssue && !hasLoadError;
-  const showBillingIssueBanner = hasBillingIssue && !hasLoadError;
+  const showBillingIssueBanner = hasBillingIssue && !hasLoadError && !isPostCheckoutSuccess;
   const showCheckoutNotice = hasCheckoutNotice && !hasLoadError && !hasBillingIssue;
   const showCheckoutError = hasCheckoutError;
 

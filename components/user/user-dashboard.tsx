@@ -708,16 +708,17 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 }
 .usage-progress-track{
   height:6px;border-radius:20px;margin-top:10px;overflow:hidden;
-  background-color:#7feab8;
+  background-color:#e5e7eb;
   border:0;
   box-shadow:none;
 }
 .usage-progress-fill{
   height:100%;min-width:0;border-radius:999px;
+  background-color:#7feab8;
   transition:width .4s ease,filter .2s ease;
   box-shadow:inset 0 -1px 0 rgba(0,0,0,.06);
 }
-.usage-progress-fill--ok{background:#9ca3af}
+.usage-progress-fill--ok{background:#7feab8}
 .usage-progress-fill--near{background:#6b7280}
 .usage-progress-fill--over{background:#4b5563}
 .usage-captured-card--near{border-color:#fcd34d !important}
@@ -1019,10 +1020,10 @@ html[data-user-theme="dark"] .card.enterprise-managed-card{
   background:rgba(56,139,253,.1);
 }
 html[data-user-theme="dark"] .usage-progress-track{
-  background:#7feab8;border:0;
+  background:#e5e7eb;border:0;
   box-shadow:none;
 }
-html[data-user-theme="dark"] .usage-progress-fill--ok{background:#9ca3af}
+html[data-user-theme="dark"] .usage-progress-fill--ok{background:#7feab8}
 html[data-user-theme="dark"] .usage-progress-fill--near{background:#6b7280}
 html[data-user-theme="dark"] .usage-progress-fill--over{background:#4b5563}
 html[data-user-theme="dark"] .usage-captured-card--near{border-color:rgba(210,153,34,.45) !important}
