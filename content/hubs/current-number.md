@@ -14,15 +14,11 @@
   "badge": "Objection Hub",
   "heroLayout": "landing",
   "title": {
-    "kind": "accentText",
-    "parts": [
-      {
-        "text": "Add an AI Receptionist on Your "
-      },
-      {
-        "accent": "Current Number"
-      }
-    ]
+    "kind": "sectionTitle",
+    "before": "Add AI coverage",
+    "line2Before": "on your",
+    "accent": "current number",
+    "after": ""
   },
   "intro": "Changing your number creates NAP inconsistency across 46+ online citations — Google Business Profile, Yelp, Apple Maps, and every directory clients use to find you. RingBooker uses conditional call forwarding: your current number stays public and unchanged. Coverage activates only when your team cannot answer — after hours, during peak overflow, or when the desk is occupied.",
   "pills": [
@@ -48,28 +44,29 @@
       "sub": "Call forwarding means RingBooker activates only when your current setup cannot answer — after hours, during overflow, or when staff are with a client. Your public number never changes, and setup starts from a guided customer interface.",
       "steps": [
         {
-          "icon": "📱",
+          "tabler_icon": "ti-device-mobile",
           "label": "Client calls",
           "line": "Your existing number",
           "badge": "No change",
           "badgeStyle": "green"
         },
         {
-          "icon": "☎️",
+          "tabler_icon": "ti-phone",
           "label": "Your front desk",
           "line": "Answers if available",
           "badge": "Current workflow",
           "badgeStyle": "green"
         },
         {
-          "iconSrc": "/images/logo.webp",
+          "tabler_icon": "ti-headset",
           "label": "RingBooker covers",
           "line": "After-hours & overflow",
           "badge": "AI layer",
-          "badgeStyle": "purple"
+          "badgeStyle": "purple",
+          "highlight": true
         },
         {
-          "icon": "📋",
+          "tabler_icon": "ti-clipboard-list",
           "label": "Your team gets",
           "line": "Call summary & intent",
           "badge": "Full context",
@@ -93,25 +90,25 @@
       "sub": "A phone number is tied to years of client relationships, signage, listings, and trust. Changing it creates friction — not value.",
       "cards": [
         {
-          "icon": "👥",
+          "icon": "ti-users",
           "title": "Clients already know it",
           "stat": "77% of salon clients prefer calling the number they already have to reschedule (Zenoti 2025).",
           "body": "Long-term clients save it, recognize it, and trust it. Changing that number means re-educating every caller."
         },
         {
-          "icon": "📍",
+          "icon": "ti-map-pin",
           "title": "It is across all your channels",
           "stat": "Inconsistent NAP can significantly reduce local search visibility (BrightLocal).",
           "body": "Google Business Profile, Yelp, Instagram, printed cards, and signage all rely on the same number. One missed update creates avoidable friction."
         },
         {
-          "icon": "🔀",
+          "icon": "ti-switch-horizontal",
           "title": "Local SEO consistency",
           "stat": "62% of local businesses have inconsistent NAP data online (BrightLocal 2023).",
           "body": "When your phone number drifts across directories, local search systems may treat your listings as less consistent and less trustworthy."
         },
         {
-          "icon": "🧪",
+          "icon": "ti-flask",
           "title": "You want to test first",
           "body": "Keeping your number lets you test AI coverage without a full reset: same line, same greeting, same client habits."
         }
@@ -131,32 +128,32 @@
       "sub": "Common objections from salon and spa owners — and how keeping your current number addresses each one.",
       "items": [
         {
-          "icon": "❓",
+          "icon": "ti-help",
           "title": "Will my clients get confused if something changes?",
           "body": "Nothing client-facing changes. They still call the same number — AI handles overflow or after-hours instead of voicemail."
         },
         {
-          "icon": "📍",
+          "icon": "ti-map-pin",
           "title": "What about my Google Business Profile listing?",
           "body": "With RingBooker, your GBP number stays unchanged — no listing edits, no re-verification risk, local SEO consistency preserved."
         },
         {
-          "icon": "🪧",
+          "icon": "ti-sign-right",
           "title": "What about printed cards, flyers, and window signage?",
           "body": "No reprint needed. The number on your window and ads keeps working."
         },
         {
-          "icon": "☎️",
+          "icon": "ti-phone",
           "title": "What if my staff still need to use the phone?",
           "body": "RingBooker is a layer on top. Staff answer the way they always do; RingBooker activates only when your team cannot reach the call in time."
         },
         {
-          "icon": "🧪",
+          "icon": "ti-flask",
           "title": "Can I test this without fully switching?",
           "body": "Yes. Many owners start with after-hours-only or overflow while the primary flow stays unchanged."
         },
         {
-          "icon": "👥",
+          "icon": "ti-users",
           "title": "Will old clients still be able to reach me?",
           "body": "Yes. Long-time clients dialing a saved number still reach you — with better coverage when the desk is slammed or closed."
         }
@@ -177,7 +174,7 @@
       "sub": "Most tools ask you to migrate or replace. RingBooker integrates where your current coverage stops.",
       "items": [
         {
-          "icon": "🔀",
+          "icon": "ti-switch-horizontal",
           "title": "Forwarding-based setup",
           "body": "Forward your line for after-hours and overflow — no system migration.",
           "link": {
@@ -186,17 +183,17 @@
           }
         },
         {
-          "icon": "🧪",
+          "icon": "ti-flask",
           "title": "Start with one use case",
           "body": "Begin after-hours only; add overflow when you are comfortable."
         },
         {
-          "icon": "👥",
+          "icon": "ti-users",
           "title": "Staff still handle key calls",
           "body": "Your team keeps the calls they always have; RingBooker covers the gap."
         },
         {
-          "icon": "🔌",
+          "icon": "ti-plug-connected",
           "title": "Works with existing tools",
           "body": "Your booking software stays. Square can connect directly today; other tools can start with summaries and handoff.",
           "link": {
@@ -205,12 +202,12 @@
           }
         },
         {
-          "icon": "📋",
+          "icon": "ti-clipboard-list",
           "title": "Full call context for your team",
           "body": "Every AI-handled call produces a summary and intent note for follow-up."
         },
         {
-          "icon": "🛡️",
+          "icon": "ti-shield-check",
           "title": "Low-risk rollout",
           "body": "Adjust what RingBooker handles without touching your public number.",
           "link": {

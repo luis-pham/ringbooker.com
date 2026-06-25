@@ -5,6 +5,7 @@ import { mkSectionTitle } from '@/lib/marketing/section-title';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
+import { MarketingTablerIcon } from '@/components/marketing/marketing-tabler-icon';
 
 export type MarketingHowItWorksContent = {
   hero: {
@@ -213,7 +214,9 @@ export function MarketingHowItWorksTemplate({ content }: { content: MarketingHow
               <div className="hiw-grid-2 hiw-setup-grid">
                 <article className="hiw-card recommended">
                   <div className="hiw-card-top">
-                    <div className="hiw-icon">📞</div>
+                    <div className="hiw-icon">
+                      <MarketingTablerIcon icon="ti-phone" style={{ color: 'var(--purple)' }} />
+                    </div>
                     <span className="hiw-pill">Recommended</span>
                   </div>
                   <h3>{setupPaths?.cards?.[0]}</h3>
@@ -226,7 +229,9 @@ export function MarketingHowItWorksTemplate({ content }: { content: MarketingHow
                 </article>
                 <article className="hiw-card">
                   <div className="hiw-card-top">
-                    <div className="hiw-icon">☎️</div>
+                    <div className="hiw-icon">
+                      <MarketingTablerIcon icon="ti-phone-call" style={{ color: 'var(--purple)' }} />
+                    </div>
                     <span className="hiw-pill optional">Optional</span>
                   </div>
                   <h3>{setupPaths?.cards?.[1]}</h3>
@@ -289,12 +294,12 @@ export function MarketingHowItWorksTemplate({ content }: { content: MarketingHow
               <h2 className="hiw-title">{renderHowSectionHeading('what-it-handles', whatItHandles?.heading)}</h2>
               <p className="hiw-sub">RingBooker targets the phone moments that cost salons and clinics revenue: busy service windows, after-hours buying intent, peak overflow, reschedules, cancellations, and callers who hang up instead of leaving voicemail.</p>
               <div className="hiw-handle-grid">
-                <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>{whatItHandles?.items?.[0]}</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon blue">📞</div><strong>{whatItHandles?.items?.[1]}</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon green">📅</div><strong>{whatItHandles?.items?.[2]}</strong><p>Collect service, timing, customer details, and preferences needed to move the booking forward.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon pink">🔄</div><strong>{whatItHandles?.items?.[3]}</strong><p>Understand the caller’s change request, preserve context, and help your team recover the slot where appropriate.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon">💬</div><strong>{whatItHandles?.items?.[4]}</strong><p>Text callers back when they hang up, call after hours, or reach you during a busy window.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon slate">🤝</div><strong>{whatItHandles?.items?.[5]}</strong><p>Escalate special cases with context so your team does not have to restart the conversation.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon amber"><MarketingTablerIcon icon="ti-moon" style={{ color: 'var(--purple)' }} /></div><strong>{whatItHandles?.items?.[0]}</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon blue"><MarketingTablerIcon icon="ti-phone" style={{ color: 'var(--purple)' }} /></div><strong>{whatItHandles?.items?.[1]}</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon green"><MarketingTablerIcon icon="ti-calendar" style={{ color: 'var(--purple)' }} /></div><strong>{whatItHandles?.items?.[2]}</strong><p>Collect service, timing, customer details, and preferences needed to move the booking forward.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon pink"><MarketingTablerIcon icon="ti-refresh" style={{ color: 'var(--purple)' }} /></div><strong>{whatItHandles?.items?.[3]}</strong><p>Understand the caller’s change request, preserve context, and help your team recover the slot where appropriate.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon"><MarketingTablerIcon icon="ti-message-circle" style={{ color: 'var(--purple)' }} /></div><strong>{whatItHandles?.items?.[4]}</strong><p>Text callers back when they hang up, call after hours, or reach you during a busy window.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon slate"><MarketingTablerIcon icon="ti-handshake" style={{ color: 'var(--purple)' }} /></div><strong>{whatItHandles?.items?.[5]}</strong><p>Escalate special cases with context so your team does not have to restart the conversation.</p></div>
               </div>
             </div>
           </section>
@@ -325,9 +330,9 @@ export function MarketingHowItWorksTemplate({ content }: { content: MarketingHow
                   <p>Callers get a natural answer, a clear next step, and a text confirmation or callback path when needed. The goal is not to pretend to be human. The goal is to keep the booking conversation alive.</p>
                 </div>
                 <div className="hiw-call-steps">
-                  <div className="hiw-call-step"><span>🗣</span><div><strong>{callerExperience?.items?.[0]}</strong><p>RingBooker keeps the call moving without long silence or generic phone-tree friction.</p></div></div>
-                  <div className="hiw-call-step"><span>💬</span><div><strong>{callerExperience?.items?.[1]}</strong><p>Important outcomes can be followed by SMS so callers know what happened next.</p></div></div>
-                  <div className="hiw-call-step"><span>🤝</span><div><strong>{callerExperience?.items?.[2]}</strong><p>If the caller needs a real person, RingBooker collects context and creates a cleaner callback path.</p></div></div>
+                  <div className="hiw-call-step"><span><MarketingTablerIcon icon="ti-speakerphone" style={{ color: 'var(--purple)' }} /></span><div><strong>{callerExperience?.items?.[0]}</strong><p>RingBooker keeps the call moving without long silence or generic phone-tree friction.</p></div></div>
+                  <div className="hiw-call-step"><span><MarketingTablerIcon icon="ti-message-circle" style={{ color: 'var(--purple)' }} /></span><div><strong>{callerExperience?.items?.[1]}</strong><p>Important outcomes can be followed by SMS so callers know what happened next.</p></div></div>
+                  <div className="hiw-call-step"><span><MarketingTablerIcon icon="ti-handshake" style={{ color: 'var(--purple)' }} /></span><div><strong>{callerExperience?.items?.[2]}</strong><p>If the caller needs a real person, RingBooker collects context and creates a cleaner callback path.</p></div></div>
                 </div>
               </div>
             </div>

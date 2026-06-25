@@ -14,15 +14,11 @@
   "badge": "Decision Hub",
   "heroLayout": "landing",
   "title": {
-    "kind": "accentText",
-    "parts": [
-      {
-        "text": "Compare RingBooker With "
-      },
-      {
-        "accent": "Voicemail, Hiring, and Generic AI"
-      }
-    ]
+    "kind": "sectionTitle",
+    "before": "Compare your",
+    "line2Before": "",
+    "accent": "phone options",
+    "after": "for salons"
   },
   "intro": "The average beauty business loses $126,000 annually to missed calls. This page compares every phone coverage option — voicemail, text-back, answering services, extra staff, and generic AI — against RingBooker's beauty-specific answering for after-hours calls, peak-hour overflow, and missed booking protection, across the criteria that actually matter for salons, spas, and med spas.",
   "pills": [
@@ -51,34 +47,35 @@
       "sub": "Most salons are not choosing between “AI or nothing.” They are choosing between voicemail, text-back, services, headcount, generic AI — or a beauty-specific layer.",
       "cards": [
         {
-          "icon": "📼",
+          "icon": "ti-device-tv",
           "title": "Voicemail",
           "body": "The default fallback. Works for motivated callers — loses everyone who hangs up at the beep."
         },
         {
-          "icon": "📱",
+          "icon": "ti-device-mobile",
           "title": "Missed-call text-back",
           "body": "Re-engages silent callers — but cannot complete a booking or answer nuanced service questions."
         },
         {
-          "icon": "☎️",
+          "icon": "ti-phone",
           "title": "Answering service",
           "body": "A human answers — but may not know your services, pricing, staff, or beauty workflows."
         },
         {
-          "icon": "👩",
+          "icon": "ti-user",
           "title": "Hire more staff",
           "body": "Full control — but expensive, does not cover after-hours the same way, and overflow still spikes."
         },
         {
-          "icon": "🤖",
+          "icon": "ti-robot",
           "title": "Generic AI receptionist",
           "body": "Always on — but not tuned for nail vs. med spa patterns or peak-hour reality."
         },
         {
-          "icon": "💜",
+          "icon": "ti-heart-handshake",
           "title": "RingBooker",
-          "body": "Beauty-specific AI answering: after-hours and overflow, your current number, booking tools in place, team stays in control."
+          "body": "Beauty-specific AI answering: after-hours and overflow, your current number, booking tools in place, team stays in control.",
+          "highlight": true
         }
       ]
     },
@@ -514,17 +511,17 @@
       "sub": "Salons and spas are not generic local businesses. The right comparison has to be operational — not just feature-based.",
       "cards": [
         {
-          "icon": "⏱️",
+          "icon": "ti-clock",
           "title": "Timing is everything",
           "body": "Saturday at 11am means stations are full — generic tools do not model that reality."
         },
         {
-          "icon": "💆",
+          "icon": "ti-massage",
           "title": "Service questions are specific",
           "body": "Callers ask about gel vs. dip, balayage, fillers — generic AI or agents often miss nuance."
         },
         {
-          "icon": "👤",
+          "icon": "ti-user",
           "title": "Trust is part of the product",
           "body": "A caller who feels mishandled will not book. Comparison has to include caller experience quality."
         }

@@ -812,7 +812,6 @@ export function MarketingHomeTemplate({ content }: { content: HomePageContent })
                 </div>
               </div>
               <div className="coverage-visual coverage-visual-peach" aria-hidden="true">
-                <span className="coverage-visual-num">01</span>
                 <div className="coverage-panel" id="home-tonights-calls-panel">
                   <p className="coverage-panel-title">{afterHoursCoverage.panel_title}</p>
                   {afterHoursCoverage.panel_rows?.map(({ label, time, badge }) => (
@@ -846,7 +845,6 @@ export function MarketingHomeTemplate({ content }: { content: HomePageContent })
               </div>
             </div>
               <div className="coverage-visual coverage-visual-sage" aria-hidden="true">
-                <span className="coverage-visual-num">02</span>
                 <div className="coverage-panel" id="home-call-summary-panel">
                   <p className="coverage-panel-title">{bookingChangesCoverage.panel_title}</p>
                   {bookingChangesCoverage.panel_fields?.map(({ label, value }, index) => (
@@ -872,7 +870,6 @@ export function MarketingHomeTemplate({ content }: { content: HomePageContent })
                 </div>
               </div>
               <div className="coverage-visual coverage-visual-sand" aria-hidden="true">
-                <span className="coverage-visual-num">03</span>
                 <div className="coverage-panel" id="home-missed-call-recovery-panel">
                   <p className="coverage-panel-title">{missedCallCoverage.panel_title}</p>
                   {missedCallCoverage.panel_messages?.map(({ label, text, status }) => (

@@ -14,18 +14,11 @@
   "badge": "Trust & Reliability Hub",
   "heroLayout": "landing",
   "title": {
-    "kind": "accentText",
-    "parts": [
-      {
-        "text": "A Reliable AI Receptionist Built Around "
-      },
-      {
-        "text": " "
-      },
-      {
-        "accent": "trust for beauty businesses"
-      }
-    ]
+    "kind": "sectionTitle",
+    "before": "Built for",
+    "line2Before": "",
+    "accent": "reliable",
+    "after": "call handling in beauty businesses"
   },
   "intro": "Trust isn't a feature — it's a requirement. 55% of salon clients and 71% of med spa clients are comfortable with AI phone handling when it's accurate and honest. Here's exactly what RingBooker does, what it doesn't, and how to start with confidence.",
   "pills": [
@@ -53,24 +46,24 @@
       "sub": "For beauty businesses, trust means four specific things — none of them are AI hype.",
       "cards": [
         {
-          "icon": "🎯",
+          "icon": "ti-target",
           "title": "Consistency",
           "stat": "82% of consumers abandon businesses after a poor experience (Salesforce).",
           "body": "Every after-hours caller gets a clear, consistent response."
         },
         {
-          "icon": "🔍",
+          "icon": "ti-search",
           "title": "Clarity",
           "stat": "Maine Chatbot Disclosure Act 2025 — AI must identify itself.",
           "body": "RingBooker identifies as a virtual assistant — transparency builds trust."
         },
         {
-          "icon": "🔧",
+          "icon": "ti-tool",
           "title": "Practical control",
           "body": "You decide what it handles, adjust coverage, and keep full control with your team."
         },
         {
-          "icon": "📐",
+          "icon": "ti-ruler-2",
           "title": "Realistic scope",
           "stat": "71% of med spa clients are comfortable with AI when the experience is accurate (Zenoti, 2025).",
           "body": "Built for predictable workflows, not every edge case."
@@ -93,27 +86,27 @@
       "sub": "Design choices — not slogans — that define behavior on every call.",
       "items": [
         {
-          "icon": "📞",
+          "icon": "ti-phone",
           "title": "Answers after-hours and overflow consistently",
           "body": "When you are closed or your team is with a client, callers get a real response — not silence."
         },
         {
-          "icon": "🎭",
+          "icon": "ti-masks-theater",
           "title": "Transparent AI identity",
           "body": "No pretending to be a human team member — honesty supports long-term trust."
         },
         {
-          "icon": "🔄",
+          "icon": "ti-refresh",
           "title": "Fallback, then clean handoff",
           "body": "If a request is out of scope, collect context and route to your team instead of looping."
         },
         {
-          "icon": "📋",
+          "icon": "ti-clipboard-list",
           "title": "Every call produces a summary",
           "body": "Intent notes and action items land in your dashboard — no black-box calls."
         },
         {
-          "icon": "🎛️",
+          "icon": "ti-adjustments-horizontal",
           "title": "Designed to be adjusted",
           "body": "Hours, services, and staff change — configuration can change with you."
         }
@@ -165,39 +158,39 @@
       "sub": "Common trust questions before teams start.",
       "items": [
         {
-          "icon": "❓",
+          "icon": "ti-help",
           "title": "What if a caller asks something unusual?",
           "body": "RingBooker follows a fallback path: offer callback, collect details, route cleanly — without confusing loops."
         },
         {
-          "icon": "👥",
+          "icon": "ti-users",
           "title": "What if I still want staff involved?",
           "body": "That is the default — configure specific call types only; your team keeps the rest."
         },
         {
-          "icon": "🧪",
+          "icon": "ti-flask",
           "title": "What if I want to start small?",
           "body": "After-hours only for a few weeks, then reassess. Most teams expand when quality feels right."
         },
         {
-          "icon": "☎️",
+          "icon": "ti-phone",
           "title": "What if I need to keep my current number?",
           "body": "Your number does not change — RingBooker uses forwarding on the line you already publish."
         },
         {
-          "icon": "🔌",
+          "icon": "ti-plug-connected",
           "title": "What if I need it to fit existing tools?",
           "body": "Works alongside your current workflow. Square Appointments is live today; other tools can start with summaries and handoff."
         },
         {
-          "icon": "💬",
+          "icon": "ti-message-circle",
           "title": "What if clients ask if they are talking to AI?",
           "body": "Designed to be transparent when relevant — most callers accept that for routine booking tasks."
         }
       ]
     },
     {
-      "kind": "step_track",
+      "kind": "rollout_steps",
       "html": {
         "section": "leak",
         "stepsCentered4": true,

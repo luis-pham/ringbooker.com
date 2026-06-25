@@ -8,7 +8,8 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { CallPreviewPlayer } from '@/components/marketing/call-preview-player';
 import { VerticalHeroGrid } from '@/components/marketing/vertical-hero-grid';
 import { verticalScrollAnimationsScript } from '@/components/marketing/vertical-scroll-animations-script';
-import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketing/vertical-pain-icons';
+import { MarketingTablerIcon } from '@/components/marketing/marketing-tabler-icon';
+import type { VerticalPainIconId } from '@/components/marketing/vertical-pain-icons';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
@@ -45,7 +46,7 @@ export type IndustryLandingContent = {
   features: {
     heading: string;
     heading_parts?: ContentHeading;
-    items: Array<{ icon: string; title: string; description: string }>;
+    items: Array<{ icon: string; title: string; description: string; badge?: string; category?: string }>;
   };
   how_it_works: {
     heading: string;
@@ -493,16 +494,21 @@ function PainPoints({
         <p className={`vertical-pain-section__eyebrow ${eyebrowClass}`}>{eyebrow}</p>
         <h2 className={MK_SECTION_H2}>{heading}</h2>
       </div>
-      <div className="vertical-pain-section__grid" data-vertical-pain-grid>
-        {points.map((p) => (
-          <article key={p.title} className="vertical-pain-card" data-vertical-pain-card>
-            <div className="vertical-pain-card__header">
-              <span className="vertical-pain-card__icon">
-                <VerticalPainIcon id={p.icon} />
-              </span>
-              <p className="vertical-pain-card__title">{p.title}</p>
+      <div className={`mt-8 overflow-hidden rounded-3xl bg-white ${VERTICAL_CARD_SURFACE}`} data-vertical-pain-grid>
+        {points.map((p, index) => (
+          <article
+            key={p.title}
+            className="grid border-b border-slate-100 last:border-b-0"
+            style={{ gridTemplateColumns: '56px minmax(0, 1fr)' }}
+            data-vertical-pain-card
+          >
+            <div className="flex items-center justify-center border border-slate-100 bg-violet-50 text-xl font-medium text-violet-600">
+              {String(index + 1).padStart(2, '0')}
             </div>
-            <p className="vertical-pain-card__desc">{p.body}</p>
+            <div className="p-6">
+              <p className="text-[15px] font-medium text-slate-900">{p.title}</p>
+              <p className="mt-1.5 text-[13px] leading-6 text-slate-500">{p.body}</p>
+            </div>
           </article>
         ))}
       </div>
@@ -510,7 +516,7 @@ function PainPoints({
   );
 }
 
-type FeatureItem = { icon: string; title: string; body: string };
+type FeatureItem = { icon: string; title: string; body: string; badge?: string; category?: string };
 function FeatureGrid({
   features,
   accent,
@@ -530,18 +536,32 @@ function FeatureGrid({
         <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
         <h2 className={MK_SECTION_H2}>{heading}</h2>
       </div>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-vertical-feature-grid>
-        {features.map((f) => (
-          <article
-            key={f.title}
-            data-vertical-feature-card
-            className={`flex flex-col items-center rounded-3xl bg-white p-6 text-center ${VERTICAL_CARD_SURFACE}`}
-          >
-            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>{f.icon}</div>
-            <p className="text-[15px] font-medium text-slate-900">{f.title}</p>
-            <p className="mt-1.5 text-[13px] leading-6 text-slate-500">{f.body}</p>
-          </article>
-        ))}
+      <div className={`mt-8 overflow-hidden rounded-3xl bg-white ${VERTICAL_CARD_SURFACE}`} data-vertical-feature-grid>
+        {features.map((f) => {
+          const badge = f.badge ?? f.category;
+
+          return (
+            <article
+              key={f.title}
+              data-vertical-feature-card
+              className="grid items-start gap-3 border-b border-slate-100 p-6 last:border-b-0"
+              style={{ gridTemplateColumns: badge ? '40px minmax(0, 1fr) auto' : '40px minmax(0, 1fr)' }}
+            >
+              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>
+                <MarketingTablerIcon icon={f.icon} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p className="text-[15px] font-medium text-slate-900">{f.title}</p>
+                <p className="mt-1.5 text-[13px] leading-6 text-slate-500">{f.body}</p>
+              </div>
+              {badge ? (
+                <span className="self-start rounded-full bg-violet-50 px-3 py-1.5 text-[12px] font-medium text-violet-600">
+                  {badge}
+                </span>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -722,12 +742,12 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for nail salon calls')}
         features={[
-          { icon: '📞', title: 'Works on your current number', body: 'No new phone number needed — just forward overflow or after-hours calls.' },
-          { icon: '🇻🇳', title: 'English + Vietnamese callers', body: 'Salon-specific scripts plus language preferences noted during setup, with summaries your team can use for follow-up.' },
-          { icon: '💅', title: 'Pricing questions answered clearly', body: 'Full set, gel, acrylic, dip, pedicure — answered from your configured service menu and prices.' },
-          { icon: '📅', title: 'Same-day and walk-in booking', body: 'Captures high-intent callers who want a slot today or this weekend.' },
-          { icon: '🔄', title: 'Reschedule and cancel support', body: 'Captures routine change requests and routes anything uncertain with context for your team.' },
-          { icon: '💬', title: 'SMS confirmation and follow-up', body: 'Sends booking confirmation texts so clients don\'t slip through the cracks.' },
+          { icon: 'ti-phone', title: 'Works on your current number', body: 'No new phone number needed — just forward overflow or after-hours calls.' },
+          { icon: 'ti-world', title: 'English + Vietnamese callers', body: 'Salon-specific scripts plus language preferences noted during setup, with summaries your team can use for follow-up.' },
+          { icon: 'ti-nail', title: 'Pricing questions answered clearly', body: 'Full set, gel, acrylic, dip, pedicure — answered from your configured service menu and prices.' },
+          { icon: 'ti-calendar', title: 'Same-day and walk-in booking', body: 'Captures high-intent callers who want a slot today or this weekend.' },
+          { icon: 'ti-refresh', title: 'Reschedule and cancel support', body: 'Captures routine change requests and routes anything uncertain with context for your team.' },
+          { icon: 'ti-message-circle', title: 'SMS confirmation and follow-up', body: 'Sends booking confirmation texts so clients don\'t slip through the cracks.' },
         ]}
       />
 
@@ -929,15 +949,15 @@ export async function MarketingNailSalonVietnameseTemplate() {
           eyebrowClass={theme.accentClass}
           heading="Lễ tân AI cho tiệm nail, chạy trên số hiện tại"
           features={[
-            { icon: '💅', title: 'Trả lời tiếng Việt và tiếng Anh', body: 'RingBooker nghe máy bằng cả hai ngôn ngữ — không cần thêm nhân viên.' },
-            { icon: '🌙', title: 'Tự động trả lời ngoài giờ', body: 'Bắt kịp mọi cuộc gọi sau khi tiệm đóng cửa — khách đặt lịch, hỏi giá, hoặc đổi hẹn lúc 9 giờ tối đều được phục vụ.' },
-            { icon: '📞', title: 'Giữ nguyên số điện thoại hiện tại', body: 'Không cần đổi số. Chuyển tiếp cuộc gọi từ số tiệm hiện tại — khách vẫn gọi vào số quen thuộc.' },
-            { icon: '🔔', title: 'Nhắc lịch hẹn tự động', body: 'Giảm tình trạng khách quên lịch, bỏ hẹn — đặc biệt hữu ích cho tiệm đông khách cuối tuần.' },
-            { icon: '👥', title: 'Ghi nhận yêu cầu của khách', body: 'Khách muốn đặt với thợ cụ thể? RingBooker ghi lại và chuyển thông tin cho đội ngũ của bạn.' },
-            { icon: '📊', title: 'Tóm tắt cuộc gọi đầy đủ', body: 'Mỗi cuộc gọi đều được ghi lại — ai gọi, hỏi gì, cần làm gì tiếp theo.' },
-            { icon: '🌐', title: 'Đọc website tiệm tự động — không cần nhập tay', body: 'Chỉ cần dán link website tiệm. RingBooker tự đọc và học thông tin — dịch vụ, giá, giờ mở cửa, thợ — không cần nhập từng thứ một.' },
-            { icon: '🔗', title: 'Tích hợp với phần mềm tiệm đang dùng', body: 'RingBooker hoạt động cùng Square Appointments, Vagaro, Mindbody, Booksy và các phần mềm quản lý tiệm nail phổ biến khác.' },
-            { icon: '📅', title: 'Tự động đặt lịch và chọn thợ', body: 'Khách gọi đặt lịch và yêu cầu thợ cụ thể? RingBooker ghi nhận tên thợ, dịch vụ, giờ mong muốn, và đồng bộ vào lịch của tiệm.' },
+            { icon: 'ti-nail', title: 'Trả lời tiếng Việt và tiếng Anh', body: 'RingBooker nghe máy bằng cả hai ngôn ngữ — không cần thêm nhân viên.' },
+            { icon: 'ti-moon', title: 'Tự động trả lời ngoài giờ', body: 'Bắt kịp mọi cuộc gọi sau khi tiệm đóng cửa — khách đặt lịch, hỏi giá, hoặc đổi hẹn lúc 9 giờ tối đều được phục vụ.' },
+            { icon: 'ti-phone', title: 'Giữ nguyên số điện thoại hiện tại', body: 'Không cần đổi số. Chuyển tiếp cuộc gọi từ số tiệm hiện tại — khách vẫn gọi vào số quen thuộc.' },
+            { icon: 'ti-bell', title: 'Nhắc lịch hẹn tự động', body: 'Giảm tình trạng khách quên lịch, bỏ hẹn — đặc biệt hữu ích cho tiệm đông khách cuối tuần.' },
+            { icon: 'ti-users', title: 'Ghi nhận yêu cầu của khách', body: 'Khách muốn đặt với thợ cụ thể? RingBooker ghi lại và chuyển thông tin cho đội ngũ của bạn.' },
+            { icon: 'ti-chart-bar', title: 'Tóm tắt cuộc gọi đầy đủ', body: 'Mỗi cuộc gọi đều được ghi lại — ai gọi, hỏi gì, cần làm gì tiếp theo.' },
+            { icon: 'ti-world', title: 'Đọc website tiệm tự động — không cần nhập tay', body: 'Chỉ cần dán link website tiệm. RingBooker tự đọc và học thông tin — dịch vụ, giá, giờ mở cửa, thợ — không cần nhập từng thứ một.' },
+            { icon: 'ti-link', title: 'Tích hợp với phần mềm tiệm đang dùng', body: 'RingBooker hoạt động cùng Square Appointments, Vagaro, Mindbody, Booksy và các phần mềm quản lý tiệm nail phổ biến khác.' },
+            { icon: 'ti-calendar', title: 'Tự động đặt lịch và chọn thợ', body: 'Khách gọi đặt lịch và yêu cầu thợ cụ thể? RingBooker ghi nhận tên thợ, dịch vụ, giờ mong muốn, và đồng bộ vào lịch của tiệm.' },
           ]}
         />
 
@@ -947,9 +967,9 @@ export async function MarketingNailSalonVietnameseTemplate() {
           eyebrowClass={theme.accentClass}
           heading="Tại sao chủ tiệm nail người Việt chọn RingBooker?"
           features={[
-            { icon: '⚡', title: 'Setup 15 phút', body: 'Dán link website. RingBooker tự học thông tin tiệm. Cài chuyển tiếp cuộc gọi. Xong.' },
-            { icon: '🔗', title: 'Dùng được với phần mềm tiệm đang có', body: 'Không cần đổi Square, Vagaro, hay Booksy. RingBooker chạy song song — không ảnh hưởng gì đến quy trình hiện tại.' },
-            { icon: '📞', title: 'Giữ nguyên số tiệm', body: 'Khách vẫn gọi số cũ. Không cần báo lại cho khách. Không mất khách quen.' },
+            { icon: 'ti-bolt', title: 'Setup 15 phút', body: 'Dán link website. RingBooker tự học thông tin tiệm. Cài chuyển tiếp cuộc gọi. Xong.' },
+            { icon: 'ti-link', title: 'Dùng được với phần mềm tiệm đang có', body: 'Không cần đổi Square, Vagaro, hay Booksy. RingBooker chạy song song — không ảnh hưởng gì đến quy trình hiện tại.' },
+            { icon: 'ti-phone', title: 'Giữ nguyên số tiệm', body: 'Khách vẫn gọi số cũ. Không cần báo lại cho khách. Không mất khách quen.' },
           ]}
         />
 
@@ -1134,12 +1154,12 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for hair salon calls')}
         features={[
-          { icon: '👩‍🎨', title: 'Stylist preference capture', body: 'Asks for preferred stylist and flags alternatives based on your rules when needed.' },
-          { icon: '🎨', title: 'Color appointment context', body: 'Captures service type and timing needs for balayage, keratin, extensions, and other longer services.' },
-          { icon: '🔄', title: 'Reschedule and cancel support', body: 'Captures change requests gracefully and preserves stylist preference in the call context.' },
-          { icon: '📞', title: 'Works on your current number', body: 'Forward overflow and after-hours — no new number, no disruption to existing clients.' },
-          { icon: '💬', title: 'SMS confirmations', body: 'Clients can receive booking confirmations by text when the booking flow is configured.' },
-          { icon: '📅', title: '24/7 booking coverage', body: 'Captures after-hours calls when clients browse social media and decide to book late.' },
+          { icon: 'ti-user', title: 'Stylist preference capture', body: 'Asks for preferred stylist and flags alternatives based on your rules when needed.' },
+          { icon: 'ti-palette', title: 'Color appointment context', body: 'Captures service type and timing needs for balayage, keratin, extensions, and other longer services.' },
+          { icon: 'ti-refresh', title: 'Reschedule and cancel support', body: 'Captures change requests gracefully and preserves stylist preference in the call context.' },
+          { icon: 'ti-phone', title: 'Works on your current number', body: 'Forward overflow and after-hours — no new number, no disruption to existing clients.' },
+          { icon: 'ti-message-circle', title: 'SMS confirmations', body: 'Clients can receive booking confirmations by text when the booking flow is configured.' },
+          { icon: 'ti-calendar', title: '24/7 booking coverage', body: 'Captures after-hours calls when clients browse social media and decide to book late.' },
         ]}
       />
 
@@ -1257,20 +1277,20 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
         heading={mkSectionTitle('What RingBooker', 'handles', 'for spa calls')}
         features={[
           {
-            icon: '🧖',
+            icon: 'ti-spa',
             title: 'Treatment-aware call scripts',
             body: 'Knows your service menu, durations, room types, and prenatal massage policies so answers feel natural and accurate.',
           },
-          { icon: '💑', title: 'Couples and group booking details', body: 'Captures guest count, preferred times, and room needs; checks availability when connected.' },
-          { icon: '🌙', title: '24/7 call coverage', body: 'Captures evening, weekend, and after-hours calls when booking intent is highest.' },
+          { icon: 'ti-friends', title: 'Couples and group booking details', body: 'Captures guest count, preferred times, and room needs; checks availability when connected.' },
+          { icon: 'ti-moon', title: '24/7 call coverage', body: 'Captures evening, weekend, and after-hours calls when booking intent is highest.' },
           {
-            icon: '📦',
+            icon: 'ti-package',
             title: 'Package and pricing call handling',
             body: 'Your front desk answers the same questions dozens of times a week. RingBooker handles them from your approved service menu — instantly, every time.',
           },
-          { icon: '📞', title: 'Current-number forwarding', body: 'Clients call the number they already know. No change from their perspective.' },
-          { icon: '💬', title: 'SMS booking confirmations', body: 'Confirmation texts can go out after booking so clients have a clear next step.' },
-          { icon: '🔔', title: 'Reminder workflows', body: 'Automated appointment reminders can help reduce last-minute confusion and no-shows.' },
+          { icon: 'ti-phone', title: 'Current-number forwarding', body: 'Clients call the number they already know. No change from their perspective.' },
+          { icon: 'ti-message-circle', title: 'SMS booking confirmations', body: 'Confirmation texts can go out after booking so clients have a clear next step.' },
+          { icon: 'ti-bell', title: 'Reminder workflows', body: 'Automated appointment reminders can help reduce last-minute confusion and no-shows.' },
         ]}
       />
 
@@ -1399,15 +1419,15 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         heading={mkSectionTitle('What RingBooker', 'handles', 'for med spa calls')}
         features={[
           {
-            icon: '💉',
+            icon: 'ti-vaccine',
             title: 'Consultation call capture',
             body: 'Captures Botox consultation calls ($600–$1,200), filler inquiries ($800–$2,500), laser bookings, and body contouring consultations ($1,500–$5,000) with professional, brand-safe scripting.',
           },
-          { icon: '🌙', title: 'After-hours lead capture', body: 'Captures high-intent after-hours callers who research at night and need to reach someone.' },
-          { icon: '📞', title: 'Current-number answering', body: 'No new number — forward overflow or after-hours on your existing line.' },
-          { icon: '🔔', title: 'Reminder workflows', body: 'Automated reminders before high-ticket appointments can help reduce missed appointments.' },
-          { icon: '👥', title: 'Provider preference capture', body: 'Captures preferred injector or provider requests and routes them based on your configured workflow.' },
-          { icon: '📊', title: 'Call transcripts and analytics', body: 'Every call logged with outcome, intent, and action so your team has full context on follow-up.' },
+          { icon: 'ti-moon', title: 'After-hours lead capture', body: 'Captures high-intent after-hours callers who research at night and need to reach someone.' },
+          { icon: 'ti-phone', title: 'Current-number answering', body: 'No new number — forward overflow or after-hours on your existing line.' },
+          { icon: 'ti-bell', title: 'Reminder workflows', body: 'Automated reminders before high-ticket appointments can help reduce missed appointments.' },
+          { icon: 'ti-users', title: 'Provider preference capture', body: 'Captures preferred injector or provider requests and routes them based on your configured workflow.' },
+          { icon: 'ti-chart-bar', title: 'Call transcripts and analytics', body: 'Every call logged with outcome, intent, and action so your team has full context on follow-up.' },
         ]}
       />
 
@@ -1539,17 +1559,17 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for beauty clinic calls')}
         features={[
-          { icon: '✨', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
-          { icon: '🔁', title: 'Treatment continuity context', body: 'Captures returning patient calls, provider preference, and session context for follow-up or booking.' },
+          { icon: 'ti-sparkles', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
+          { icon: 'ti-refresh', title: 'Treatment continuity context', body: 'Captures returning patient calls, provider preference, and session context for follow-up or booking.' },
           {
-            icon: '💆',
+            icon: 'ti-massage',
             title: 'Wax, lash, and facial service coverage',
             body: 'Estheticians and lash techs cannot answer mid-service. RingBooker covers pricing questions, booking requests, and pre-care questions while they work — on the current clinic number.',
           },
-          { icon: '📋', title: 'Consultation intake capture', body: 'Captures caller intent, treatment interest, and preferred timing before the consultation is booked.' },
-          { icon: '📞', title: 'Works on your current number', body: 'No new number needed — just forward overflow or off-hours calls to RingBooker.' },
-          { icon: '👥', title: 'Provider preference capture', body: 'Captures preferred provider requests and handles alternatives based on your configured workflow.' },
-          { icon: '📊', title: 'Call analytics and transcripts', body: 'Full call logs and summaries so your team has context on every inbound inquiry.' },
+          { icon: 'ti-clipboard-list', title: 'Consultation intake capture', body: 'Captures caller intent, treatment interest, and preferred timing before the consultation is booked.' },
+          { icon: 'ti-phone', title: 'Works on your current number', body: 'No new number needed — just forward overflow or off-hours calls to RingBooker.' },
+          { icon: 'ti-users', title: 'Provider preference capture', body: 'Captures preferred provider requests and handles alternatives based on your configured workflow.' },
+          { icon: 'ti-chart-bar', title: 'Call analytics and transcripts', body: 'Full call logs and summaries so your team has context on every inbound inquiry.' },
         ]}
       />
 
@@ -1914,6 +1934,8 @@ function DataDrivenVerticalPage({
     icon: item.icon,
     title: item.title,
     body: item.description,
+    badge: item.badge,
+    category: item.category,
   }));
   const steps = content.how_it_works.steps.map((step) => ({
     n: String(step.number),

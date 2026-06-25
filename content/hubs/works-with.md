@@ -14,15 +14,11 @@
   "badge": "Compatibility Hub",
   "heroLayout": "landing",
   "title": {
-    "kind": "accentText",
-    "parts": [
-      {
-        "text": "AI Receptionist That Works With Your "
-      },
-      {
-        "accent": "Booking Tools"
-      }
-    ]
+    "kind": "sectionTitle",
+    "before": "Works with your",
+    "line2Before": "",
+    "accent": "booking tools",
+    "after": "— no migration"
   },
   "intro": "RingBooker is the phone layer that sits alongside the booking tools your team already uses. Square Appointments, Mindbody, and Acuity Scheduling connect directly today, while Vagaro, Booksy, and other tools can start with booking-link SMS, summaries, and handoff. The goal is simple: no forced migration and no workflow reset just to protect missed calls. 77% of salon clients still prefer calling to reschedule — even when their booking platform has a self-service option. RingBooker covers those calls without changing the platform your team already runs. (Zenoti 2025)",
   "pills": [
@@ -49,22 +45,22 @@
       "sub": "RingBooker is designed to fit how beauty businesses already operate — phone, booking tools, front desk, and rollout pace.",
       "cards": [
         {
-          "icon": "📞",
+          "icon": "ti-phone",
           "title": "Phone workflow",
           "body": "Works via call forwarding on your current number — no phone system replacement. After-hours handling, overflow coverage, and your published number stay intact."
         },
         {
-          "icon": "🗓️",
+          "icon": "ti-calendar",
           "title": "Booking tools",
           "body": "Keep your existing software to manage appointments; RingBooker complements it. Square Appointments, Mindbody, and Acuity Scheduling are live, and other tools can start with booking-link SMS, summaries, and handoff."
         },
         {
-          "icon": "👥",
+          "icon": "ti-users",
           "title": "Front-desk workflow",
           "body": "Staff keep the calls they always take; RingBooker covers the gap. Your team answers as usual; AI handles overflow and after-hours with full context at handoff."
         },
         {
-          "icon": "🚀",
+          "icon": "ti-rocket",
           "title": "Phased adoption",
           "body": "Start with one use case — like after-hours only — and expand when you are ready. Start small, avoid a big-bang migration, and adjust anytime."
         }
@@ -85,66 +81,58 @@
         {
           "href": "/works-with/does-ringbooker-work-with-square-appointments",
           "logoSrc": "/images/square.png",
-          "title": "Square Appointments",
-          "body": "Live integration — captured booking intent can flow into your scheduling workflow.",
-          "status": "✓ Live Integration",
-          "statusKind": "live"
+          "name": "Square Appointments",
+          "description": "Live integration — captured booking intent can flow into your scheduling workflow.",
+          "status_type": "live"
         },
         {
           "href": "/works-with/does-ringbooker-work-with-mindbody-for-spa-and-med-spa-calls",
           "logoSrc": "/images/mindbody.webp",
-          "title": "Mindbody",
-          "body": "Live integration — connects to Mindbody for availability checks, service context, and booking request capture in your scheduling workflow.",
-          "status": "✓ Live Integration",
-          "statusKind": "live"
+          "name": "Mindbody",
+          "description": "Live integration — connects to Mindbody for availability checks, service context, and booking request capture in your scheduling workflow.",
+          "status_type": "live"
         },
         {
           "href": "/works-with",
           "logoSrc": "/images/acuity.png",
-          "title": "Acuity Scheduling",
-          "body": "Live integration — syncs Acuity appointment types and calendars, checks availability, and captures bookings in your scheduling workflow.",
-          "status": "✓ Live Integration",
-          "statusKind": "live"
+          "name": "Acuity Scheduling",
+          "description": "Live integration — syncs Acuity appointment types and calendars, checks availability, and captures bookings in your scheduling workflow.",
+          "status_type": "live"
         },
         {
           "href": "/works-with",
           "logoSrc": "/images/glossgenius.png",
-          "title": "GlossGenius",
-          "body": "Sends your GlossGenius booking link via SMS when callers want to book.",
-          "status": "Booking link",
-          "statusKind": "workflow"
+          "name": "GlossGenius",
+          "description": "Sends your GlossGenius booking link via SMS when callers want to book.",
+          "status_type": "booking_link"
         },
         {
           "href": "/works-with",
           "logoSrc": "/images/fresha.png",
-          "title": "Fresha",
-          "body": "Sends your Fresha booking link via SMS when callers want to book.",
-          "status": "Booking link",
-          "statusKind": "workflow"
+          "name": "Fresha",
+          "description": "Sends your Fresha booking link via SMS when callers want to book.",
+          "status_type": "booking_link"
         },
         {
           "href": "/works-with/can-ringbooker-work-with-vagaro-without-changing-your-setup",
           "logoSrc": "/images/vagaro.png",
-          "title": "Vagaro",
-          "body": "Sends your Vagaro booking link via SMS when callers want to book.",
-          "status": "Booking link",
-          "statusKind": "workflow"
+          "name": "Vagaro",
+          "description": "Sends your Vagaro booking link via SMS when callers want to book.",
+          "status_type": "booking_link"
         },
         {
           "href": "/works-with/how-ringbooker-fits-beauty-businesses-using-booksy",
           "logoSrc": "/images/booksy.png",
-          "title": "Booksy",
-          "body": "Sends your Booksy booking link via SMS when callers want to book.",
-          "status": "Booking link",
-          "statusKind": "workflow"
+          "name": "Booksy",
+          "description": "Sends your Booksy booking link via SMS when callers want to book.",
+          "status_type": "booking_link"
         },
         {
           "href": "/works-with",
           "logoSrc": "/images/boulevard.png",
-          "title": "Boulevard",
-          "body": "Sends your Boulevard booking link via SMS when callers want to book.",
-          "status": "Booking link",
-          "statusKind": "workflow"
+          "name": "Boulevard",
+          "description": "Sends your Boulevard booking link via SMS when callers want to book.",
+          "status_type": "booking_link"
         }
       ]
     },
@@ -195,32 +183,32 @@
       "sub": "Typical questions from owners and managers — and how RingBooker fits alongside the tools you already use.",
       "items": [
         {
-          "icon": "🔌",
+          "icon": "ti-plug-connected",
           "title": "Do I need to replace my booking software?",
           "body": "No. Square Appointments, Mindbody, and Acuity Scheduling can connect directly today; other tools can stay in place while RingBooker captures calls, summaries, and handoff context."
         },
         {
-          "icon": "👥",
+          "icon": "ti-users",
           "title": "What if my staff still handle some calls?",
           "body": "That is the default. Staff answer during the day; RingBooker activates for overflow and after-hours."
         },
         {
-          "icon": "🌙",
+          "icon": "ti-moon",
           "title": "What if I only want after-hours first?",
           "body": "That is the most common start — configure after-hours only, then expand."
         },
         {
-          "icon": "☎️",
+          "icon": "ti-phone",
           "title": "Does it work with my current phone number?",
           "body": "Yes — forwarding on the line you already publish."
         },
         {
-          "icon": "💅",
+          "icon": "ti-nail",
           "title": "Does it work the same for nail salons and med spas?",
           "body": "Compatibility applies to every vertical; call types differ — see industry pages for specifics."
         },
         {
-          "icon": "🧩",
+          "icon": "ti-puzzle",
           "title": "Can I start without booking software integration?",
           "body": "Yes. Forwarding and after-hours work with zero integration — summaries go to your team."
         }

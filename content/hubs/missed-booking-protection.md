@@ -14,15 +14,11 @@
   "badge": "Pain-Point Hub",
   "heroLayout": "landing",
   "title": {
-    "kind": "accentText",
-    "parts": [
-      {
-        "text": "Recover Revenue Lost to "
-      },
-      {
-        "accent": "Missed Calls"
-      }
-    ]
+    "kind": "sectionTitle",
+    "before": "Recover revenue",
+    "line2Before": "lost to",
+    "accent": "missed calls",
+    "after": ""
   },
   "intro": "When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Beauty businesses lose an average of $26,000–$45,000 per year to missed calls and voicemail dead ends. RingBooker's AI receptionist captures that intent before it disappears into voicemail or a competitor call.",
   "pills": [
@@ -49,29 +45,29 @@
       "sub": "Missed booking protection is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients. It is not just about answering calls. It is about protecting revenue that disappears when a caller hangs up or reaches voicemail.",
       "cards": [
         {
-          "icon": "📵",
+          "icon": "ti-phone-off",
           "title": "Missed call = lost revenue",
           "body": "Many callers who don't reach you won't leave a voicemail — they call another business or try again with less urgency."
         },
         {
-          "icon": "🌙",
+          "icon": "ti-moon",
           "title": "After-hours opportunity window",
           "body": "A significant share of beauty bookings happen outside business hours. Without coverage, those are revenue opportunities you never knew you missed."
         },
         {
-          "icon": "⚡",
+          "icon": "ti-bolt",
           "title": "Overflow during peak hours",
           "body": "Saturdays, lunch rushes, holiday weeks — when two calls arrive at once and your team is mid-service, the second caller disappears."
         },
         {
-          "icon": "🔄",
+          "icon": "ti-refresh",
           "title": "More than new bookings",
           "body": "Missed booking protection covers reschedules, cancellations, and price inquiries — any intent lost when no one picks up."
         }
       ]
     },
     {
-      "kind": "scenario_grid",
+      "kind": "scenario_list",
       "html": {
         "eyebrow": "The 5 Loss Scenarios"
       },
@@ -84,35 +80,35 @@
       "sub": "Five situations where booking loss happens most often — and where missed booking protection makes the biggest difference.",
       "items": [
         {
-          "icon": "🌙",
+          "icon": "ti-moon",
           "title": "After-hours calls",
           "stat": "30% of bookings happen when businesses are closed (Phorest)",
           "body": "Clients call in the evening or on days you are closed. Without coverage, booking intent disappears entirely.",
           "tag": "Heaviest impact: spas, day spas, beauty clinics"
         },
         {
-          "icon": "📈",
+          "icon": "ti-trending-up",
           "title": "Peak-hour overflow",
           "stat": "82% of missed calls happen during business hours (Zenoti 2025)",
           "body": "Saturday mornings, holiday rushes — staff are all with clients and the phone rings with no one free to answer.",
           "tag": "Heaviest impact: nail salons, hair salons"
         },
         {
-          "icon": "🖥️",
+          "icon": "ti-device-desktop",
           "title": "Front-desk overload",
           "stat": "37% of all salon calls are missed (Zenoti 2025)",
           "body": "Checking someone in, running a card, and the phone rings — something gets dropped, usually the call.",
           "tag": "Heaviest impact: med spas, hair salons"
         },
         {
-          "icon": "⏳",
+          "icon": "ti-hourglass",
           "title": "Missed callback windows",
           "stat": "69% of callers who reach voicemail do not leave a message (Moneypenny)",
           "body": "Voicemail leads to a callback hours later — often after the client has cooled off, tried online booking again, or called another provider.",
           "tag": "Heaviest impact: all verticals"
         },
         {
-          "icon": "📭",
+          "icon": "ti-mail-off",
           "title": "Voicemail dead ends",
           "stat": "$45,000 average annual loss to missed calls (Etisia 2026)",
           "body": "Many callers do not leave messages. The booking intent evaporates before your team can recover it.",
@@ -128,56 +124,68 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Common",
-        "accent": "caller intents",
+        "accent": "intents",
+        "line2Before": "caller",
         "after": "that get lost"
       },
       "sub": "It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The stats row cites third-party research on caller and salon behavior.",
       "intents": [
         {
           "emoji": "📅",
+          "tabler_icon": "ti-calendar",
           "label": "New appointment booking"
         },
         {
           "emoji": "🔄",
+          "tabler_icon": "ti-refresh",
           "label": "Reschedule request"
         },
         {
           "emoji": "❌",
+          "tabler_icon": "ti-x",
           "label": "Cancellation call"
         },
         {
           "emoji": "❓",
+          "tabler_icon": "ti-help",
           "label": "Service question"
         },
         {
           "emoji": "💰",
+          "tabler_icon": "ti-currency-dollar",
           "label": "Price & availability inquiry"
         },
         {
           "emoji": "💆",
+          "tabler_icon": "ti-heart",
           "label": "Treatment inquiry"
         },
         {
           "emoji": "👤",
+          "tabler_icon": "ti-user",
           "label": "Provider preference"
         },
         {
           "emoji": "📞",
+          "tabler_icon": "ti-phone",
           "label": "Follow-up call"
         }
       ],
       "stats": [
         {
           "value": "80%",
-          "label": "of callers who reach voicemail hang up without leaving a message (Ambs Call Center 2025)"
+          "label": "of callers who reach voicemail hang up without leaving a message",
+          "source": "Ambs Call Center 2025"
         },
         {
           "value": "77%",
-          "label": "of salon clients prefer calling to reschedule (Zenoti 2025)"
+          "label": "of salon clients prefer calling to reschedule",
+          "source": "Zenoti 2025"
         },
         {
           "value": "37%",
-          "label": "of all salon calls are missed — 82% during business hours (Zenoti 2025)"
+          "label": "of all salon calls are missed — 82% during business hours",
+          "source": "Zenoti 2025"
         }
       ]
     },
@@ -198,24 +206,25 @@
       "sub": "Voicemail, text-back tools, and generic answering services each address part of the problem. None fully solve missed booking protection.",
       "cards": [
         {
-          "icon": "📼",
+          "icon": "ti-device-tv",
           "title": "Voicemail",
           "body": "Most callers will not leave one. Those who do still need a manual callback — intent is deferred and often lost."
         },
         {
-          "icon": "📱",
+          "icon": "ti-device-mobile",
           "title": "Text-back only",
           "body": "Helpful, but text-back cannot complete a booking conversation or answer service questions. It keeps the lead warm — it does not close it."
         },
         {
-          "icon": "📋",
+          "icon": "ti-clipboard-list",
           "title": "Generic answering service",
           "body": "May answer calls but typically does not understand beauty workflows, peak patterns, or service-specific questions."
         },
         {
-          "icon": "🤖",
+          "icon": "ti-robot",
           "title": "AI receptionist",
-          "body": "Answers like a trained front desk, understands beauty workflows, captures booking intent, and escalates when a person is needed."
+          "body": "Answers like a trained front desk, understands beauty workflows, captures booking intent, and escalates when a person is needed.",
+          "highlight": true
         }
       ],
       "footerLink": {
@@ -238,7 +247,7 @@
       "sub": "RingBooker sits alongside your operations — not replacing them. It handles calls your team cannot reach so intent is not lost.",
       "items": [
         {
-          "icon": "☎️",
+          "icon": "ti-phone",
           "title": "Keeps your current number",
           "body": "No number change required. Clients keep calling the same line they already know.",
           "link": {
@@ -247,17 +256,17 @@
           }
         },
         {
-          "icon": "🌙",
+          "icon": "ti-moon",
           "title": "After-hours call capture",
           "body": "Answers when the salon is closed, captures booking intent, and routes a summary to your team for next-day action."
         },
         {
-          "icon": "⚡",
+          "icon": "ti-bolt",
           "title": "Overflow during busy hours",
           "body": "When staff are with clients, RingBooker handles the overflow instead of sending callers to voicemail."
         },
         {
-          "icon": "🔌",
+          "icon": "ti-plug-connected",
           "title": "Works with your booking tools",
           "body": "Square Appointments is live today. Other tools can start with workflow-compatible summaries and handoff while deeper integrations expand.",
           "link": {
