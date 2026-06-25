@@ -27,6 +27,31 @@
     "Phased adoption support",
     "No overnight overhaul"
   ],
+  "heroRight": {
+    "kind": "pills",
+    "items": [
+      {
+        "icon": "ti-target",
+        "title": "Transparent expectations",
+        "desc": "Clear about what RingBooker handles and what your team owns."
+      },
+      {
+        "icon": "ti-shield-check",
+        "title": "Human fallback control",
+        "desc": "Unusual calls get a callback offer — not a loop."
+      },
+      {
+        "icon": "ti-flask",
+        "title": "Phased adoption support",
+        "desc": "Start after-hours only. Expand when you are comfortable."
+      },
+      {
+        "icon": "ti-adjustments-horizontal",
+        "title": "No overnight overhaul",
+        "desc": "Your number, your tools, your team — RingBooker fits alongside."
+      }
+    ]
+  },
   "sections": [],
   "hubBlocks": [
     {
@@ -113,38 +138,6 @@
       ]
     },
     {
-      "kind": "split_expectations",
-      "html": {
-        "eyebrow": "Honest Expectations"
-      },
-      "heading": {
-        "kind": "sectionTitle",
-        "before": "Transparency and",
-        "accent": "realistic expectations"
-      },
-      "sub": "A clear picture of what RingBooker is built for — and what your team still owns.",
-      "left": {
-        "title": "✓ What RingBooker is designed for",
-        "items": [
-          "After-hours and overflow answering",
-          "Appointment booking, reschedule, and cancellation calls",
-          "Service questions and price inquiries",
-          "Missed-call text-back and callback workflows",
-          "Consistent handling during predictable call patterns"
-        ]
-      },
-      "right": {
-        "title": "→ What your team still handles",
-        "items": [
-          "Complex medical or treatment consultations",
-          "Sensitive or escalated client concerns",
-          "Unusual requests outside configured workflows",
-          "Calls you want staff to take personally",
-          "VIP relationships that need a human touch"
-        ]
-      }
-    },
-    {
       "kind": "scenario_grid",
       "html": {
         "eyebrow": "Common Concerns"
@@ -196,7 +189,7 @@
         "stepsCentered4": true,
         "stepTrackHideNumbers": true,
         "eyebrow": "Phased Adoption",
-        "eyebrowTone": "green"
+        "eyebrowTone": "purple"
       },
       "heading": {
         "kind": "sectionTitle",

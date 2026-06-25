@@ -27,6 +27,26 @@
     "No number change needed",
     "Protects booking revenue"
   ],
+  "heroRight": {
+    "kind": "stats",
+    "items": [
+      {
+        "value": "$45K",
+        "label": "average annual revenue lost to missed calls per beauty business",
+        "source": "Etisia 2026"
+      },
+      {
+        "value": "80%",
+        "label": "of callers who reach voicemail hang up without leaving a message",
+        "source": "Ambs Call Center 2025"
+      },
+      {
+        "value": "82%",
+        "label": "of missed calls happen during business hours — not after hours",
+        "source": "Zenoti 2025"
+      }
+    ]
+  },
   "sections": [],
   "hubBlocks": [
     {
@@ -42,7 +62,7 @@
         "accent": "missed booking protection",
         "after": "actually means"
       },
-      "sub": "Missed booking protection is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients. It is not just about answering calls. It is about protecting revenue that disappears when a caller hangs up or reaches voicemail.",
+      "sub": "Every unanswered call is a booking lost — missed booking protection captures that intent before it's gone.",
       "cards": [
         {
           "icon": "ti-phone-off",
@@ -171,23 +191,7 @@
           "label": "Follow-up call"
         }
       ],
-      "stats": [
-        {
-          "value": "80%",
-          "label": "of callers who reach voicemail hang up without leaving a message",
-          "source": "Ambs Call Center 2025"
-        },
-        {
-          "value": "77%",
-          "label": "of salon clients prefer calling to reschedule",
-          "source": "Zenoti 2025"
-        },
-        {
-          "value": "37%",
-          "label": "of all salon calls are missed — 82% during business hours",
-          "source": "Zenoti 2025"
-        }
-      ]
+      "stats": []
     },
     {
       "kind": "compare_strip",

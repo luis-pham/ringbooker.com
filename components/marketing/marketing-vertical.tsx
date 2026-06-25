@@ -437,14 +437,16 @@ function HowItWorks({
             key={s.n}
             id={`vertical-step-${s.n}`}
             data-vertical-step-card
-            className={`relative w-[84%] shrink-0 snap-center rounded-3xl bg-white p-6 text-center max-md:cursor-pointer md:w-auto md:shrink md:snap-none ${VERTICAL_CARD_SURFACE}`}
+            className={`relative w-[84%] shrink-0 snap-center rounded-3xl bg-white p-6 max-md:cursor-pointer md:w-auto md:shrink md:snap-none ${VERTICAL_CARD_SURFACE}`}
           >
-            <div
-              className={`mb-4 mx-auto hidden h-9 w-9 items-center justify-center rounded-full md:flex ${accentBg} text-sm font-medium text-white`}
-            >
-              {s.n}
+            <div className="mb-3 flex items-center gap-3">
+              <div
+                className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-full md:flex ${accentBg} text-sm font-medium text-white`}
+              >
+                {s.n}
+              </div>
+              <h3 className="text-[15px] font-medium text-slate-900">{s.title}</h3>
             </div>
-            <p className="text-[15px] font-medium text-slate-900">{s.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-500">{s.body}</p>
           </div>
         ))}

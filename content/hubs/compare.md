@@ -27,6 +27,26 @@
     "Front-desk hiring",
     "Generic AI tools"
   ],
+  "heroRight": {
+    "kind": "stats",
+    "items": [
+      {
+        "value": "37%",
+        "label": "of all salon calls are missed — 82% during business hours",
+        "source": "Zenoti 2025"
+      },
+      {
+        "value": "$79/mo",
+        "label": "starting price for RingBooker vs. $2,000–$4,000/mo for a front-desk hire",
+        "source": "RingBooker pricing"
+      },
+      {
+        "value": "15 min",
+        "label": "average setup time — no migration, no new number required",
+        "source": "RingBooker"
+      }
+    ]
+  },
   "sections": [],
   "hubBlocks": [
     {
@@ -370,10 +390,9 @@
       ]
     },
     {
-      "kind": "alt_link_grid",
+      "kind": "alt_link_list",
       "html": {
-        "eyebrow": "Deep Comparisons",
-        "hubGridCols3": true
+        "eyebrow": "Deep Comparisons"
       },
       "heading": {
         "kind": "sectionTitle",

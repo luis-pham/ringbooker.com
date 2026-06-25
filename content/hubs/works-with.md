@@ -27,6 +27,31 @@
     "Workflow-compatible setups",
     "Current number supported"
   ],
+  "heroRight": {
+    "kind": "pills",
+    "items": [
+      {
+        "icon": "ti-phone",
+        "title": "Works via call forwarding",
+        "desc": "No phone system replacement needed."
+      },
+      {
+        "icon": "ti-calendar",
+        "title": "Keep your booking software",
+        "desc": "Square live today; other tools via summaries and handoff."
+      },
+      {
+        "icon": "ti-users",
+        "title": "Staff workflow unchanged",
+        "desc": "Your team keeps the calls they always handle."
+      },
+      {
+        "icon": "ti-rocket",
+        "title": "Start in 15 minutes",
+        "desc": "After-hours only to start, then expand when ready."
+      }
+    ]
+  },
   "sections": [],
   "hubBlocks": [
     {
@@ -52,7 +77,7 @@
         {
           "icon": "ti-calendar",
           "title": "Booking tools",
-          "body": "Keep your existing software to manage appointments; RingBooker complements it. Square Appointments, Mindbody, and Acuity Scheduling are live, and other tools can start with booking-link SMS, summaries, and handoff."
+          "body": "Keep your booking software. Square, Mindbody, and Acuity sync directly. Other tools work via booking-link SMS."
         },
         {
           "icon": "ti-users",
@@ -79,60 +104,52 @@
       "sub": "Square Appointments, Mindbody, and Acuity Scheduling connect directly today. Other booking tools can still work with RingBooker through booking-link SMS, call capture, summaries, and handoff.",
       "tools": [
         {
-          "href": "/works-with/does-ringbooker-work-with-square-appointments",
-          "logoSrc": "/images/square.png",
           "name": "Square Appointments",
-          "description": "Live integration — captured booking intent can flow into your scheduling workflow.",
-          "status_type": "live"
+          "status_type": "live",
+          "logoSrc": "/images/square.png",
+          "href": "/works-with/does-ringbooker-work-with-square-appointments"
         },
         {
-          "href": "/works-with/does-ringbooker-work-with-mindbody-for-spa-and-med-spa-calls",
-          "logoSrc": "/images/mindbody.webp",
           "name": "Mindbody",
-          "description": "Live integration — connects to Mindbody for availability checks, service context, and booking request capture in your scheduling workflow.",
-          "status_type": "live"
+          "status_type": "live",
+          "logoSrc": "/images/mindbody.webp",
+          "href": "/works-with/does-ringbooker-work-with-mindbody-for-spa-and-med-spa-calls"
         },
         {
-          "href": "/works-with",
-          "logoSrc": "/images/acuity.png",
           "name": "Acuity Scheduling",
-          "description": "Live integration — syncs Acuity appointment types and calendars, checks availability, and captures bookings in your scheduling workflow.",
-          "status_type": "live"
+          "status_type": "live",
+          "logoSrc": "/images/acuity.png",
+          "href": "/works-with/does-ringbooker-work-with-acuity-scheduling"
         },
         {
-          "href": "/works-with",
-          "logoSrc": "/images/glossgenius.png",
-          "name": "GlossGenius",
-          "description": "Sends your GlossGenius booking link via SMS when callers want to book.",
-          "status_type": "booking_link"
-        },
-        {
-          "href": "/works-with",
-          "logoSrc": "/images/fresha.png",
-          "name": "Fresha",
-          "description": "Sends your Fresha booking link via SMS when callers want to book.",
-          "status_type": "booking_link"
-        },
-        {
-          "href": "/works-with/can-ringbooker-work-with-vagaro-without-changing-your-setup",
-          "logoSrc": "/images/vagaro.png",
-          "name": "Vagaro",
-          "description": "Sends your Vagaro booking link via SMS when callers want to book.",
-          "status_type": "booking_link"
-        },
-        {
-          "href": "/works-with/how-ringbooker-fits-beauty-businesses-using-booksy",
-          "logoSrc": "/images/booksy.png",
-          "name": "Booksy",
-          "description": "Sends your Booksy booking link via SMS when callers want to book.",
-          "status_type": "booking_link"
-        },
-        {
-          "href": "/works-with",
-          "logoSrc": "/images/boulevard.png",
           "name": "Boulevard",
-          "description": "Sends your Boulevard booking link via SMS when callers want to book.",
-          "status_type": "booking_link"
+          "status_type": "booking_link",
+          "logoSrc": "/images/boulevard.png",
+          "href": "/works-with/how-ringbooker-fits-beauty-businesses-using-boulevard"
+        },
+        {
+          "name": "GlossGenius",
+          "status_type": "booking_link",
+          "logoSrc": "/images/glossgenius.png",
+          "href": "/works-with/how-ringbooker-fits-beauty-businesses-using-glossgenius"
+        },
+        {
+          "name": "Fresha",
+          "status_type": "booking_link",
+          "logoSrc": "/images/fresha.png",
+          "href": "/works-with/how-ringbooker-fits-beauty-businesses-using-fresha"
+        },
+        {
+          "name": "Vagaro",
+          "status_type": "booking_link",
+          "logoSrc": "/images/vagaro.png",
+          "href": "/works-with/can-ringbooker-work-with-vagaro-without-changing-your-setup"
+        },
+        {
+          "name": "Booksy",
+          "status_type": "booking_link",
+          "logoSrc": "/images/booksy.png",
+          "href": "/works-with/how-ringbooker-fits-beauty-businesses-using-booksy"
         }
       ]
     },
@@ -142,7 +159,7 @@
         "eyebrow": "Getting Started",
         "section": "leak",
         "stepsCentered4": true,
-        "stepTrackHideNumbers": true
+        "stepTrackHideNumbers": false
       },
       "heading": {
         "kind": "sectionTitle",

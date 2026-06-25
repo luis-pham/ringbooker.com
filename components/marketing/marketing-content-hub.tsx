@@ -49,6 +49,22 @@ export type ContentHubResourceLink = {
 
 export type ContentHubFaq = { q: string; a: string };
 
+type ContentHubHeroRight =
+  | {
+      kind: 'stats';
+      items?: { value?: string; label?: string; source?: string }[];
+    }
+  | {
+      kind: 'summary';
+      heading?: string;
+      sub?: string;
+      items?: Array<string | { text?: string }>;
+    }
+  | {
+      kind: 'pills';
+      items?: { icon?: string; title?: string; desc?: string }[];
+    };
+
 /** `compare_table_matrix` — matches static `html/compare.html` check / cross / partial cells */
 export type CompareMatrixCell = {
   tone: 'check' | 'cross' | 'partial';
@@ -169,6 +185,12 @@ type ContentHubBlockCore =
       links: { href: string; title: string; body: string }[];
     }
   | {
+      kind: 'alt_link_list';
+      heading: ReactNode;
+      sub?: string;
+      links: { href: string; title: string; body: string }[];
+    }
+  | {
       kind: 'feature_scenarios';
       heading: ReactNode;
       sub?: string;
@@ -277,6 +299,7 @@ export type MarketingContentHubProps = {
   /** Visible plain text under intro — entity / how-it-works (optional). */
   heroEntityDefinition?: string;
   pills?: string[];
+  heroRight?: ContentHubHeroRight | null;
   /** Optional hero CTAs (e.g. demo + how-it-works) */
   heroActions?: ReactNode;
   sections?: ContentHubSection[];
@@ -360,6 +383,115 @@ export function ContentHubHeroActionsHomeStyle() {
       </Link>
     </>
   );
+}
+
+function HeroTags({
+  pills,
+  className = '',
+}: {
+  pills: string[];
+  className?: string;
+}) {
+  if (pills.length === 0) return null;
+
+  return (
+    <div className={['hero-tags', className].filter(Boolean).join(' ')}>
+      {pills.map((p) => (
+        <span className="hero-tag" key={p}>
+          {p}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function HeroRightPanel({ panel }: { panel: ContentHubHeroRight }) {
+  if (panel.kind === 'stats') {
+    const items = panel.items ?? [];
+    if (items.length === 0) return null;
+
+    return (
+      <div className="hero-right-panel hero-right-panel--stats">
+        {items.map((item, index) => {
+          const value = item.value ?? '';
+          const hasSlashUnit = value.includes('/');
+          const [primaryValue, unitValue] = hasSlashUnit
+            ? value.split(/(?=\/)/, 2)
+            : [value, undefined];
+
+          return (
+            <div
+              className="hero-stat-row"
+              key={`${item.value ?? 'stat'}-${index}`}
+            >
+              <div className="hero-stat-value">
+                {primaryValue}
+                {unitValue ? (
+                  <span className="hero-stat-unit">{unitValue}</span>
+                ) : null}
+              </div>
+              <div className="hero-stat-copy">
+                {item.label ? (
+                  <p className="hero-stat-label">{item.label}</p>
+                ) : null}
+                {item.source ? (
+                  <p className="hero-stat-source">{item.source}</p>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (panel.kind === 'summary') {
+    const items = panel.items ?? [];
+
+    return (
+      <div className="hero-right-panel hero-right-panel--summary">
+        {panel.heading ? <h3>{panel.heading}</h3> : null}
+        {panel.sub ? <p>{panel.sub}</p> : null}
+        {items.length > 0 ? (
+          <ul>
+            {items.map((item, index) => {
+              const text = typeof item === 'string' ? item : item.text;
+              if (!text) return null;
+              return <li key={`${text}-${index}`}>{text}</li>;
+            })}
+          </ul>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (panel.kind === 'pills') {
+    const items = panel.items ?? [];
+    if (items.length === 0) return null;
+
+    return (
+      <div className="hero-right-panel hero-right-panel--pills">
+        {items.map((item, index) => (
+          <div
+            className="hero-right-pill"
+            key={`${item.title ?? 'pill'}-${index}`}
+          >
+            {item.icon ? (
+              <span className="hero-right-pill-icon" aria-hidden>
+                <HubIcon icon={item.icon} />
+              </span>
+            ) : null}
+            <div>
+              {item.title ? <h3>{item.title}</h3> : null}
+              {item.desc ? <p>{item.desc}</p> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 const BOTTOM_DEMO_CTA_LABEL = 'Try a Live Demo Call';
@@ -587,10 +719,12 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       key={c.title}
                       {...hubStaggerItem()}
                     >
-                      <div className="leak-icon" aria-hidden>
-                        <HubIcon icon={c.icon} />
+                      <div className="leak-card-header">
+                        <div className="leak-icon" aria-hidden>
+                          <HubIcon icon={c.icon} />
+                        </div>
+                        <h3>{c.title}</h3>
                       </div>
-                      <h3>{c.title}</h3>
                       {c.stat ? (
                         <p className="leak-card-stat">{c.stat}</p>
                       ) : null}
@@ -761,19 +895,21 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                     );
                   })}
                 </div>
-                <div className="stat-row" data-hub-stat-strip>
-                  {block.stats.map((s) => (
-                    <div className="stat" key={s.label}>
-                      <div className="stat-num" data-hub-stat-value={s.value}>
-                        {s.value}
+                {block.stats.length > 0 ? (
+                  <div className="stat-row" data-hub-stat-strip>
+                    {block.stats.map((s) => (
+                      <div className="stat" key={s.label}>
+                        <div className="stat-num" data-hub-stat-value={s.value}>
+                          {s.value}
+                        </div>
+                        <div className="stat-label">{s.label}</div>
+                        {s.source ? (
+                          <div className="stat-source">{s.source}</div>
+                        ) : null}
                       </div>
-                      <div className="stat-label">{s.label}</div>
-                      {s.source ? (
-                        <div className="stat-source">{s.source}</div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : null}
               </>,
             );
           case 'compare_strip':
@@ -792,10 +928,12 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       key={c.title}
                       {...hubStaggerItem()}
                     >
-                      <div className="card-icon" aria-hidden>
-                        <HubIcon icon={c.icon} />
+                      <div className="compare-card-header">
+                        <div className="card-icon" aria-hidden>
+                          <HubIcon icon={c.icon} />
+                        </div>
+                        <h3>{c.title}</h3>
                       </div>
-                      <h3>{c.title}</h3>
                       <p>{c.body}</p>
                     </div>
                   ))}
@@ -837,6 +975,32 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                         {l.title} <span>Read Guide →</span>
                       </h4>
                       <p>{l.body}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>,
+            );
+          case 'alt_link_list':
+            return shell(
+              <div className="hub-center-stack">
+                <HubEyebrow html={block.html} />
+                <h2>{block.heading}</h2>
+                {block.sub ? (
+                  <p className="section-sub">{block.sub}</p>
+                ) : null}
+                <div className="alt-link-list">
+                  {block.links.map((l) => (
+                    <Link
+                      href={l.href}
+                      className="alt-link-row"
+                      key={l.href}
+                      {...hubStaggerItem()}
+                    >
+                      <div className="alt-link-row-body">
+                        <div className="alt-link-row-title">{l.title}</div>
+                        <div className="alt-link-row-desc">{l.body}</div>
+                      </div>
+                      <div className="alt-link-row-cta">Read Guide →</div>
                     </Link>
                   ))}
                 </div>
@@ -1071,79 +1235,79 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
             );
           }
           case 'tool_strip': {
-            const liveTools = block.tools.filter(
-              (t) => (t.status_type ?? t.statusKind) === 'live',
-            );
-            const linkTools = block.tools.filter(
-              (t) => (t.status_type ?? t.statusKind) !== 'live',
-            );
+            type ToolStripItem = (typeof block.tools)[number];
+            const row1 = block.tools.slice(0, 4);
+            const row2 = block.tools.slice(4, 8);
+
+            const ToolLogo = ({ t }: { t: ToolStripItem }) => {
+              const name = t.name ?? t.title ?? '';
+
+              return (
+                <div className="tool-logo-box">
+                  {t.logoSrc ? (
+                    <Image
+                      src={t.logoSrc}
+                      alt={name}
+                      width={22}
+                      height={22}
+                      className="tool-logo-img"
+                    />
+                  ) : t.logo ? (
+                    <span className="tool-logo-abbr">{t.logo}</span>
+                  ) : (
+                    <span className="tool-logo-abbr">{name.slice(0, 2)}</span>
+                  )}
+                </div>
+              );
+            };
+
+            const ToolBadge = ({ t }: { t: ToolStripItem }) => {
+              if ((t.status_type ?? t.statusKind) === 'live') {
+                return (
+                  <div className="tool-badge tool-badge--live">
+                    <div className="tool-badge-dot" />
+                    <span>Full sync</span>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="tool-badge tool-badge--link">
+                  <div className="tool-badge-dot" />
+                  <span>Booking link</span>
+                </div>
+              );
+            };
+
+            const ToolCell = ({ t }: { t: ToolStripItem }) => {
+              const name = t.name ?? t.title ?? '';
+
+              return (
+                <Link className="tool-cell" href={t.href ?? '#'}>
+                  <div className="tool-cell-top">
+                    <ToolLogo t={t} />
+                    <span className="tool-cell-name">{name}</span>
+                  </div>
+                  <ToolBadge t={t} />
+                </Link>
+              );
+            };
+
             return shell(
               <>
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="tool-list" {...hubStaggerGrid()}>
-                  <div className="tool-group-label">Live integration</div>
-                  <div className="tool-live-grid">
-                    {liveTools.map((t) => {
-                      const name = t.name ?? t.title ?? '';
-                      const description = t.description ?? t.body ?? '';
-                      return (
-                        <Link
-                          className="tool-live-item"
-                          key={t.href ?? name}
-                          href={t.href ?? '#'}
-                          {...hubStaggerItem()}
-                        >
-                          <div className="tool-live-logo">
-                            {t.logoSrc ? (
-                              <Image
-                                src={t.logoSrc}
-                                alt={name}
-                                width={20}
-                                height={20}
-                                className="tool-logo-img"
-                              />
-                            ) : (
-                              t.logo
-                            )}
-                          </div>
-                          <div>
-                            <div className="tool-live-name">{name}</div>
-                            <div className="tool-live-desc">{description}</div>
-                          </div>
-                        </Link>
-                      );
-                    })}
+                <div className="tool-grid" {...hubStaggerGrid()}>
+                  <div className="tool-grid-row tool-grid-row--top">
+                    {row1.map((t) => (
+                      <ToolCell key={t.href ?? t.name ?? t.title} t={t} />
+                    ))}
                   </div>
-                  <div className="tool-group-label">Booking link</div>
-                  <div className="tool-link-grid">
-                    {linkTools.map((t) => {
-                      const name = t.name ?? t.title ?? '';
-                      return (
-                        <Link
-                          className="tool-link-item"
-                          key={t.href ?? name}
-                          href={t.href ?? '#'}
-                          {...hubStaggerItem()}
-                        >
-                          <div className="tool-link-logo">
-                            {t.logoSrc ? (
-                              <Image
-                                src={t.logoSrc}
-                                alt={name}
-                                width={16}
-                                height={16}
-                                className="tool-logo-img"
-                              />
-                            ) : (
-                              t.logo
-                            )}
-                          </div>
-                          <span className="tool-link-name">{name}</span>
-                        </Link>
-                      );
-                    })}
+                  <div className="tool-grid-row tool-grid-row--bottom">
+                    {row2.map((t) => (
+                      <ToolCell key={t.href ?? t.name ?? t.title} t={t} />
+                    ))}
                   </div>
                 </div>
               </>,
@@ -1500,6 +1664,7 @@ export function MarketingContentHub(props: MarketingContentHubProps) {
     intro = '',
     heroEntityDefinition,
     pills = [],
+    heroRight = null,
     heroActions,
     sections = [],
     hubBlocks = [],
@@ -1612,32 +1777,35 @@ export function MarketingContentHub(props: MarketingContentHubProps) {
           .join(' ')}
       >
         {heroLayout === 'landing' ? (
-          <header className="hero hero--landing">
+          <header
+            className={`hero hero--landing${heroRight ? ' hero--has-right' : ''}`}
+          >
             <div className="hero-blob hero-blob-1" aria-hidden />
             <div className="hero-blob hero-blob-2" aria-hidden />
             <div className="hero-landing-shell">
               {breadcrumbLabel ? (
                 <HubBreadcrumb label={breadcrumbLabel} />
               ) : null}
-              <div className="hero-inner">
-                <p className="hero-eyebrow">{badge}</p>
-                <h1 className="hero-h">{title}</h1>
-                <p className="hero-sub">{intro}</p>
-                {heroEntityDefinition ? (
-                  <p className="hero-entity-definition">
-                    {heroEntityDefinition}
-                  </p>
-                ) : null}
-                {heroActions ? (
-                  <div className="hero-btns">{heroActions}</div>
-                ) : null}
-                {pills.length > 0 ? (
-                  <div className="hero-tags">
-                    {pills.map((p) => (
-                      <span className="hero-tag" key={p}>
-                        {p}
-                      </span>
-                    ))}
+              <div
+                className={`hero-inner${heroRight ? ' hero-inner--2col' : ''}`}
+              >
+                <div className="hero-left">
+                  <p className="hero-eyebrow">{badge}</p>
+                  <h1 className="hero-h">{title}</h1>
+                  <p className="hero-sub">{intro}</p>
+                  {heroEntityDefinition ? (
+                    <p className="hero-entity-definition">
+                      {heroEntityDefinition}
+                    </p>
+                  ) : null}
+                  {heroActions ? (
+                    <div className="hero-btns">{heroActions}</div>
+                  ) : null}
+                  {!heroRight ? <HeroTags pills={pills} /> : null}
+                </div>
+                {heroRight ? (
+                  <div className="hero-right">
+                    <HeroRightPanel panel={heroRight} />
                   </div>
                 ) : null}
               </div>
@@ -1702,10 +1870,12 @@ export function MarketingContentHub(props: MarketingContentHubProps) {
                     className="industry-card"
                     {...hubStaggerItem()}
                   >
-                    <div className="emoji" aria-hidden>
-                      <HubIcon icon={c.emoji ?? c.icon} />
+                    <div className="industry-card-header">
+                      <div className="emoji" aria-hidden>
+                        <HubIcon icon={c.emoji ?? c.icon} />
+                      </div>
+                      <h3>{c.title}</h3>
                     </div>
-                    <h3>{c.title}</h3>
                     <p>{c.body}</p>
                     <span className="arrow">Explore →</span>
                   </Link>

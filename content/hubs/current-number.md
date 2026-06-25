@@ -27,6 +27,26 @@
     "Guided 15-minute setup",
     "Zero client disruption"
   ],
+  "heroRight": {
+    "kind": "stats",
+    "items": [
+      {
+        "value": "77%",
+        "label": "of salon clients prefer calling the number they already know to reschedule",
+        "source": "Zenoti 2025"
+      },
+      {
+        "value": "62%",
+        "label": "of local businesses have inconsistent NAP data from a number change",
+        "source": "BrightLocal 2023"
+      },
+      {
+        "value": "46+",
+        "label": "online citations affected when you change your salon's phone number",
+        "source": "RingBooker"
+      }
+    ]
+  },
   "sections": [],
   "hubBlocks": [
     {
@@ -92,19 +112,16 @@
         {
           "icon": "ti-users",
           "title": "Clients already know it",
-          "stat": "77% of salon clients prefer calling the number they already have to reschedule (Zenoti 2025).",
           "body": "Long-term clients save it, recognize it, and trust it. Changing that number means re-educating every caller."
         },
         {
           "icon": "ti-map-pin",
           "title": "It is across all your channels",
-          "stat": "Inconsistent NAP can significantly reduce local search visibility (BrightLocal).",
           "body": "Google Business Profile, Yelp, Instagram, printed cards, and signage all rely on the same number. One missed update creates avoidable friction."
         },
         {
           "icon": "ti-switch-horizontal",
           "title": "Local SEO consistency",
-          "stat": "62% of local businesses have inconsistent NAP data online (BrightLocal 2023).",
           "body": "When your phone number drifts across directories, local search systems may treat your listings as less consistent and less trustworthy."
         },
         {
