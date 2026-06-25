@@ -301,20 +301,20 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   font-weight:500;
 }
 .vertical-landing-page--nail-salon .mk-section-head > h2 em{color:#7c3aed}
-.vertical-landing-page--hair-salon .mk-section-head > h2 em{color:#d97706}
-.vertical-landing-page--spa .mk-section-head > h2 em{color:#0d9488}
-.vertical-landing-page--med-spa .mk-section-head > h2 em{color:#4f46e5}
-.vertical-landing-page--beauty-clinic .mk-section-head > h2 em{color:#c026d3}
+.vertical-landing-page--hair-salon .mk-section-head > h2 em{color:#7c3aed}
+.vertical-landing-page--spa .mk-section-head > h2 em{color:#7c3aed}
+.vertical-landing-page--med-spa .mk-section-head > h2 em{color:#7c3aed}
+.vertical-landing-page--beauty-clinic .mk-section-head > h2 em{color:#7c3aed}
 .mk-section-head > p{
   max-width:min(760px,100%);
 }
 
 /* ── FAQ "Common Questions" eyebrow: per-vertical accent color (overrides default purple) ── */
 .vertical-landing-page--nail-salon .mfaq-eyebrow{color:#7c3aed}
-.vertical-landing-page--hair-salon .mfaq-eyebrow{color:#d97706}
-.vertical-landing-page--spa .mfaq-eyebrow{color:#0d9488}
-.vertical-landing-page--med-spa .mfaq-eyebrow{color:#4f46e5}
-.vertical-landing-page--beauty-clinic .mfaq-eyebrow{color:#c026d3}
+.vertical-landing-page--hair-salon .mfaq-eyebrow{color:#7c3aed}
+.vertical-landing-page--spa .mfaq-eyebrow{color:#7c3aed}
+.vertical-landing-page--med-spa .mfaq-eyebrow{color:#7c3aed}
+.vertical-landing-page--beauty-clinic .mfaq-eyebrow{color:#7c3aed}
 
 .pricing-page .pricing-plans-inner,
 .pricing-page .compare-section{

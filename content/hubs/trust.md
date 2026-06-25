@@ -47,7 +47,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Trust in",
-        "accent": "the context of AI call handling"
+        "accent": "AI call handling",
+        "line2Before": "the context of"
       },
       "sub": "For beauty businesses, trust means four specific things — none of them are AI hype.",
       "cards": [
@@ -86,7 +87,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Reliability",
-        "accent": "principles behind RingBooker"
+        "accent": "principles",
+        "after": "behind RingBooker"
       },
       "sub": "Design choices — not slogans — that define behavior on every call.",
       "items": [
@@ -157,7 +159,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Risk concerns",
-        "accent": "business owners have"
+        "accent": "business owners",
+        "after": "have"
       },
       "sub": "Common trust questions before teams start.",
       "items": [
@@ -204,8 +207,9 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "What a",
-        "accent": "low-risk rollout looks like"
+        "before": "What a low-risk",
+        "accent": "rollout",
+        "after": "looks like"
       },
       "sub": "You do not have to do everything at once.",
       "steps": [

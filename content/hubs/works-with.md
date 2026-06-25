@@ -43,7 +43,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Four",
-        "accent": "layers of compatibility"
+        "accent": "layers",
+        "after": "of compatibility"
       },
       "sub": "RingBooker is designed to fit how beauty businesses already operate — phone, booking tools, front desk, and rollout pace.",
       "cards": [
@@ -76,8 +77,8 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Tools beauty",
-        "accent": "businesses already use"
+        "before": "Tools beauty businesses",
+        "accent": "already use"
       },
       "sub": "Square Appointments, Mindbody, and Acuity Scheduling connect directly today. Other booking tools can still work with RingBooker through booking-link SMS, call capture, summaries, and handoff.",
       "tools": [
@@ -157,8 +158,8 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "How",
-        "accent": "businesses usually start"
+        "before": "How businesses",
+        "accent": "usually start"
       },
       "sub": "Most teams adopt in stages — starting where booking loss is clearest.",
       "steps": [
@@ -188,7 +189,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Common",
-        "accent": "compatibility concerns"
+        "accent": "compatibility",
+        "after": "concerns"
       },
       "sub": "Typical questions from owners and managers — and how RingBooker fits alongside the tools you already use.",
       "items": [

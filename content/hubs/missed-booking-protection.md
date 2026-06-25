@@ -77,8 +77,9 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Where",
-        "accent": "beauty businesses lose bookings by phone"
+        "before": "Where beauty businesses",
+        "accent": "bookings by phone",
+        "line2Before": "lose"
       },
       "sub": "Five situations where booking loss happens most often — and where missed booking protection makes the biggest difference.",
       "items": [
@@ -127,7 +128,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Common",
-        "accent": "caller intents that get lost"
+        "accent": "caller intents",
+        "after": "that get lost"
       },
       "sub": "It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The stats row cites third-party research on caller and salon behavior.",
       "intents": [
@@ -188,8 +190,10 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Why missed-call",
-        "accent": "handling alone is not enough"
+        "before": "Why",
+        "accent": "handling alone",
+        "after": "is not enough",
+        "line2Before": "missed-call"
       },
       "sub": "Voicemail, text-back tools, and generic answering services each address part of the problem. None fully solve missed booking protection.",
       "cards": [
@@ -228,7 +232,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "How RingBooker",
-        "accent": "fits into missed booking protection"
+        "accent": "fits into",
+        "after": "missed booking protection"
       },
       "sub": "RingBooker sits alongside your operations — not replacing them. It handles calls your team cannot reach so intent is not lost.",
       "items": [
@@ -266,8 +271,9 @@
   "industryEyebrow": "Explore by Industry",
   "industryHeading": {
     "kind": "sectionTitle",
-    "before": "Missed booking",
-    "accent": "protection by business type"
+    "before": "Missed booking protection",
+    "accent": "business type",
+    "line2Before": "by"
   },
   "industrySub": "Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how missed booking protection applies to your specific business.",
   "industryCards": [

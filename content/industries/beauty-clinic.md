@@ -31,7 +31,8 @@ pain_points:
   heading: "Why beauty clinics need a smarter phone layer"
   heading_parts:
     before: "Why beauty clinics"
-    accent: "need a smarter phone layer"
+    accent: "smarter phone layer"
+    line2Before: "need a"
   items:
     - icon: "phone-off"
       title: "Clients expect a \"patient\" experience, not a booking hotline"
@@ -79,7 +80,8 @@ how_it_works:
   heading_parts:
     before: "How RingBooker works"
     accent: "current"
-    after: "on your clinic number"
+    after: "clinic number"
+    line2Before: "on your"
   steps:
     - number: 1
       title: "Forward calls during treatments or after hours"
@@ -94,7 +96,8 @@ comparison:
   heading: "How missed beauty clinic calls get handled"
   heading_parts:
     before: "How missed beauty"
-    accent: "clinic calls get handled"
+    accent: "clinic calls"
+    after: "get handled"
   rows:
     - label: "Returning patient books next laser session"
       without: "Front desk unavailable — patient calls elsewhere"

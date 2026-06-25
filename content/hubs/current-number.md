@@ -42,7 +42,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Your number stays.",
-        "accent": "The coverage expands."
+        "accent": "coverage expands.",
+        "line2Before": "The"
       },
       "sub": "Call forwarding means RingBooker activates only when your current setup cannot answer — after hours, during overflow, or when staff are with a client. Your public number never changes, and setup starts from a guided customer interface.",
       "steps": [
@@ -86,7 +87,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Why beauty businesses",
-        "accent": "do not want a new number"
+        "accent": "a new number",
+        "line2Before": "do not want"
       },
       "sub": "A phone number is tied to years of client relationships, signage, listings, and trust. Changing it creates friction — not value.",
       "cards": [
@@ -123,7 +125,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "Real concerns",
-        "accent": "owners have about numbers"
+        "accent": "numbers",
+        "line2Before": "owners have about"
       },
       "sub": "Common objections from salon and spa owners — and how keeping your current number addresses each one.",
       "items": [
@@ -168,7 +171,8 @@
       "heading": {
         "kind": "sectionTitle",
         "before": "How RingBooker fits",
-        "accent": "through call forwarding"
+        "accent": "call forwarding",
+        "line2Before": "through"
       },
       "sub": "Most tools ask you to migrate or replace. RingBooker integrates where your current coverage stops.",
       "items": [
@@ -220,8 +224,10 @@
   "industryEyebrow": "By business type",
   "industryHeading": {
     "kind": "sectionTitle",
-    "before": "Same number",
-    "accent": "different call pressures by vertical"
+    "before": "Same number,",
+    "accent": "call pressures",
+    "after": "by vertical",
+    "line2Before": "different"
   },
   "industrySub": "Why continuity matters varies by vertical — explore how setup and call patterns differ.",
   "industryCards": [

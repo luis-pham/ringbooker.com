@@ -44,8 +44,9 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Voicemail,",
-        "accent": "answering services, hiring, or AI?"
+        "before": "Voicemail, answering services,",
+        "accent": "AI?",
+        "line2Before": "hiring, or"
       },
       "sub": "Most salons are not choosing between “AI or nothing.” They are choosing between voicemail, text-back, services, headcount, generic AI — or a beauty-specific layer.",
       "cards": [
@@ -88,8 +89,10 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Quick Comparison —",
-        "accent": "What Matters for Beauty Businesses"
+        "before": "Quick comparison",
+        "accent": "matters",
+        "after": "for beauty businesses",
+        "line2Before": "what"
       },
       "sub": "The right comparison isn't just about features. It's about which option fits the actual way beauty businesses receive and lose bookings.",
       "headers": [
@@ -377,8 +380,9 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Compare",
-        "accent": "RingBooker by Alternative"
+        "before": "Compare RingBooker",
+        "accent": "alternative",
+        "line2Before": "by"
       },
       "sub": "Each comparison goes deeper into the specific trade-offs, use cases, and who each option is actually right for.",
       "links": [
@@ -433,8 +437,9 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Compare by Your",
-        "accent": "Current Situation"
+        "before": "Compare by",
+        "accent": "current situation",
+        "line2Before": "your"
       },
       "sub": "The right next step depends on where booking loss hurts most.",
       "items": [
@@ -502,8 +507,9 @@
       },
       "heading": {
         "kind": "sectionTitle",
-        "before": "Why beauty businesses",
-        "accent": "need a different comparison lens"
+        "before": "Why beauty businesses need",
+        "accent": "different lens",
+        "line2Before": "a"
       },
       "sub": "Salons and spas are not generic local businesses. The right comparison has to be operational — not just feature-based.",
       "cards": [

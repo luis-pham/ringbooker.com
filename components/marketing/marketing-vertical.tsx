@@ -18,7 +18,7 @@ import { siteConfig } from '@/lib/site';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
 
-type ContentHeading = { before: string; accent: string; after?: string };
+type ContentHeading = { before: string; accent: string; after?: string; line2Before?: string };
 
 export type IndustryLandingContent = {
   meta: {
@@ -1802,7 +1802,7 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 
 const VERTICAL_HUB_HEADING: Record<MarketingVerticalKey, ReactNode> = {
   'nail-salon': mkSectionTitle('Nail salon', 'guides and playbooks'),
-  'hair-salon': mkSectionTitle('Hair salon', 'guides and playbooks'),
+  'hair-salon': mkSectionTitle('Hair salon', 'guides', 'and playbooks'),
   spa: mkSectionTitle('Spa and', 'day spa guides'),
   'med-spa': mkSectionTitle('Med spa', 'call-handling guides'),
   'beauty-clinic': mkSectionTitle('Beauty clinic', 'workflow guides'),
@@ -1879,7 +1879,7 @@ function VerticalHubArticles({
 
 function renderContentHeading(heading: string, parts?: ContentHeading): ReactNode {
   if (!parts) return heading;
-  return mkSectionTitle(parts.before, parts.accent, parts.after);
+  return mkSectionTitle(parts.before, parts.accent, parts.after, parts.line2Before);
 }
 
 function renderHeroHeading(hero: IndustryLandingContent['hero'], accentClass: string): ReactNode {

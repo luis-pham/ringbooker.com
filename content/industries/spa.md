@@ -31,7 +31,8 @@ pain_points:
   heading: "Why spas miss bookings when it matters most"
   heading_parts:
     before: "Why spas"
-    accent: "miss bookings when it matters most"
+    accent: "miss bookings"
+    after: "when it matters most"
   items:
     - icon: "phone-off"
       title: "Therapists can't leave treatment rooms for calls"
@@ -79,7 +80,8 @@ how_it_works:
   heading_parts:
     before: "How RingBooker works"
     accent: "current"
-    after: "on your spa number"
+    after: "spa number"
+    line2Before: "on your"
   steps:
     - number: 1
       title: "Forward calls during busy or off hours"
@@ -94,7 +96,8 @@ comparison:
   heading: "How missed spa calls get recovered"
   heading_parts:
     before: "How missed spa"
-    accent: "calls get recovered"
+    accent: "calls"
+    after: "get recovered"
   rows:
     - label: "Couples massage inquiry Saturday"
       without: "Voicemail — couple books elsewhere"

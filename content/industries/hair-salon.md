@@ -75,7 +75,8 @@ how_it_works:
   heading_parts:
     before: "How RingBooker works"
     accent: "current"
-    after: "on your salon number"
+    after: "salon number"
+    line2Before: "on your"
   steps:
     - number: 1
       title: "Connect your salon number"
@@ -90,7 +91,8 @@ comparison:
   heading: "How missed hair salon calls get recovered"
   heading_parts:
     before: "How missed"
-    accent: "hair salon calls get recovered"
+    accent: "hair salon calls"
+    after: "get recovered"
   rows:
     - label: "Caller wants their usual stylist"
       without: "Voicemail — caller books elsewhere"

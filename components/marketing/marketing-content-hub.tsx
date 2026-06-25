@@ -1026,6 +1026,7 @@ type HubRichText =
       before: string;
       accent: string;
       after?: string;
+      line2Before?: string;
     };
 
 function isHubRichText(value: unknown): value is HubRichText {
@@ -1057,6 +1058,7 @@ function renderHubRichText(value: HubRichText): ReactNode {
     <>
       {value.before}
       <br />
+      {value.line2Before ? <>{value.line2Before} </> : null}
       <em>{value.accent}</em>
       {value.after ? <> {value.after}</> : null}
     </>

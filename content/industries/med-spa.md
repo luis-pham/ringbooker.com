@@ -31,7 +31,8 @@ pain_points:
   heading: "Why med spas lose high-value leads on the phone"
   heading_parts:
     before: "Why med spas lose"
-    accent: "high-value leads on the phone"
+    accent: "high-value leads"
+    after: "on the phone"
   items:
     - icon: "currency-dollar"
       title: "Missed consultation calls can become lost demand"
@@ -90,7 +91,8 @@ comparison:
   heading: "How missed med spa consultation calls get recovered"
   heading_parts:
     before: "How missed"
-    accent: "med spa consultation calls get recovered"
+    accent: "med spa consultation calls"
+    after: "get recovered"
   rows:
     - label: "After-hours Botox inquiry"
       without: "Voicemail — lead cools"
