@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import type { MarketingVerticalKey } from '@/components/marketing/marketing-vertical';
+import { generateCanonical } from '@/lib/seo';
 import { buildMetadata } from '@/lib/site';
 
 /** URL segment after `/industries/` for marketing landing pages (not blog slugs). */
@@ -81,7 +82,7 @@ export function marketingIndustryLandingMetadata(segment: string): Metadata {
     return {
       ...metadata,
       alternates: {
-        canonical: seo.path,
+        canonical: generateCanonical(seo.path).alternates.canonical,
         languages: {
           en: seo.path,
           'en-US': seo.path,

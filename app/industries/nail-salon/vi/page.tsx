@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { MarketingNailSalonVietnameseTemplate } from '@/components/marketing/marketing-vertical';
 import { VI_NAIL_SALON_LANDING_SEO } from '@/lib/marketing/industry-landings';
+import { generateCanonical } from '@/lib/seo';
 import { buildMetadata } from '@/lib/site';
 
 const pageMetadata = buildMetadata(VI_NAIL_SALON_LANDING_SEO);
@@ -11,7 +12,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   ...pageMetadata,
   alternates: {
-    canonical: VI_NAIL_SALON_LANDING_SEO.path,
+    canonical: generateCanonical(VI_NAIL_SALON_LANDING_SEO.path).alternates.canonical,
     languages: {
       vi: VI_NAIL_SALON_LANDING_SEO.path,
       en: '/industries/nail-salon',

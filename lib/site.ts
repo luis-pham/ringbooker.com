@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { generateCanonical } from '@/lib/seo';
 
 /** Short tagline under the RingBooker logo in marketing footers (`MarketingFooter`). */
 export const marketingFooterTagline =
@@ -54,8 +55,9 @@ export function siteOgImageEntry(urlOrPath: string) {
 }
 
 export function buildAlternates(path = '/'): Metadata['alternates'] {
+  const { alternates } = generateCanonical(path);
   return {
-    canonical: path,
+    canonical: alternates.canonical,
     languages: {
       'en-US': path,
       'x-default': path,

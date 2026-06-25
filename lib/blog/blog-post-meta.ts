@@ -5,6 +5,7 @@ import { getAllPosts, getPostByPathPrefixAndSlug } from '@/lib/blog';
 import { resolvePostRedirectTargetOrNull } from '@/lib/blog/post-redirect';
 import { buildPostSeoDescription } from '@/lib/blog/post-seo-description';
 import { BLOG_PATH_PREFIX_LABEL, isBlogPathPrefix, postPublicPath } from '@/lib/blog/path-prefixes';
+import { generateCanonical } from '@/lib/seo';
 import { absoluteOgImageUrl, buildAlternates, defaultSiteOgImage, normalizeSeoTitle, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
@@ -64,7 +65,7 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
     description,
     alternates: isVietnamesePost(post)
       ? {
-          canonical: path,
+          canonical: generateCanonical(path).alternates.canonical,
           languages: {
             vi: path,
             'x-default': parentSectionPathForPost(post.pathPrefix),

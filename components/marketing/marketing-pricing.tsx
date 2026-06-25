@@ -269,6 +269,13 @@ export function MarketingPricingTemplate() {
                   <span style={{ margin: '0 6px' }}>›</span>
                   <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Pricing</span>
                 </nav>
+                <h1 style={{ fontSize: 13, fontWeight: 500, color: '#534AB7', letterSpacing: '0.01em', margin: 0 }}>
+                  AI receptionist pricing for salons &amp; spas
+                </h1>
+                <p style={{ fontSize: 12, color: '#7F77DD', fontWeight: 400, margin: '2px 0 0' }}>
+                  Simple plans. No contracts. Cancel anytime.
+                </p>
+                <div aria-hidden="true" style={{ width: 32, height: 2, background: '#AFA9EC', borderRadius: 2, margin: '14px 0 16px' }} />
               </div>
 
               <div className="pricing-plans-inner">

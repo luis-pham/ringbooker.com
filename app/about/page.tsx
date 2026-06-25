@@ -2,7 +2,7 @@ import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'About',
+  title: 'About RingBooker — AI Receptionist for Salons',
   description:
     'Learn about RingBooker — the AI phone answering and call forwarding service built for nail salons, hair salons, day spas, med spas, and beauty clinics across the US.',
   path: '/about',
@@ -12,7 +12,7 @@ export default function AboutPage() {
   return (
     <MarketingLegalPage
       breadcrumbLabel="About"
-      title="About RingBooker"
+      title="About RingBooker — AI Receptionist for Salons"
       subtitle="RingBooker is an AI phone answering and call forwarding service built for beauty and aesthetic businesses across the United States — including nail salons, hair salons, day spas, med spas, and beauty clinics."
       intro={
         <>
