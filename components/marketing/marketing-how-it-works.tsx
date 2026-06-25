@@ -2,48 +2,40 @@ import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
-import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
+import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
-const HOW_IT_WORKS_FAQS = [
-  {
-    q: 'Do I need a new phone number to use RingBooker?',
-    a: 'No. Most businesses start by forwarding their current business number to RingBooker for after-hours and overflow coverage. A dedicated RingBooker number is optional if you want a separate booking line.',
-  },
-  {
-    q: 'Does RingBooker replace my booking software?',
-    a: 'No. RingBooker is an AI receptionist and answering service — a missed booking protection layer. It works alongside your existing booking tools and call workflow instead of replacing your booking platform.',
-  },
-  {
-    q: 'What kinds of calls can RingBooker handle?',
-    a: 'RingBooker is built for nail salons, hair salons, spas, med spas, and clinics: after-hours calls, peak-hour overflow, routine booking requests, reschedules, cancellations, missed-call text back, and clean human handoff when a caller needs special help.',
-  },
-  {
-    q: 'What happens if the caller needs a real person?',
-    a: 'RingBooker can collect context, offer a callback path, and summarize the call so your team can follow up without making the caller repeat everything.',
-  },
-];
-
-const howItWorksFaqJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: HOW_IT_WORKS_FAQS.map((item) => ({
-    '@type': 'Question',
-    name: item.q,
-    acceptedAnswer: {
-      '@type': 'Answer',
-      text: item.a,
-    },
-  })),
-};
-const howItWorksBreadcrumbJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
-    { '@type': 'ListItem', position: 2, name: 'How It Works', item: 'https://ringbooker.com/how-it-works' },
-  ],
+export type MarketingHowItWorksContent = {
+  hero: {
+    eyebrow: string;
+    h1: string;
+    subtitle: string;
+    cta_primary: { label: string; href: string };
+    cta_secondary: { label: string; href: string };
+  };
+  summary_card: {
+    label: string;
+    heading: string;
+    items: string[];
+  };
+  sections: Array<{
+    id: string;
+    heading: string;
+    subtitle?: string;
+    cards?: string[];
+    steps?: Array<{ number: number; title: string }>;
+    items?: string[];
+  }>;
+  faq: {
+    heading: string;
+    items: MarketingFaqItem[];
+  };
+  final_cta: {
+    heading: string;
+    cta_primary: { label: string; href: string };
+    cta_secondary: { label: string; href: string };
+  };
 };
 
 const styles: string[] = [
@@ -103,15 +95,70 @@ const scripts: string[] = [
 export const templateTitle =
   'How It Works — Recover Lost Bookings, Keep Your Number | RingBooker';
 
-export function MarketingHowItWorksTemplate() {
+function getHowItWorksSection(content: MarketingHowItWorksContent, id: string) {
+  return content.sections.find((section) => section.id === id);
+}
+
+function renderHeroTitle(title: string) {
+  const [first, second] = title.split('. ');
+  if (!first || !second) return title;
+  return (
+    <>
+      {first}.
+      <br />
+      {second}
+    </>
+  );
+}
+
+function renderSummaryHeading(heading: string) {
+  const [before, accent] = heading.split('. ');
+  if (!before || !accent) return heading;
+  return mkSectionTitle(`${before}.`, accent);
+}
+
+function renderHowSectionHeading(id: string, heading?: string): ReactNode {
+  if (!heading) return null;
+  if (id === 'setup-paths') return mkSectionTitle('Choose how', 'RingBooker starts.');
+  if (id === 'three-step-flow') {
+    return (
+      <>
+        A phone-first <em>workflow</em>
+        <br />
+        your team can understand quickly.
+      </>
+    );
+  }
+  if (id === 'what-it-handles') {
+    return (
+      <>
+        Built for the calls
+        <br />
+        that usually <em>leak</em> bookings.
+      </>
+    );
+  }
+  if (id === 'trust-boundary') return mkSectionTitle('What RingBooker', 'does not replace.');
+  return heading;
+}
+
+function renderFinalCtaHeading(heading: string) {
+  if (heading === 'See the revenue recovery flow on a real call.') {
+    return mkSectionTitle('See the', 'revenue recovery flow on a real call.');
+  }
+  return heading;
+}
+
+export function MarketingHowItWorksTemplate({ content }: { content: MarketingHowItWorksContent }) {
+  const setupPaths = getHowItWorksSection(content, 'setup-paths');
+  const threeStepFlow = getHowItWorksSection(content, 'three-step-flow');
+  const whatItHandles = getHowItWorksSection(content, 'what-it-handles');
+  const trustBoundary = getHowItWorksSection(content, 'trust-boundary');
+  const callerExperience = getHowItWorksSection(content, 'caller-experience');
   const layoutChildren: ReactNode = (
     <>
         <MarketingChromeStyles />
         <MarketingHeader active="how-it-works" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(howItWorksFaqJsonLd) }}
-        />
         <main className="legacy-marketing hiw-page">
           <section className="hiw-hero">
             <div className="hiw-container">
@@ -120,38 +167,39 @@ export function MarketingHowItWorksTemplate() {
                 <span style={{ margin: '0 6px' }}>›</span>
                 <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>How It Works</span>
               </nav>
-              <p className="hero-eyebrow">How RingBooker works</p>
+              <p className="hero-eyebrow">{content.hero.eyebrow}</p>
             </div>
             <div className="hiw-container hiw-hero-grid">
               <div>
                 <h1>
-                  Recover Lost Bookings.
-                  <br />
-                  Keep Your Number.
+                  {renderHeroTitle(content.hero.h1)}
                 </h1>
                 <p>
-                  Forward your existing line — RingBooker answers after-hours, covers overflow, sends missed-call texts, and captures intent before it becomes lost revenue.
+                  {content.hero.subtitle}
                 </p>
                 <div className="hiw-actions">
-                  <a href="/demo" className="hiw-btn-dark" data-demo-picker>
+                  <a href={content.hero.cta_primary.href} className="hiw-btn-dark" data-demo-picker>
                     <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
-                    Try a Live Demo Call
+                    {content.hero.cta_primary.label}
                     <svg className="hiw-btn-dark-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                       <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                     </svg>
                   </a>
-                  <a href="/user/signup?plan=starter" className="hiw-btn-outline">
-                    Start 14-Day Free Trial
+                  <a href={content.hero.cta_secondary.href} className="hiw-btn-outline">
+                    {content.hero.cta_secondary.label}
                   </a>
                 </div>
               </div>
               <aside className="hiw-summary" aria-label="RingBooker summary">
-                <div className="hiw-summary-label">Plain-language summary</div>
-                <h2>{mkSectionTitle('Keep your number.', 'Stop revenue leaking to voicemail.')}</h2>
+                <div className="hiw-summary-label">{content.summary_card.label}</div>
+                <h2>{renderSummaryHeading(content.summary_card.heading)}</h2>
                 <div className="hiw-summary-list">
-                  <div className="hiw-summary-item"><span className="hiw-summary-icon">1</span><span>Most businesses forward their current line to RingBooker for after-hours, overflow, or missed-call coverage.</span></div>
-                  <div className="hiw-summary-item"><span className="hiw-summary-icon">2</span><span>A dedicated RingBooker number is available if you want a separate booking line.</span></div>
-                  <div className="hiw-summary-item"><span className="hiw-summary-icon">3</span><span>RingBooker handles routine call work and keeps human handoff clear when the booking or consult needs a person.</span></div>
+                  {content.summary_card.items.map((item, index) => (
+                    <div key={item} className="hiw-summary-item">
+                      <span className="hiw-summary-icon">{index + 1}</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
                 </div>
               </aside>
             </div>
@@ -160,15 +208,15 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section">
             <div className="hiw-container">
               <div className="hiw-label">Setup paths</div>
-              <h2 className="hiw-title">{mkSectionTitle('Choose how', 'RingBooker starts.')}</h2>
-              <p className="hiw-sub">Current number is the primary path. A new dedicated line is optional for businesses that want a separate number for campaigns, overflow, or testing.</p>
+              <h2 className="hiw-title">{renderHowSectionHeading('setup-paths', setupPaths?.heading)}</h2>
+              <p className="hiw-sub">{setupPaths?.subtitle}</p>
               <div className="hiw-grid-2 hiw-setup-grid">
                 <article className="hiw-card recommended">
                   <div className="hiw-card-top">
                     <div className="hiw-icon">📞</div>
                     <span className="hiw-pill">Recommended</span>
                   </div>
-                  <h3>Use your current business number</h3>
+                  <h3>{setupPaths?.cards?.[0]}</h3>
                   <p>Most salons and clinics keep the number customers already know. Calls can be forwarded to RingBooker for after-hours coverage, overflow, or missed-call recovery without migrating your booking system.</p>
                   <ul className="hiw-list">
                     <li>Best for existing businesses with an established phone number.</li>
@@ -181,7 +229,7 @@ export function MarketingHowItWorksTemplate() {
                     <div className="hiw-icon">☎️</div>
                     <span className="hiw-pill optional">Optional</span>
                   </div>
-                  <h3>Add a dedicated RingBooker number</h3>
+                  <h3>{setupPaths?.cards?.[1]}</h3>
                   <p>If you want a separate booking line, campaign number, or pilot setup, RingBooker can provide a dedicated number. This is an option, not a requirement.</p>
                   <ul className="hiw-list">
                     <li>Useful for testing before routing your main line.</li>
@@ -196,11 +244,7 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section gray">
             <div className="hiw-container">
               <div className="hiw-label">3-step flow</div>
-              <h2 className="hiw-title">
-                A phone-first <em>workflow</em>
-                <br />
-                your team can understand quickly.
-              </h2>
+              <h2 className="hiw-title">{renderHowSectionHeading('three-step-flow', threeStepFlow?.heading)}</h2>
               <p className="hiw-sub">RingBooker sits between the caller and your team: it captures intent and summaries so you recover bookings faster — without migrating calendars or changing the number clients already dial.</p>
               <div className="hiw-steps-mobile-nav" role="tablist" aria-label="How it works steps">
                 <a href="#hiw-step-1" className="is-active">Step 1</a>
@@ -210,9 +254,9 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-grid-3 hiw-flow">
                 <article className="hiw-step" id="hiw-step-1">
                   <span className="hiw-step-marker" aria-hidden>
-                    1
+                    {threeStepFlow?.steps?.[0]?.number}
                   </span>
-                  <h3>Connect coverage</h3>
+                  <h3>{threeStepFlow?.steps?.[0]?.title}</h3>
                   <p>
                     Forward your current business number{' '}
                     <a href="/current-number/call-forwarding" style={{ color: '#5B21B6', textDecoration: 'underline' }}>
@@ -223,16 +267,16 @@ export function MarketingHowItWorksTemplate() {
                 </article>
                 <article className="hiw-step" id="hiw-step-2">
                   <span className="hiw-step-marker" aria-hidden>
-                    2
+                    {threeStepFlow?.steps?.[1]?.number}
                   </span>
-                  <h3>Add services, hours, and rules</h3>
+                  <h3>{threeStepFlow?.steps?.[1]?.title}</h3>
                   <p>Tell RingBooker your services, business hours, staff or provider preferences, booking rules, escalation path, and what should be confirmed by SMS.</p>
                 </article>
                 <article className="hiw-step" id="hiw-step-3">
                   <span className="hiw-step-marker" aria-hidden>
-                    3
+                    {threeStepFlow?.steps?.[2]?.number}
                   </span>
-                  <h3>Recover calls and hand off context</h3>
+                  <h3>{threeStepFlow?.steps?.[2]?.title}</h3>
                   <p>RingBooker answers, captures intent, helps with routine booking calls, texts confirmations or callbacks, and gives your team the context when a human should step in.</p>
                 </article>
               </div>
@@ -242,19 +286,15 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section">
             <div className="hiw-container">
               <div className="hiw-label">What it handles</div>
-              <h2 className="hiw-title">
-                Built for the calls
-                <br />
-                that usually <em>leak</em> bookings.
-              </h2>
+              <h2 className="hiw-title">{renderHowSectionHeading('what-it-handles', whatItHandles?.heading)}</h2>
               <p className="hiw-sub">RingBooker targets the phone moments that cost salons and clinics revenue: busy service windows, after-hours buying intent, peak overflow, reschedules, cancellations, and callers who hang up instead of leaving voicemail.</p>
               <div className="hiw-handle-grid">
-                <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>After-hours calls</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon blue">📞</div><strong>Overflow calls</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon green">📅</div><strong>Booking requests</strong><p>Collect service, timing, customer details, and preferences needed to move the booking forward.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon pink">🔄</div><strong>Reschedules and cancellations</strong><p>Understand the caller’s change request, preserve context, and help your team recover the slot where appropriate.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon">💬</div><strong>Missed-call text back</strong><p>Text callers back when they hang up, call after hours, or reach you during a busy window.</p></div>
-                <div className="hiw-handle"><div className="hiw-handle-icon slate">🤝</div><strong>Human handoff</strong><p>Escalate special cases with context so your team does not have to restart the conversation.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>{whatItHandles?.items?.[0]}</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon blue">📞</div><strong>{whatItHandles?.items?.[1]}</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon green">📅</div><strong>{whatItHandles?.items?.[2]}</strong><p>Collect service, timing, customer details, and preferences needed to move the booking forward.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon pink">🔄</div><strong>{whatItHandles?.items?.[3]}</strong><p>Understand the caller’s change request, preserve context, and help your team recover the slot where appropriate.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon">💬</div><strong>{whatItHandles?.items?.[4]}</strong><p>Text callers back when they hang up, call after hours, or reach you during a busy window.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon slate">🤝</div><strong>{whatItHandles?.items?.[5]}</strong><p>Escalate special cases with context so your team does not have to restart the conversation.</p></div>
               </div>
             </div>
           </section>
@@ -264,14 +304,14 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-label hiw-label-trust">Trust boundary</div>
               <div className="hiw-no-replace">
                 <div>
-                  <h2 className="hiw-title">{mkSectionTitle('What RingBooker', 'does not replace.')}</h2>
+                  <h2 className="hiw-title">{renderHowSectionHeading('trust-boundary', trustBoundary?.heading)}</h2>
                   <p>This page is intentionally clear because phone routing and booking workflows are sensitive. RingBooker is a recovery layer, not a forced migration.</p>
                 </div>
                 <div className="hiw-trust-list">
-                  <div className="hiw-trust-item"><strong>Your current number</strong><span>You can keep your current number. A dedicated RingBooker number is optional.</span></div>
-                  <div className="hiw-trust-item"><strong>Your booking tools</strong><span>RingBooker works alongside your current booking workflow instead of replacing your calendar or booking platform.</span></div>
-                  <div className="hiw-trust-item"><strong>Your team’s control</strong><span>Your team decides the coverage rules, escalation path, business hours, and what needs human follow-up.</span></div>
-                  <div className="hiw-trust-item"><strong>Human-only situations</strong><span>Complex, sensitive, or policy-heavy calls should be handed off with context rather than forced through a loop.</span></div>
+                  <div className="hiw-trust-item"><strong>{trustBoundary?.items?.[0]}</strong><span>You can keep your current number. A dedicated RingBooker number is optional.</span></div>
+                  <div className="hiw-trust-item"><strong>{trustBoundary?.items?.[1]}</strong><span>RingBooker works alongside your current booking workflow instead of replacing your calendar or booking platform.</span></div>
+                  <div className="hiw-trust-item"><strong>{trustBoundary?.items?.[2]}</strong><span>Your team decides the coverage rules, escalation path, business hours, and what needs human follow-up.</span></div>
+                  <div className="hiw-trust-item"><strong>{trustBoundary?.items?.[3]}</strong><span>Complex, sensitive, or policy-heavy calls should be handed off with context rather than forced through a loop.</span></div>
                 </div>
               </div>
             </div>
@@ -281,13 +321,13 @@ export function MarketingHowItWorksTemplate() {
               </div>
               <div className="hiw-container hiw-experience">
                 <div className="hiw-call-card">
-                  <h3>No dead-end voicemail when a booking call matters.</h3>
+                  <h3>{callerExperience?.heading}</h3>
                   <p>Callers get a natural answer, a clear next step, and a text confirmation or callback path when needed. The goal is not to pretend to be human. The goal is to keep the booking conversation alive.</p>
                 </div>
                 <div className="hiw-call-steps">
-                  <div className="hiw-call-step"><span>🗣</span><div><strong>Answers naturally and quickly</strong><p>RingBooker keeps the call moving without long silence or generic phone-tree friction.</p></div></div>
-                  <div className="hiw-call-step"><span>💬</span><div><strong>Confirms by text</strong><p>Important outcomes can be followed by SMS so callers know what happened next.</p></div></div>
-                  <div className="hiw-call-step"><span>🤝</span><div><strong>Hands off gracefully</strong><p>If the caller needs a real person, RingBooker collects context and creates a cleaner callback path.</p></div></div>
+                  <div className="hiw-call-step"><span>🗣</span><div><strong>{callerExperience?.items?.[0]}</strong><p>RingBooker keeps the call moving without long silence or generic phone-tree friction.</p></div></div>
+                  <div className="hiw-call-step"><span>💬</span><div><strong>{callerExperience?.items?.[1]}</strong><p>Important outcomes can be followed by SMS so callers know what happened next.</p></div></div>
+                  <div className="hiw-call-step"><span>🤝</span><div><strong>{callerExperience?.items?.[2]}</strong><p>If the caller needs a real person, RingBooker collects context and creates a cleaner callback path.</p></div></div>
                 </div>
               </div>
             </div>
@@ -296,26 +336,26 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section hiw-faq-cta-lower">
             <div className="hiw-container">
               <MarketingFaqAccordion
-                items={HOW_IT_WORKS_FAQS}
+                items={content.faq.items}
                 embedded
-                title="Common setup questions."
+                title={content.faq.heading}
                 subtitle="Short answers for owners and managers comparing call recovery options — current number, no forced booking migration, and what happens on real salon and clinic calls."
               />
               <div className="hiw-cta-box">
                 <div>
-                  <h2>{mkSectionTitle('See the', 'revenue recovery flow on a real call.')}</h2>
+                  <h2>{renderFinalCtaHeading(content.final_cta.heading)}</h2>
                   <p>Try a live demo or talk through how RingBooker covers after-hours intent, peak-hour overflow, reschedules, cancellations, and missed-call text back on your line — still the number clients already use.</p>
                 </div>
                 <div className="hiw-actions">
-                  <a href="/demo" className="hiw-cta-btn-white" data-demo-picker>
+                  <a href={content.final_cta.cta_primary.href} className="hiw-cta-btn-white" data-demo-picker>
                     <DemoCtaPhoneIcon width={16} height={16} />
-                    Try a Live Demo Call
+                    {content.final_cta.cta_primary.label}
                     <svg className="hiw-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                       <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                     </svg>
                   </a>
-                  <a href="/user/signup?plan=starter" className="hiw-cta-btn-ghost">
-                    Start 14-Day Free Trial
+                  <a href={content.final_cta.cta_secondary.href} className="hiw-cta-btn-ghost">
+                    {content.final_cta.cta_secondary.label}
                   </a>
                 </div>
               </div>
@@ -323,7 +363,6 @@ export function MarketingHowItWorksTemplate() {
           </section>
         </main>
         <MarketingFooter />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howItWorksBreadcrumbJsonLd) }} />
     </>
   );
 

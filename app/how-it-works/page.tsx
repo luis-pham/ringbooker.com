@@ -1,13 +1,37 @@
-import { MarketingHowItWorksTemplate } from '@/components/marketing/marketing-how-it-works';
-import { buildMetadata } from '@/lib/site';
+import type { Metadata } from 'next';
 
-export const metadata = buildMetadata({
-  title: 'How It Works — Recover Lost Bookings, Keep Your Number | RingBooker',
-  description:
-    'Forward your existing line — RingBooker answers after-hours, covers overflow, sends missed-call texts, and captures intent before it becomes lost revenue.',
-  path: '/how-it-works',
-});
+import { MarketingHowItWorksTemplate, type MarketingHowItWorksContent } from '@/components/marketing/marketing-how-it-works';
+import { loadPageContent } from '@/lib/content';
+import { buildHowItWorksSchemas } from '@/lib/schema';
+
+type HowItWorksPageContent = MarketingHowItWorksContent & {
+  meta: {
+    title: string;
+    description: string;
+    canonical: string;
+  };
+};
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { frontmatter } = loadPageContent<HowItWorksPageContent>('how-it-works');
+  return {
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    alternates: {
+      canonical: `https://ringbooker.com${frontmatter.meta.canonical}`,
+    },
+  };
+}
 
 export default function HowItWorksPage() {
-  return <MarketingHowItWorksTemplate />;
+  const { frontmatter } = loadPageContent<HowItWorksPageContent>('how-it-works');
+  const schemas = buildHowItWorksSchemas(frontmatter);
+  return (
+    <>
+      {schemas.map((schema, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
+      <MarketingHowItWorksTemplate content={frontmatter} />
+    </>
+  );
 }

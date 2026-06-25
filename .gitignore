@@ -35,6 +35,11 @@ tsconfig.tsbuildinfo
 
 # markdown files
 *.md
+# Allow .md files in content/ for partner editing
+content/**
+!content/
+!content/**/
+!content/**/*.md
 !README.md
 !docs/integrations/mindbody.md
 !docs/integrations/acuity-scheduling.md

@@ -1,96 +1,118 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { IPHONE_CALL_MOCKUP_CSS } from '@/components/marketing/iphone-call-mockup-css';
 import { HomeHeroPhoneMockup } from '@/components/marketing/home-hero-phone-mockup';
-import { HomeIndustriesSection } from '@/components/marketing/home-industries-section';
+import { HomeIndustriesSection, type HomeIndustryTab } from '@/components/marketing/home-industries-section';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
+type HomeFaqItem = { q: string; a: string };
 
-const HOME_FAQS = [
-  {
-    q: 'Can RingBooker work with my current salon phone number?',
-    a: 'Yes. RingBooker works by forwarding your existing number, so callers keep dialing the same number they already know. You can also use a new RingBooker number if you prefer.',
-  },
-  {
-    q: 'Does RingBooker replace my booking software?',
-    a: 'No. RingBooker handles the phone layer while your booking workflow stays familiar. Square Appointments is live today; other booking tools can start with call summaries and handoff while deeper integrations expand.',
-  },
-  {
-    q: 'Can it handle reschedule and cancellation calls?',
-    a: 'Yes. RingBooker can collect the caller intent, confirm the service and time, handle simple reschedules or cancellations based on your rules, and send a summary when a human follow-up is needed.',
-  },
-  {
-    q: 'What happens if a caller wants to speak to a real person?',
-    a: 'RingBooker can collect the caller’s request, mark it for human follow-up, and send your team a clear summary. On Professional and Custom plans, RingBooker can also transfer the call to the owner based on your handoff settings.',
-  },
-  {
-    q: "Will my customers know they're talking to AI?",
-    a: 'RingBooker is designed to be transparent and helpful. It can introduce itself as your virtual assistant, speak naturally, and hand off gracefully when a human is needed.',
-  },
-  {
-    q: 'Can RingBooker text missed callers automatically?',
-    a: 'Yes. Missed-call text back and smart callback workflows help recover callers who hang up, call after hours, or reach you during a busy service window.',
-  },
-  {
-    q: 'Does it work for nail salons with Vietnamese-speaking owners?',
-    a: 'Yes. RingBooker supports Vietnamese onboarding help and can be configured for English and Vietnamese call flows, summaries, and salon-specific scripts.',
-  },
-  {
-    q: 'Can it answer calls after hours and on weekends?',
-    a: 'Yes. RingBooker can answer after-hours and weekend calls, capture booking intent, send confirmations, and make sure your team sees what happened when you are back online.',
-  },
-];
-
-const HOME_COMPARE_ROWS = [
-  {
-    bad: 'Loops on unexpected questions, then dumps to voicemail.',
-    good: 'Two-strike fallback with callback offer and clean handoff.',
-  },
-  {
-    bad: 'Asks too many questions before doing anything useful.',
-    good: "Asks only what's needed to book, reschedule, or summarize.",
-  },
-  {
-    bad: 'No context — your team starts from scratch every time.',
-    good: 'Call summaries and intent notes so nobody repeats themselves.',
-  },
-  {
-    bad: 'Designed for call centers, not beauty booking workflows.',
-    good: 'Purpose-built for nail salons, spas, med spas, and clinics.',
-  },
-] as const;
-
-const homeFaqJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: HOME_FAQS.map((item) => ({
-    '@type': 'Question',
-    name: item.q,
-    acceptedAnswer: {
-      '@type': 'Answer',
-      text: item.a,
-    },
-  })),
+type HomePricingPlan = {
+  id: string;
+  name: string;
+  description: string;
+  price_label?: string;
+  price_monthly_label?: string;
+  price_annual_label?: string;
+  price_annual_billed?: string;
+  tax_note?: string;
+  cta_label: string;
+  cta_href: string;
+  popular: boolean;
+  badge?: string;
+  subnote?: string;
+  features: string[];
 };
 
-const softwareJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'RingBooker',
-  applicationCategory: 'BusinessApplication',
-  operatingSystem: 'Web',
-  offers: {
-    '@type': 'Offer',
-    price: '79',
-    priceCurrency: 'USD',
-  },
-  description:
-    'RingBooker is an AI receptionist and answering service for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, protected revenue, and guided setup in about 15 minutes on your current number.',
+export type HomePageContent = {
+  meta: { title: string; description: string; canonical: string };
+  hero: {
+    eyebrow: string;
+    h1: string;
+    subtitle_prefix: string;
+    subtitle: string;
+    subtitle_links: Array<{ label: string; href: string }>;
+    cta_primary: { label: string; href: string };
+    cta_secondary: { label: string; href: string };
+    stats: Array<{ value: string; label: string }>;
+    stats_footnote: string;
+  };
+  revenue_loss: {
+    label: string;
+    h2: string;
+    subtitle: string;
+    leak_cards: Array<{ number: string; title: string; description: string; solution: string }>;
+    revenue_card: {
+      label: string;
+      footnote: string;
+      rows: Array<{ label: string; range: string; width: string; bar_color: string }>;
+      total_label: string;
+      total_prefix: string;
+      total_strong: string;
+    };
+  };
+  core_coverage: {
+    label: string;
+    h2: string;
+    lead: string;
+    rows: Array<{
+      id: string;
+      title: string;
+      subtitle: string;
+      description: string;
+      cta: string;
+      panel_title: string;
+      panel_rows?: Array<{ label: string; time: string; badge: string }>;
+      panel_fields?: Array<{ label: string; value: string }>;
+      panel_messages?: Array<{ label: string; text: string; status: string }>;
+    }>;
+  };
+  how_it_works: {
+    label: string;
+    h2: string;
+    body: string;
+    steps: Array<{ number: number; title: string; description: string }>;
+  };
+  industries: {
+    label: string;
+    h2: string;
+    lead: string;
+    metrics: Array<{ value: string; count: string; suffix?: string; label: string; sublabel: string }>;
+    tabs: HomeIndustryTab[];
+    tabs_aria_label: string;
+    cta_label: string;
+  };
+  why_ringbooker: {
+    label: string;
+    h2: string;
+    lead: string;
+    col_generic: string;
+    col_ringbooker: string;
+    rows: Array<{ generic: string; ringbooker: string }>;
+  };
+  pricing: {
+    label: string;
+    h2: string;
+    lead: string;
+    toggle_monthly_label: string;
+    toggle_annual_label: string;
+    toggle_save_label: string;
+    footnote: string;
+    plans: HomePricingPlan[];
+    carousel_aria: { controls: string; prev: string; indicators: string; next: string };
+  };
+  faq: { items: HomeFaqItem[] };
+  final_cta: {
+    h2: string;
+    lead: string;
+    cta_primary: { label: string; href: string };
+    cta_secondary: { label: string; href: string };
+  };
+  schema: Record<string, unknown>;
 };
 
 /** 24×24 stroke icons — homepage only, matches soft “line” icon treatment */
@@ -118,7 +140,27 @@ const styles: string[] = [
   IPHONE_CALL_MOCKUP_CSS,
 ];
 
-const scripts: string[] = [
+function formatHomePlanPriceHtml(priceLabel = '', billed?: string) {
+  const monthlyMatch = priceLabel.match(/^(.*?)(\/mo)$/);
+  const base = monthlyMatch
+    ? `${monthlyMatch[1]}<span class="plan-price-period">${monthlyMatch[2]}</span>`
+    : priceLabel;
+
+  return billed ? `${base}<span class="plan-price-billed">${billed}</span>` : base;
+}
+
+function buildScripts(content: HomePageContent): string[] {
+  const starterPlan = content.pricing.plans.find((plan) => plan.id === 'starter');
+  const professionalPlan = content.pricing.plans.find((plan) => plan.id === 'professional');
+  const starterMonthlyPrice = formatHomePlanPriceHtml(starterPlan?.price_monthly_label);
+  const starterAnnualPrice = formatHomePlanPriceHtml(starterPlan?.price_annual_label, starterPlan?.price_annual_billed);
+  const professionalMonthlyPrice = formatHomePlanPriceHtml(professionalPlan?.price_monthly_label);
+  const professionalAnnualPrice = formatHomePlanPriceHtml(
+    professionalPlan?.price_annual_label,
+    professionalPlan?.price_annual_billed,
+  );
+
+  return [
   String.raw`
 // Pricing toggle
 function setPrice(m) {
@@ -133,11 +175,11 @@ function setPrice(m) {
   const saveBadge = document.getElementById('home-pt-save-badge')
   if (saveBadge) saveBadge.classList.toggle('is-visible', !mo)
   starterPrice.innerHTML = mo
-    ? '$79<span class="plan-price-period">/mo</span>'
-    : '$63<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $758/year</span>'
+    ? ${JSON.stringify(starterMonthlyPrice)}
+    : ${JSON.stringify(starterAnnualPrice)}
   proPrice.innerHTML = mo
-    ? '$149<span class="plan-price-period">/mo</span>'
-    : '$119<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $1,428/year</span>'
+    ? ${JSON.stringify(professionalMonthlyPrice)}
+    : ${JSON.stringify(professionalAnnualPrice)}
 }
 window.__ringbookerSetPrice = setPrice
 
@@ -498,16 +540,124 @@ setPriceSafe('monthly')
   }
 })()
 `,
-];
+  ];
+}
 
-export const templateTitle =
-  'AI Receptionist and Answering Service for Salons, Spas & Clinics | Recover Missed Bookings & Revenue';
+function getHomeStatAttributes(value: string) {
+  if (value.startsWith('<')) {
+    return { 'data-fade-only': 'true', 'data-display': value };
+  }
 
-export function MarketingHomeTemplate() {
+  const match = value.match(/^(\d+)(.*)$/);
+  if (!match) return {};
+
+  const [, count, suffix] = match;
+  return suffix ? { 'data-count': count, 'data-suffix': suffix } : { 'data-count': count };
+}
+
+function splitHomePriceLabel(label: string) {
+  const match = label.match(/^(.*?)(\/mo)$/);
+  return match ? { amount: match[1], period: match[2] } : { amount: label, period: '' };
+}
+
+function renderHeroTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 8) return title;
+
+  return (
+    <>
+      {words[0]} <em>{words[1]}</em> {words[2]}
+      <br />
+      {words.slice(3, 6).join(' ')}
+      <br />
+      {words.slice(6).join(' ')}
+    </>
+  );
+}
+
+function renderRevenueLossTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 6) return title;
+
+  return (
+    <>
+      {words.slice(0, 3).join(' ')} <em>{words[3]}</em>
+      <br />
+      <em>{words[4]}</em> {words.slice(5).join(' ')}
+    </>
+  );
+}
+
+function renderCoreCoverageTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 5) return title;
+
+  return (
+    <>
+      {words.slice(0, 3).join(' ')}
+      <br />
+      <em>{words[3]}</em> {words.slice(4).join(' ')}
+    </>
+  );
+}
+
+function renderHowItWorksTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 6) return title;
+
+  return (
+    <>
+      {words.slice(0, 2).join(' ')} <em>{words.slice(2, 4).join(' ')}</em>
+      <br />
+      {words.slice(4).join(' ')}
+    </>
+  );
+}
+
+function renderThirdWordEmphasisTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 4) return title;
+
+  return (
+    <>
+      {words.slice(0, 2).join(' ')} <em>{words[2]}</em> {words.slice(3).join(' ')}
+    </>
+  );
+}
+
+function renderPricingTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 5) return title;
+
+  return (
+    <>
+      {words.slice(0, 4).join(' ')}
+      <br />
+      <em>{words.slice(4).join(' ')}</em>
+    </>
+  );
+}
+
+function renderFinalCtaTitle(title: string) {
+  const words = title.split(' ');
+  if (words.length < 2) return title;
+
+  return (
+    <>
+      {words.slice(0, -1).join(' ')} <em>{words[words.length - 1]}</em>
+    </>
+  );
+}
+
+export function MarketingHomeTemplate({ content }: { content: HomePageContent }) {
+  const afterHoursCoverage = content.core_coverage.rows[0]!;
+  const bookingChangesCoverage = content.core_coverage.rows[1]!;
+  const missedCallCoverage = content.core_coverage.rows[2]!;
+
   return (
     <MarketingLayout
       styles={styles}
-      scripts={scripts}
+      scripts={buildScripts(content)}
       scriptPrefix="marketing-home"
     >
       <>
@@ -521,47 +671,37 @@ export function MarketingHomeTemplate() {
           <div className="hero-blob hero-blob-2" />
           <div className="hero-inner">
             <div className="hero-copy">
-              <p className="hero-eyebrow">AI voice receptionist for beauty businesses</p>
+              <p className="hero-eyebrow">{content.hero.eyebrow}</p>
             <h1 className="hero-h">
-                Every <em>missed</em> call
-              <br />
-                is a booking
-                <br />
-                lost forever.
+                {renderHeroTitle(content.hero.h1)}
             </h1>
             <p className="hero-sub">
-              An AI receptionist for{' '}
-              <Link className="hero-sub-link" href="/industries/nail-salon">
-                nail salons
-              </Link>
-              ,{' '}
-              <Link className="hero-sub-link" href="/industries/hair-salon">
-                hair salons
-              </Link>
-              ,{' '}
-              <Link className="hero-sub-link" href="/industries/spa">
-                spas
-              </Link>
-              ,{' '}
-              <Link className="hero-sub-link" href="/industries/med-spa">
-                med spas
-              </Link>
-              , and{' '}
-              <Link className="hero-sub-link" href="/industries/beauty-clinic">
-                beauty clinics
-              </Link>{' '}
-              — built to recover missed bookings, protect revenue, and cover after-hours calls and peak-hour overflow on your current number. Guided setup in about 15 minutes.
+              {content.hero.subtitle_prefix}{' '}
+              {content.hero.subtitle_links.map((link, index) => {
+                const isLast = index === content.hero.subtitle_links.length - 1;
+                const isPenultimate = index === content.hero.subtitle_links.length - 2;
+
+                return (
+                  <span key={link.href}>
+                    <Link className="hero-sub-link" href={link.href}>
+                      {link.label}
+                    </Link>
+                    {isLast ? ' ' : isPenultimate ? ', and ' : ', '}
+                  </span>
+                );
+              })}
+              {content.hero.subtitle}
             </p>
             <div className="hero-btns">
-              <a href="/demo" className="btn-hero-live" data-demo-picker>
+              <a href={content.hero.cta_primary.href} className="btn-hero-live" data-demo-picker>
                 <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
-                Try a Live Demo Call
+                {content.hero.cta_primary.label}
                 <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                   <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                 </svg>
               </a>
-              <a href="/#pricing" className="btn-outline btn-hero-trial">
-                Start 14-Day Free Trial
+              <a href={content.hero.cta_secondary.href} className="btn-outline btn-hero-trial">
+                {content.hero.cta_secondary.label}
               </a>
 	            </div>
 	              </div>
@@ -570,28 +710,26 @@ export function MarketingHomeTemplate() {
             </div>
             <div className="hero-stats-block">
             <div className="hero-stats" aria-label="Key product facts">
-              <div className="hero-stat">
-                <div className="hero-stat-num" data-count="24" data-suffix="/7">24/7</div>
-                <div className="hero-stat-label">Call coverage</div>
-              </div>
-              <div className="hero-stat">
-                <div className="hero-stat-num" data-count="15" data-suffix=" min">15 min</div>
-                <div className="hero-stat-label">Setup time</div>
-              </div>
-              <div className="hero-stat">
-                <div className="hero-stat-num" data-count="5">5</div>
-                <div className="hero-stat-label">Languages</div>
-              </div>
-              <div className="hero-stat">
-                <div className="hero-stat-num" data-fade-only="true" data-display="&lt;1s">&lt;1s</div>
-                <div className="hero-stat-label">
-                  response on live calls
-                  <a href="#hero-stat-response-footnote" className="hero-stat-footnote-mark" aria-label="Response time footnote">*</a>
-                </div>
-                <p className="hero-stats-footnote" id="hero-stat-response-footnote">
-                  * Median ~1.0s measured end-to-end on real phone calls.
-                </p>
-              </div>
+              {content.hero.stats.map((stat) => {
+                const hasFootnote = stat.value.startsWith('<');
+
+                return (
+                  <div className="hero-stat" key={stat.label}>
+                    <div className="hero-stat-num" {...getHomeStatAttributes(stat.value)}>{stat.value}</div>
+                    <div className="hero-stat-label">
+                      {stat.label}
+                      {hasFootnote ? (
+                        <a href="#hero-stat-response-footnote" className="hero-stat-footnote-mark" aria-label="Response time footnote">*</a>
+                      ) : null}
+                    </div>
+                    {hasFootnote ? (
+                      <p className="hero-stats-footnote" id="hero-stat-response-footnote">
+                        {content.hero.stats_footnote}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
             </div>
           </div>
@@ -600,72 +738,47 @@ export function MarketingHomeTemplate() {
         <section className="leak-section" id="missed-calls">
           <div className="leak-inner">
             <div className="leak-intro">
-              <div className="sec-label sec-label-left">Where calls get lost</div>
+              <div className="sec-label sec-label-left">{content.revenue_loss.label}</div>
               <h2 className="sec-title reveal">
-                Your phone is <em>leaking</em>
-                <br />
-                <em>bookings.</em> every day.
+                {renderRevenueLossTitle(content.revenue_loss.h2)}
               </h2>
             <p className="sec-sub reveal">
-                Most missed opportunities happen at predictable moments. Each one costs real revenue that you never see.
+                {content.revenue_loss.subtitle}
             </p>
             </div>
             <div className="leak-body">
               <div className="leak-list" id="home-leak-list">
-              {[
-                {
-                    num: '01',
-                    title: 'Staff are with clients',
-                    body: 'Calls arrive during nails, cuts, or treatments. Nobody can step away. The phone rings out.',
-                  footer: 'RingBooker answers without interrupting your team',
-                  },
-                  {
-                    num: '02',
-                  title: 'After-hours callers move on',
-                    body: 'Evening and weekend callers ask about availability and pricing. Voicemail means they call your competitor next.',
-                    footer: 'Captures booking intent even when you\u2019re closed',
-                  },
-                  {
-                    num: '03',
-                    title: 'One line can\u2019t handle overflow',
-                    body: 'Two callers at once — one hangs up. That\u2019s a booking you\u2019ll never know you missed.',
-                    footer: 'Overflow handled, no busy signal',
-                  },
-                ].map(({ num, title, body, footer }) => (
-                  <article className="leak-item reveal" key={num}>
+              {content.revenue_loss.leak_cards.map(({ number, title, description, solution }) => (
+                  <article className="leak-item reveal" key={number}>
                     <div className="leak-num" aria-hidden="true">
-                      {num}
+                      {number}
                     </div>
                     <div>
                   <h3>{title}</h3>
-                  <p>{body}</p>
-                  <div className="pain-resolve">{footer}</div>
+                  <p>{description}</p>
+                  <div className="pain-resolve">{solution}</div>
                   </div>
                 </article>
               ))}
               </div>
               <aside className="leak-card leak-revenue reveal" id="home-leak-revenue-card" aria-labelledby="leak-revenue-heading">
                 <p id="leak-revenue-heading" className="leak-revenue-kicker">
-                  Estimated revenue lost per month
+                  {content.revenue_loss.revenue_card.label}
                 </p>
-                <p className="leak-revenue-note">Illustrative ranges for a busy 2–4 chair salon — not a guarantee.</p>
-                {[
-                  { label: 'After-hours missed calls', range: '$720 – $1,080', width: '88', barColor: '#E24B4A' },
-                  { label: 'In-service missed calls', range: '$560 – $840', width: '70', barColor: '#E86B6A' },
-                  { label: 'Peak-hour overflow', range: '$360 – $540', width: '44', barColor: '#F0A0A0' },
-                ].map(({ label, range, width, barColor }) => (
+                <p className="leak-revenue-note">{content.revenue_loss.revenue_card.footnote}</p>
+                {content.revenue_loss.revenue_card.rows.map(({ label, range, width, bar_color }) => (
                   <div className="leak-revenue-row" key={label}>
                     <span className="leak-revenue-label">{label}</span>
                     <span className="leak-revenue-range">{range}</span>
                     <div className="leak-revenue-bar" aria-hidden="true">
-                      <span data-width={width} style={{ width: `${width}%`, background: barColor }} />
+                      <span data-width={width} style={{ width: `${width}%`, background: bar_color }} />
                     </div>
                   </div>
                 ))}
                 <div className="leak-revenue-foot">
-                  <p>Total range</p>
+                  <p>{content.revenue_loss.revenue_card.total_label}</p>
                   <p className="leak-revenue-total">
-                    $1,640 – <strong>$2,460</strong>
+                    {content.revenue_loss.revenue_card.total_prefix} <strong>{content.revenue_loss.revenue_card.total_strong}</strong>
                   </p>
                 </div>
               </aside>
@@ -676,40 +789,33 @@ export function MarketingHomeTemplate() {
         <section className="features" id="features">
           <div className="coverage-inner">
             <div className="coverage-intro">
-              <p className="coverage-kicker reveal">Core coverage</p>
+              <p className="coverage-kicker reveal">{content.core_coverage.label}</p>
               <h2 className="coverage-title reveal">
-                The phone moments
-                <br />
-                <em>RingBooker</em> covers
+                {renderCoreCoverageTitle(content.core_coverage.h2)}
               </h2>
               <p className="coverage-lead reveal">
-                Built around the exact situations where beauty businesses lose bookings — not generic call-center logic.
+                {content.core_coverage.lead}
               </p>
             </div>
             <div className="coverage-rows">
             <article className="coverage-row reveal">
               <div className="coverage-copy">
                 <div className="coverage-copy-inner">
-                  <p className="coverage-item-kicker">After-hours &amp; overflow</p>
-                  <h3>Answers every call, even at 11 PM.</h3>
+                  <p className="coverage-item-kicker">{afterHoursCoverage.title}</p>
+                  <h3>{afterHoursCoverage.subtitle}</h3>
                   <p>
-                    When your team is busy or closed, callers still get a real response — not voicemail and not your competitor.
+                    {afterHoursCoverage.description}
                   </p>
                   <Link className="coverage-link" href="#how-it-works">
-                    Try a Live Demo →
+                    {afterHoursCoverage.cta}
                   </Link>
                 </div>
               </div>
               <div className="coverage-visual coverage-visual-peach" aria-hidden="true">
                 <span className="coverage-visual-num">01</span>
                 <div className="coverage-panel" id="home-tonights-calls-panel">
-                  <p className="coverage-panel-title">Tonight&apos;s calls</p>
-                  {[
-                    { label: 'Incoming call', time: '9:41 PM' },
-                    { label: 'Overflow call', time: '8:12 PM' },
-                    { label: 'After-hours call', time: '7:05 PM' },
-                    { label: 'Missed callback', time: '6:48 PM' },
-                  ].map(({ label, time }) => (
+                  <p className="coverage-panel-title">{afterHoursCoverage.panel_title}</p>
+                  {afterHoursCoverage.panel_rows?.map(({ label, time, badge }) => (
                     <div className="coverage-call-row" key={time}>
                       <span className="coverage-call-ico" aria-hidden="true">
                 <HomeLineIcon>
@@ -720,7 +826,7 @@ export function MarketingHomeTemplate() {
                         <p className="coverage-call-label">{label}</p>
                         <p className="coverage-call-time">{time}</p>
               </div>
-                      <span className="coverage-badge coverage-badge-answered">Answered</span>
+                      <span className="coverage-badge coverage-badge-answered">{badge}</span>
             </div>
                   ))}
               </div>
@@ -729,74 +835,54 @@ export function MarketingHomeTemplate() {
             <article className="coverage-row coverage-row-reverse reveal">
               <div className="coverage-copy">
                 <div className="coverage-copy-inner">
-                  <p className="coverage-item-kicker">Booking changes</p>
-                  <h3>Reschedule, cancel, and confirm on the call.</h3>
+                  <p className="coverage-item-kicker">{bookingChangesCoverage.title}</p>
+                  <h3>{bookingChangesCoverage.subtitle}</h3>
                   <p>
-                    RingBooker captures intent, applies your rules, and sends confirmations — without your front desk playing phone tag.
+                    {bookingChangesCoverage.description}
                   </p>
                   <Link className="coverage-link" href="#how-it-works">
-                    Try a Live Demo →
+                    {bookingChangesCoverage.cta}
                   </Link>
               </div>
             </div>
               <div className="coverage-visual coverage-visual-sage" aria-hidden="true">
                 <span className="coverage-visual-num">02</span>
                 <div className="coverage-panel" id="home-call-summary-panel">
-                  <p className="coverage-panel-title">Call summary</p>
-                  <div className="coverage-status-row">
-                    <span className="coverage-status-label">Caller intent</span>
-                    <span className="coverage-status-value">Reschedule</span>
-              </div>
-                  <div className="coverage-status-row">
-                    <span className="coverage-status-label">Requested date</span>
-                    <span className="coverage-status-value">Thu · 2:30 PM</span>
-            </div>
-                  <div className="coverage-status-row">
-                    <span className="coverage-status-label">Service</span>
-                    <span className="coverage-status-value">Balayage + trim</span>
-              </div>
-                  <div className="coverage-status-row coverage-status-highlight">
-                    <span className="coverage-status-label">Confirmed</span>
-                    <span className="coverage-status-value">SMS sent</span>
-            </div>
+                  <p className="coverage-panel-title">{bookingChangesCoverage.panel_title}</p>
+                  {bookingChangesCoverage.panel_fields?.map(({ label, value }, index) => (
+                    <div className={`coverage-status-row${index === 3 ? ' coverage-status-highlight' : ''}`} key={label}>
+                      <span className="coverage-status-label">{label}</span>
+                      <span className="coverage-status-value">{value}</span>
+                    </div>
+                  ))}
               </div>
               </div>
             </article>
             <article className="coverage-row reveal">
               <div className="coverage-copy">
                 <div className="coverage-copy-inner">
-                  <p className="coverage-item-kicker">Missed-call recovery</p>
-                  <h3>Text back and follow up before they book elsewhere.</h3>
+                  <p className="coverage-item-kicker">{missedCallCoverage.title}</p>
+                  <h3>{missedCallCoverage.subtitle}</h3>
                   <p>
-                    Callers who hang up or reach you after hours get an automatic text and a clear path back to booking.
+                    {missedCallCoverage.description}
                   </p>
                   <Link className="coverage-link" href="#how-it-works">
-                    Try a Live Demo →
+                    {missedCallCoverage.cta}
                   </Link>
                 </div>
               </div>
               <div className="coverage-visual coverage-visual-sand" aria-hidden="true">
                 <span className="coverage-visual-num">03</span>
                 <div className="coverage-panel" id="home-missed-call-recovery-panel">
-                  <p className="coverage-panel-title">Missed call recovery</p>
-                  <div className="coverage-msg-row">
-                    <p className="coverage-msg-text">
-                      <strong>Auto text sent:</strong> &ldquo;Sorry we missed you — reply to book.&rdquo;
-                    </p>
-                    <span className="coverage-badge coverage-badge-delivered">Delivered</span>
-                  </div>
-                  <div className="coverage-msg-row">
-                    <p className="coverage-msg-text">
-                      <strong>Caller replied:</strong> &ldquo;Thursday 3pm gel manicure&rdquo;
-                    </p>
-                    <span className="coverage-badge coverage-badge-ready">Ready</span>
-                  </div>
-                  <div className="coverage-msg-row">
-                    <p className="coverage-msg-text">
-                      <strong>Next step:</strong> Owner review in dashboard
-                    </p>
-                    <span className="coverage-badge coverage-badge-answered">Queued</span>
-                  </div>
+                  <p className="coverage-panel-title">{missedCallCoverage.panel_title}</p>
+                  {missedCallCoverage.panel_messages?.map(({ label, text, status }) => (
+                    <div className="coverage-msg-row" key={label}>
+                      <p className="coverage-msg-text">
+                        <strong>{label}</strong> {text}
+                      </p>
+                      <span className={`coverage-badge ${status === 'Delivered' ? 'coverage-badge-delivered' : status === 'Ready' ? 'coverage-badge-ready' : 'coverage-badge-answered'}`}>{status}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </article>
@@ -807,32 +893,22 @@ export function MarketingHomeTemplate() {
         <section className="steps-section" id="how-it-works" data-home-how-section>
           <div className="steps-inner">
             <div className="steps-intro rv">
-              <div className="sec-label sec-label-left">How it works</div>
+              <div className="sec-label sec-label-left">{content.how_it_works.label}</div>
               <h2 className="steps-title reveal">
-                Live in <em>15 minutes.</em>
-                <br />
-                No migration needed.
+                {renderHowItWorksTitle(content.how_it_works.h2)}
               </h2>
-              <p className="steps-copy reveal">Keep your current phone number. Keep your booking tools. Just forward your line and RingBooker handles the rest.</p>
+              <p className="steps-copy reveal">{content.how_it_works.body}</p>
             </div>
             <div className="steps-shell">
               <div className="steps-rail" aria-hidden="true" />
               <div className="steps-grid" data-home-step-scroller>
-                <article className="step-card" data-home-step-card>
-                  <div className="step-marker">1</div>
-                  <h3>Forward your number</h3>
-                  <p>Keep the number your clients know. RingBooker sits behind your line and catches every missed, busy, or after-hours call.</p>
-                </article>
-                <article className="step-card" data-home-step-card>
-                  <div className="step-marker">2</div>
-                  <h3>Import your details</h3>
-                  <p>Paste your website URL to auto-fill your hours, services, and pricing — or enter your details manually. Review, adjust, and connect your tools.</p>
-                </article>
-                <article className="step-card" data-home-step-card>
-                  <div className="step-marker">3</div>
-                  <h3>Start recovering bookings</h3>
-                  <p>Callers get help instantly. Your team gets the summary, booking details, and next action.</p>
-                </article>
+                {content.how_it_works.steps.map((step) => (
+                  <article className="step-card" data-home-step-card key={step.number}>
+                    <div className="step-marker">{step.number}</div>
+                    <h3>{step.title}</h3>
+                    <p>{step.description}</p>
+                  </article>
+                ))}
               </div>
             </div>
           </div>
@@ -840,66 +916,63 @@ export function MarketingHomeTemplate() {
         <section className="industries" id="industries">
           <div className="industries-inner">
             <div className="industries-intro rv">
-              <div className="sec-label sec-label-left">Industries</div>
+              <div className="sec-label sec-label-left">{content.industries.label}</div>
               <h2 className="industries-title reveal">
-                Built for <em>beauty</em> appointment workflows.
+                {renderThirdWordEmphasisTitle(content.industries.h2)}
               </h2>
               <p className="industries-lead reveal">
-                Each vertical has different call patterns, from walk-ins to consultation-driven bookings.
+                {content.industries.lead}
               </p>
                   </div>
-            <HomeIndustriesSection className="reveal rv d1" />
+            <HomeIndustriesSection
+              tabs={content.industries.tabs}
+              aria_label={content.industries.tabs_aria_label}
+              cta_label={content.industries.cta_label}
+              className="reveal rv d1"
+            />
             <div className="metrics-grid reveal rv d1" id="by-the-numbers">
-              <article className="metrics-cell">
-                <div className="metrics-value" data-count="500" data-suffix="+">500+</div>
-                <div className="metrics-label">Demo calls completed</div>
-                <p className="metrics-sublabel">Across all salon verticals</p>
-              </article>
-              <article className="metrics-cell">
-                <div className="metrics-value" data-count="200" data-suffix="+">200+</div>
-                <div className="metrics-label">Salon profiles built</div>
-                <p className="metrics-sublabel">From real salon websites</p>
-              </article>
-              <article className="metrics-cell">
-                <div className="metrics-value" data-count="5">5</div>
-                <div className="metrics-label">Languages supported</div>
-                <p className="metrics-sublabel">EN · ES · KO · ZH · VI</p>
-              </article>
+              {content.industries.metrics.map((metric) => (
+                <article className="metrics-cell" key={metric.label}>
+                  <div className="metrics-value" data-count={metric.count} data-suffix={metric.suffix}>{metric.value}</div>
+                  <div className="metrics-label">{metric.label}</div>
+                  <p className="metrics-sublabel">{metric.sublabel}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
         <section className="compare-section" id="ai-phone-agent-differences">
           <div className="compare-inner">
             <div className="compare-intro rv">
-              <div className="sec-label sec-label-left">Why RingBooker</div>
+              <div className="sec-label sec-label-left">{content.why_ringbooker.label}</div>
               <h2 className="compare-title reveal">
-                Not another <em>generic</em> AI agent.
+                {renderThirdWordEmphasisTitle(content.why_ringbooker.h2)}
               </h2>
               <p className="compare-lead reveal">
-                Salon calls are fast, messy, and impatient. RingBooker is built around that reality — not call-center logic.
+                {content.why_ringbooker.lead}
               </p>
             </div>
             <div className="compare-board reveal">
               <div className="compare-col compare-col-bad rv">
-                <p className="compare-col-label">Generic AI phone agent</p>
+                <p className="compare-col-label">{content.why_ringbooker.col_generic}</p>
                 <ul className="compare-lines">
-                  {HOME_COMPARE_ROWS.map(({ bad }) => (
-                    <li className="compare-line" key={bad}>
+                  {content.why_ringbooker.rows.map(({ generic }) => (
+                    <li className="compare-line" key={generic}>
                       <span className="cmp-icon" aria-hidden="true">
                         <svg viewBox="0 0 10 10" width="10" height="10">
                           <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                 </span>
-                      <span>{bad}</span>
+                      <span>{generic}</span>
               </li>
                   ))}
                 </ul>
               </div>
               <div className="compare-col compare-col-good rv d1">
-                <p className="compare-col-label">RingBooker</p>
+                <p className="compare-col-label">{content.why_ringbooker.col_ringbooker}</p>
                 <ul className="compare-lines">
-                  {HOME_COMPARE_ROWS.map(({ good }) => (
-                    <li className="compare-line" key={good}>
+                  {content.why_ringbooker.rows.map(({ ringbooker }) => (
+                    <li className="compare-line" key={ringbooker}>
                       <span className="cmp-icon" aria-hidden="true">
                         <svg viewBox="0 0 10 10" width="10" height="10">
                           <path
@@ -911,7 +984,7 @@ export function MarketingHomeTemplate() {
                           />
                         </svg>
                 </span>
-                      <span>{good}</span>
+                      <span>{ringbooker}</span>
               </li>
                   ))}
             </ul>
@@ -923,124 +996,86 @@ export function MarketingHomeTemplate() {
         <section className="pricing" id="pricing">
           <div className="pricing-inner">
             <div className="pricing-intro rv">
-              <div className="sec-label sec-label-center">Pricing</div>
+              <div className="sec-label sec-label-center">{content.pricing.label}</div>
               <h2 className="pricing-title reveal">
-                Start with the coverage
-                <br />
-                <em>you need.</em>
+                {renderPricingTitle(content.pricing.h2)}
               </h2>
               <p className="pricing-lead reveal">
-                14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime. Prices exclude applicable taxes. Final total shown at checkout.
+                {content.pricing.lead}
               </p>
             </div>
             <div className="price-toggle">
-              <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
-              <button className="pt-btn" id="tog-a" type="button">Annual</button>
+              <button className="pt-btn on" id="tog-m" type="button">{content.pricing.toggle_monthly_label}</button>
+              <button className="pt-btn" id="tog-a" type="button">{content.pricing.toggle_annual_label}</button>
               <span className="save-badge" id="home-pt-save-badge">
                 <span className="save-dot" aria-hidden />
-                Save up to $358/yr
+                {content.pricing.toggle_save_label}
               </span>
             </div>
             <div className="home-carousel" id="pricingCarousel">
             <div className="price-grid home-carousel-track reveal">
-              <div className="plan home-carousel-slide rv">
-                <div className="plan-name">Starter</div>
-                <div className="plan-desc">For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.</div>
-                <div className="plan-price" id="ps">$79<span className="plan-price-period">/mo</span></div>
-                <p className="plan-cta-subnote">+ tax where applicable</p>
-                <div className="plan-div" />
-                <ul className="plan-feats">
-                  <li>Up to 100 captured calls/month</li>
-                  <li>Works with your current business number</li>
-                  <li>After-hours and overflow call answering</li>
-                  <li>Booking request capture — via your booking link</li>
-                  <li>Missed-call text back</li>
-                  <li>Callback request capture for calls that need a human</li>
-                  <li>Call summaries with next steps</li>
-                  <li>Call transcripts</li>
-                  <li>Guided setup and test call</li>
-                </ul>
-                <a className="plan-btn pb-outline" href="/user/signup?plan=starter">
-                  Start 14-Day Free Trial →
-                </a>
-              </div>
-              <div className="plan star home-carousel-slide rv d1">
-                <div className="plan-badge">Most popular</div>
-                <div className="plan-name">Professional</div>
-                <div className="plan-desc">For busier teams that need stronger follow-up, caller context, and provider preference capture.</div>
-                <div className="plan-price" id="pp">$149<span className="plan-price-period">/mo</span></div>
-                <p className="plan-cta-subnote">+ tax where applicable</p>
-                <div className="plan-div" />
-                <ul className="plan-feats">
-                  <li>Up to 200 captured calls/month</li>
-                  <li>Everything in Starter</li>
-                  <li>Reminder SMS and stronger follow-up</li>
-                  <li>Booking platform sync — Square, Mindbody, and more coming soon</li>
-                  <li>Returning caller notes and preferences</li>
-                  <li>Preferred stylist or provider context</li>
-                  <li>Owner call transfer with caller context</li>
-                  <li>Bilingual workflows where configured</li>
-                  <li>Call recovery insights</li>
-                  <li>Call transcripts and audio recordings</li>
-                  <li>Priority support</li>
-                </ul>
-                <a className="plan-btn pb-dark" href="/user/signup?plan=professional">
-                  Start 14-Day Free Trial →
-                </a>
-              </div>
-              <div className="plan home-carousel-slide rv d2">
-                <div className="plan-name">Custom</div>
-                <div className="plan-desc">Multi-location setup, custom routing, and higher call volume — built around your operation.</div>
-                <div className="plan-price plan-price-custom">Multi-location</div>
-                <div className="plan-div" />
-                <ul className="plan-feats">
-                  <li>Multi-location setup</li>
-                  <li>Custom call flows, routing, and escalation rules</li>
-                  <li>Custom multilingual routing and workflows</li>
-                  <li>Custom integration planning</li>
-                  <li>Custom captured call volume</li>
-                  <li>Concierge onboarding</li>
-                  <li>Priority implementation support</li>
-                </ul>
-                <a className="plan-btn pb-outline" href="/contact?intent=enterprise&source=homepage_custom">
-                  Get in touch →
-                </a>
-                <p className="plan-cta-subnote">Usually responds within 1 business day</p>
-              </div>
+              {content.pricing.plans.map((plan, index) => {
+                const priceId = plan.id === 'starter' ? 'ps' : plan.id === 'professional' ? 'pp' : undefined;
+                const priceLabel = plan.price_monthly_label ?? plan.price_label ?? '';
+                const priceParts = splitHomePriceLabel(priceLabel);
+                const planClassName = `plan ${plan.popular ? 'star ' : ''}home-carousel-slide rv${index === 0 ? '' : ` d${index}`}`;
+
+                return (
+                  <div className={planClassName} key={plan.id}>
+                    {plan.popular && plan.badge ? <div className="plan-badge">{plan.badge}</div> : null}
+                    <div className="plan-name">{plan.name}</div>
+                    <div className="plan-desc">{plan.description}</div>
+                    <div className={plan.price_label ? 'plan-price plan-price-custom' : 'plan-price'} id={priceId}>
+                      {priceParts.amount}{priceParts.period ? <span className="plan-price-period">{priceParts.period}</span> : null}
+                    </div>
+                    {plan.tax_note ? <p className="plan-cta-subnote">{plan.tax_note}</p> : null}
+                    <div className="plan-div" />
+                    <ul className="plan-feats">
+                      {plan.features.map((feature) => (
+                        <li key={feature}>{feature}</li>
+                      ))}
+                    </ul>
+                    <a className={plan.popular ? 'plan-btn pb-dark' : 'plan-btn pb-outline'} href={plan.cta_href}>
+                      {plan.cta_label}
+                    </a>
+                    {plan.subnote ? <p className="plan-cta-subnote">{plan.subnote}</p> : null}
+                  </div>
+                );
+              })}
             </div>
-              <div className="home-carousel-controls" aria-label="Pricing carousel controls">
-                <button type="button" id="pricingPrev" className="home-carousel-nav-btn" aria-label="Previous pricing plan">‹</button>
-                <div className="home-carousel-dots" id="pricingDots" aria-label="Pricing carousel indicators" />
-                <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label="Next pricing plan">›</button>
+              <div className="home-carousel-controls" aria-label={content.pricing.carousel_aria.controls}>
+                <button type="button" id="pricingPrev" className="home-carousel-nav-btn" aria-label={content.pricing.carousel_aria.prev}>‹</button>
+                <div className="home-carousel-dots" id="pricingDots" aria-label={content.pricing.carousel_aria.indicators} />
+                <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label={content.pricing.carousel_aria.next}>›</button>
               </div>
             </div>
             <p className="pricing-foot rv d2">
-              14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime. Prices exclude applicable taxes. Final total shown at checkout.
+              {content.pricing.footnote}
             </p>
           </div>
         </section>
-        <MarketingFaqAccordion items={HOME_FAQS} />
+        <MarketingFaqAccordion items={content.faq.items} />
         {/* CTA BANNER */}
         <div className="cta-outer">
           <div className="cta-inner">
             <div className="cta-banner reveal">
               <div className="cta-stack">
                 <h2 className="cta-title">
-                  Stop letting calls go to <em>voicemail.</em>
+                  {renderFinalCtaTitle(content.final_cta.h2)}
                 </h2>
                 <p className="cta-lead">
-                  Setup in 15 minutes. Keep your current number. Start recovering bookings tonight.
+                  {content.final_cta.lead}
                 </p>
                 <div className="cta-row">
-                  <a href="/demo" className="btn-hero-live" data-demo-picker>
+                  <a href={content.final_cta.cta_primary.href} className="btn-hero-live" data-demo-picker>
                     <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
-                    Try a Live Demo Call
+                    {content.final_cta.cta_primary.label}
                     <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                       <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                     </svg>
                   </a>
-                  <Link href="/user/signup?plan=starter" className="btn-outline btn-hero-trial">
-                    Start 14-Day Free Trial
+                  <Link href={content.final_cta.cta_secondary.href} className="btn-outline btn-hero-trial">
+                    {content.final_cta.cta_secondary.label}
                   </Link>
                 </div>
               </div>
@@ -1050,9 +1085,6 @@ export function MarketingHomeTemplate() {
       </div>
         <MarketingFooter />
       </>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd) }} />
-
     </MarketingLayout>
   );
 }

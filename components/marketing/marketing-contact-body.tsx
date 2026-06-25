@@ -12,6 +12,15 @@ const STEP1_IDS = [
   'contactBestTime',
 ] as const;
 
+export type MarketingContactBodyContent = {
+  breadcrumb: string;
+  hero: {
+    h1: string;
+    subtitle: string;
+  };
+  checklist: Array<{ title: string; description: string }>;
+};
+
 function readField(id: string): string {
   if (typeof document === 'undefined') return '';
   const el = document.getElementById(id);
@@ -21,7 +30,7 @@ function readField(id: string): string {
   return '';
 }
 
-function MarketingContactBodyInner() {
+function MarketingContactBodyInner({ content }: { content: MarketingContactBodyContent }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [step1Errors, setStep1Errors] = useState<Partial<Record<(typeof STEP1_IDS)[number], string>>>({});
@@ -56,52 +65,27 @@ function MarketingContactBodyInner() {
         <nav aria-label="Breadcrumb" className="contact-breadcrumb contact-breadcrumb--shell">
           <a href="/">Home</a>
           <span className="contact-breadcrumb-sep">›</span>
-          <span>Contact</span>
+          <span>{content.breadcrumb}</span>
         </nav>
         <div className="contact-value-col">
           <h1 className="contact-value-h1" id="contactHeroTitle">
-            Contact RingBooker
+            {content.hero.h1}
           </h1>
           <p className="contact-value-sub" id="contactHeroSubtitle">
-            Send us a note and we&apos;ll route it to the right RingBooker team member.
+            {content.hero.subtitle}
           </p>
           <ul className="contact-value-checklist" aria-label="Why RingBooker">
-            <li className="contact-value-check-item">
-              <span className="contact-value-check-icon" aria-hidden>
-                ✓
-              </span>
-              <span>
-                <strong>Keep your current number</strong>
-                <span className="contact-value-check-desc">Forward the number clients already call.</span>
-              </span>
-            </li>
-            <li className="contact-value-check-item">
-              <span className="contact-value-check-icon" aria-hidden>
-                ✓
-              </span>
-              <span>
-                <strong>No new booking software</strong>
-                <span className="contact-value-check-desc">Works with your current workflow.</span>
-              </span>
-            </li>
-            <li className="contact-value-check-item">
-              <span className="contact-value-check-icon" aria-hidden>
-                ✓
-              </span>
-              <span>
-                <strong>Built for booking recovery</strong>
-                <span className="contact-value-check-desc">Covers after-hours, overflow, and missed calls.</span>
-              </span>
-            </li>
-            <li className="contact-value-check-item">
-              <span className="contact-value-check-icon" aria-hidden>
-                ✓
-              </span>
-              <span>
-                <strong>Multi-location routing</strong>
-                <span className="contact-value-check-desc">Custom rules per location or team.</span>
-              </span>
-            </li>
+            {content.checklist.map((item) => (
+              <li key={item.title} className="contact-value-check-item">
+                <span className="contact-value-check-icon" aria-hidden>
+                  ✓
+                </span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <span className="contact-value-check-desc">{item.description}</span>
+                </span>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -331,10 +315,10 @@ function MarketingContactBodyInner() {
   );
 }
 
-export function MarketingContactBody() {
+export function MarketingContactBody({ content }: { content: MarketingContactBodyContent }) {
   return (
     <Suspense fallback={<section className="hero-page contact-hero-reflow" />}>
-      <MarketingContactBodyInner />
+      <MarketingContactBodyInner content={content} />
     </Suspense>
   );
 }

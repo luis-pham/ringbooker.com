@@ -4,17 +4,18 @@ import {
 } from '@/components/marketing/marketing-content-hub';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
-import { missedBookingProtectionHub } from '@/lib/marketing/content-hub-data';
+import { loadHubContent } from '@/lib/content';
+import { buildHubSchemas } from '@/lib/schema';
 import { buildMetadata } from '@/lib/site';
 
-const missedBookingProtectionDescription =
-  'Recover and protect revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.';
-
-export const metadata = buildMetadata({
-  title: 'Missed Booking Protection for Salons & Spas | RingBooker',
-  description: missedBookingProtectionDescription,
-  path: '/missed-booking-protection',
-});
+export function generateMetadata() {
+  const { frontmatter } = loadHubContent<any>('missed-booking-protection');
+  return buildMetadata({
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    path: frontmatter.meta.canonical,
+  });
+}
 
 /** Hub listing from CMS — match cache behavior with other marketing hubs */
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,8 @@ const MISSED_BOOKING_HUB_SOLUTION_LINKS: { href: string; label: string }[] = [
 ];
 
 export default async function MissedBookingProtectionHubPage() {
+  const { frontmatter } = loadHubContent<any>('missed-booking-protection');
+  const schemas = buildHubSchemas(frontmatter);
   const posts = await getPublishedPostsByPathPrefix('missed-booking-protection', { limit: 48 });
   const pinnedHrefs = new Set(MISSED_BOOKING_HUB_SOLUTION_LINKS.map((l) => l.href));
   const fromCms = posts
@@ -38,15 +41,19 @@ export default async function MissedBookingProtectionHubPage() {
   const resourceLinks = [...MISSED_BOOKING_HUB_SOLUTION_LINKS, ...fromCms];
 
   return (
-    <MarketingContentHub
-      {...missedBookingProtectionHub}
-      resourceLinks={resourceLinks}
-      heroActions={<ContentHubHeroActionsHomeStyle />}
-      seoHub={{
-        path: '/missed-booking-protection',
-        webPageName: 'Missed booking protection for beauty businesses',
-        description: missedBookingProtectionDescription,
-      }}
-    />
+    <>
+      {schemas.map((schema, index) => (
+        <script
+          key={index}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <MarketingContentHub
+        hub={frontmatter}
+        resourceLinks={resourceLinks}
+        heroActions={<ContentHubHeroActionsHomeStyle />}
+      />
+    </>
   );
 }

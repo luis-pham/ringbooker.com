@@ -1,13 +1,34 @@
-import { MarketingPricingTemplate } from '@/components/marketing/marketing-pricing';
+import type { Metadata } from 'next';
+
+import { MarketingPricingTemplate, type PricingPageContent } from '@/components/marketing/marketing-pricing';
+import { loadPageContent } from '@/lib/content';
+import { buildPricingSchemas } from '@/lib/schema';
 import { buildMetadata } from '@/lib/site';
 
-export const metadata = buildMetadata({
-  title: 'Pricing — AI Receptionist for Salons & Spas | RingBooker',
-  description:
-    'See RingBooker pricing — from $79/month for after-hours answering, overflow coverage, and missed-call recovery for salons, spas, and med spas.',
-  path: '/pricing',
-});
+export function generateMetadata(): Metadata {
+  const { frontmatter } = loadPageContent<PricingPageContent>('pricing');
+
+  return buildMetadata({
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    path: frontmatter.meta.canonical,
+  });
+}
 
 export default function PricingPage() {
-  return <MarketingPricingTemplate />;
+  const { frontmatter } = loadPageContent<PricingPageContent>('pricing');
+  const schemas = buildPricingSchemas(frontmatter);
+
+  return (
+    <>
+      {schemas.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <MarketingPricingTemplate content={frontmatter} />
+    </>
+  );
 }

@@ -1,13 +1,33 @@
-import { MarketingHomeTemplate } from '@/components/marketing/marketing-home';
-import { buildMetadata } from '@/lib/site';
+import { MarketingHomeTemplate, type HomePageContent } from '@/components/marketing/marketing-home';
+import { loadPageContent } from '@/lib/content';
+import { buildHomeSchemas } from '@/lib/schema';
 
-export const metadata = buildMetadata({
-  title: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
-  description:
-    'RingBooker helps salons, spas, med spas, and clinics recover missed bookings, protect revenue, answer after-hours and peak-hour calls, and configure the essentials in about 15 minutes on their current number.',
-  path: '/',
-});
+export async function generateMetadata() {
+  const { frontmatter } = loadPageContent<HomePageContent>('home');
+
+  return {
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    alternates: {
+      canonical: 'https://ringbooker.com/',
+    },
+  };
+}
 
 export default function HomePage() {
-  return <MarketingHomeTemplate />;
+  const { frontmatter } = loadPageContent<HomePageContent>('home');
+  const schemas = buildHomeSchemas(frontmatter);
+
+  return (
+    <>
+      {schemas.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <MarketingHomeTemplate content={frontmatter} />
+    </>
+  );
 }

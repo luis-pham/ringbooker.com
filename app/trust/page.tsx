@@ -4,38 +4,44 @@ import {
 } from '@/components/marketing/marketing-content-hub';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
-import { trustHub } from '@/lib/marketing/content-hub-data';
+import { loadHubContent } from '@/lib/content';
+import { buildHubSchemas } from '@/lib/schema';
 import { buildMetadata } from '@/lib/site';
 
-const trustDescription =
-  'RingBooker is an AI receptionist for beauty businesses built around transparency, reliable call handling, and human fallback control — not AI hype.';
-
-export const metadata = buildMetadata({
-  title: 'Trust & Reliability — AI Receptionist | RingBooker',
-  description: trustDescription,
-  path: '/trust',
-});
+export function generateMetadata() {
+  const { frontmatter } = loadHubContent<any>('trust');
+  return buildMetadata({
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    path: frontmatter.meta.canonical,
+  });
+}
 
 export const dynamic = 'force-dynamic';
 
 export default async function TrustHubPage() {
+  const { frontmatter } = loadHubContent<any>('trust');
+  const schemas = buildHubSchemas(frontmatter);
   const posts = await getPublishedPostsByPathPrefix('trust', { limit: 48 });
   const resourceLinks = posts.map((p) => ({
     href: postPublicPath(p.pathPrefix, p.slug),
     label: p.title,
   }));
 
-  const c = trustHub;
   return (
-    <MarketingContentHub
-      {...c}
-      resourceLinks={resourceLinks}
-      heroActions={<ContentHubHeroActionsHomeStyle />}
-      seoHub={{
-        path: '/trust',
-        webPageName: 'Trust and reliable AI call handling for beauty businesses',
-        description: trustDescription,
-      }}
-    />
+    <>
+      {schemas.map((schema, index) => (
+        <script
+          key={index}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <MarketingContentHub
+        hub={frontmatter}
+        resourceLinks={resourceLinks}
+        heroActions={<ContentHubHeroActionsHomeStyle />}
+      />
+    </>
   );
 }

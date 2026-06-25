@@ -199,16 +199,17 @@ type ContentHubBlockCore =
 export type ContentHubBlock = ContentHubBlockCore & { html?: HubBlockHtmlMeta };
 
 export type MarketingContentHubProps = {
+  hub?: Record<string, unknown>;
   variant?: ContentHubVariant;
-  badge: string;
-  title: ReactNode;
-  intro: string;
+  badge?: string;
+  title?: ReactNode;
+  intro?: string;
   /** Visible plain text under intro — entity / how-it-works (optional). */
   heroEntityDefinition?: string;
   pills?: string[];
   /** Optional hero CTAs (e.g. demo + how-it-works) */
   heroActions?: ReactNode;
-  sections: ContentHubSection[];
+  sections?: ContentHubSection[];
   /** Visual blocks (cards, grids, flows) — rendered after text sections, before industry cards. */
   hubBlocks?: ContentHubBlock[];
   industryHeading?: ReactNode;
@@ -217,7 +218,7 @@ export type MarketingContentHubProps = {
   resourceHeading?: string;
   resourceSub?: string;
   resourceLinks?: ContentHubResourceLink[];
-  faqs: ContentHubFaq[];
+  faqs?: ContentHubFaq[];
   cta?: {
     title: string;
     subtitle: string;
@@ -1015,36 +1016,99 @@ function HubBreadcrumb({ label }: { label: string }) {
   );
 }
 
-export function MarketingContentHub({
-  variant = 'purple',
-  badge,
-  title,
-  intro,
-  heroEntityDefinition,
-  pills = [],
-  heroActions,
-  sections,
-  hubBlocks = [],
-  industryHeading,
-  industrySub,
-  industryCards,
-  industryEyebrow,
-  resourceHeading,
-  resourceSub,
-  resourceLinks,
-  resourceEyebrow,
-  faqs,
-  faqEyebrow,
-  faqTitle = 'Frequently Asked Questions',
-  faqAccent,
-  faqSectionClass = '',
-  cta,
-  articleJsonLd,
-  breadcrumbLabel,
-  heroLayout = 'hub',
-  mainExtraClassName,
-  seoHub,
-}: MarketingContentHubProps) {
+type HubRichText =
+  | {
+      kind: 'accentText';
+      parts: Array<{ text?: string; accent?: string }>;
+    }
+  | {
+      kind: 'sectionTitle';
+      before: string;
+      accent: string;
+      after?: string;
+    };
+
+function isHubRichText(value: unknown): value is HubRichText {
+  return (
+    value != null &&
+    typeof value === 'object' &&
+    ((value as { kind?: unknown }).kind === 'accentText' || (value as { kind?: unknown }).kind === 'sectionTitle')
+  );
+}
+
+function renderHubRichText(value: HubRichText): ReactNode {
+  if (value.kind === 'accentText') {
+    return (
+      <>
+        {value.parts.map((part, index) =>
+          part.accent ? (
+            <span key={index} className="hub-hero-accent">
+              {part.accent}
+            </span>
+          ) : (
+            <Fragment key={index}>{part.text}</Fragment>
+          ),
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {value.before}
+      <br />
+      <em>{value.accent}</em>
+      {value.after ? <> {value.after}</> : null}
+    </>
+  );
+}
+
+function hydrateHubContent(value: unknown): unknown {
+  if (isHubRichText(value)) return renderHubRichText(value);
+  if (Array.isArray(value)) return value.map(hydrateHubContent);
+  if (value != null && typeof value === 'object') {
+    const hydrated: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      hydrated[key] = hydrateHubContent(entry);
+    }
+    return hydrated;
+  }
+  return value;
+}
+
+export function MarketingContentHub(props: MarketingContentHubProps) {
+  const source = props.hub ? ({ ...(hydrateHubContent(props.hub) as Record<string, unknown>), ...props } as MarketingContentHubProps) : props;
+  const emitInternalJsonLd = props.hub == null;
+  const {
+    variant = 'purple',
+    badge = '',
+    title = '',
+    intro = '',
+    heroEntityDefinition,
+    pills = [],
+    heroActions,
+    sections = [],
+    hubBlocks = [],
+    industryHeading,
+    industrySub,
+    industryCards,
+    industryEyebrow,
+    resourceHeading,
+    resourceSub,
+    resourceLinks,
+    resourceEyebrow,
+    faqs = [],
+    faqEyebrow,
+    faqTitle = 'Frequently Asked Questions',
+    faqAccent,
+    faqSectionClass = '',
+    cta,
+    articleJsonLd,
+    breadcrumbLabel,
+    heroLayout = 'hub',
+    mainExtraClassName,
+    seoHub,
+  } = source;
   const faqAccentResolved = faqAccent ?? (variant === 'green' || variant === 'teal' ? 'green' : 'purple');
 
   const faqMainEntity = faqs.map((item) => ({
@@ -1315,13 +1379,13 @@ export function MarketingContentHub({
         </nav>
       </main>
       <MarketingFooter />
-      {hubSeoJsonLd ? (
+      {emitInternalJsonLd && hubSeoJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hubSeoJsonLd) }} />
       ) : null}
       {articleJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       ) : null}
-      {faqJsonLd ? (
+      {emitInternalJsonLd && faqJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       ) : null}
       <HubStepTrackInit />

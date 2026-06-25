@@ -1,49 +1,37 @@
-import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
-import { buildMetadata } from '@/lib/site';
+import type { Metadata } from 'next';
 
-export const metadata = buildMetadata({
-  title: 'About RingBooker — AI Receptionist for Salons',
-  description:
-    'Learn about RingBooker — the AI phone answering and call forwarding service built for nail salons, hair salons, day spas, med spas, and beauty clinics across the US.',
-  path: '/about',
-});
+import { MarketingAboutPage, type MarketingAboutContent } from '@/components/marketing/marketing-about';
+import { loadPageContent } from '@/lib/content';
+import { buildAboutSchemas } from '@/lib/schema';
+
+type AboutPageContent = MarketingAboutContent & {
+  meta: {
+    title: string;
+    description: string;
+    canonical: string;
+  };
+};
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { frontmatter } = loadPageContent<AboutPageContent>('about');
+  return {
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    alternates: {
+      canonical: `https://ringbooker.com${frontmatter.meta.canonical}`,
+    },
+  };
+}
 
 export default function AboutPage() {
+  const { frontmatter } = loadPageContent<AboutPageContent>('about');
+  const schemas = buildAboutSchemas(frontmatter);
   return (
-    <MarketingLegalPage
-      breadcrumbLabel="About"
-      title="About RingBooker — AI Receptionist for Salons"
-      subtitle="RingBooker is an AI phone answering and call forwarding service built for beauty and aesthetic businesses across the United States — including nail salons, hair salons, day spas, med spas, and beauty clinics."
-      intro={
-        <>
-          <p>
-            We started with a simple observation: small beauty businesses miss calls every day — during services,
-            after hours, and at peak hours — and every missed call is a missed booking. RingBooker solves that by
-            answering calls automatically with an AI receptionist, capturing appointment inquiries, and recovering
-            revenue that would otherwise be lost.
-          </p>
-          <p>
-            RingBooker works on your existing phone number. No new hardware, no staff changes. Customers call the
-            same number they always have — RingBooker handles the rest.
-          </p>
-        </>
-      }
-      sections={[
-        {
-          title: 'Our Company',
-          content: (
-            <>
-              <p>
-                RingBooker is operated by RINGBOOKER LLC, a limited liability company registered in the State of
-                Wyoming, United States.
-              </p>
-              <p>
-                For inquiries, contact us at <strong>support@ringbooker.com</strong>.
-              </p>
-            </>
-          ),
-        },
-      ]}
-    />
+    <>
+      {schemas.map((schema, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
+      <MarketingAboutPage content={frontmatter} />
+    </>
   );
 }

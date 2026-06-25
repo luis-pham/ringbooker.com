@@ -4,21 +4,24 @@ import {
 } from '@/components/marketing/marketing-content-hub';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
-import { worksWithHub } from '@/lib/marketing/content-hub-data';
+import { loadHubContent } from '@/lib/content';
+import { buildHubSchemas } from '@/lib/schema';
 import { buildMetadata } from '@/lib/site';
 
-const worksWithDescription =
-  'RingBooker is an AI receptionist that works alongside Square Appointments, Vagaro, Booksy, and Mindbody — no booking migration, no workflow reset.';
-
-export const metadata = buildMetadata({
-  title: 'Works With Square, Vagaro & More | RingBooker',
-  description: worksWithDescription,
-  path: '/works-with',
-});
+export function generateMetadata() {
+  const { frontmatter } = loadHubContent<any>('works-with');
+  return buildMetadata({
+    title: frontmatter.meta.title,
+    description: frontmatter.meta.description,
+    path: frontmatter.meta.canonical,
+  });
+}
 
 export const dynamic = 'force-dynamic';
 
 export default async function WorksWithHubPage() {
+  const { frontmatter } = loadHubContent<any>('works-with');
+  const schemas = buildHubSchemas(frontmatter);
   const posts = await getPublishedPostsByPathPrefix('works-with', { limit: 48 });
   const resourceLinks = posts.map((p) => ({
     href: postPublicPath(p.pathPrefix, p.slug),
@@ -26,15 +29,19 @@ export default async function WorksWithHubPage() {
   }));
 
   return (
-    <MarketingContentHub
-      {...worksWithHub}
-      resourceLinks={resourceLinks}
-      heroActions={<ContentHubHeroActionsHomeStyle />}
-      seoHub={{
-        path: '/works-with',
-        webPageName: 'Works with your booking tools and salon workflow',
-        description: worksWithDescription,
-      }}
-    />
+    <>
+      {schemas.map((schema, index) => (
+        <script
+          key={index}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+      <MarketingContentHub
+        hub={frontmatter}
+        resourceLinks={resourceLinks}
+        heroActions={<ContentHubHeroActionsHomeStyle />}
+      />
+    </>
   );
 }

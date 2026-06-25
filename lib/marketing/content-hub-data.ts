@@ -327,7 +327,7 @@ const CURRENT_NUMBER_FAQ_REPLACE_SETUP: ContentHubFaq = {
 };
 
 export const currentNumberHub: ContentHubPageConfig = {
-  variant: 'teal',
+  variant: 'purple',
   badge: 'Objection Hub',
   heroLayout: 'landing',
   title: createElement(
@@ -521,7 +521,7 @@ export const currentNumberHub: ContentHubPageConfig = {
 };
 
 export const worksWithHub: ContentHubPageConfig = {
-  variant: 'beautyClinic',
+  variant: 'purple',
   badge: 'Compatibility Hub',
   heroLayout: 'landing',
   title: createElement(
@@ -758,7 +758,7 @@ export const worksWithHub: ContentHubPageConfig = {
 };
 
 export const compareHub: ContentHubPageConfig = {
-  variant: 'beautyClinic',
+  variant: 'purple',
   badge: 'Decision Hub',
   heroLayout: 'landing',
   title: createElement(
@@ -1099,7 +1099,7 @@ export const compareHub: ContentHubPageConfig = {
 };
 
 export const trustHub: ContentHubPageConfig = {
-  variant: 'trust',
+  variant: 'purple',
   badge: 'Trust & Reliability Hub',
   heroLayout: 'landing',
   title: createElement(

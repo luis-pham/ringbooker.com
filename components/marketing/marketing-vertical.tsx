@@ -12,11 +12,68 @@ import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketin
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
-import { marketingIndustryLandingSeo, VI_NAIL_SALON_LANDING_SEO } from '@/lib/marketing/industry-landings';
+import { VI_NAIL_SALON_LANDING_SEO } from '@/lib/marketing/industry-landings';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
 import { siteConfig } from '@/lib/site';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
+
+type ContentHeading = { before: string; accent: string; after?: string };
+
+export type IndustryLandingContent = {
+  meta: {
+    title: string;
+    description: string;
+    canonical: string;
+    keywords?: string;
+  };
+  hero: {
+    eyebrow: string;
+    h1: string;
+    h1_accent?: string;
+    subtitle: string;
+    cta_primary: { label: string; href: string };
+    cta_secondary: { label: string; href: string };
+    extra_link?: { label: string; href: string };
+  };
+  stats: Array<{ eyebrow: string; value: string; desc: string; source: string }>;
+  pain_points: {
+    heading: string;
+    heading_parts?: ContentHeading;
+    items: Array<{ icon: VerticalPainIconId; title: string; description: string }>;
+  };
+  features: {
+    heading: string;
+    heading_parts?: ContentHeading;
+    items: Array<{ icon: string; title: string; description: string }>;
+  };
+  how_it_works: {
+    heading: string;
+    heading_parts?: ContentHeading;
+    subtitle?: string;
+    steps: Array<{ number: number; title: string; description: string }>;
+  };
+  comparison: {
+    heading: string;
+    heading_parts?: ContentHeading;
+    rows: Array<{ label: string; without: string; ringbooker: string }>;
+  };
+  final_cta: {
+    label: string;
+    heading: string;
+    subtitle: string;
+    cta_primary: { label: string; href: string };
+    cta_secondary: { label: string; href: string };
+  };
+  faq: Array<{ q: string; a: string }>;
+  schema: {
+    page_name: string;
+    page_description: string;
+    service_type: string;
+    service_area: string;
+    audience: string;
+  };
+};
 
 const VERTICAL_ARTICLE_DATE_PUBLISHED = '2026-05-28T00:00:00+07:00';
 const VERTICAL_ARTICLE_DATE_MODIFIED = '2026-06-23T00:00:00+07:00';
@@ -185,31 +242,31 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
   },
   'hair-salon': {
     pageShellBg:
-      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
-    accentClass: 'text-amber-700',
+    accentClass: 'text-violet-600',
   },
   spa: {
     pageShellBg:
-      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
-    accentClass: 'text-teal-600',
+    accentClass: 'text-violet-600',
   },
   'med-spa': {
     pageShellBg:
-      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
-    accentClass: 'text-indigo-600',
+    accentClass: 'text-violet-600',
   },
   'beauty-clinic': {
     pageShellBg:
-      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
-    accentClass: 'text-fuchsia-600',
+    accentClass: 'text-violet-600',
   },
 };
 
@@ -221,22 +278,22 @@ const CALL_PREVIEWS: Record<MarketingVerticalKey, { businessName: string; accent
   },
   'hair-salon': {
     businessName: 'Blü Hair Studio',
-    accent: '#B45309',
+    accent: '#7C3AED',
     audioSrc: VERTICAL_DEMO_AUDIO['hair-salon'],
   },
   spa: {
     businessName: 'Serenity Day Spa',
-    accent: '#0D9488',
+    accent: '#7C3AED',
     audioSrc: VERTICAL_DEMO_AUDIO.spa,
   },
   'med-spa': {
     businessName: 'Radiance Med Spa',
-    accent: '#4F46E5',
+    accent: '#7C3AED',
     audioSrc: VERTICAL_DEMO_AUDIO['med-spa'],
   },
   'beauty-clinic': {
     businessName: 'Lumina Beauty Clinic',
-    accent: '#A21CAF',
+    accent: '#7C3AED',
     audioSrc: VERTICAL_DEMO_AUDIO['beauty-clinic'],
   },
 };
@@ -1020,7 +1077,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accentClass="text-amber-700"
+        accentClass="text-violet-600"
         stats={[
           {
             eyebrow: 'Missed calls',
@@ -1073,7 +1130,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Features */}
       <FeatureGrid
-        accent="bg-amber-50 text-amber-700"
+        accent="bg-violet-50 text-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for hair salon calls')}
         features={[
@@ -1088,7 +1145,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* How It Works */}
       <HowItWorks
-        accentBg="bg-amber-600"
+        accentBg="bg-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker works', 'current', 'on your salon number')}
         steps={[
@@ -1142,7 +1199,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accentClass="text-teal-600"
+        accentClass="text-violet-600"
         stats={[
           {
             eyebrow: 'Business hours',
@@ -1195,7 +1252,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Features */}
       <FeatureGrid
-        accent="bg-teal-50 text-teal-600"
+        accent="bg-violet-50 text-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for spa calls')}
         features={[
@@ -1219,7 +1276,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* How It Works */}
       <HowItWorks
-        accentBg="bg-teal-600"
+        accentBg="bg-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker works', 'current', 'on your spa number')}
         steps={[
@@ -1284,7 +1341,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accentClass="text-indigo-600"
+        accentClass="text-violet-600"
         stats={[
           {
             eyebrow: 'Revenue risk',
@@ -1337,7 +1394,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Features */}
       <FeatureGrid
-        accent="bg-indigo-50 text-indigo-600"
+        accent="bg-violet-50 text-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for med spa calls')}
         features={[
@@ -1356,7 +1413,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* How It Works */}
       <HowItWorks
-        accentBg="bg-indigo-600"
+        accentBg="bg-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker', 'handles', 'consultation calls on your current number')}
         steps={[
@@ -1425,7 +1482,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accentClass="text-fuchsia-600"
+        accentClass="text-violet-600"
         stats={[
           {
             eyebrow: 'Unanswered',
@@ -1478,7 +1535,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Features */}
       <FeatureGrid
-        accent="bg-fuchsia-50 text-fuchsia-600"
+        accent="bg-violet-50 text-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('What RingBooker', 'handles', 'for beauty clinic calls')}
         features={[
@@ -1498,7 +1555,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* How It Works */}
       <HowItWorks
-        accentBg="bg-fuchsia-600"
+        accentBg="bg-violet-600"
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker works', 'current', 'on your clinic number')}
         steps={[
@@ -1820,13 +1877,121 @@ function VerticalHubArticles({
   );
 }
 
-function PageBody({ vertical }: { vertical: MarketingVerticalKey }) {
+function renderContentHeading(heading: string, parts?: ContentHeading): ReactNode {
+  if (!parts) return heading;
+  return mkSectionTitle(parts.before, parts.accent, parts.after);
+}
+
+function renderHeroHeading(hero: IndustryLandingContent['hero'], accentClass: string): ReactNode {
+  const accent = hero.h1_accent;
+  if (!accent || !hero.h1.includes(accent)) return hero.h1;
+
+  const [before, ...rest] = hero.h1.split(accent);
+  return (
+    <>
+      {before}
+      <VerticalHeroAccent accentClass={accentClass}>{accent}</VerticalHeroAccent>
+      {rest.join(accent)}
+    </>
+  );
+}
+
+function DataDrivenVerticalPage({
+  content,
+  theme,
+  vertical,
+}: {
+  content: IndustryLandingContent;
+  theme: IndustryLandingTheme;
+  vertical: MarketingVerticalKey;
+}) {
+  const painPoints = content.pain_points.items.map((item) => ({
+    icon: item.icon,
+    title: item.title,
+    body: item.description,
+  }));
+  const features = content.features.items.map((item) => ({
+    icon: item.icon,
+    title: item.title,
+    body: item.description,
+  }));
+  const steps = content.how_it_works.steps.map((step) => ({
+    n: String(step.number),
+    title: step.title,
+    body: step.description,
+  }));
+  const comparisonRows = content.comparison.rows.map((row) => ({
+    scenario: row.label,
+    without: row.without,
+    with: row.ringbooker,
+  }));
+
+  return (
+    <>
+      <VerticalHeroGrid
+        copy={
+          <>
+            <p className={theme.heroEyebrowClass}>{content.hero.eyebrow}</p>
+            <h1 className={VERTICAL_HERO_H1}>{renderHeroHeading(content.hero, theme.accentClass)}</h1>
+            <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
+              {content.hero.subtitle}
+            </p>
+            <VerticalHeroCtaActions
+              demoHref={content.hero.cta_primary.href}
+              demoLabel={content.hero.cta_primary.label}
+              trialHref={content.hero.cta_secondary.href}
+              trialLabel={content.hero.cta_secondary.label}
+            >
+              {content.hero.extra_link ? (
+                <Link
+                  href={content.hero.extra_link.href}
+                  className="inline-flex items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 transition hover:border-violet-200 hover:text-violet-700"
+                >
+                  {content.hero.extra_link.label}
+                </Link>
+              ) : null}
+            </VerticalHeroCtaActions>
+          </>
+        }
+        phone={<CallPreviewPlayer {...CALL_PREVIEWS[vertical]} variant="vertical" />}
+      />
+
+      <StatStrip accentClass={theme.accentClass} stats={content.stats} />
+
+      <PainPoints
+        heading={renderContentHeading(content.pain_points.heading, content.pain_points.heading_parts)}
+        eyebrowClass={theme.accentClass}
+        points={painPoints}
+      />
+
+      <FeatureGrid
+        accent={FEATURE_ACCENT_BY_VERTICAL[vertical]}
+        eyebrowClass={theme.accentClass}
+        heading={renderContentHeading(content.features.heading, content.features.heading_parts)}
+        features={features}
+      />
+
+      <HowItWorks
+        accentBg={STEP_ACCENT_BY_VERTICAL[vertical]}
+        eyebrowClass={theme.accentClass}
+        heading={renderContentHeading(content.how_it_works.heading, content.how_it_works.heading_parts)}
+        subtitle={content.how_it_works.subtitle}
+        steps={steps}
+      />
+
+      <VsTable
+        accentClass={theme.accentClass}
+        eyebrowClass={theme.accentClass}
+        heading={renderContentHeading(content.comparison.heading, content.comparison.heading_parts)}
+        rows={comparisonRows}
+      />
+    </>
+  );
+}
+
+function PageBody({ vertical, content }: { vertical: MarketingVerticalKey; content: IndustryLandingContent }) {
   const theme = INDUSTRY_THEME[vertical];
-  if (vertical === 'nail-salon') return <NailPage theme={theme} />;
-  if (vertical === 'hair-salon') return <HairPage theme={theme} />;
-  if (vertical === 'spa') return <SpaPage theme={theme} />;
-  if (vertical === 'med-spa') return <MedSpaPage theme={theme} />;
-  return <BeautyClinicPage theme={theme} />;
+  return <DataDrivenVerticalPage content={content} theme={theme} vertical={vertical} />;
 }
 
 const DEMO_PATH: Record<MarketingVerticalKey, string> = {
@@ -1837,6 +2002,22 @@ const DEMO_PATH: Record<MarketingVerticalKey, string> = {
   'beauty-clinic': '/demo/beauty-clinic',
 };
 
+const FEATURE_ACCENT_BY_VERTICAL: Record<MarketingVerticalKey, string> = {
+  'nail-salon': 'bg-violet-50 text-violet-600',
+  'hair-salon': 'bg-violet-50 text-violet-600',
+  spa: 'bg-violet-50 text-violet-600',
+  'med-spa': 'bg-violet-50 text-violet-600',
+  'beauty-clinic': 'bg-violet-50 text-violet-600',
+};
+
+const STEP_ACCENT_BY_VERTICAL: Record<MarketingVerticalKey, string> = {
+  'nail-salon': 'bg-violet-600',
+  'hair-salon': 'bg-violet-600',
+  spa: 'bg-violet-600',
+  'med-spa': 'bg-violet-600',
+  'beauty-clinic': 'bg-violet-600',
+};
+
 const VERTICAL_LABEL: Record<MarketingVerticalKey, string> = {
   'nail-salon': 'Nail Salon',
   'hair-salon': 'Hair Salon',
@@ -1845,78 +2026,17 @@ const VERTICAL_LABEL: Record<MarketingVerticalKey, string> = {
   'beauty-clinic': 'Beauty Clinic',
 };
 
-export async function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
+export async function MarketingVerticalTemplate({
+  vertical,
+  content,
+}: {
+  vertical: MarketingVerticalKey;
+  content: IndustryLandingContent;
+}) {
   const theme = INDUSTRY_THEME[vertical];
-  const faq = FAQ_BY_VERTICAL[vertical];
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faq.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: { '@type': 'Answer', text: item.a },
-    })),
-  };
-  const serviceConfig = SERVICE_BY_VERTICAL[vertical];
   const pathPrefix = `industries/${vertical}`;
   const hubPosts = await getPublishedPostsByPathPrefix(pathPrefix, { limit: 24 }).catch(() => []);
   const hubArticleLinks = hubPosts.map((p) => ({ href: postPublicPath(p.pathPrefix, p.slug), label: p.title }));
-  const serviceSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
-    name: serviceConfig.name,
-    serviceType: serviceConfig.serviceType,
-    provider: {
-      '@type': 'Organization',
-      name: 'RingBooker',
-      url: 'https://ringbooker.com',
-    },
-    areaServed: 'United States',
-    audience: {
-      '@type': 'BusinessAudience',
-      audienceType: serviceConfig.serviceType,
-    },
-    description: serviceConfig.description,
-  };
-  const verticalPath = `/industries/${vertical}`;
-  const breadcrumbSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
-      { '@type': 'ListItem', position: 2, name: VERTICAL_LABEL[vertical], item: `https://ringbooker.com${verticalPath}` },
-    ],
-  };
-  const articleSchema = buildVerticalArticleSchema(marketingIndustryLandingSeo(vertical));
-
-  const ctaMap: Record<MarketingVerticalKey, { label: string; title: string; subtitle: string }> = {
-    'nail-salon': {
-      label: 'For Nail Salons',
-      title: 'Stop losing bookings to missed calls.',
-      subtitle: 'Answer after-hours and overflow calls on your current number with salon-specific scripts and language setup support where configured.',
-    },
-    'hair-salon': {
-      label: 'For Hair Salons',
-      title: 'Keep chairs full and stylists focused.',
-      subtitle: 'Capture color, stylist preference, and reschedule calls while your team stays in-service.',
-    },
-    spa: {
-      label: 'For Spas & Day Spas',
-      title: 'Protect your guest experience — and your bookings.',
-      subtitle: 'Capture treatment calls, couples booking details, and after-hours inquiries without interrupting in-room sessions.',
-    },
-    'med-spa': {
-      label: 'For Med Spas',
-      title: 'Capture high-value consultation demand.',
-      subtitle:
-        'Botox, filler, laser, and body contouring consultation calls — covered on your current number. After-hours, peak-hour overflow, and injector preference requests captured with follow-up context.',
-    },
-    'beauty-clinic': {
-      label: 'For Beauty Clinics, Wax Studios & Lash Studios',
-      title: 'Beauty clinics, wax studios, and lash studios — covered on your current number.',
-      subtitle: 'Consultation calls, lash fill inquiries, wax booking requests, and after-hours demand captured without voicemail.',
-    },
-  };
 
   return (
     <>
@@ -1930,24 +2050,20 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
             <span className="font-normal text-[color:var(--mk-text-soft,#94a3b8)]">{VERTICAL_LABEL[vertical]}</span>
           </nav>
         </div>
-        <PageBody vertical={vertical} />
+        <PageBody vertical={vertical} content={content} />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <VerticalHubArticles vertical={vertical} links={hubArticleLinks} eyebrowClass={theme.accentClass} />
         </div>
-        <Faq items={faq} />
+        <Faq items={content.faq} />
         <FinalCta
-          demoPath={DEMO_PATH[vertical]}
-          label={ctaMap[vertical].label}
+          demoPath={content.final_cta.cta_secondary.href || DEMO_PATH[vertical]}
+          label={content.final_cta.label}
           shellGradientClass={theme.finalCtaGradient}
-          subtitle={ctaMap[vertical].subtitle}
-          title={ctaMap[vertical].title}
+          subtitle={content.final_cta.subtitle}
+          title={content.final_cta.heading}
         />
       </main>
       <MarketingFooter />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       <Script
         id="vertical-step-carousel"
         strategy="afterInteractive"
