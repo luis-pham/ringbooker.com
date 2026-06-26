@@ -942,7 +942,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   <div style={{ marginTop: 36, textAlign: 'center' }}>
                     <Link
                       href={block.footerLink.href}
-                      className="btn btn-purple btn-lg"
+                      className="compare-strip-footer-link"
                     >
                       {block.footerLink.label}
                     </Link>

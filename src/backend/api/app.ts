@@ -6012,7 +6012,7 @@ export function createBackendApp(deps: {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_session_read, 'auth_me');
     if (limited) return limited;
     const session = await readSession(c);
-    if (!session) return c.json({ ok: false, error: 'unauthorized' }, 401);
+    if (!session) return c.json({ ok: true, session: null });
     const authUser = session.role === 'user' && deps.authUsersRepository
       ? await deps.authUsersRepository.findByEmail(session.email).catch(() => null)
       : null;

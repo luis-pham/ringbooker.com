@@ -122,7 +122,9 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
-      audio.currentTime = 0;
+      if (audio.currentSrc || audio.getAttribute('src')) {
+        audio.currentTime = 0;
+      }
     }
     setPlaybackState('idle');
     setTimerLabel('00:00');
@@ -133,14 +135,6 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     if (!audio) return;
 
     audio.volume = 1;
-
-    // Browsers may ignore preload="auto" for cross-origin or initially-hidden elements.
-    // Calling load() here explicitly starts buffering so readyState reaches
-    // HAVE_CURRENT_DATA before the user's first click — ensuring audio.play()
-    // succeeds within the user-gesture propagation window on the first attempt.
-    if (audio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      audio.load();
-    }
 
     const onTimeUpdate = () => {
       setTimerLabel(formatMmSs(audio.currentTime));
@@ -157,23 +151,35 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [audioSrc, resetToIdle]);
+  }, [resetToIdle]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    setPlaybackState('idle');
+    setTimerLabel('00:00');
+  }, [audioSrc]);
 
   const handlePlay = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (audio.getAttribute('src') !== audioSrc) {
+      audio.src = audioSrc;
+      audio.load();
+    }
 
     setPlaybackState('playing');
     setTimerLabel(formatMmSs(audio.currentTime));
     audio.volume = 1;
 
     try {
-      // Single attempt — must stay within the user-gesture propagation window.
-      // No async gap (no waiting for canplay) between click and play() call,
-      // because crossing a macrotask boundary (e.g. addEventListener 'canplay')
-      // invalidates the user-activation token on strict-autoplay browsers.
-      // The audio.load() call in useEffect ensures the buffer is warm before
-      // the user reaches the button so this first attempt reliably succeeds.
+      // Keep src assignment and play() inside the click handler so marketing
+      // demo MP3s are fetched only after an explicit user action.
       await audio.play();
       setTimerLabel(formatMmSs(audio.currentTime));
     } catch {
@@ -211,8 +217,7 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
       <audio
         key={audioSrc}
         ref={audioRef}
-        src={audioSrc}
-        preload="auto"
+        preload="none"
         playsInline
         className="pca-audio"
         aria-hidden
