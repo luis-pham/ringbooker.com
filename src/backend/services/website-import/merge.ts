@@ -322,9 +322,15 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   // For normal websites, Google Places is used to strengthen contact details,
   // not to define identity unless domain/phone/address corroborates the match.
   // This avoids wrong account/place names replacing a sparse website import.
+  // When Google Places lists THIS exact domain as its website, its business name is for the
+  // same business and is more authoritative than a scraped <title>/<h1> — which is often a
+  // generic template heading (e.g. "Our Salon"). Structured JSON-LD on the site still wins.
+  const placesNameForMatchedDomain = !isGoogleMapsImport && trustedPlaces?.name && placesWebsiteMatchesSubmitted
+    ? placesField(trustedPlaces.name, 0.9)
+    : null;
   const name = isGoogleMapsImport
     ? choose(placesField(trustedPlaces?.name, placeConfidence ? 0.94 : 0), input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name))
-    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name), placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.name, placeConfidence ? 0.86 : 0) : null);
+    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, placesNameForMatchedDomain, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name), placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.name, placeConfidence ? 0.86 : 0) : null);
   const rawPhone = choose(placesField(trustedPlaces?.phone, placeConfidence ? 0.96 : 0), input.staticFacts.phone, maybeLlm(llm?.businessProfile?.phone));
   const address = choose(placesAddressSameAsWebsite ? input.staticFacts.address : null, placesField(trustedPlaces?.address, placeConfidence ? 0.96 : 0), input.staticFacts.address, maybeLlm(llm?.businessProfile?.address));
   const phone = rawPhone.value ? field(normalizePhoneForStorage(rawPhone.value, address.value ?? trustedPlaces?.address ?? input.staticFacts.address.value) ?? rawPhone.value, rawPhone.confidence, rawPhone.source) : rawPhone;

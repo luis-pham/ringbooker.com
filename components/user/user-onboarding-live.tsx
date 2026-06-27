@@ -1464,6 +1464,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     const hasContext = Boolean(vertical || step1ManualPrimaryRef.current);
     if (!hasContext) return;
     step3ChipPresetsAppliedRef.current = true;
+    // Presets are a starter kit for an EMPTY catalog only. When the website import (or a
+    // resumed session) already produced real services, trust that data — do not inject
+    // generic template services or auto-add categories the salon never listed.
+    if (services.some((service) => service.name.trim().length > 0)) return;
     const chipKeys = resolveStep3PresetChipKeys(vertical, step1ManualPrimaryRef.current, beautySubtype);
     setSelectedServiceGroups((prev) => {
       let next = prev.filter((g) => g !== 'Other');
@@ -1494,7 +1498,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       }
       return next;
     });
-  }, [currentStep, vertical, beautySubtype]);
+  }, [currentStep, vertical, beautySubtype, services]);
 
   useEffect(() => {
     if (groupRenameDesktop) {
@@ -2124,6 +2128,16 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     if (serviceEditor?.index === index) setServiceEditor(null);
   }
 
+  function removeServiceGroup(group: string) {
+    const target = group.toLowerCase();
+    setServices((current) => current.filter((service) => (service.group || 'General Services').toLowerCase() !== target));
+    setSelectedServiceGroups((current) => current.filter((g) => g.toLowerCase() !== target));
+    setCollapsedServiceGroups((current) => current.filter((g) => g.toLowerCase() !== target));
+    if (serviceEditor?.group === group) setServiceEditor(null);
+    if (groupRenameDesktop === group) { setGroupRenameDesktop(null); setGroupRenameDraft(''); }
+    if (groupRenameMobile === group) { setGroupRenameMobile(null); setGroupRenameMobileDraft(''); }
+  }
+
   function openServiceEditor(index: number | null, group: string, mode: 'inline' | 'sheet') {
     setGroupRenameDesktop(null);
     setGroupRenameMobile(null);
@@ -2414,6 +2428,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 @media(min-width:641px){.onb-group-title-mobile{display:none!important}}
 .onb-group-rename-pencil{border:0;background:transparent;padding:0;margin-left:2px;color:#6b7280;cursor:pointer;line-height:1;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;transition:background .15s ease,color .15s ease}
 .onb-group-rename-pencil:hover{background:#f3f4f6;color:#111827}
+.onb-group-remove-btn:hover{background:#fef2f2;color:#dc2626}
 .onb-group-rename-pencil svg{display:block;flex-shrink:0;stroke-width:1.8}
 .onb-group-add-header-desktop{margin-left:auto;display:none;color:#6b7280}
 @media(min-width:641px){.onb-group-add-header-desktop{display:inline-flex;align-items:center;justify-content:center;gap:6px}}
@@ -3793,6 +3808,18 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                 <path d="M12 5v14M5 12h14" />
               </svg>
               Add service
+            </button>
+            <button
+              type="button"
+              className="onb-group-rename-pencil onb-group-remove-btn"
+              aria-label="Remove category"
+              title="Remove category"
+              onClick={() => removeServiceGroup(group)}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
             </button>
             <button
               type="button"
