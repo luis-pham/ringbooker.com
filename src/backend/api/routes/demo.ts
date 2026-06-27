@@ -1231,6 +1231,9 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         businessName: demo.businessName,
         city: demo.city,
         services: (demo.demoConfig.services ?? []).map((s) => s.name).filter(Boolean),
+        staffNames: (demo.demoConfig.staffNames ?? []).filter(Boolean),
+        primaryHours: demo.demoConfig.primaryHours ?? null,
+        secondaryHours: demo.demoConfig.secondaryHours ?? null,
       },
     });
   });

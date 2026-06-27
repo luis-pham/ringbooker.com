@@ -6,6 +6,7 @@ import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
+import { InMemorySalesPreparedDemosRepository } from '@/src/backend/adapters/memory/sales-prepared-demos-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
@@ -69,6 +70,61 @@ class CountingRealtimeAgentRuntime extends MockRealtimeAgentRuntime {
     return super.startInboundSession(params);
   }
 }
+
+test('public prepared demo returns prepared services, staff, and hours for /try pages', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+
+  const preparedDemos = new InMemorySalesPreparedDemosRepository();
+  await preparedDemos.upsertByLead({
+    salesLeadId: '11111111-1111-4111-8111-111111111111',
+    slug: 'maison-de-mi',
+    vertical: 'hair-salon',
+    businessName: 'Maison De Mi',
+    city: 'Dallas',
+    demoConfig: {
+      services: [
+        { category: 'Hair Cut', name: 'Women Cut' },
+        { category: 'Color', name: 'Full Color' },
+      ],
+      staffNames: ['Ian', 'Chloe'],
+      primaryHours: 'Mon-Sat 10am-7pm',
+      secondaryHours: 'Sun closed',
+    },
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    salesPreparedDemosRepository: preparedDemos,
+    runtimeInfo: {
+      mode: 'memory',
+      commProvider: 'noop',
+      agentRuntimeMode: 'mock',
+      agentTransportMode: 'mock',
+      agentVoiceProviderMode: 'none',
+    },
+  });
+
+  const response = await app.request('/public/demo/prepared/maison-de-mi');
+  assert.equal(response.status, 200);
+  const body = await response.json() as {
+    ok: boolean;
+    demo: {
+      businessName: string;
+      services: string[];
+      staffNames: string[];
+      primaryHours: string | null;
+      secondaryHours: string | null;
+    };
+  };
+  assert.equal(body.ok, true);
+  assert.equal(body.demo.businessName, 'Maison De Mi');
+  assert.deepEqual(body.demo.services, ['Women Cut', 'Full Color']);
+  assert.deepEqual(body.demo.staffNames, ['Ian', 'Chloe']);
+  assert.equal(body.demo.primaryHours, 'Mon-Sat 10am-7pm');
+  assert.equal(body.demo.secondaryHours, 'Sun closed');
+});
 
 test('public demo request returns 410 and never calls telephony outbound', async () => {
   resetEnvCacheForTests();

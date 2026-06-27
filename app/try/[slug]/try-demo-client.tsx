@@ -1,29 +1,13 @@
 'use client';
 
-import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-vertical-demo';
-import type { DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
+import { PreparedDemoTemplate, type PreparedDemo } from '@/components/marketing/demo/prepared-demo-template';
 
-export type PreparedDemo = {
-  slug: string;
-  vertical: string;
-  businessName: string;
-  city: string | null;
-  services: string[];
-};
+export type { PreparedDemo };
 
 // The attribution cookie (rb_ref) is set server-side in middleware (HttpOnly +
 // HMAC-signed) on every /try/<slug> request — see middleware.ts.
 export function TryDemoClient({ demo, demoPhoneE164 }: { demo: PreparedDemo; demoPhoneE164: string | null }) {
-  // Identical UI + post-call results to the public /demo/<vertical> page, seeded
-  // with this salon's name/services and flagged for sales tracking.
-  return (
-    <MarketingVerticalDemoTemplate
-      vertical={demo.vertical as DemoVerticalSlug}
-      demoPhoneE164={demoPhoneE164}
-      preparedDemoSlug={demo.slug}
-      initialBusinessName={demo.businessName}
-      initialCity={demo.city}
-      initialServices={demo.services}
-    />
-  );
+  // Sales-prepared demos use their own container, seeded with this salon's data
+  // and flagged for sales tracking.
+  return <PreparedDemoTemplate demo={demo} demoPhoneE164={demoPhoneE164} />;
 }

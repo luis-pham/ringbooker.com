@@ -480,14 +480,10 @@ function microphoneErrorMessage(error: unknown): string {
 }
 
 
-export function MarketingVerticalDemoTemplate({
-  vertical,
-  demoPhoneE164,
-  preparedDemoSlug,
-  initialBusinessName,
-  initialCity,
-  initialServices,
-}: {
+type DemoExperienceMode = 'public' | 'prepared';
+
+type DemoExperienceProps = {
+  mode: DemoExperienceMode;
   vertical: DemoVerticalSlug;
   /** E.164 from server `DEMO_PHONE_*` env; falls back to legacy shared line when unset. */
   demoPhoneE164?: string | null;
@@ -497,12 +493,38 @@ export function MarketingVerticalDemoTemplate({
   initialBusinessName?: string;
   initialCity?: string | null;
   initialServices?: string[];
-}) {
+  initialStaffNames?: string[];
+  initialPrimaryHours?: string | null;
+  initialSecondaryHours?: string | null;
+};
+
+type LegacyMarketingVerticalDemoTemplateProps = Omit<DemoExperienceProps, 'mode'>;
+
+export function MarketingVerticalDemoTemplate(props: LegacyMarketingVerticalDemoTemplateProps) {
+  return (
+    <DemoExperience
+      {...props}
+      mode={props.preparedDemoSlug ? 'prepared' : 'public'}
+    />
+  );
+}
+
+export function DemoExperience({
+  mode,
+  vertical,
+  demoPhoneE164,
+  preparedDemoSlug,
+  initialBusinessName,
+  initialCity,
+  initialServices,
+  initialStaffNames,
+  initialPrimaryHours,
+  initialSecondaryHours,
+}: DemoExperienceProps) {
   const config = DEMO_VERTICALS[vertical];
-  // Sales /try demo skips the URL/customize flow, so the start button is a direct
-  // "listen now" action — shorter, curiosity-driven label lifts clicks.
-  const ctaLabel = preparedDemoSlug ? 'Hear your AI now' : 'Start Demo Call';
-  const turnstileWrapperStyle = preparedDemoSlug ? hiddenTurnstileStyle : visibleTurnstileStyle;
+  const isPreparedDemo = mode === 'prepared';
+  const ctaLabel = isPreparedDemo ? 'Hear your AI now' : 'Start Demo Call';
+  const turnstileWrapperStyle = isPreparedDemo ? hiddenTurnstileStyle : visibleTurnstileStyle;
   const otherDemoVerticals = useMemo((): DemoVerticalConfig[] => [], []);
   const resolvedDemoPhoneE164 = useMemo(() => normalizeDemoPhoneE164(demoPhoneE164), [demoPhoneE164]);
   const verticalDemoPhoneTel = useMemo(() => `tel:${resolvedDemoPhoneE164}`, [resolvedDemoPhoneE164]);
@@ -511,9 +533,9 @@ export function MarketingVerticalDemoTemplate({
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: initialBusinessName?.trim() || config.defaultBusinessName,
     city: initialCity?.trim() || config.defaultCity,
-    primaryHours: config.hours.primary,
-    secondaryHours: config.hours.secondary,
-    staff: config.staffPlaceholder,
+    primaryHours: initialPrimaryHours?.trim() || config.hours.primary,
+    secondaryHours: initialSecondaryHours?.trim() || config.hours.secondary,
+    staff: initialStaffNames && initialStaffNames.length > 0 ? initialStaffNames.join(', ') : config.staffPlaceholder,
     notes: '',
     services:
       initialServices && initialServices.length > 0
@@ -578,6 +600,16 @@ export function MarketingVerticalDemoTemplate({
     () => business.businessName.trim() || config.defaultBusinessName,
     [business.businessName, config.defaultBusinessName],
   );
+  const preparedDemoCity = initialCity?.trim() ?? '';
+  const pageEyebrow = isPreparedDemo
+    ? `RINGBOOKER DEMO FOR ${demoDisplayName.toLocaleUpperCase('en-US')}`
+    : config.eyebrow;
+  const pageTitle = isPreparedDemo ? `Hear ${demoDisplayName}'s AI Receptionist` : config.title;
+  const pageSubtitle = isPreparedDemo
+    ? preparedDemoCity
+      ? `This demo is customized for ${demoDisplayName} in ${preparedDemoCity}`
+      : `This demo is customized for ${demoDisplayName}`
+    : config.subtitle;
 
   const [siteManualFallback, setSiteManualFallback] = useState(false);
   const [mobileFoundEdit, setMobileFoundEdit] = useState(false);
@@ -1017,7 +1049,7 @@ export function MarketingVerticalDemoTemplate({
       },
       demoVertical: config.slug,
       demoMode: 'quick',
-      demoSource: 'vertical_demo_page',
+      demoSource: isPreparedDemo ? 'sales_prepared_try_page' : 'public_demo_page',
       importedSiteUrl: sitePhase === 'ready' ? siteUrl.trim() || undefined : undefined,
       ...(preparedDemoSlug ? { preparedDemoSlug } : {}),
     };
@@ -2024,6 +2056,77 @@ export function MarketingVerticalDemoTemplate({
     ],
   };
 
+  function PreparedDemoStartPanel() {
+    const preparedServiceCount = initialServices?.map((name) => name.trim()).filter(Boolean).length ?? 0;
+    const preparedStaff = initialStaffNames?.map((name) => name.trim()).filter(Boolean).slice(0, 8) ?? [];
+    const preparedHours = [business.primaryHours, business.secondaryHours]
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .join(' / ');
+
+    return (
+      <div className="vd-form-card">
+        <div className="vd-found-card">
+          <div className="vd-found-head">Prepared demo</div>
+          <div className="vd-found-row">
+            <span className="vd-found-key">Name</span>
+            <span className="vd-found-val">{demoDisplayName}</span>
+          </div>
+          {business.city.trim() ? (
+            <div className="vd-found-row">
+              <span className="vd-found-key">Location</span>
+              <span className="vd-found-val">{business.city}</span>
+            </div>
+          ) : null}
+          {preparedHours ? (
+            <div className="vd-found-row">
+              <span className="vd-found-key">Hours</span>
+              <span className="vd-found-val">{preparedHours}</span>
+            </div>
+          ) : null}
+          {preparedServiceCount > 0 ? (
+            <div className="vd-found-row">
+              <span className="vd-found-key">Services</span>
+              <span className="vd-found-val">{preparedServiceCount} loaded</span>
+            </div>
+          ) : null}
+          {preparedStaff.length > 0 ? (
+            <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span className="vd-found-key">Staff</span>
+              <div className="vd-found-chips">
+                {preparedStaff.slice(0, 6).map((name) => (
+                  <span key={name} className="vd-found-chip">{name}</span>
+                ))}
+                {preparedStaff.length > 6 ? <span className="vd-found-chip">+{preparedStaff.length - 6} more</span> : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {turnstileSiteKey ? (
+          <div style={turnstileWrapperStyle}>
+            <div className="vd-captcha">
+              <div className="vd-captcha-inner" ref={turnstileRef} />
+            </div>
+            {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+          </div>
+        ) : null}
+
+        {errors.length > 0 || requestError ? (
+          <div className="vd-errors">
+            {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
+            {requestError ? <div className="vd-error">{requestError}</div> : null}
+          </div>
+        ) : null}
+
+        <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+          {isSubmitting ? 'Starting…' : ctaLabel}
+        </button>
+        <p className="vd-cta-note">Personalized from this salon&apos;s prepared sales demo.</p>
+      </div>
+    );
+  }
+
   return (
     <MarketingLayout styles={[...styles, siteReadStyles, verticalDemoMobileStyles]} scriptPrefix={`vertical-demo-${config.slug}`}>
       <>
@@ -2033,19 +2136,7 @@ export function MarketingVerticalDemoTemplate({
         <MarketingChromeStyles />
         <MarketingHeader active="demo" />
 
-        <div className={`vd-page vd-theme-${config.slug}${preparedDemoSlug ? ' vd-sales' : ''}`}>
-
-          {/* Sales prepared demo (/try/<slug>): the demo is already personalized, so hide the
-              website-import and call-the-number sections — leave just the start button. */}
-          {preparedDemoSlug ? (
-            <style
-              dangerouslySetInnerHTML={{
-                __html:
-                  '.vd-sales .vd-phone-demo-secondary,.vd-sales .vd-m-card,.vd-sales .vd-m-divider,.vd-sales .vd-url-section{display:none!important}',
-              }}
-            />
-          ) : null}
-
+        <div className={`vd-page vd-theme-${config.slug}${isPreparedDemo ? ' vd-sales' : ''}`}>
           {/* ══ PAGE HEADER (centered, full-width) ════════════════ */}
           <div className="vd-page-header">
             <nav className="vd-breadcrumb" aria-label="Breadcrumb">
@@ -2055,9 +2146,9 @@ export function MarketingVerticalDemoTemplate({
               <span>›</span>
               <span>{verticalLabel}</span>
             </nav>
-            <p className="hero-eyebrow vd-hero-eyebrow">{config.eyebrow}</p>
-            <h1 className="vd-hero-h1">{config.title}</h1>
-            <p className="vd-hero-sub">{config.subtitle}</p>
+            <p className="hero-eyebrow vd-hero-eyebrow">{pageEyebrow}</p>
+            <h1 className="vd-hero-h1">{pageTitle}</h1>
+            <p className="vd-hero-sub">{pageSubtitle}</p>
           </div>
 
           <div className="vd-wrap">
@@ -2066,7 +2157,9 @@ export function MarketingVerticalDemoTemplate({
             <div>
               {/* ── FORM ── */}
               {!isActive ? (
-                isMobileDemo ? (
+                isPreparedDemo ? (
+                  <PreparedDemoStartPanel />
+                ) : isMobileDemo ? (
                   sitePhase === 'loading' ? (
                     <div className="vd-form-card">
                       <p className="vd-m-load-subtitle">
@@ -2331,7 +2424,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                         {siteLoadError && !siteManualFallback ? <div className="vd-error" style={{ marginTop: 8 }}>{siteLoadError}</div> : null}
                       </div>
-                      {!preparedDemoSlug ? <div className="vd-m-divider">or use sample data below</div> : null}
+                      <div className="vd-m-divider">or use sample data below</div>
                       <div className="vd-field" style={{ marginBottom: 12 }}>
                         <label htmlFor="vd-m-biz">Business name</label>
                         <input id="vd-m-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
@@ -2547,7 +2640,7 @@ export function MarketingVerticalDemoTemplate({
                     </div>
                     {siteLoadError ? <div className="vd-error" style={{ marginTop: 8 }}>{siteLoadError}</div> : null}
                   </div>
-                  {!preparedDemoSlug ? <div className="vd-url-divider">or use sample data below</div> : null}
+                  <div className="vd-url-divider">or use sample data below</div>
 
                   <div className="vd-field" style={{ marginBottom: 14 }}>
                     <label htmlFor="vd-biz">Business name</label>

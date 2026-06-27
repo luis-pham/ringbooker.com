@@ -1,4 +1,4 @@
-import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-vertical-demo';
+import { PublicDemoTemplate } from '@/components/marketing/demo/public-demo-template';
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
@@ -11,7 +11,7 @@ const DEFAULT_DEMO_PHONE_MED_SPA = '+13083020242';
 
 export default function MedSpaDemoPage() {
   return (
-    <MarketingVerticalDemoTemplate
+    <PublicDemoTemplate
       vertical="med-spa"
       demoPhoneE164={process.env.DEMO_PHONE_MED_SPA ?? DEFAULT_DEMO_PHONE_MED_SPA}
     />
