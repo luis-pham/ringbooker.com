@@ -373,10 +373,12 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   let homepageHtml = homepage.text;
   let renderUsed = false;
   const renderConfig: RenderConfig = { endpoint: opts.renderEndpoint ?? null, apiKey: opts.renderApiKey ?? null };
-  const preRenderBuilder = detectSiteBuilder(homepageHtml);
+  // Render any thin homepage, not just ones whose JS builder we recognize: an unrecognized
+  // SPA/JS site also ships near-empty HTML, and we only KEEP the rendered output when it is
+  // actually richer than the static HTML (guarded below), so a wasted render is harmless.
   const shouldTryRender = Boolean(renderConfig.endpoint)
     && remainingBudget() > 3_000
-    && ((hasThinContent(homepageHtml) && preRenderBuilder !== null) || !shouldDeepCrawlSource(sourceType));
+    && (hasThinContent(homepageHtml) || !shouldDeepCrawlSource(sourceType));
   if (shouldTryRender) {
     const rendered = await renderHtml(homepage.url, renderConfig, { fetcher: opts.fetcher, timeoutMs: Math.min(12_000, remainingBudget()) });
     if (rendered && rendered.length > homepageHtml.length && !hasThinContent(rendered)) {

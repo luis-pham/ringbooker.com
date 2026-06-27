@@ -30,6 +30,26 @@ test('normal website import discovers service hub and child service pages', asyn
   assert.ok(result.diagnostics.childServicePagesFound.some((url) => url.includes('/salon/balayage')));
 });
 
+test('renders a thin JS site for extraction even when its builder is not recognized', async () => {
+  const renderEndpoint = 'https://render.test/content';
+  const thinHomepage = '<html><head><title>SPA Salon</title></head><body><div id="page"></div></body></html>';
+  // Rendered output must exceed the thin-content threshold (>1000 chars of text) to be kept.
+  const filler = '<p>Our experienced stylists provide premium salon services in a relaxing environment. Walk-ins welcome and appointments recommended for the best experience.</p>'.repeat(8);
+  const renderedHomepage = `<html><body><h1>SPA Salon</h1><h2>Services</h2><p>Gel Manicure $45 45 minutes</p><p>Deluxe Pedicure $65 60 minutes</p><p>Signature Facial $85 60 minutes</p>${filler}</body></html>`;
+  const html: Record<string, string> = {
+    'https://spa-thin.test': thinHomepage,
+    'https://spa-thin.test/robots.txt': '',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://spa-thin.test' }, {
+    lookup,
+    renderEndpoint,
+    fetcher: async (url) => (url === renderEndpoint ? response(renderedHomepage, url) : response(html[url] ?? '<h1>Not found</h1>', url)),
+  });
+  // The fix: render fires on any thin homepage, not only recognized builders (id="page"
+  // is not detected as a known SPA builder, yet the JS-rendered content is recovered).
+  assert.ok(result.diagnostics.fallbackUsed.includes('headless_render'), 'render should have been used for the thin unrecognized-builder site');
+});
+
 test('selected service child pages are fetched even when outside initial preview window', async () => {
   const fillerLinks = Array.from({ length: 30 }, (_, index) => `<a href="/page-${index}">About ${index}</a>`).join('');
   const html: Record<string, string> = {
