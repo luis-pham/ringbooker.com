@@ -639,6 +639,7 @@ export function DemoExperience({
   const demoFaqJsonLd = useMemo(() => buildFaqPageJsonLd(demoFaqItems), [demoFaqItems]);
 
   const [siteManualFallback, setSiteManualFallback] = useState(false);
+  const [importedDetailsEdit, setImportedDetailsEdit] = useState(false);
   const [mobileFoundEdit, setMobileFoundEdit] = useState(false);
   const [mobileImportRows, setMobileImportRows] = useState<MobileImportRowStatus[]>(['pending', 'pending', 'pending', 'pending']);
   const [mobileImportProgress, setMobileImportProgress] = useState(0);
@@ -654,6 +655,13 @@ export function DemoExperience({
   const activeCategory = useMemo(
     () => business.services.find((c) => c.id === selectedCategory) ?? business.services[0],
     [business.services, selectedCategory],
+  );
+  const currentServiceCategorySummary = useMemo(
+    () =>
+      business.services
+        .map((cat) => ({ label: cat.label, count: cat.items.filter((item) => item.enabled).length }))
+        .filter((cat) => cat.count > 0),
+    [business.services],
   );
 
   // Personalized AI questions when available; otherwise the static per-vertical defaults.
@@ -818,6 +826,7 @@ export function DemoExperience({
     cancelMobileImportUiTimers();
     resetMobileImportUi();
     resetTurnstile();
+    setImportedDetailsEdit(false);
     if (isMobileDemoRef.current) {
       setSiteManualFallback(true);
     }
@@ -836,6 +845,7 @@ export function DemoExperience({
     setSiteLoadStep(0);
     setSiteLoadError(null);
     setSiteDelayMessage(null);
+    setImportedDetailsEdit(false);
     siteLoadStartRef.current = Date.now();
 
     const mobile = isMobileDemoRef.current;
@@ -922,6 +932,7 @@ export function DemoExperience({
             setSelectedCategory(importedServiceCategories[0].id);
           }
           setSiteManualFallback(false);
+          setImportedDetailsEdit(false);
           resetTurnstile();
           setSitePhase('ready');
           setMobileFoundEdit(false);
@@ -2064,6 +2075,7 @@ export function DemoExperience({
     setRequestError(null);
     setStatusText('');
     setSiteManualFallback(false);
+    setImportedDetailsEdit(false);
     setMobileFoundEdit(false);
     resetMobileImportUi();
     setSitePhase(extractedData ? 'ready' : 'idle');
@@ -2579,51 +2591,134 @@ export function DemoExperience({
                   </div>
                 ) : sitePhase === 'ready' && extractedData ? (
                   <div className="vd-form-card">
-                    <div className="vd-found-card">
-                      <div className="vd-found-head">What we found</div>
-                      {extractedData.businessName ? (
-                        <div className="vd-found-row">
-                          <span className="vd-found-key">Name</span>
-                          <span className="vd-found-val">{extractedData.businessName}</span>
-                        </div>
-                      ) : null}
-                      {extractedData.address || extractedData.city ? (
-                        <div className="vd-found-row">
-                          <span className="vd-found-key">Address</span>
-                          <span className="vd-found-val" style={{ fontSize: 12, fontWeight: 500, color: '#4B5563' }}>
-                            {extractedData.address || extractedData.city}
-                          </span>
-                        </div>
-                      ) : null}
-                      <div className="vd-found-row">
-                        <span className="vd-found-key">Hours</span>
-                        {extractedData.hours ? (
-                          <span className="vd-found-val">{extractedData.hours}</span>
-                        ) : (
+                    {importedDetailsEdit ? (
+                      <div className="vd-found-card">
+                        <div className="vd-found-head">Edit imported details</div>
+                        <div className="vd-field" style={{ marginBottom: 14 }}>
+                          <label htmlFor="vd-imported-biz">Business name</label>
                           <input
-                            className="vd-url-input"
-                            style={{ fontSize: 13, padding: '6px 10px' }}
-                            placeholder="e.g. Mon–Sat 9am–7pm"
-                            value={business.primaryHours}
-                            onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                            id="vd-imported-biz"
+                            value={business.businessName}
+                            onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))}
                           />
-                        )}
-                      </div>
-                      {extractedData.serviceCategories.length > 0 ? (
-                        <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                          <span className="vd-found-key">Services</span>
-                          <div className="vd-found-chips">
-                            {extractedData.serviceCategories.slice(0, 8).map((cat) => (
-                              <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
-                            ))}
-                            {extractedData.serviceCategories.length > 8 ? (
-                              <span className="vd-found-chip">+{extractedData.serviceCategories.length - 8} more</span>
-                            ) : null}
+                        </div>
+                        <div className="vd-2col">
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-imported-city">City / state</label>
+                            <input
+                              id="vd-imported-city"
+                              value={business.city}
+                              onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                            />
+                          </div>
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-imported-staff">{config.staffLabel}</label>
+                            <input
+                              id="vd-imported-staff"
+                              value={business.staff}
+                              placeholder={config.staffPlaceholder}
+                              onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
+                            />
                           </div>
                         </div>
-                      ) : null}
-                      <button type="button" className="vd-found-edit" onClick={exitToManualForm}>Edit details →</button>
-                    </div>
+                        <div className="vd-2col">
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-imported-primary-hours">Primary hours</label>
+                            <input
+                              id="vd-imported-primary-hours"
+                              value={business.primaryHours}
+                              onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                            />
+                          </div>
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-imported-secondary-hours">Secondary hours</label>
+                            <input
+                              id="vd-imported-secondary-hours"
+                              value={business.secondaryHours}
+                              onChange={(e) => setBusiness((c) => ({ ...c, secondaryHours: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="vd-svc-label">{config.serviceLabel}</div>
+                          <div className="vd-tabs">
+                            {business.services.map((cat) => (
+                              <button key={cat.id} type="button" className={`vd-tab ${selectedCategory === cat.id ? 'on' : ''}`} onClick={() => setSelectedCategory(cat.id)}>
+                                {cat.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="vd-svc-list">
+                            {activeCategory?.items.map((item, idx) => (
+                              <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
+                                <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
+                                <div>
+                                  <div className="vd-svc-name">{item.name}</div>
+                                  {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                                </div>
+                                <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="vd-field vd-field-compact">
+                          <label htmlFor="vd-imported-notes">Extra context</label>
+                          <textarea
+                            id="vd-imported-notes"
+                            value={business.notes}
+                            placeholder={config.safetyNote}
+                            onChange={(e) => setBusiness((c) => ({ ...c, notes: e.target.value }))}
+                          />
+                        </div>
+                        <button type="button" className="vd-found-edit" onClick={() => setImportedDetailsEdit(false)}>Done editing</button>
+                      </div>
+                    ) : (
+                      <div className="vd-found-card">
+                        <div className="vd-found-head">What we found</div>
+                        {business.businessName || extractedData.businessName ? (
+                          <div className="vd-found-row">
+                            <span className="vd-found-key">Name</span>
+                            <span className="vd-found-val">{business.businessName || extractedData.businessName}</span>
+                          </div>
+                        ) : null}
+                        {extractedData.address || extractedData.city ? (
+                          <div className="vd-found-row">
+                            <span className="vd-found-key">Address</span>
+                            <span className="vd-found-val" style={{ fontSize: 12, fontWeight: 500, color: '#4B5563' }}>
+                              {extractedData.address || extractedData.city}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="vd-found-row">
+                          <span className="vd-found-key">Hours</span>
+                          {business.primaryHours || extractedData.hours ? (
+                            <span className="vd-found-val">{business.primaryHours || extractedData.hours}</span>
+                          ) : (
+                            <input
+                              className="vd-url-input"
+                              style={{ fontSize: 13, padding: '6px 10px' }}
+                              placeholder="e.g. Mon–Sat 9am–7pm"
+                              value={business.primaryHours}
+                              onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                            />
+                          )}
+                        </div>
+                        {currentServiceCategorySummary.length > 0 ? (
+                          <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <span className="vd-found-key">Services</span>
+                            <div className="vd-found-chips">
+                              {currentServiceCategorySummary.slice(0, 8).map((cat) => (
+                                <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
+                              ))}
+                              {currentServiceCategorySummary.length > 8 ? (
+                                <span className="vd-found-chip">+{currentServiceCategorySummary.length - 8} more</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                        <button type="button" className="vd-found-edit" onClick={() => setImportedDetailsEdit(true)}>Edit details →</button>
+                      </div>
+                    )}
 
                     {/* Captcha */}
                     {turnstileSiteKey ? (
