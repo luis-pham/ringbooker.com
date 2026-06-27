@@ -130,7 +130,7 @@ async function createFixture(opts: Opts) {
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
   });
 
-  const cookie = `${USER_SESSION_COOKIE}=${await signSessionToken({ role: 'user', email, shopId: shop.id })}`;
+  const cookie = `${USER_SESSION_COOKIE}=${await signSessionToken({ role: 'user', email, shopId: shop.id, emailVerified: true })}`;
   return { app, shopsRepository, shopAccessStatesRepository, forwardingTestSessionsRepository, fakeProvisioning, shop, cookie };
 }
 
@@ -200,8 +200,10 @@ test('regression: provision number rate-limited at 4th attempt within 24h', asyn
   assert.equal(fourth.status, 429);
 });
 
-// 4. Start forwarding test without billing → should succeed
-test('regression: start forwarding test without billing succeeds and increments count', async () => {
+// 4. Start forwarding test without billing → should succeed.
+// Note: the lifetime "free test call" cap (test_call_count) was removed; abuse is now
+// bounded by the endpoint rate-limit (user_start_forwarding_test), not a per-shop counter.
+test('regression: start forwarding test without billing succeeds', async () => {
   const { app, shopsRepository, shop, cookie } = await createFixture({
     paymentMethodStatus: 'none',
     telnyxNumber: '+17145559999',
@@ -212,16 +214,17 @@ test('regression: start forwarding test without billing succeeds and increments 
     body: JSON.stringify({}),
   });
   assert.equal(res.status, 200);
-  const body = (await res.json()) as { ok?: boolean; test_calls_remaining?: number; expiresAt?: string };
+  const body = (await res.json()) as { ok?: boolean; expiresAt?: string };
   assert.equal(body.ok, true);
-  assert.equal(body.test_calls_remaining, 2);
   assert.ok(body.expiresAt);
+  // test_call_count is no longer incremented (lifetime cap removed).
   const updated = await shopsRepository.findById(shop.id);
-  assert.equal(updated?.test_call_count, 1);
+  assert.equal(updated?.test_call_count, 0);
 });
 
-// 5. Start forwarding test when test_call_count >= 3 and not live → should return 429
-test('regression: start forwarding test returns 429 when count at limit and not live', async () => {
+// 5. Legacy test_call_count cap no longer blocks: even at the old limit, the call succeeds
+// (rate-limit is the only gate now).
+test('regression: start forwarding test is not blocked by legacy test_call_count cap', async () => {
   const { app, shopsRepository, shop, cookie } = await createFixture({
     paymentMethodStatus: 'none',
     telnyxNumber: '+17145559999',
@@ -232,10 +235,9 @@ test('regression: start forwarding test returns 429 when count at limit and not 
     headers: h(cookie),
     body: JSON.stringify({}),
   });
-  assert.equal(res.status, 429);
-  const body = (await res.json()) as { error?: string; test_calls_remaining?: number };
-  assert.equal(body.error, 'test_call_limit_reached');
-  assert.equal(body.test_calls_remaining, 0);
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean };
+  assert.equal(body.ok, true);
 });
 
 // 6. Start forwarding test when live_answering_enabled = true → should ignore limit, succeed

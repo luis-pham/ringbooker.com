@@ -33,12 +33,17 @@ import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'user@ringbooker.local',
   USER_AUTH_PASSWORD: 'change_me_user_password',
   USER_AUTH_SHOP_ID: 'demo-shop',
+});
+
+test.beforeEach(() => {
+  __resetRateLimitMemoryStoreForTests();
 });
 
 function createOnboardingTestApp() {
@@ -262,7 +267,7 @@ test('onboarding website import progress copy uses phased states without percent
 
 test('onboarding copy keeps website import review-only and isolates legacy read-website', () => {
   const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
-  const app = readFileSync('src/backend/api/app.ts', 'utf8');
+  const userMiscRoutes = readFileSync('src/backend/api/routes/user-misc.ts', 'utf8');
   assert.match(onboardingLive, /Paste your website or Google Maps link — we'll fill in the details/);
   assert.match(onboardingLive, /Enter a valid website URL or Google Maps link/);
   assert.doesNotMatch(onboardingLive, /We'll save this link today/);
@@ -275,8 +280,8 @@ test('onboarding copy keeps website import review-only and isolates legacy read-
   assert.match(onboardingLive, /Staff, policies, and FAQs are ready to review in Business Knowledge/);
   assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));
   assert.equal(onboardingLive.includes('/api/backend/user/read-website'), false);
-  assert.match(app, /Legacy mutating website import endpoint/);
-  assert.match(app, /suggestions-only flow that waits for user confirmation/);
+  assert.match(userMiscRoutes, /Legacy mutating website import endpoint/);
+  assert.match(userMiscRoutes, /suggestions-only flow that waits for user confirmation/);
 });
 
 test('Step 1 minimal save can continue without phone and does not persist import fields', async () => {

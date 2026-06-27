@@ -32,7 +32,7 @@ test.beforeEach(() => {
 });
 
 async function sessionCookieForShop(shopId: string, email: string): Promise<string> {
-  const token = await signSessionToken({ role: 'user', email, shopId });
+  const token = await signSessionToken({ role: 'user', email, shopId, emailVerified: true });
   return `${USER_SESSION_COOKIE}=${token}`;
 }
 

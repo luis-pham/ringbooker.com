@@ -262,11 +262,12 @@ test('generic user settings cannot mutate owner SMS alert opt-in preference', as
   assert.equal((await shopsRepository.findById('demo-shop'))?.sms_owner_opted_in, false);
 });
 
-test('generic user settings cannot mutate onboarding or forwarding state fields', async () => {
+test('user settings persist onboarding and forwarding setup fields', async () => {
+  // The onboarding wizard and call-forwarding setup save these via PUT /user/settings.
+  // (sms_owner_opted_in is the exception — owner SMS consent stays guarded; see test above.)
   const { app, shopsRepository } = createUserSettingsTestApp();
   const cookie = await loginUser(app);
 
-  const before = await shopsRepository.findById('demo-shop');
   const response = await app.request('/user/settings', {
     method: 'PUT',
     headers: {
@@ -276,7 +277,7 @@ test('generic user settings cannot mutate onboarding or forwarding state fields'
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      current_onboarding_step: 99,
+      current_onboarding_step: 3,
       setup_method: 'new_number',
       forwarding_type: 'all',
       forwarding_carrier: 'att',
@@ -284,13 +285,13 @@ test('generic user settings cannot mutate onboarding or forwarding state fields'
     }),
   });
 
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 200);
   const after = await shopsRepository.findById('demo-shop');
-  assert.equal(after?.current_onboarding_step, before?.current_onboarding_step);
-  assert.equal(after?.setup_method, before?.setup_method);
-  assert.equal(after?.forwarding_type, before?.forwarding_type);
-  assert.equal(after?.forwarding_carrier, before?.forwarding_carrier);
-  assert.equal(after?.forwarding_country, before?.forwarding_country);
+  assert.equal(after?.current_onboarding_step, 3);
+  assert.equal(after?.setup_method, 'new_number');
+  assert.equal(after?.forwarding_type, 'all');
+  assert.equal(after?.forwarding_carrier, 'att');
+  assert.equal(after?.forwarding_country, 'us');
 });
 
 test('user can save grouped service catalog and legacy services are derived for compatibility', async () => {

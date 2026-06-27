@@ -382,7 +382,6 @@ export function GoLiveForwardingPanel({
   const [turnOffCode, setTurnOffCode] = useState<string | null>(null);
   const [instructions, setInstructions] = useState<string[]>([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const smsOwnerOptedIn = false;
   const [detectedCarrier, setDetectedCarrier] = useState<DetectedCarrierState | null>(null);
   const [carrierDetectionLoaded, setCarrierDetectionLoaded] = useState(false);
   const [showCarrierGrid, setShowCarrierGrid] = useState(() => !initialStatus?.status?.forwarding.carrier);
@@ -556,25 +555,6 @@ export function GoLiveForwardingPanel({
     }
   }
 
-  async function saveSmsOwnerOptInIfChecked() {
-    if (!smsOwnerOptedIn) return;
-    const res = await fetch('/api/backend/user/settings', {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sms_owner_opted_in: true }),
-    });
-    const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
-    if (!res.ok || !body?.ok) {
-      throw new Error(body?.message ?? body?.error ?? 'Could not save SMS alert preference.');
-    }
-  }
-
-  async function startTrialWithOptionalSmsConsent() {
-    await saveSmsOwnerOptInIfChecked();
-    await goLive.startTrial();
-  }
-
   function carrierHelpUrl(carrierId: string | null): string {
     // TODO: replace with per-carrier deep links once dedicated guide pages exist
     const map: Record<string, string> = {
@@ -699,7 +679,7 @@ export function GoLiveForwardingPanel({
             </div>
           )}
           <div className="gl-action-row">
-            {!billingReady ? <button type="button" className="btn user-save" disabled={busyAction === 'trial'} onClick={() => run('trial', startTrialWithOptionalSmsConsent)}>{busyAction === 'trial' ? 'Opening...' : 'Add card and start free trial'}</button> : null}
+            {!billingReady ? <button type="button" className="btn user-save" disabled={busyAction === 'trial'} onClick={() => run('trial', () => goLive.startTrial())}>{busyAction === 'trial' ? 'Opening...' : 'Add card and start free trial'}</button> : null}
           </div>
         </div>
       );

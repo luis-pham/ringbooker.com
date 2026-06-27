@@ -145,7 +145,7 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
 
   const patch = await app.request('/user/bookings/booking-confirmed', {
     method: 'PATCH',
-    headers: { cookie, 'content-type': 'application/json' },
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
     body: JSON.stringify({ status: 'completed' }),
   });
   assert.equal(patch.status, 200);
@@ -154,7 +154,7 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
 
   const invalid = await app.request('/user/bookings/booking-captured', {
     method: 'PATCH',
-    headers: { cookie, 'content-type': 'application/json' },
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
     body: JSON.stringify({ status: 'completed' }),
   });
   assert.equal(invalid.status, 400);
@@ -216,7 +216,7 @@ test('confirming a booking schedules reminders when appointment time is verified
 
   const patch = await app.request('/user/bookings/booking-contacted-confirm-later', {
     method: 'PATCH',
-    headers: { cookie, 'content-type': 'application/json' },
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
     body: JSON.stringify({ status: 'confirmed' }),
   });
   assert.equal(patch.status, 200);
@@ -257,7 +257,7 @@ test('confirming a booking_link source does not schedule time-based followups', 
 
   const patch = await app.request('/user/bookings/booking-link-confirm-later', {
     method: 'PATCH',
-    headers: { cookie, 'content-type': 'application/json' },
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
     body: JSON.stringify({ status: 'confirmed' }),
   });
   assert.equal(patch.status, 200);
