@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 
 import type { GooglePlacesSuggestion } from './google-places';
 import { mergeImportSuggestions, type StaticImportFacts } from './merge';
+import type { ImportedServiceSuggestion, LlmImportExtraction } from './types';
+
+function svc(name: string, extra: Partial<ImportedServiceSuggestion> = {}): ImportedServiceSuggestion {
+  return { categoryName: 'General Services', name, source: 'Website', confidence: 0.8, ...extra } as ImportedServiceSuggestion;
+}
 
 function emptyField() {
   return { value: null, confidence: 0, source: null };
@@ -57,4 +62,34 @@ test('scraped website name is kept when Google Places lists a different domain',
     googlePlaces: { name: 'Some Other Place', website: 'https://different-business.example/', matchConfidence: 0.9 },
   });
   assert.equal(result.businessProfile.name.value, 'Our Salon');
+});
+
+test('when the LLM returns a strong catalog, garbled static matrix-table services are dropped', () => {
+  const result = mergeImportSuggestions({
+    staticFacts: baseStaticFacts({
+      services: [
+        svc('Hair Cut Cash Price Credit Price Bang Cut', { sourceHint: 'service_matrix_table', categoryName: 'Hair Cut' }),
+        svc('Clean Repeated Card Service', { sourceHint: 'repeated_card' }),
+      ],
+    }),
+    llm: {
+      serviceCatalog: {
+        confidence: 0.85,
+        services: [svc('Bang Cut', { categoryName: 'Hair Cut' }), svc('Short Hair Cut'), svc('Long Hair Cut')],
+      },
+    } as LlmImportExtraction,
+  });
+  const names = result.serviceCatalog.services.map((service) => service.name);
+  assert.ok(!names.some((name) => /cash price credit price/i.test(name)), 'garbled matrix-table name should be dropped');
+  assert.ok(names.includes('Bang Cut'), 'clean LLM service should be present');
+  assert.ok(names.includes('Clean Repeated Card Service'), 'clean static (non-matrix) service should be kept');
+});
+
+test('without an LLM catalog, static services (even matrix) are kept as the only source', () => {
+  const result = mergeImportSuggestions({
+    staticFacts: baseStaticFacts({
+      services: [svc('Eyebrow Wax', { sourceHint: 'service_matrix_table' })],
+    }),
+  });
+  assert.ok(result.serviceCatalog.services.map((service) => service.name).includes('Eyebrow Wax'));
 });

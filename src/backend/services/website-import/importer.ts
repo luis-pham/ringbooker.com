@@ -8,7 +8,7 @@ import { extractLinks, previewHtml } from './html';
 import { commonSitemapUrls, parseRobotsSitemaps, parseSitemapXml, prioritizeChildSitemaps, sitemapUrlsToCandidates } from './sitemap';
 import { buildSuggestions } from './extract';
 import { lookupGooglePlaces } from './google-places';
-import { extractWebsiteImportWithLlm } from './llm';
+import { extractWebsiteImportWithLlm, LLM_TOP_PAGE_MARKDOWN_BUDGET } from './llm';
 import { classifyCandidate, selectPages, toDiagnostic } from './scoring';
 import { renderHtml, type RenderConfig } from './render';
 import type { CandidateUrl, PagePreview, WebsiteImportResult } from './types';
@@ -542,12 +542,21 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction });
   const serviceHubPagesFound = selected.filter((s) => s.bucket === 'service_hub').map((s) => s.candidate.url);
   const childServicePagesFound = selected.filter((s) => s.bucket === 'service_child').map((s) => s.candidate.url);
+  // Completeness self-check: if the most service-rich page's menu was longer than the LLM's
+  // single-pass input budget, some services may not have been read. Surface it so a partial
+  // catalog is flagged for review instead of silently looking complete.
+  const richestPageMarkdownLength = finalPreviews.reduce((max, page) => {
+    const length = page.markdown?.length ?? page.firstTextChars.length;
+    return length > max ? length : max;
+  }, 0);
+  const menuExceededSinglePassBudget = richestPageMarkdownLength > LLM_TOP_PAGE_MARKDOWN_BUDGET;
   const allWarnings = [
     ...suggestions.warnings,
     ...(spaWarning ? [spaWarning] : []),
     ...(thinContentWarning ? [thinContentWarning] : []),
     ...(siteBuilder && !spaWarning ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
     ...(llmGloballyCapped ? ['AI enrichment was skipped due to a temporary daily limit; details came from static extraction. Please review carefully.'] : []),
+    ...(menuExceededSinglePassBudget ? ['This menu was longer than could be read in a single pass — some services may be missing. Please review and add any that are absent.'] : []),
   ];
   const result = {
     ok: suggestions.status !== 'failed',

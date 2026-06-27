@@ -306,7 +306,15 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   if (trustedPlaces?.hours && input.staticFacts.hours.value && !placesHoursSameAsWebsite) warnings.push('Google Places hours differ from website hours. Review before saving.');
   const llmServices = llm?.serviceCatalog?.services ?? [];
   const staticServices = input.staticFacts.services;
-  const services = dedupeServices(llmServices.length ? [...llmServices, ...staticServices] : staticServices);
+  // When the LLM produced a real catalog from the clean page markdown it is the source of
+  // truth. The static matrix/menu-list extractors can mis-join table column headers (e.g.
+  // "Cash Price Credit Price") into service names, so drop those when the LLM is strong and
+  // keep only static finds from cleaner extractors that the LLM may have missed.
+  const llmStrong = llmServices.length >= 3;
+  const staticForMerge = llmStrong
+    ? staticServices.filter((service) => service.sourceHint !== 'service_matrix_table' && service.sourceHint !== 'service_menu_list')
+    : staticServices;
+  const services = dedupeServices(llmServices.length ? [...llmServices, ...staticForMerge] : staticServices);
   const serviceConfidence = services.length >= 3 ? Math.max(llm?.serviceCatalog?.confidence ?? 0, 0.78) : services.length > 0 ? Math.max(llm?.serviceCatalog?.confidence ?? 0, 0.55) : 0;
   if (serviceConfidence > 0 && serviceConfidence < 0.7) warnings.push('Some imported service details need review.');
   const placeConfidence = trustPlaces ? Math.max(0.85, rawPlaceConfidence) : 0;
