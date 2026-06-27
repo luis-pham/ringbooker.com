@@ -9,7 +9,39 @@ const PROMO_WORDS = /\b(specials|promotions|offers|deals|membership|packages)\b/
 const ECOMMERCE_WORDS = /\b(shop|store|product|products|collection|collections|cart|checkout|retail|merch|gift-card|gift cards|buy|add to cart)\b/i;
 const EXACT_SERVICE_PATH = /(?:^|\/)(services?|service-menu|salon-services|hair-services|menu|treatments?)(?:\/|$)/i;
 const EXACT_SERVICE_LABEL = /\b(services?|service menu|salon services|hair services|treatments?|menu)\b/i;
-const ARTICLE_PATH = /\/(?:f|blog|blogs|news|article|articles|post|posts)\//i;
+const SERVICE_CATEGORY_WORDS = /\b(hair|haircut|haircuts|cut|cuts|color|colour|balayage|highlight|highlights|wax|waxing|lash|lashes|brow|brows|facial|facials|massage|spa|nail|nails|manicure|pedicure|botox|filler|injectable|injectables|laser|skin|makeup|make-up)\b/i;
+const MENU_INTENT_WORDS = /\b(menu|menus|service|services|pricing|prices|price|treatment|treatments|therapy)\b/i;
+const ARTICLE_PATH = /\/(?:f|blog|blogs|news|article|articles|post|posts|stories?|s\/stories)\//i;
+
+function normalizeIntentText(value: string): string {
+  return decodeURIComponent(value)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/(hair|haircut|haircuts|nail|nails|facial|facials|wax|lash|lashes|brow|brows|massage|spa|color|colour|cut|cuts|makeup|skin)(menu|menus|services?|pricing|prices?|treatments?|therapy)\b/gi, '$1 $2')
+    .replace(/\b(menu|menus|services?|pricing|prices?|treatments?|therapy)(hair|haircut|haircuts|nail|nails|facial|facials|wax|lash|lashes|brow|brows|massage|spa|color|colour|cut|cuts|makeup|skin)\b/gi, '$1 $2')
+    .replace(/[_/-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function hasCategoryMenuIntent(value: string): boolean {
+  return SERVICE_CATEGORY_WORDS.test(value) && MENU_INTENT_WORDS.test(value);
+}
+
+function servicePathIntent(pathSignal: string, labelSignal: string, articleIntent: boolean): { serviceMenu: boolean; categoryPage: boolean } {
+  if (articleIntent) return { serviceMenu: false, categoryPage: false };
+  const normalizedPath = normalizeIntentText(pathSignal);
+  const normalizedLabel = normalizeIntentText(labelSignal);
+  const pathHasCategoryMenu = hasCategoryMenuIntent(normalizedPath);
+  const labelHasCategoryMenu = hasCategoryMenuIntent(normalizedLabel);
+  const genericServiceMenu = EXACT_SERVICE_LABEL.test(normalizedPath)
+    || EXACT_SERVICE_LABEL.test(normalizedLabel)
+    || EXACT_SERVICE_PATH.test(pathSignal);
+  return {
+    serviceMenu: genericServiceMenu || pathHasCategoryMenu || labelHasCategoryMenu,
+    categoryPage: pathHasCategoryMenu || (!genericServiceMenu && labelHasCategoryMenu),
+  };
+}
 
 export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview): { bucket: CandidateBucket; score: number; reason: string } {
   const pathSignal = (() => {
@@ -23,9 +55,11 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
   const primaryPageSignal = `${pathSignal} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`.toLowerCase();
   const ecommerceIntent = ECOMMERCE_WORDS.test(haystack) || /\/(?:shop|store|products?|collections?|cart|checkout)(?:\/|$)/i.test(pathSignal) || /[?&](?:itemid|variantid|productid|sku)=/i.test(candidate.url);
   const articleIntent = ARTICLE_PATH.test(pathSignal) || /\/(?:tag|category|author)(?:\/|$)/i.test(pathSignal);
+  const pathIntent = servicePathIntent(pathSignal, `${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`, articleIntent);
   const serviceIntent = !articleIntent && (
     EXACT_SERVICE_PATH.test(pathSignal)
     || EXACT_SERVICE_LABEL.test(`${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`)
+    || pathIntent.serviceMenu
   );
   const ecommercePageIntent = ecommerceIntent && !serviceIntent;
 
@@ -52,9 +86,11 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
     bucket = isHomepage || ecommercePageIntent ? bucket : 'service_child'; score += ecommercePageIntent ? 8 : 45; reasons.push('Specific service signal');
   }
   if (serviceIntent) {
-    bucket = bucket === 'service_child' || isHomepage || isServiceHubChild || staffContext ? bucket : 'service_hub';
-    score += 60;
-    reasons.push('Explicit services page');
+    if (!isHomepage && !isServiceHubChild && !staffContext) {
+      bucket = pathIntent.categoryPage ? 'service_child' : bucket === 'service_child' ? bucket : 'service_hub';
+    }
+    score += pathIntent.categoryPage ? 70 : 60;
+    reasons.push(pathIntent.categoryPage ? 'Category service menu' : 'Explicit services page');
   } else if (/service|menu|pricing|treatment/.test(primaryPageSignal) || (preview && preview.priceCount > 0 && preview.internalServiceLikeLinkCount >= 2)) {
     bucket = bucket === 'service_child' || isHomepage || isServiceHubChild || staffContext || ecommercePageIntent ? bucket : 'service_hub'; score += ecommercePageIntent ? 6 : 35; reasons.push('Service hub/menu signal');
   }
@@ -67,6 +103,11 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
   }
   if (candidate.source === 'sitemap') { score += 8; reasons.push('Sitemap candidate'); }
   if (candidate.source === 'service_hub_child') { score += 18; reasons.push('Child link from service hub'); }
+  if (!preview && candidate.source !== 'homepage' && candidate.source !== 'sitemap') {
+    score -= 30;
+    if (score < 50) bucket = 'noise';
+    reasons.push('Unverified guessed page');
+  }
   return { bucket, score, reason: reasons.join('; ') || 'Low relevance' };
 }
 

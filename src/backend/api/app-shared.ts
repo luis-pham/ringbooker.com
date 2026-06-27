@@ -334,10 +334,12 @@ export const publicDemoRequestSchema = z.object({
   // prompt injection. Any client-submitted raw prompt would bypass guardrails.
   demoConfig: z
     .object({
+      address: z.string().max(500).optional(),
       city: z.string().max(120).optional(),
       primaryHours: z.string().max(200).optional(),
       secondaryHours: z.string().max(200).optional(),
       staffNames: z.array(z.string().max(80)).max(8).optional(),
+      useDefaultFallbacks: z.boolean().optional(),
       services: z.array(demoServiceItemSchema).max(60).optional(),
     })
     .optional(),

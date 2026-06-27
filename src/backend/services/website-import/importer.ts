@@ -15,11 +15,12 @@ import type { CandidateUrl, PagePreview, WebsiteImportResult } from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
-type SiteBuilder = 'nextjs' | 'nuxtjs' | 'react_spa' | 'webflow' | 'wix' | 'squarespace' | 'shopify' | null;
+type SiteBuilder = 'nextjs' | 'nuxtjs' | 'react_spa' | 'square_weebly' | 'webflow' | 'wix' | 'squarespace' | 'shopify' | null;
 
 function detectSiteBuilder(html: string): SiteBuilder {
   if (/<div[^>]+id=["']__next["']/i.test(html)) return 'nextjs';
   if (/<div[^>]+id=["']__nuxt["']/i.test(html)) return 'nuxtjs';
+  if (/__BOOTSTRAP_STATE__|cdn\d*\.editmysite\.com|editmysite\.com|weebly\.com|square-online|ecom\.square/i.test(html)) return 'square_weebly';
   if (/data-wf-site|cdn\.prod\.website-files\.com|webflow\.io/i.test(html)) return 'webflow';
   if (/wixsite\.com|cdn\d*\.wix\.com|X-Wix-Published-Version/i.test(html)) return 'wix';
   if (/static\d+\.squarespace\.com|squarespace\.com\/s\//i.test(html)) return 'squarespace';
@@ -32,6 +33,30 @@ function hasThinContent(html: string): boolean {
   const withoutScripts = html.replace(/<script[\s\S]*?<\/script>/gi, '');
   const text = withoutScripts.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.length < 1000;
+}
+
+function isJsRenderedSiteBuilder(builder: SiteBuilder): boolean {
+  return builder === 'react_spa' || builder === 'square_weebly' || builder === 'wix';
+}
+
+function isWeakPreview(preview: PagePreview | undefined): boolean {
+  if (!preview) return true;
+  const serviceBlockCount = preview.serviceBlocks?.length ?? 0;
+  return preview.firstTextChars.trim().length < 300
+    && serviceBlockCount === 0
+    && preview.priceCount === 0
+    && preview.durationCount === 0;
+}
+
+function shouldKeepRenderedPreview(rendered: PagePreview, existing: PagePreview | undefined): boolean {
+  if (!existing) return !isWeakPreview(rendered);
+  const renderedServiceBlocks = rendered.serviceBlocks?.length ?? 0;
+  const existingServiceBlocks = existing.serviceBlocks?.length ?? 0;
+  return rendered.firstTextChars.length > existing.firstTextChars.length
+    || rendered.contentScore > existing.contentScore
+    || renderedServiceBlocks > existingServiceBlocks
+    || rendered.priceCount > existing.priceCount
+    || rendered.durationCount > existing.durationCount;
 }
 
 type ImportOptions = {
@@ -373,6 +398,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   let homepageHtml = homepage.text;
   let renderUsed = false;
   const renderConfig: RenderConfig = { endpoint: opts.renderEndpoint ?? null, apiKey: opts.renderApiKey ?? null };
+  const initialSiteBuilder = detectSiteBuilder(homepageHtml);
   // Render any thin homepage, not just ones whose JS builder we recognize: an unrecognized
   // SPA/JS site also ships near-empty HTML, and we only KEEP the rendered output when it is
   // actually richer than the static HTML (guarded below), so a wasted render is harmless.
@@ -387,14 +413,14 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     }
   }
   const homepagePreview = previewHtml(homepageHtml, homepage.url);
-  const siteBuilder = detectSiteBuilder(homepageHtml);
+  const siteBuilder = detectSiteBuilder(homepageHtml) ?? initialSiteBuilder;
   const thinHomepage = hasThinContent(homepageHtml);
-  const spaWarning = siteBuilder && thinHomepage && !renderUsed
+  const spaWarning = () => siteBuilder && thinHomepage && !renderUsed
     ? `Site appears to be a JavaScript SPA (${siteBuilder}). Extracted content may be incomplete — configure a headless-render service (WEBSITE_IMPORT_RENDER_URL) for full extraction.`
     : null;
   // Thin content without a known SPA builder usually means an image-based site
   // (service menu shipped as images) or a custom JS-rendered site we cannot read.
-  const thinContentWarning = !siteBuilder && thinHomepage
+  const thinContentWarning = () => !siteBuilder && thinHomepage && !renderUsed
     ? 'The homepage has very little readable text — the site may be image-based or render content with JavaScript. Imported details may be incomplete; please review carefully.'
     : null;
 
@@ -429,6 +455,31 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const unique = [...seen.values()].slice(0, 200);
 
   const previewMap = new Map<string, PagePreview>([[homepage.url, homepagePreview]]);
+  const setPreview = (requestedUrl: string, preview: PagePreview) => {
+    previewMap.set(requestedUrl, preview);
+    previewMap.set(preview.url, preview);
+  };
+  const fetchPreview = async (candidate: CandidateUrl, allowRender: boolean) => {
+    const fetched = await fetchText(candidate.url, fetchOpts);
+    let preview = fetched ? previewHtml(fetched.text, fetched.url) : undefined;
+    const shouldRenderPage = allowRender
+      && Boolean(renderConfig.endpoint)
+      && remainingBudget() > 3_000
+      && (isWeakPreview(preview) || isJsRenderedSiteBuilder(siteBuilder));
+    if (shouldRenderPage) {
+      const renderUrl = fetched?.url ?? candidate.url;
+      const rendered = await renderHtml(renderUrl, renderConfig, { fetcher: opts.fetcher, timeoutMs: Math.min(12_000, remainingBudget()) });
+      if (rendered) {
+        const renderedPreview = previewHtml(rendered, renderUrl);
+        if (shouldKeepRenderedPreview(renderedPreview, preview)) {
+          preview = renderedPreview;
+          renderUsed = true;
+        }
+      }
+    }
+    if (preview) setPreview(candidate.url, preview);
+    return preview ?? null;
+  };
   // Preview-fetch budget is 24 pages. Rank candidates by path/anchor relevance first
   // so the budget is spent on likely service/contact/staff pages instead of being
   // consumed by sitemap insertion order.
@@ -442,12 +493,8 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const rootCandidate = nonHomepage.find((c) => c.url === rootUrl);
   if (rootCandidate && !previewTargets.includes(rootCandidate)) previewTargets.push(rootCandidate);
   await mapPool(previewTargets, concurrency, async (candidate) => {
-    const fetched = await fetchText(candidate.url, fetchOpts);
-    if (fetched) {
-      const preview = previewHtml(fetched.text, fetched.url);
-      previewMap.set(candidate.url, preview);
-      previewMap.set(fetched.url, preview);
-    }
+    const roughScore = classifyCandidate(candidate).score;
+    await fetchPreview(candidate, roughScore >= 35);
   });
 
   let scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
@@ -465,12 +512,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   }
   await mapPool(childCandidates.slice(0, opts.maxChildServicePages ?? 3), concurrency, async (child) => {
     if (!previewMap.has(child.url)) {
-      const fetched = await fetchText(child.url, fetchOpts);
-      if (fetched) {
-        const preview = previewHtml(fetched.text, fetched.url);
-        previewMap.set(child.url, preview);
-        previewMap.set(fetched.url, preview);
-      }
+      await fetchPreview(child, true);
     }
     if (!unique.some((c) => c.url === child.url)) unique.push(child);
   });
@@ -479,13 +521,13 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
 
   await mapPool(selected, concurrency, async (item) => {
     const existingPreview = previewMap.get(item.candidate.url);
-    if (existingPreview && !(item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0)) return;
-    const fetched = await fetchText(item.candidate.url, fetchOpts);
-    if (fetched) {
-      const preview = previewHtml(fetched.text, fetched.url);
-      previewMap.set(item.candidate.url, preview);
-      previewMap.set(fetched.url, preview);
-    }
+    const selectedNeedsFetch = !existingPreview
+      || isWeakPreview(existingPreview)
+      || (item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0);
+    const selectedNeedsRender = Boolean(renderConfig.endpoint)
+      && (isWeakPreview(existingPreview) || isJsRenderedSiteBuilder(siteBuilder));
+    if (!selectedNeedsFetch && !selectedNeedsRender) return;
+    await fetchPreview(item.candidate, selectedNeedsRender);
   });
 
   const selectedPreviews = selected.map((item) => previewMap.get(item.candidate.url)).filter((p): p is PagePreview => Boolean(p));
@@ -552,11 +594,15 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     return length > max ? length : max;
   }, 0);
   const menuExceededSinglePassBudget = richestPageMarkdownLength > LLM_TOP_PAGE_MARKDOWN_BUDGET;
+  const jsRenderedPreviewWarning = isJsRenderedSiteBuilder(siteBuilder) && !renderUsed && finalPreviews.some(isWeakPreview)
+    ? `Site appears to be a JavaScript-rendered site (${siteBuilder}). Extracted content may be incomplete — configure a headless-render service (WEBSITE_IMPORT_RENDER_URL) for full extraction.`
+    : null;
   const allWarnings = [
     ...suggestions.warnings,
-    ...(spaWarning ? [spaWarning] : []),
-    ...(thinContentWarning ? [thinContentWarning] : []),
-    ...(siteBuilder && !spaWarning ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
+    ...(jsRenderedPreviewWarning ? [jsRenderedPreviewWarning] : []),
+    ...(spaWarning() ? [spaWarning()!] : []),
+    ...(thinContentWarning() ? [thinContentWarning()!] : []),
+    ...(siteBuilder && !isJsRenderedSiteBuilder(siteBuilder) && !spaWarning() ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
     ...(llmGloballyCapped ? ['AI enrichment was skipped due to a temporary daily limit; details came from static extraction. Please review carefully.'] : []),
     ...(menuExceededSinglePassBudget ? ['This menu was longer than could be read in a single pass — some services may be missing. Please review and add any that are absent.'] : []),
   ];

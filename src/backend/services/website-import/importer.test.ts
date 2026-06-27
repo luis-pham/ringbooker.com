@@ -50,6 +50,58 @@ test('renders a thin JS site for extraction even when its builder is not recogni
   assert.ok(result.diagnostics.fallbackUsed.includes('headless_render'), 'render should have been used for the thin unrecognized-builder site');
 });
 
+test('renders weak Square/SPA child menu and staff pages selected from sitemap', async () => {
+  const renderEndpoint = 'https://render-square.test/content';
+  const squareShell = (title: string) => `<html><head><title>${title}</title><script>window.__BOOTSTRAP_STATE__ = {"siteData":{"site":{"properties":{"framework":{"name":"square"}}}}}</script></head><body><div id="app"></div></body></html>`;
+  const html: Record<string, string> = {
+    'https://square-spa.test/': squareShell('Home | Hair Syndicate 5 Salon and Spa'),
+    'https://square-spa.test/robots.txt': 'Sitemap: https://square-spa.test/sitemap.xml',
+    'https://square-spa.test/sitemap.xml': [
+      '<urlset>',
+      '<url><loc>https://square-spa.test/hairmenu</loc></url>',
+      '<url><loc>https://square-spa.test/advanced-facials-menu</loc></url>',
+      '<url><loc>https://square-spa.test/wax-lash-brow-menu</loc></url>',
+      '<url><loc>https://square-spa.test/our-team</loc></url>',
+      '</urlset>',
+    ].join(''),
+    'https://square-spa.test/hairmenu': squareShell('Hair Salon | Hair Syndicate 5 Salon and Spa'),
+    'https://square-spa.test/advanced-facials-menu': squareShell('Advanced Facial Treatment Menu | Hair Syndicate 5 Salon and Spa'),
+    'https://square-spa.test/wax-lash-brow-menu': squareShell('Lash, Brow, and Wax Menu | Hair Syndicate 5 Salon and Spa'),
+    'https://square-spa.test/our-team': squareShell('Our Staff | Hair Syndicate 5 Salon and Spa'),
+  };
+  const rendered: Record<string, string> = {
+    'https://square-spa.test/': '<html><body><h1>Hair Syndicate 5</h1><a href="/hairmenu">Hair Menu</a><a href="/our-team">Our Team</a></body></html>',
+    'https://square-spa.test/hairmenu': '<html><head><title>Hair Salon</title></head><body><h1>Hair Menu</h1><h2>Hair Services</h2><table><tr><td>Adult Hair Cut</td><td>$25</td></tr><tr><td>Balayage</td><td>$160</td></tr></table></body></html>',
+    'https://square-spa.test/advanced-facials-menu': '<html><head><title>Advanced Facial Treatment Menu</title></head><body><h1>Advanced Facials Menu</h1><h2>Facials</h2><table><tr><td>Deluxe Anti-Aging Facial</td><td>$120</td></tr></table></body></html>',
+    'https://square-spa.test/wax-lash-brow-menu': '<html><head><title>Lash, Brow, and Wax Menu</title></head><body><h1>Wax Menu</h1><h2>Waxing</h2><table><tr><td>Brow Wax</td><td>$20</td></tr></table></body></html>',
+    'https://square-spa.test/our-team': '<html><head><title>Our Staff</title></head><body><h1>Our Staff</h1><section><h2>Meet Our Team</h2><div class="team-member"><h3>Cassandra</h3><small>Massage Therapist</small><p>Licensed massage therapist.</p></div></section></body></html>',
+  };
+  const renderCalls: string[] = [];
+  const result = await importWebsiteForOnboarding({ url: 'https://square-spa.test' }, {
+    lookup,
+    renderEndpoint,
+    fetcher: async (url, init) => {
+      if (url === renderEndpoint) {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { url?: string };
+        const target = body.url ?? '';
+        renderCalls.push(target);
+        return response(rendered[target] ?? '<html><body><h1>Not found</h1></body></html>', url);
+      }
+      return response(html[url] ?? '<h1>Not found</h1>', url, url.endsWith('.xml') ? 'application/xml' : 'text/html');
+    },
+  });
+
+  const serviceNames = result.suggestions.serviceCatalog.services.map((service) => service.name);
+  assert.ok(renderCalls.some((url) => url.endsWith('/hairmenu')));
+  assert.ok(renderCalls.some((url) => url.endsWith('/our-team')));
+  assert.ok(result.diagnostics.selectedPages.some((page) => page.url.endsWith('/hairmenu')));
+  assert.ok(result.diagnostics.selectedPages.some((page) => page.url.endsWith('/our-team')));
+  assert.ok(serviceNames.includes('Adult Hair Cut'));
+  assert.ok(serviceNames.includes('Balayage'));
+  assert.ok(result.suggestions.staffSuggestions.some((staff) => staff.name === 'Cassandra'));
+  assert.ok(result.diagnostics.fallbackUsed.includes('headless_render'));
+});
+
 test('selected service child pages are fetched even when outside initial preview window', async () => {
   const fillerLinks = Array.from({ length: 30 }, (_, index) => `<a href="/page-${index}">About ${index}</a>`).join('');
   const html: Record<string, string> = {

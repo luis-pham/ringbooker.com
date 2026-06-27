@@ -49,6 +49,7 @@ type DemoImportSuggestions = {
     address?: { value: string | null };
   };
   hours?: { value: DemoApiHours | null };
+  staffSuggestions?: Array<{ name: string; role?: string | null }>;
   serviceCatalog?: {
     services: Array<{
       name: string;
@@ -274,6 +275,7 @@ function demoHostnameFromUrl(raw: string): string {
 
 type DemoBusinessConfig = {
   businessName: string;
+  address: string;
   city: string;
   primaryHours: string;
   secondaryHours: string;
@@ -555,6 +557,7 @@ export function DemoExperience({
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: initialBusinessName?.trim() || config.defaultBusinessName,
+    address: '',
     city: initialCity?.trim() || config.defaultCity,
     primaryHours: initialPrimaryHours?.trim() || config.hours.primary,
     secondaryHours: initialSecondaryHours?.trim() || config.hours.secondary,
@@ -896,9 +899,13 @@ export function DemoExperience({
         const s = data.suggestions;
         const businessName = s.businessProfile?.name?.value ?? '';
         const address = s.businessProfile?.address?.value ?? '';
-        const { displayCity, formCity } = parseCityFromAddress(address);
+        const { displayCity } = parseCityFromAddress(address);
         const hours = formatDemoApiHours(s.hours?.value);
         const services = filterDemoServices(s.serviceCatalog?.services ?? []).slice(0, 40);
+        const staffNames = (s.staffSuggestions ?? [])
+          .map((staff) => staff.name.trim())
+          .filter(Boolean)
+          .slice(0, 8);
         // Real categorized services for the voice agent (not just the display chips).
         const importedServiceCategories = buildDemoServiceCategoriesFromImport(s.serviceCatalog?.services ?? []);
 
@@ -923,10 +930,14 @@ export function DemoExperience({
           setBusiness((cur) => ({
             ...cur,
             businessName: businessName || cur.businessName,
-            city: formCity || cur.city,
-            primaryHours: hours || cur.primaryHours,
-            // Voice agent uses the salon's real imported services; keep defaults if none found.
-            services: importedServiceCategories.length > 0 ? importedServiceCategories : cur.services,
+            address,
+            city: displayCity,
+            primaryHours: hours,
+            secondaryHours: '',
+            staff: staffNames.join(', '),
+            // Voice agent uses only the salon's imported services after a website read.
+            // If none were found, keep this empty instead of falling back to sample services.
+            services: importedServiceCategories,
           }));
           if (importedServiceCategories.length > 0 && importedServiceCategories[0]) {
             setSelectedCategory(importedServiceCategories[0].id);
@@ -1077,10 +1088,12 @@ export function DemoExperience({
       sessionId: ensureSessionId(),
       website: '',
       demoConfig: {
-        city: business.city || config.defaultCity,
+        address: business.address || undefined,
+        city: business.city || (sitePhase === 'ready' ? undefined : config.defaultCity),
         primaryHours: business.primaryHours,
         secondaryHours: business.secondaryHours,
         staffNames: splitStaff(business.staff),
+        useDefaultFallbacks: sitePhase !== 'ready',
         services: business.services.flatMap((c) =>
           c.items.map((item) => ({ category: c.label, name: item.name, price: item.price, duration: item.duration, enabled: item.enabled })),
         ),
@@ -2245,37 +2258,37 @@ export function DemoExperience({
                         <div className="vd-found-head">What we found</div>
                         {!mobileFoundEdit ? (
                           <>
-                            {extractedData.businessName ? (
+                            {business.businessName || extractedData.businessName ? (
                               <div className="vd-m-found-row">
                                 <span className="vd-m-found-ic" aria-hidden>🏪</span>
                                 <span className="vd-m-found-k">Business</span>
-                                <span className="vd-m-found-v">{extractedData.businessName}</span>
+                                <span className="vd-m-found-v">{business.businessName || extractedData.businessName}</span>
                               </div>
                             ) : null}
-                            {extractedData.address || extractedData.city ? (
+                            {business.address || business.city || extractedData.address || extractedData.city ? (
                               <div className="vd-m-found-row">
                                 <span className="vd-m-found-ic" aria-hidden>📍</span>
                                 <span className="vd-m-found-k">Address</span>
                                 <span className="vd-m-found-v" style={{ fontSize: 12, fontWeight: 500 }}>
-                                  {extractedData.address || extractedData.city}
+                                  {business.address || business.city || extractedData.address || extractedData.city}
                                 </span>
                               </div>
                             ) : null}
                             <div className="vd-m-found-row">
                               <span className="vd-m-found-ic" aria-hidden>🕐</span>
                               <span className="vd-m-found-k">Hours</span>
-                              <span className="vd-m-found-v">{extractedData.hours || business.primaryHours || '—'}</span>
+                              <span className="vd-m-found-v">{business.primaryHours || extractedData.hours || '—'}</span>
                             </div>
-                            {extractedData.serviceCategories.length > 0 ? (
+                            {currentServiceCategorySummary.length > 0 ? (
                               <div className="vd-m-found-row" style={{ flexWrap: 'wrap' }}>
                                 <span className="vd-m-found-ic" aria-hidden>✂️</span>
                                 <span className="vd-m-found-k">Services</span>
                                 <span className="vd-m-found-v" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                  {extractedData.serviceCategories.slice(0, 8).map((cat) => (
+                                  {currentServiceCategorySummary.slice(0, 8).map((cat) => (
                                     <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
                                   ))}
-                                  {extractedData.serviceCategories.length > 8 ? (
-                                    <span className="vd-found-chip">+{extractedData.serviceCategories.length - 8} more</span>
+                                  {currentServiceCategorySummary.length > 8 ? (
+                                    <span className="vd-found-chip">+{currentServiceCategorySummary.length - 8} more</span>
                                   ) : null}
                                 </span>
                               </div>
@@ -2296,11 +2309,11 @@ export function DemoExperience({
                             </div>
                             <div className="vd-m-grid2">
                               <div className="vd-field vd-field-compact">
-                                <label htmlFor="vd-m-edit-city">City / state</label>
+                                <label htmlFor="vd-m-edit-address">Address</label>
                                 <input
-                                  id="vd-m-edit-city"
-                                  value={business.city}
-                                  onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                                  id="vd-m-edit-address"
+                                  value={business.address}
+                                  onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                                 />
                               </div>
                               <div className="vd-field vd-field-compact">
@@ -2312,6 +2325,23 @@ export function DemoExperience({
                                   placeholder="e.g. Mon–Sat 9am–7pm"
                                 />
                               </div>
+                            </div>
+                            <div className="vd-field vd-field-compact">
+                              <label htmlFor="vd-m-edit-city">City / state</label>
+                              <input
+                                id="vd-m-edit-city"
+                                value={business.city}
+                                onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                              />
+                            </div>
+                            <div className="vd-field vd-field-compact">
+                              <label htmlFor="vd-m-edit-staff">{config.staffLabel} (optional)</label>
+                              <input
+                                id="vd-m-edit-staff"
+                                value={business.staff}
+                                placeholder="Not found on website"
+                                onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
+                              />
                             </div>
                             <button type="button" className="vd-m-link" onClick={() => setMobileFoundEdit(false)}>
                               Done editing
@@ -2602,6 +2632,15 @@ export function DemoExperience({
                             onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))}
                           />
                         </div>
+                        <div className="vd-field" style={{ marginBottom: 14 }}>
+                          <label htmlFor="vd-imported-address">Address</label>
+                          <input
+                            id="vd-imported-address"
+                            value={business.address}
+                            placeholder="Not found on website"
+                            onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
+                          />
+                        </div>
                         <div className="vd-2col">
                           <div className="vd-field vd-field-compact">
                             <label htmlFor="vd-imported-city">City / state</label>
@@ -2616,7 +2655,7 @@ export function DemoExperience({
                             <input
                               id="vd-imported-staff"
                               value={business.staff}
-                              placeholder={config.staffPlaceholder}
+                              placeholder="Not found on website"
                               onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
                             />
                           </div>
@@ -2681,11 +2720,11 @@ export function DemoExperience({
                             <span className="vd-found-val">{business.businessName || extractedData.businessName}</span>
                           </div>
                         ) : null}
-                        {extractedData.address || extractedData.city ? (
+                        {business.address || business.city || extractedData.address || extractedData.city ? (
                           <div className="vd-found-row">
                             <span className="vd-found-key">Address</span>
                             <span className="vd-found-val" style={{ fontSize: 12, fontWeight: 500, color: '#4B5563' }}>
-                              {extractedData.address || extractedData.city}
+                              {business.address || business.city || extractedData.address || extractedData.city}
                             </span>
                           </div>
                         ) : null}

@@ -11,10 +11,12 @@ import type { BusinessHours } from '@/src/backend/domain/types';
 import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
 
 export type DemoConfigInput = {
+  address?: string;
   city?: string;
   primaryHours?: string;
   secondaryHours?: string;
   staffNames?: string[];
+  useDefaultFallbacks?: boolean;
   services?: Array<{
     category: string;
     name: string;
@@ -226,19 +228,20 @@ export function buildPublicDemoSystemPrompt(input: {
   const welcomeMessage = buildPublicDemoScriptedWelcomeLine(input);
 
   const defaults = resolvedVertical ? VERTICAL_DEMO_DEFAULTS[resolvedVertical] : undefined;
+  const allowDefaultFallbacks = input.demoConfig?.useDefaultFallbacks !== false;
 
   const providers: string[] = [];
   if (input.demoConfig?.staffNames?.length) {
     providers.push(...input.demoConfig.staffNames.slice(0, 8).map((n) => sanitizeDemoTextField(n, 80)).filter(Boolean));
   } else if (input.staffName) {
     providers.push(sanitizeDemoTextField(input.staffName, 80));
-  } else if (defaults?.staffNames?.length) {
+  } else if (allowDefaultFallbacks && defaults?.staffNames?.length) {
     providers.push(...defaults.staffNames);
   }
 
   const rawServices = input.demoConfig?.services?.filter((s) => s.enabled !== false).length
     ? input.demoConfig.services.filter((s) => s.enabled !== false)
-    : defaults?.services ?? [];
+    : allowDefaultFallbacks ? defaults?.services ?? [] : [];
 
   const services = rawServices.slice(0, 40).map((s) => ({
     category: sanitizeDemoTextField(s.category, 60),
@@ -247,17 +250,18 @@ export function buildPublicDemoSystemPrompt(input: {
     duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
   }));
 
-  const primaryHours = input.demoConfig?.primaryHours || defaults?.primaryHours;
-  const secondaryHours = input.demoConfig?.secondaryHours || defaults?.secondaryHours;
+  const primaryHours = input.demoConfig?.primaryHours || (allowDefaultFallbacks ? defaults?.primaryHours : undefined);
+  const secondaryHours = input.demoConfig?.secondaryHours || (allowDefaultFallbacks ? defaults?.secondaryHours : undefined);
   const hoursRaw = [primaryHours, secondaryHours].filter(Boolean).map((h) => sanitizeDemoTextField(h, 200)).join(', ');
 
-  const city = input.demoConfig?.city || defaults?.city;
+  const address = input.demoConfig?.address;
+  const city = input.demoConfig?.city || (allowDefaultFallbacks ? defaults?.city : undefined);
 
   // Compute real-time business context so the AI knows whether the shop is currently open
   // and can correctly answer time-related questions. Uses vertical default timezone; falls
   // back to graceful nulls when the vertical is unknown.
-  const demoTimezone = defaults?.timezone ?? null;
-  const demoTimeContext = demoTimezone
+  const demoTimezone = allowDefaultFallbacks ? defaults?.timezone ?? null : null;
+  const demoTimeContext = allowDefaultFallbacks && demoTimezone
     ? resolveShopTimeContext({ hours: defaults!.structuredHours, timezone: demoTimezone })
     : null;
 
@@ -270,7 +274,11 @@ export function buildPublicDemoSystemPrompt(input: {
     businessName,
     businessType,
     welcomeMessage,
-    location: city ? sanitizeDemoTextField(city, 120) : undefined,
+    location: address
+      ? sanitizeDemoTextField(address, 500)
+      : city
+        ? sanitizeDemoTextField(city, 120)
+        : undefined,
     hours: hoursRaw || undefined,
     timezone: demoTimezone ?? undefined,
     currentLocalTime: demoTimeContext?.currentLocalTime ?? undefined,
