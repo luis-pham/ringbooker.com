@@ -316,6 +316,15 @@ type DemoStatusResponse = {
 };
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+const visibleTurnstileStyle = { marginBottom: 14 } as const;
+const hiddenTurnstileStyle = {
+  position: 'absolute',
+  opacity: 0,
+  pointerEvents: 'none',
+  width: 0,
+  height: 0,
+  overflow: 'hidden',
+} as const;
 
 /** Legacy shared demo line when per-vertical `DEMO_PHONE_*` env is unset (server passes prop from env). */
 const LEGACY_VERTICAL_DEMO_PHONE_E164 = '+16265013960';
@@ -493,6 +502,7 @@ export function MarketingVerticalDemoTemplate({
   // Sales /try demo skips the URL/customize flow, so the start button is a direct
   // "listen now" action — shorter, curiosity-driven label lifts clicks.
   const ctaLabel = preparedDemoSlug ? 'Hear your AI now' : 'Start Demo Call';
+  const turnstileWrapperStyle = preparedDemoSlug ? hiddenTurnstileStyle : visibleTurnstileStyle;
   const otherDemoVerticals = useMemo((): DemoVerticalConfig[] => [], []);
   const resolvedDemoPhoneE164 = useMemo(() => normalizeDemoPhoneE164(demoPhoneE164), [demoPhoneE164]);
   const verticalDemoPhoneTel = useMemo(() => `tel:${resolvedDemoPhoneE164}`, [resolvedDemoPhoneE164]);
@@ -2179,7 +2189,7 @@ export function MarketingVerticalDemoTemplate({
                       </div>
                       <p className="vd-m-found-info">You&apos;ll review everything during onboarding before going live.</p>
                       {turnstileSiteKey ? (
-                        <div style={{ marginBottom: 14 }}>
+                        <div style={turnstileWrapperStyle}>
                           <div className="vd-captcha">
                             <div className="vd-captcha-inner" ref={turnstileRef} />
                           </div>
@@ -2267,7 +2277,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       </div>
                       {turnstileSiteKey ? (
-                        <div style={{ marginBottom: 14 }}>
+                        <div style={turnstileWrapperStyle}>
                           <div className="vd-captcha">
                             <div className="vd-captcha-inner" ref={turnstileRef} />
                           </div>
@@ -2321,7 +2331,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                         {siteLoadError && !siteManualFallback ? <div className="vd-error" style={{ marginTop: 8 }}>{siteLoadError}</div> : null}
                       </div>
-                      <div className="vd-m-divider">or use sample data below</div>
+                      {!preparedDemoSlug ? <div className="vd-m-divider">or use sample data below</div> : null}
                       <div className="vd-field" style={{ marginBottom: 12 }}>
                         <label htmlFor="vd-m-biz">Business name</label>
                         <input id="vd-m-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
@@ -2381,7 +2391,7 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       ) : null}
                       {turnstileSiteKey ? (
-                        <div style={{ marginBottom: 14 }}>
+                        <div style={turnstileWrapperStyle}>
                           <div className="vd-captcha">
                             <div className="vd-captcha-inner" ref={turnstileRef} />
                           </div>
@@ -2497,7 +2507,7 @@ export function MarketingVerticalDemoTemplate({
 
                     {/* Captcha */}
                     {turnstileSiteKey ? (
-                      <div style={{ marginBottom: 14 }}>
+                      <div style={turnstileWrapperStyle}>
                         <div className="vd-captcha">
                           <div className="vd-captcha-inner" ref={turnstileRef} />
                         </div>
@@ -2537,7 +2547,7 @@ export function MarketingVerticalDemoTemplate({
                     </div>
                     {siteLoadError ? <div className="vd-error" style={{ marginTop: 8 }}>{siteLoadError}</div> : null}
                   </div>
-                  <div className="vd-url-divider">or use sample data below</div>
+                  {!preparedDemoSlug ? <div className="vd-url-divider">or use sample data below</div> : null}
 
                   <div className="vd-field" style={{ marginBottom: 14 }}>
                     <label htmlFor="vd-biz">Business name</label>
@@ -2602,7 +2612,7 @@ export function MarketingVerticalDemoTemplate({
 
                   {/* Captcha */}
                   {turnstileSiteKey ? (
-                    <div style={{ marginBottom: 14 }}>
+                    <div style={turnstileWrapperStyle}>
                       <div className="vd-captcha">
                         <div className="vd-captcha-inner" ref={turnstileRef} />
                       </div>
