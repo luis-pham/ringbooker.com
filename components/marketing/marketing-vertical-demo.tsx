@@ -332,14 +332,6 @@ function buildDemoServiceCategoriesFromPrepared(services: PreparedDemoServiceDet
   return [...byCategory.values()].filter((c) => c.items.length > 0);
 }
 
-function formatDemoServiceVariantPrice(variant: DemoServiceVariant): string {
-  if (variant.priceType === 'consultation') return 'Consultation';
-  if (variant.priceType === 'varies' && typeof variant.price !== 'number') return 'Varies';
-  if (typeof variant.price !== 'number') return '';
-  const amount = Number.isInteger(variant.price) ? `${variant.price}` : variant.price.toFixed(2);
-  return `${variant.priceType === 'from' ? 'from ' : ''}$${amount}`;
-}
-
 /** Mobile (≤768px) import checklist — labels differ from onboarding IMPORT_PROGRESS_STEPS on purpose. */
 const MOBILE_IMPORT_STEPS = [
   'Fetching your site',
@@ -579,7 +571,7 @@ const siteReadStyles: string = String.raw`.vd-url-section{margin-bottom:14px}.vd
 /** Mobile-only (≤768px). Desktop uses existing rules from `styles` / `siteReadStyles`. */
 const verticalDemoMobileStyles = String.raw`@media (max-width:768px){.vd-page-header{align-items:flex-start}.vd-page-header .vd-hero-eyebrow{display:none}.vd-hero-h1{text-align:left;margin-left:0;margin-right:0;max-width:100%}.vd-hero-sub{text-align:left;margin-left:0;margin-right:0;max-width:100%}.vd-m-card{border:2px solid var(--va);border-radius:20px;background:#fff;padding:18px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.04)}.vd-m-card-title{margin:0 0 6px;font-size:15px;font-weight:900;color:#111827;letter-spacing:-.02em}.vd-m-card-sub{margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.5}.vd-m-url-row{display:flex;flex-direction:column;gap:10px}.vd-m-url-row .vd-url-btn{width:100%;padding:14px 16px;font-size:15px;text-align:center}.vd-m-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#9CA3AF;font-size:12px;font-weight:500}.vd-m-divider::before,.vd-m-divider::after{content:'';flex:1;height:1px;background:#E5E7EB}.vd-m-acc{border:0;background:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#6B7280;padding:10px 0;width:100%;text-align:left}.vd-m-acc-chev{font-size:10px;transition:transform .2s;display:inline-block}.vd-m-acc-chev.open{transform:rotate(180deg)}.vd-m-acc-body{border:1px solid #E5E7EB;border-radius:16px;background:#F9FAFB;padding:14px;display:flex;flex-direction:column;gap:12px;margin-bottom:12px}.vd-m-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.vd-m-load-subtitle{margin:0 0 14px;font-size:14px;line-height:1.5;color:#475569;text-align:center}.vd-m-spin{border:3px solid color-mix(in srgb,var(--va) 22%,#E5E7EB);border-top-color:var(--va);border-radius:999px;width:32px;height:32px;animation:vdSpin .75s linear infinite;margin:0 auto 14px}.vd-m-prog{height:6px;border-radius:999px;background:#E5E7EB;overflow:hidden;margin:14px 0 16px}.vd-m-prog-fill{height:100%;border-radius:999px;background:var(--va);width:0;transition:width .45s ease}.vd-m-rows{display:flex;flex-direction:column;gap:10px;text-align:left}.vd-m-row{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:#9CA3AF}.vd-m-row.done{color:#10B981}.vd-m-row.active{color:#111827}.vd-m-ico{width:22px;height:22px;border-radius:999px;border:2px solid #E5E7EB;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}.vd-m-row.done .vd-m-ico{background:#10B981;border-color:#10B981;color:#fff}.vd-m-row.active .vd-m-ico{border-color:var(--va)}.vd-m-row-spin{width:10px;height:10px;border:2px solid #D1D5DB;border-top-color:var(--va);border-radius:999px;animation:vdSpin .75s linear infinite}.vd-m-pill{font-size:12px;color:#6B7280;line-height:1.45;text-align:center;background:#F3F4F6;border-radius:12px;padding:10px 12px;margin-top:10px}.vd-m-escape{background:none;border:none;cursor:pointer;font-size:12px;font-weight:500;color:#9CA3AF;padding:0;margin-top:10px;display:block;width:100%;text-align:center;text-decoration:underline;text-underline-offset:2px}.vd-m-escape:hover{color:#6B7280}.vd-m-badge{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin:0 auto 12px;width:fit-content}.vd-m-badge-dot{width:8px;height:8px;border-radius:50%}.vd-m-badge--ready{border:1px solid #A7F3D0;background:#ECFDF5;color:#047857}.vd-m-badge--ready .vd-m-badge-dot{background:#10B981}.vd-m-badge--amber{border:1px solid #FDE68A;background:#FFFBEB;color:#92400E}.vd-m-badge--amber .vd-m-badge-dot{background:#F59E0B}.vd-m-badge--grey{border:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280}.vd-m-badge--grey .vd-m-badge-dot{background:#9CA3AF}.vd-m-found-info{font-size:12px;color:#64748B;line-height:1.5;margin:12px 0 0;padding:10px 12px;background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0}.vd-m-found-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px}.vd-m-found-row:last-child{margin-bottom:0}.vd-m-found-ic{font-size:16px;line-height:1;width:24px;text-align:center;flex-shrink:0}.vd-m-found-k{font-weight:600;color:#64748B;min-width:72px;flex-shrink:0}.vd-m-found-v{color:#111827;font-weight:600;flex:1;min-width:0}.vd-m-link{background:none;border:none;cursor:pointer;padding:0;margin-top:8px;font-size:13px;font-weight:500;color:var(--va);text-decoration:underline;text-underline-offset:2px;text-align:left}.vd-m-sms-card{border-radius:16px;background:#F1F5F9;padding:14px;margin:14px 0;font-size:14px;line-height:1.55;color:#334155}.vd-m-cap{background:#F8FAFC;border-radius:16px;padding:14px;margin-bottom:14px}.vd-m-cap-label{font-size:10px;font-weight:900;letter-spacing:.1em;color:#64748B;margin-bottom:10px}.vd-m-cap-row{display:flex;gap:10px;font-size:13px;margin-bottom:8px;align-items:flex-start}.vd-m-cap-row:last-child{margin-bottom:0}.vd-m-banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#EFF6FF;border:1px solid #BFDBFE;font-size:13px;color:#1E40AF;line-height:1.5;margin-bottom:14px}.vd-m-trust-line{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 18px;font-size:12px;font-weight:600;color:#64748B;margin:12px 0 8px}.vd-m-pay-pill{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600;color:#475569;background:#F3F4F6;border-radius:999px;padding:10px 14px;margin:0 auto 12px;max-width:420px;text-align:center}.vd-m-try{font-size:13px;color:#9CA3AF;text-decoration:underline;text-underline-offset:3px;background:none;border:none;cursor:pointer;padding:0;margin:10px auto 0;display:block;text-align:center;font-weight:500}.vd-m-try:hover{color:#64748B}.vd-m-live-tweak .vd-status-pill.completed{background:#F3F4F6;border-color:#E5E7EB;color:#6B7280}.vd-m-live-tweak .vd-status-pill.completed .vd-status-dot{background:#9CA3AF;animation:none}.vd-m-live-tweak .vd-status-body{color:#6B7280}.vd-field input,.vd-field textarea,.vd-url-input{font-size:16px !important}}`;
 const verticalDemoUiTweaks = String.raw`@media (max-width:768px){.vd-page-header{align-items:center}.vd-hero-h1,.vd-hero-sub{text-align:center;margin-left:auto;margin-right:auto}.vd-m-card{border:1px solid #e5e7eb}}`;
-const serviceVariantStyles = String.raw`.vd-svc-chevron{width:28px;height:28px;border:1px solid #E5E7EB;border-radius:999px;background:#fff;color:#6B7280;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer;transition:transform .16s,border-color .16s,color .16s,background .16s;-webkit-appearance:none}.vd-svc-chevron:hover{border-color:var(--va);color:var(--va);background:color-mix(in srgb,var(--va) 5%,#fff)}.vd-svc-chevron.open{transform:rotate(180deg);border-color:color-mix(in srgb,var(--va) 35%,#E5E7EB);color:var(--va)}.vd-svc-chevron-placeholder{width:28px;height:28px;display:inline-block}.vd-svc-variant-panel{border:1px solid #E5E7EB;border-radius:13px;background:#F9FAFB;padding:8px 10px;margin:-3px 0 4px 26px}.vd-svc-variant-panel.mobile{margin:0;border-top:none;border-radius:0 0 12px 12px;background:#fff}.vd-svc-variant{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid #EEF2F7;font-size:12px}.vd-svc-variant:first-child{border-top:none}.vd-svc-variant-main{min-width:0}.vd-svc-variant-label{font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vd-svc-variant-meta{color:#9CA3AF;margin-top:1px}.vd-svc-variant-price{font-weight:700;color:#111827;font-variant-numeric:tabular-nums;white-space:nowrap}`;
+const serviceVariantStyles = String.raw`.vd-svc-chevron{width:28px;height:28px;border:1px solid #E5E7EB;border-radius:999px;background:#fff;color:#6B7280;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer;transition:transform .16s,border-color .16s,color .16s,background .16s;-webkit-appearance:none}.vd-svc-chevron:hover{border-color:var(--va);color:var(--va);background:color-mix(in srgb,var(--va) 5%,#fff)}.vd-svc-chevron.open{transform:rotate(180deg);border-color:color-mix(in srgb,var(--va) 35%,#E5E7EB);color:var(--va)}.vd-svc-chevron-placeholder{width:28px;height:28px;display:inline-block}.vd-svc-variant-panel{border:0;border-radius:0;background:#F9FAFB;padding:14px 12px 12px 48px;margin:-7px 0 7px}.vd-svc-variant-panel.mobile{margin:0;border:solid #E5E7EB;border-width:1px 0 0;border-radius:0;background:#fff;padding:12px 10px 10px 34px}.vd-svc-variant-heading{font-size:12px;font-weight:600;color:#8A8A8A;margin:0 0 8px}.vd-svc-variant{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:10px;align-items:center;padding:5px 0;font-size:13px}.vd-svc-variant-main{min-width:0}.vd-svc-variant-label-input{width:100%;border:0;background:transparent;padding:8px 0;font-size:13px;font-weight:500;color:#111827;outline:none;-webkit-appearance:none}.vd-svc-variant-label-input:focus{color:var(--va)}.vd-svc-variant-meta{color:#9CA3AF;margin-top:-2px;font-size:11px}.vd-svc-variant-price-wrap{position:relative;width:82px}.vd-svc-variant-price-wrap span{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:#6B7280;pointer-events:none}.vd-svc-variant-price-input{width:100%;border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:9px 10px 9px 23px;text-align:right;font-size:13px;font-weight:600;color:#111827;outline:none;font-variant-numeric:tabular-nums;-webkit-appearance:none}.vd-svc-variant-price-input:focus{border-color:var(--va);box-shadow:0 0 0 2px color-mix(in srgb,var(--va) 12%,transparent)}.vd-svc-variant-price-input::-webkit-outer-spin-button,.vd-svc-variant-price-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}.vd-svc-variant-price-input[type=number]{appearance:textfield}`;
 
 function cloneServices(services: DemoServiceCategory[]): DemoServiceCategory[] {
   return services.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i, variants: i.variants?.map((variant) => ({ ...variant })) })) }));
@@ -910,6 +902,27 @@ export function DemoExperience({
     }));
   }
 
+  function updateServiceVariant(catId: string, itemIdx: number, variantIdx: number, patch: Partial<DemoServiceVariant>) {
+    setBusiness((cur) => ({
+      ...cur,
+      services: cur.services.map((c) =>
+        c.id === catId
+          ? {
+              ...c,
+              items: c.items.map((item, i) =>
+                i === itemIdx
+                  ? {
+                      ...item,
+                      variants: (item.variants ?? []).map((variant, vIdx) => (vIdx === variantIdx ? { ...variant, ...patch } : variant)),
+                    }
+                  : item,
+              ),
+            }
+          : c,
+      ),
+    }));
+  }
+
   function serviceRowKey(catId: string, itemName: string, idx: number) {
     return `${catId}:${idx}:${itemName.toLowerCase()}`;
   }
@@ -938,16 +951,32 @@ export function DemoExperience({
     if (!variants.length || !expandedServiceRows[rowKey]) return null;
     return (
       <div className={`vd-svc-variant-panel${mobile ? ' mobile' : ''}`}>
+        <div className="vd-svc-variant-heading">Variants</div>
         {variants.map((variant, variantIdx) => {
-          const price = formatDemoServiceVariantPrice(variant);
           const meta = [variant.duration, variant.notes].map((value) => value?.trim()).filter(Boolean).join(' · ');
           return (
-            <div className="vd-svc-variant" key={`${rowKey}-variant-${variantIdx}-${variant.label}`}>
+            <div className="vd-svc-variant" key={`${rowKey}-variant-${variantIdx}`}>
               <div className="vd-svc-variant-main">
-                <div className="vd-svc-variant-label">{variant.label}</div>
+                <input
+                  className="vd-svc-variant-label-input"
+                  value={variant.label}
+                  onChange={(event) => updateServiceVariant(catId, idx, variantIdx, { label: event.target.value })}
+                  aria-label={`Variant name for ${item.name}`}
+                />
                 {meta ? <div className="vd-svc-variant-meta">{meta}</div> : null}
               </div>
-              {price ? <div className="vd-svc-variant-price">{price}</div> : null}
+              <div className="vd-svc-variant-price-wrap">
+                <span aria-hidden="true">$</span>
+                <input
+                  className="vd-svc-variant-price-input"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={variant.price ?? ''}
+                  onChange={(event) => updateServiceVariant(catId, idx, variantIdx, { price: event.target.value === '' ? null : Number(event.target.value) || 0 })}
+                  aria-label={`Variant price for ${variant.label || item.name}`}
+                />
+              </div>
             </div>
           );
         })}

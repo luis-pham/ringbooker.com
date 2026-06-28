@@ -41,3 +41,35 @@ test('vertical sample fallbacks still populate plain sample demos', () => {
   assert.match(prompt, /\bMia\b/);
   assert.match(prompt, /Women's Haircut/);
 });
+
+test('demo config service variants are rendered into the demo prompt', () => {
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Imported Salon',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+    demoConfig: {
+      useDefaultFallbacks: false,
+      services: [
+        {
+          category: 'Haircuts',
+          name: 'Haircut & Style',
+          price: 65,
+          duration: '45 min',
+          enabled: true,
+          variants: [
+            { label: "Women's cut", price: 75, duration: '60 min', priceType: 'fixed' },
+            { label: "Men's cut", price: 55, duration: '45 min', priceType: 'fixed' },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.match(prompt, /Haircut & Style/);
+  assert.match(prompt, /Options:/);
+  assert.match(prompt, /Women's cut/);
+  assert.match(prompt, /\$75/);
+  assert.match(prompt, /Men's cut/);
+  assert.match(prompt, /\$55/);
+  assert.match(prompt, /SERVICE OPTION RULE/);
+});
