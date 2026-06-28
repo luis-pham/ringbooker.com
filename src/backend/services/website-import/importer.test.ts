@@ -541,20 +541,38 @@ test('invalid LLM JSON falls back safely to static import', async () => {
   assert.equal(result.diagnostics.fallbackUsed.includes('llm'), false);
 });
 
-test('invalid LLM schema falls back safely to static import', async () => {
+test('unparseable LLM output falls back safely to static import', async () => {
+  // Recoverable shape drift (out-of-range confidences, bad enums) is now coerced rather than
+  // discarded; this guards the remaining hard-failure path — output that is not valid JSON at all
+  // must still leave the import on its static result instead of throwing.
   const result = await importWebsiteForOnboarding({ url: 'https://invalid-schema.test' }, {
     lookup,
     llmEnabled: true,
     openAiApiKey: 'openai-test',
     fetcher: async (url) => {
-      if (url.includes('api.openai.com')) return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ serviceCatalog: { confidence: 1.2, services: [{ name: 'Bad Price', priceType: 'free', confidence: 2 }] } }) } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.includes('api.openai.com')) return new Response(JSON.stringify({ choices: [{ message: { content: 'Sorry, I cannot help with that. {not: valid json' } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
       return response(url.endsWith('/robots.txt') ? '' : '<h1>Schema Fallback Salon</h1><p>Facial $90</p>', url);
     },
   });
   assert.equal(result.ok, true);
   assert.equal(result.suggestions.businessProfile.name.value, 'Schema Fallback Salon');
   assert.equal(result.diagnostics.fallbackUsed.includes('llm'), false);
-  assert.equal(result.suggestions.serviceCatalog.services.some((service) => service.name === 'Bad Price'), false);
+});
+
+test('out-of-range LLM confidences and bad enums are coerced, not discarded', async () => {
+  const result = await importWebsiteForOnboarding({ url: 'https://coerce-schema.test' }, {
+    lookup,
+    llmEnabled: true,
+    openAiApiKey: 'openai-test',
+    fetcher: async (url) => {
+      if (url.includes('api.openai.com')) return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ serviceCatalog: { confidence: 1.2, services: [{ name: 'Signature Facial', priceType: 'free', confidence: 2 }] } }) } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return response(url.endsWith('/robots.txt') ? '' : '<h1>Coerce Salon</h1><p>Facial $90</p>', url);
+    },
+  });
+  const facial = result.suggestions.serviceCatalog.services.find((service) => service.name === 'Signature Facial');
+  assert.ok(facial, 'recoverable LLM service is salvaged');
+  assert.equal(facial?.priceType, 'fixed');
+  assert.equal(result.diagnostics.fallbackUsed.includes('llm'), true);
 });
 
 test('LLM missing fields do not invent values', async () => {
@@ -592,7 +610,7 @@ test('LLM payload includes structured service blocks before flattened text', () 
   });
   assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.groupHeading, 'Blowout');
   assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.serviceName, 'Essential Blowout');
-  assert.match(payload.schemaHint, /Prefer structured serviceBlocks/i);
+  assert.match(payload.schemaHint, /extract EVERY service/i);
   assert.match(payload.schemaHint, /reject non-services/i);
 });
 

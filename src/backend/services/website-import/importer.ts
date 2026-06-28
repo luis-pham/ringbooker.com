@@ -103,10 +103,19 @@ type ImportOptions = {
 
 export const DEFAULT_WEBSITE_IMPORT_MAX_BYTES = 1_500_000;
 /** Default total import budget. The caller (demo vs onboarding) overrides this. */
-const DEFAULT_DEADLINE_MS = 25_000;
+const DEFAULT_DEADLINE_MS = 55_000;
 const DEFAULT_FETCH_CONCURRENCY = 6;
 /** LLM needs at least this much remaining budget to be worth calling. */
 const MIN_LLM_BUDGET_MS = 4_000;
+/**
+ * Budget held back from the crawl so the LLM enrichment pass has room to finish. The full-site
+ * markdown payload is large (~10k input tokens) and the JSON catalog can run to several thousand
+ * output tokens, so a short window makes the OpenAI call abort and the import silently falls back
+ * to noisy static markdown extraction. Reserve a generous slice for it.
+ */
+const LLM_ENRICHMENT_RESERVE_MS = 30_000;
+/** Hard cap for a single LLM enrichment call (bounded again by the remaining budget). */
+const LLM_CALL_TIMEOUT_MS = 45_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -518,10 +527,15 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
       const crawl = await crawlWithCloudflare(startUrl.toString(), {
         accountId,
         apiKey: opts.renderApiKey,
-        limit: opts.maxPages ?? 10,
+        // Crawl wide: salon menus are split across several service/spa pages (cut, color, add-ons,
+        // waxing…). A low limit fills up on about/policy pages before reaching them. The LLM payload
+        // builder still only forwards the top service-rich pages, so a high limit costs crawl time,
+        // not LLM tokens.
+        limit: opts.maxPages ?? 20,
         depth: 2,
         fetcher: opts.fetcher,
-        timeoutMs: Math.min(CF_CRAWL_TIMEOUT_MS, remainingBudget()),
+        // Leave room for the LLM enrichment pass — the crawl must not consume the whole budget.
+        timeoutMs: Math.min(CF_CRAWL_TIMEOUT_MS, Math.max(8_000, remainingBudget() - LLM_ENRICHMENT_RESERVE_MS)),
       });
       finalPreviews = crawl.pages.map(pagePreviewFromCrawlPage);
       selectedPages = diagnosticsFromCrawlPages(crawl.pages);
@@ -608,7 +622,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
         model: opts.llmModel,
         maxTokens: opts.llmMaxTokens,
         fetcher: opts.fetcher,
-        timeoutMs: Math.min(22_000, budgetForEnrichment),
+        timeoutMs: Math.min(LLM_CALL_TIMEOUT_MS, budgetForEnrichment),
       },
     ),
   ]);

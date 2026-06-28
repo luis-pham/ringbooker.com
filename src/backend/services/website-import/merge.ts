@@ -259,8 +259,24 @@ function dedupeSuggestions<T>(items: T[], keyFn: (item: T) => string, max = 40):
 function dedupeLlmFirstSuggestions<T>(staticItems: T[] | undefined, llmItems: T[] | undefined, keyFn: (item: T) => string, max = 40): T[] {
   return dedupeSuggestions([...(llmItems ?? []), ...(staticItems ?? [])], keyFn, max);
 }
+/**
+ * A real service name is a short noun phrase. The free-text static extractor sometimes lifts
+ * marketing/promo sentences off a page (e.g. referral copy) which read as prose, not services.
+ * Detect prose generically (sentence punctuation, length, trailing stop-words) so it is dropped
+ * when the LLM already produced an authoritative catalog — without touching the LLM's own names.
+ */
+function looksLikeProseServiceName(name: string): boolean {
+  const n = name.trim();
+  if (!n) return true;
+  if (/[!?]/.test(n)) return true;
+  if (n.split(/\s+/).length > 7) return true;
+  if (/[.,;:]\s+\S/.test(n)) return true;
+  if (/\b(a|an|the|to|of|and|or|with|for|you|your|our|get|them|give|is|are|will|when)$/i.test(n)) return true;
+  return false;
+}
 function shouldKeepStaticServiceAlongsideLlm(service: ImportedServiceSuggestion): boolean {
   if (service.sourceHint === 'service_matrix_table' || service.sourceHint === 'service_menu_list') return false;
+  if (looksLikeProseServiceName(service.name ?? '')) return false;
   return (service.confidence ?? 0) >= 0.72
     || (!service.sourceHint && (service.confidence ?? 0) >= 0.66)
     || service.source === 'JSON-LD'
@@ -351,14 +367,18 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
     : null;
   const name = isGoogleMapsImport
     ? choose(placesField(trustedPlaces?.name, placeConfidence ? 0.94 : 0), input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name))
-    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, placesNameForMatchedDomain, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name), placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.name, placeConfidence ? 0.86 : 0) : null);
-  const rawPhone = choose(placesField(trustedPlaces?.phone, placeConfidence ? 0.96 : 0), input.staticFacts.phone, maybeLlm(llm?.businessProfile?.phone));
-  const address = choose(placesAddressSameAsWebsite ? input.staticFacts.address : null, placesField(trustedPlaces?.address, placeConfidence ? 0.96 : 0), input.staticFacts.address, maybeLlm(llm?.businessProfile?.address));
+    // For a non-JSON-LD static name the only signal is a scraped <title>/<h1> (or, on a
+    // markdown crawl, the homepage H1 — frequently a marketing slogan). The LLM reading the
+    // page is more reliable than that, so it outranks the heuristic static name here. JSON-LD
+    // static and a domain-matched Google Places name still win above.
+    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, placesNameForMatchedDomain, maybeLlm(llm?.businessProfile?.name), input.staticFacts.name, placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.name, placeConfidence ? 0.86 : 0) : null);
+  const rawPhone = choose(placesField(trustedPlaces?.phone, placeConfidence ? 0.96 : 0), input.staticFacts.phone.source === 'JSON-LD' ? input.staticFacts.phone : null, maybeLlm(llm?.businessProfile?.phone), input.staticFacts.phone);
+  const address = choose(placesAddressSameAsWebsite ? input.staticFacts.address : null, placesField(trustedPlaces?.address, placeConfidence ? 0.96 : 0), input.staticFacts.address.source === 'JSON-LD' ? input.staticFacts.address : null, maybeLlm(llm?.businessProfile?.address), input.staticFacts.address);
   const phone = rawPhone.value ? field(normalizePhoneForStorage(rawPhone.value, address.value ?? trustedPlaces?.address ?? input.staticFacts.address.value) ?? rawPhone.value, rawPhone.confidence, rawPhone.source) : rawPhone;
   const websiteHoursIsComplete = hoursDayCount(input.staticFacts.hours.value) >= 5 && input.staticFacts.hours.confidence >= 0.7;
   const hours = isGoogleMapsImport
     ? choose<WeeklyHours>(placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours))
-    : choose<WeeklyHours>(placesHoursSameAsWebsite || websiteHoursIsComplete ? input.staticFacts.hours : null, placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours));
+    : choose<WeeklyHours>(placesHoursSameAsWebsite || websiteHoursIsComplete ? input.staticFacts.hours : null, placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, maybeLlm(llm?.hours), input.staticFacts.hours);
   const timezone = choose(placesField(trustedPlaces?.timezone ?? inferTimezoneFromAddress(trustedPlaces?.address), placeConfidence ? 0.9 : 0), input.staticFacts.timezone, maybeLlm(llm?.businessProfile?.timezone));
   const website = choose(placesField(trustedPlaces?.website, placeConfidence ? 0.94 : 0), input.staticFacts.website, maybeLlm(llm?.businessProfile?.website));
   const primaryType = isGoogleMapsImport

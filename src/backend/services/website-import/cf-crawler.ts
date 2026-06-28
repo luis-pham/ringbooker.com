@@ -30,6 +30,16 @@ const EXCLUDE_PATTERNS = [
   '**/stories/**',
   '**/s/stories/**',
   '**/news/**',
+  // WordPress (the dominant salon CMS) buries the service/pricing pages under a flood of
+  // dated blog permalinks (/2026/05/04/...) and taxonomy archives. Left in, the crawl spends
+  // its page budget on blog posts and never reaches the menu. Cloudflare globs support `*` but
+  // not `[0-9]` character classes, so match any /19xx/ or /20xx/ date segment with `*`.
+  '**/19*/**',
+  '**/20*/**',
+  '**/category/**',
+  '**/tag/**',
+  '**/author/**',
+  '**/feed/**',
   '**/privacy/**',
   '**/terms/**',
   '**/shipping/**',
@@ -164,7 +174,7 @@ export async function crawlWithCloudflare(
       limit: opts.limit ?? 10,
       options: { excludePatterns: EXCLUDE_PATTERNS },
     }),
-  }, 10_000);
+  }, 15_000);
   const jobId = parseJobId(startBody);
   if (!jobId) throw new Error('cloudflare_crawl_missing_job_id');
 
@@ -176,9 +186,12 @@ export async function crawlWithCloudflare(
         method: 'GET',
         headers: { authorization: `Bearer ${opts.apiKey}` },
       }, Math.min(10_000, Math.max(1, deadline - Date.now())));
-    } catch (error) {
-      if (lastPages.length) return { pages: lastPages, logoUrl: resolveLogoUrl(lastPages, websiteUrl) };
-      throw error;
+    } catch {
+      // A single slow/aborted poll must not abandon the whole crawl — CF /crawl latency is highly
+      // variable. Keep polling until the deadline; we return whatever pages we accumulated (or
+      // throw the timeout below only if we never got any).
+      await sleep(Math.min(CF_CRAWL_POLL_INTERVAL_MS, Math.max(1, deadline - Date.now())));
+      continue;
     }
     const { status, total, records } = parseRecords(pollBody);
     if (status === 'failed' || status === 'canceled') throw new Error(`cloudflare_crawl_${status}`);
