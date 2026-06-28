@@ -2158,7 +2158,7 @@ export function DemoExperience({
       .join(' / ');
 
     return (
-      <div className="vd-form-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, boxShadow: 'none', padding: '10px 0 0' }}>
+      <div className="vd-form-card" style={{ background: 'var(--surface-1, #fff)', border: '0.5px solid var(--border, #E8ECF1)', borderRadius: 16, padding: '24px 28px' }}>
         <div className="vd-found-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, padding: '0 0 14px' }}>
           <div
             className="vd-found-head"
