@@ -576,7 +576,7 @@ export function DemoExperience({
 }: DemoExperienceProps) {
   const config = DEMO_VERTICALS[vertical];
   const isPreparedDemo = mode === 'prepared';
-  const ctaLabel = isPreparedDemo ? 'Hear your AI now' : 'Start Demo Call';
+  const ctaLabel = isPreparedDemo ? 'Try it now' : 'Start Demo Call';
   const turnstileWrapperStyle = isPreparedDemo ? hiddenTurnstileStyle : visibleTurnstileStyle;
   const otherDemoVerticals = useMemo((): DemoVerticalConfig[] => [], []);
   const resolvedDemoPhoneE164 = useMemo(() => normalizeDemoPhoneE164(demoPhoneE164), [demoPhoneE164]);
@@ -670,7 +670,7 @@ export function DemoExperience({
   const pageTitle = isPreparedDemo
     ? isVerySmallDemo
       ? `${demoDisplayName}'s AI Receptionist`
-      : `Hear ${demoDisplayName}'s AI Receptionist`
+      : `Try ${demoDisplayName}'s AI Receptionist`
     : config.title;
   const pageSubtitle = isPreparedDemo
     ? preparedDemoCity
@@ -2360,9 +2360,13 @@ export function DemoExperience({
                               <span style={{ color: '#111827' }}>{business.address || business.city || extractedData.address || extractedData.city}</span>
                             </div>
                           ) : null}
-                          <div style={{ display: 'flex', gap: 8, marginBottom: currentServiceCategorySummary.length > 0 ? 7 : 0, fontSize: 12 }}>
+                          <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
                             <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Hours</span>
                             <span style={{ color: '#111827' }}>{business.primaryHours || extractedData.hours || '—'}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginBottom: currentServiceCategorySummary.length > 0 ? 7 : 0, fontSize: 12 }}>
+                            <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Stylists</span>
+                            <span style={{ color: '#111827' }}>{business.staff || '—'}</span>
                           </div>
                           {currentServiceCategorySummary.length > 0 ? (
                             <div style={{ display: 'flex', gap: 8, fontSize: 12, alignItems: 'flex-start' }}>
@@ -2422,64 +2426,64 @@ export function DemoExperience({
                               />
                             </div>
                           </div>
+                          <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14, marginTop: 14 }}>
+                            <div className="vd-svc-label" style={{ marginBottom: 8 }}>Services</div>
+                            <div style={{ display: 'flex', overflowX: 'auto', gap: 6, paddingBottom: 8, scrollbarWidth: 'none' }}>
+                              {business.services.map((cat) => (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => setSelectedCategory(cat.id)}
+                                  style={{
+                                    flexShrink: 0,
+                                    border: selectedCategory === cat.id ? 'none' : '0.5px solid #E5E7EB',
+                                    borderRadius: 20,
+                                    padding: '5px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    background: selectedCategory === cat.id ? '#1a1a1a' : '#F9FAFB',
+                                    color: selectedCategory === cat.id ? '#fff' : '#6B7280',
+                                  }}
+                                >
+                                  {cat.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ border: '0.5px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
+                              {activeCategory?.items.map((item, idx) => (
+                                <div
+                                  key={`${activeCategory.id}-${item.name}`}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '9px 10px',
+                                    background: '#F9FAFB',
+                                    borderTop: idx === 0 ? 'none' : '0.5px solid #E5E7EB',
+                                  }}
+                                >
+                                  <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} style={{ flexShrink: 0, accentColor: 'var(--va)' }} />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, color: item.enabled ? '#1F2937' : '#9CA3AF', textDecoration: item.enabled ? 'none' : 'line-through' }}>{item.name}</div>
+                                    {item.duration ? <div style={{ fontSize: 11, color: '#9CA3AF' }}>{item.duration}</div> : null}
+                                  </div>
+                                  <input
+                                    className="vd-svc-price"
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={item.price}
+                                    onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
+                                    style={{ width: 48, fontSize: 12, textAlign: 'center', opacity: item.enabled ? 1 : 0.4 }}
+                                  />
+                                  <span aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', pointerEvents: 'none', userSelect: 'none' }}>›</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
-                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14, marginTop: 14 }}>
-                        <div className="vd-svc-label" style={{ marginBottom: 8 }}>{config.serviceLabel}</div>
-                        <div style={{ display: 'flex', overflowX: 'auto', gap: 6, paddingBottom: 8, scrollbarWidth: 'none' }}>
-                          {business.services.map((cat) => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => setSelectedCategory(cat.id)}
-                              style={{
-                                flexShrink: 0,
-                                border: selectedCategory === cat.id ? 'none' : '0.5px solid #E5E7EB',
-                                borderRadius: 20,
-                                padding: '5px 12px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                background: selectedCategory === cat.id ? '#1a1a1a' : '#F9FAFB',
-                                color: selectedCategory === cat.id ? '#fff' : '#6B7280',
-                              }}
-                            >
-                              {cat.label}
-                            </button>
-                          ))}
-                        </div>
-                        <div style={{ border: '0.5px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
-                          {activeCategory?.items.map((item, idx) => (
-                            <div
-                              key={`${activeCategory.id}-${item.name}`}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                padding: '9px 10px',
-                                background: '#F9FAFB',
-                                borderTop: idx === 0 ? 'none' : '0.5px solid #E5E7EB',
-                              }}
-                            >
-                              <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} style={{ flexShrink: 0, accentColor: 'var(--va)' }} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, color: item.enabled ? '#1F2937' : '#9CA3AF', textDecoration: item.enabled ? 'none' : 'line-through' }}>{item.name}</div>
-                                {item.duration ? <div style={{ fontSize: 11, color: '#9CA3AF' }}>{item.duration}</div> : null}
-                              </div>
-                              <input
-                                className="vd-svc-price"
-                                type="number"
-                                inputMode="numeric"
-                                min={0}
-                                value={item.price}
-                                onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
-                                style={{ width: 48, fontSize: 12, textAlign: 'center', opacity: item.enabled ? 1 : 0.4 }}
-                              />
-                              <span aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', pointerEvents: 'none', userSelect: 'none' }}>›</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                       <div style={{ borderTop: '1px solid #E5E7EB', padding: '12px 0 0', marginTop: 14 }}>
                         <p style={{ margin: 0, fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>You&apos;ll review everything during onboarding before going live.</p>
                       </div>
@@ -2755,7 +2759,7 @@ export function DemoExperience({
                 ) : sitePhase === 'ready' && extractedData ? (
                   <div className="vd-form-card">
                     {importedDetailsEdit ? (
-                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, marginBottom: 14 }}>
+                      <div style={{ paddingTop: 16, marginBottom: 14 }}>
                         <div className="vd-found-head" style={{ marginBottom: 14 }}>Edit imported details</div>
                         <div className="vd-field" style={{ marginBottom: 10 }}>
                           <label htmlFor="vd-imported-biz">Business name</label>
