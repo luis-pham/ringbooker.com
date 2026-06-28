@@ -13,6 +13,7 @@ const SERVICE_CATEGORY_WORDS = /\b(hair|haircut|haircuts|cut|cuts|style|styling|
 const COMPACT_SERVICE_CATEGORY_SLUG_RE = /(?:haircut|haircuts|cut|cuts|style|styling|blowout|blowdry|color|colour|balayage|highlight|highlights|texture|extension|extensions|extention|extentions|keratin|perm|wax|waxing|lash|lashes|brow|brows|facial|facials|massage|spa|nail|nails|manicure|pedicure|botox|filler|injectable|injectables|laser|skin|scalp|conditioning|treatment|treatments)/i;
 const MENU_INTENT_WORDS = /\b(menu|menus|service|services|pricing|prices|price|treatment|treatments|therapy)\b/i;
 const ARTICLE_PATH = /\/(?:f|blog|blogs|news|article|articles|post|posts|stories?|s\/stories)\//i;
+const DATED_ARTICLE_PATH = /\/(?:19|20)\d{2}\/\d{1,2}\/\d{1,2}\//;
 const SERVICE_AREA_PATH = /\/(?:contact-us\/)?service-areas?\/?$|\/areas-of-service\//i;
 const TAXONOMY_ARCHIVE_PATH = /\/(?:service[_-]?type|service[_-]?categor(?:y|ies)|product[_-]?categor(?:y|ies)|portfolio[_-]?categor(?:y|ies)|tag|category)\//i;
 
@@ -71,7 +72,7 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
   const staffContext = STAFF_WORDS.test(haystack) || /\/(?:our-)?team|\/staff|\/stylists?/.test(haystack);
   const primaryPageSignal = `${pathSignal} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`.toLowerCase();
   const ecommerceIntent = ECOMMERCE_WORDS.test(haystack) || /\/(?:shop|store|products?|collections?|cart|checkout)(?:\/|$)/i.test(pathSignal) || /[?&](?:itemid|variantid|productid|sku)=/i.test(candidate.url);
-  const articleIntent = ARTICLE_PATH.test(pathSignal) || TAXONOMY_ARCHIVE_PATH.test(pathSignal) || /\/(?:tag|category|author)(?:\/|$)/i.test(pathSignal);
+  const articleIntent = ARTICLE_PATH.test(pathSignal) || DATED_ARTICLE_PATH.test(pathSignal) || TAXONOMY_ARCHIVE_PATH.test(pathSignal) || /\/(?:tag|category|author)(?:\/|$)/i.test(pathSignal);
   const serviceAreaIntent = SERVICE_AREA_PATH.test(pathSignal);
   const policyPageIntent = /\/(?:salon-)?polic(?:y|ies)\/?$|\/terms(?:\/|$)|\/faq\/?$/i.test(pathSignal);
   const exactStaffPath = /\/(?:staff|team|our-team|artists?|stylists?)\/?$/i.test(pathSignal);

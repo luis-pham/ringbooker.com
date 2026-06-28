@@ -69,7 +69,8 @@ test('when the LLM returns a strong catalog, garbled static matrix-table service
     staticFacts: baseStaticFacts({
       services: [
         svc('Hair Cut Cash Price Credit Price Bang Cut', { sourceHint: 'service_matrix_table', categoryName: 'Hair Cut' }),
-        svc('Clean Repeated Card Service', { sourceHint: 'repeated_card' }),
+        svc('Clean Price Table Service', { sourceHint: 'simple_price_table' }),
+        svc('Noisy Repeated Card Service', { sourceHint: 'repeated_card' }),
       ],
     }),
     llm: {
@@ -82,7 +83,8 @@ test('when the LLM returns a strong catalog, garbled static matrix-table service
   const names = result.serviceCatalog.services.map((service) => service.name);
   assert.ok(!names.some((name) => /cash price credit price/i.test(name)), 'garbled matrix-table name should be dropped');
   assert.ok(names.includes('Bang Cut'), 'clean LLM service should be present');
-  assert.ok(names.includes('Clean Repeated Card Service'), 'clean static (non-matrix) service should be kept');
+  assert.ok(names.includes('Clean Price Table Service'), 'clean static price-table service should be kept');
+  assert.ok(!names.includes('Noisy Repeated Card Service'), 'repeated card hints should be dropped when LLM catalog is authoritative');
 });
 
 test('a confident small LLM catalog still beats noisy static service extraction', () => {
@@ -90,7 +92,8 @@ test('a confident small LLM catalog still beats noisy static service extraction'
     staticFacts: baseStaticFacts({
       services: [
         svc('Hair Cut Cash Price Credit Price Bang Cut', { sourceHint: 'service_matrix_table', categoryName: 'Hair Cut' }),
-        svc('Clean Repeated Card Service', { sourceHint: 'repeated_card' }),
+        svc('Clean Price Table Service', { sourceHint: 'simple_price_table' }),
+        svc('Noisy Repeated Card Service', { sourceHint: 'repeated_card' }),
       ],
     }),
     llm: {
@@ -101,7 +104,7 @@ test('a confident small LLM catalog still beats noisy static service extraction'
     } as LlmImportExtraction,
   });
   const names = result.serviceCatalog.services.map((service) => service.name);
-  assert.deepEqual(names, ['Adult Hair Cut', 'Clean Repeated Card Service']);
+  assert.deepEqual(names, ['Adult Hair Cut', 'Clean Price Table Service']);
 });
 
 test('LLM service names merge with static prices across category drift and drop promo prices', () => {

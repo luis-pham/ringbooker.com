@@ -530,6 +530,55 @@ test('extracts Avalon-style rendered text matrix without creating intro or durat
   assert.equal(suggestions.serviceCatalog.services.some((service) => /\b30 min\s*60 min\s*90 min/i.test(service.name)), false);
 });
 
+test('extracts markdown price tables as individual services and duration variants', () => {
+  const preview = {
+    url: 'https://matrix-menu.test/services/cut',
+    title: 'Cut',
+    h1: 'Cut',
+    h2s: [],
+    firstTextChars: 'Cut services',
+    markdown: [
+      '# Cut',
+      '| Women | $55+ |',
+      '| --- | --- |',
+      '| Men | $50+ |',
+      '| Shampoo / Blow Dry / Style | $50+ |',
+      '# Color',
+      '#### Coloring',
+      '| New Growth Root Retouch Single Process | $60+ |',
+      '| --- | --- |',
+      '| Color Balance | $10+ |',
+      '| Creative Color Blonde, Red, Brunette | |',
+      '| Please call or book online to schedule a complimentary consultation prior to appointment | |',
+      '# Add-on Treatments',
+      '| Brazilian Blowout | $250+ |',
+      '# Massage',
+      '| | 30 min | 60 min | 90 min |',
+      '| Relaxing | $65+ | $95+ | $140+ |',
+    ].join('\n'),
+    links: [],
+    jsonLd: [],
+    priceCount: 6,
+    durationCount: 0,
+    serviceKeywordCount: 12,
+    internalServiceLikeLinkCount: 0,
+    contentScore: 80,
+    serviceBlocks: [],
+  };
+  const suggestions = buildSuggestions({ sourceUrl: 'https://avalon.test', sourceType: 'normal_website', previews: [preview] });
+  const byName = new Map(suggestions.serviceCatalog.services.map((service) => [service.name, service]));
+  assert.equal(byName.get('Women')?.categoryName, 'Haircuts');
+  assert.equal(byName.get('Women')?.priceAmount, 55);
+  assert.equal(byName.get('Men')?.categoryName, 'Haircuts');
+  assert.equal(byName.get('Shampoo / Blow Dry / Style')?.priceAmount, 50);
+  assert.equal(byName.get('New Growth Root Retouch Single Process')?.categoryName, 'Hair Color');
+  assert.equal(byName.get('Color Balance')?.name, 'Color Balance');
+  assert.equal(byName.get('Brazilian Blowout')?.categoryName, 'Treatments');
+  assert.equal(byName.get('Relaxing Massage')?.variants?.[0]?.durationText, '30 min');
+  assert.equal(byName.get('Relaxing Massage')?.variants?.[2]?.priceAmount, 140);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Please call/i.test(service.name)), false);
+});
+
 test('extracts Elementor service-item cards with group, clean names, and prices', () => {
   const preview = previewHtml(`
     <html><body>

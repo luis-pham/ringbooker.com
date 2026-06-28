@@ -134,6 +134,7 @@ function toImportField(value: { value: string | null; confidence: number } | und
 function isInvalidServiceName(value: string): boolean {
   const name = value.trim();
   return !name
+    || /^NEW\s+/.test(name)
     || /^(?:\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|book online|schedule|reserve|appointment|consultation required)$/i.test(name)
     || /\$/.test(name)
     || (!name.includes('•') && /\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name))
@@ -532,6 +533,7 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       "NEVER collapse a price table into one generic service. If a page lists rows like 'Women $55 / Men $50 / Shampoo Blow Dry $50', output THREE separate services, not one 'Haircut'; if a waxing page lists 'Lip $12 / Brazilian $70 / Half Leg $55', output every one of those rows. A page with a 12-row menu must yield ~12 services. Only fold rows together when they are the SAME service offered at different durations/tiers (then use variants).",
       'Reconstruct a clean service name from the markdown row: a raw row often concatenates a section heading, column-header labels, a markdown link, or a description with the item. Output only the menu-item name; reject non-services (policy/FAQ/contact/marketing/CTA) with rejectReason.',
       'Markdown headings and list items can be service rows. If a heading/list item is "#### Blow-Dry Style $50+" or "Balayage - from $180", output name "Blow-Dry Style"/"Balayage", priceAmount 50/180, priceType "from" when "+" or "from/starting at/starts at" is shown, and remove the price text from the name.',
+      'Markdown tables may be imperfect: every row like "| Women | $55+ |" or "| Keratin Smoothing Treatment | $250+ |" is a service row even if there is no header row or the first data row was used as a header. Treat all service-like rows with price cells as services.',
       'Reject policy, FAQ, contact, marketing, duration-only, price-only, or CTA-only blocks. Do not turn descriptions into service names.',
       'Ignore referral, gift-card, career, event, shop/cart, and booking CTA copy as serviceCatalog input even if those pages contain dollar amounts.',
       'For services, return serviceCatalog.categories as service groups and give every service a categoryName matching one group. If you see groupName, map it to categoryName.',

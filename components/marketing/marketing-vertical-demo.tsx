@@ -9,7 +9,7 @@ import { Room, RoomEvent, Track } from 'livekit-client';
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
-import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalConfig, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
+import { DEMO_VERTICALS, type DemoServiceCategory, type DemoServiceVariant, type DemoVerticalConfig, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
 import { assistantTranscriptEndsDemo } from '@/lib/marketing/demo-end-call';
@@ -59,8 +59,24 @@ type DemoImportSuggestions = {
       durationMinutes?: number | null;
       confidence?: number;
       needsReview?: boolean;
+      variants?: Array<{
+        label: string;
+        durationMinutes?: number | null;
+        durationText?: string | null;
+        priceAmount?: number | null;
+        priceType?: 'fixed' | 'from' | 'varies' | 'consultation';
+        notes?: string | null;
+      }>;
     }>;
   };
+};
+
+type PreparedDemoServiceDetail = {
+  category?: string | null;
+  name: string;
+  price?: number | null;
+  duration?: string | null;
+  variants?: DemoServiceVariant[];
 };
 
 /** SMS preview text driven by real extracted call data; never references a hardcoded sample booking. */
@@ -197,6 +213,38 @@ function filterDemoServices(services: Array<{ name: string; confidence?: number;
   return out;
 }
 
+function normalizeDemoServiceVariants(
+  variants: Array<{
+    label?: string | null;
+    durationMinutes?: number | null;
+    durationText?: string | null;
+    priceAmount?: number | null;
+    price?: number | null;
+    duration?: string | null;
+    priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
+    notes?: string | null;
+  }> | undefined,
+): DemoServiceVariant[] {
+  return (variants ?? [])
+    .slice(0, 20)
+    .map((variant, index) => {
+      const duration = (variant.durationText ?? variant.duration ?? '').trim() || (variant.durationMinutes ? `${variant.durationMinutes} min` : null);
+      const price = typeof variant.priceAmount === 'number'
+        ? variant.priceAmount
+        : typeof variant.price === 'number'
+          ? variant.price
+          : null;
+      return {
+        label: (variant.label ?? '').trim() || duration || (price !== null ? `$${price}` : `Option ${index + 1}`),
+        price,
+        duration,
+        priceType: variant.priceType ?? null,
+        notes: variant.notes ?? null,
+      };
+    })
+    .filter((variant) => variant.label || variant.duration || variant.price !== null);
+}
+
 /**
  * Groups the flat imported service list into the demo's category/item shape so the
  * voice agent answers with the salon's REAL services (and prices/durations) instead
@@ -211,6 +259,14 @@ function buildDemoServiceCategoriesFromImport(
     durationMinutes?: number | null;
     confidence?: number;
     needsReview?: boolean;
+    variants?: Array<{
+      label: string;
+      durationMinutes?: number | null;
+      durationText?: string | null;
+      priceAmount?: number | null;
+      priceType?: 'fixed' | 'from' | 'varies' | 'consultation';
+      notes?: string | null;
+    }>;
   }>,
 ): DemoServiceCategory[] {
   const byCategory = new Map<string, DemoServiceCategory>();
@@ -231,15 +287,57 @@ function buildDemoServiceCategoriesFromImport(
     const duration =
       (sv.durationText ?? '').trim() ||
       (typeof sv.durationMinutes === 'number' && sv.durationMinutes > 0 ? `${sv.durationMinutes} min` : undefined);
+    const variants = normalizeDemoServiceVariants(sv.variants);
+    const firstVariantPrice = variants.find((variant) => typeof variant.price === 'number' && variant.price > 0)?.price;
+    const firstVariantDuration = variants.find((variant) => variant.duration)?.duration;
     category.items.push({
       name,
-      price: typeof sv.priceAmount === 'number' && sv.priceAmount > 0 ? sv.priceAmount : 0,
-      duration,
+      price: typeof sv.priceAmount === 'number' && sv.priceAmount > 0 ? sv.priceAmount : firstVariantPrice ?? 0,
+      duration: duration || firstVariantDuration || undefined,
       enabled: true,
+      variants,
     });
     total += 1;
   }
   return [...byCategory.values()].filter((c) => c.items.length > 0);
+}
+
+function buildDemoServiceCategoriesFromPrepared(services: PreparedDemoServiceDetail[] | undefined): DemoServiceCategory[] {
+  const byCategory = new Map<string, DemoServiceCategory>();
+  let total = 0;
+  for (const sv of services ?? []) {
+    if (total >= 40) break;
+    const name = isUsableDemoServiceName(sv.name);
+    if (!name) continue;
+    const label = (sv.category ?? '').trim() || 'Services';
+    const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'services';
+    let category = byCategory.get(id);
+    if (!category) {
+      category = { id, label, items: [] };
+      byCategory.set(id, category);
+    }
+    if (category.items.some((it) => it.name.toLowerCase() === name.toLowerCase())) continue;
+    const variants = normalizeDemoServiceVariants(sv.variants);
+    const firstVariantPrice = variants.find((variant) => typeof variant.price === 'number' && variant.price > 0)?.price;
+    const firstVariantDuration = variants.find((variant) => variant.duration)?.duration;
+    category.items.push({
+      name,
+      price: typeof sv.price === 'number' && sv.price > 0 ? sv.price : firstVariantPrice ?? 0,
+      duration: (sv.duration ?? '').trim() || firstVariantDuration || undefined,
+      enabled: true,
+      variants,
+    });
+    total += 1;
+  }
+  return [...byCategory.values()].filter((c) => c.items.length > 0);
+}
+
+function formatDemoServiceVariantPrice(variant: DemoServiceVariant): string {
+  if (variant.priceType === 'consultation') return 'Consultation';
+  if (variant.priceType === 'varies' && typeof variant.price !== 'number') return 'Varies';
+  if (typeof variant.price !== 'number') return '';
+  const amount = Number.isInteger(variant.price) ? `${variant.price}` : variant.price.toFixed(2);
+  return `${variant.priceType === 'from' ? 'from ' : ''}$${amount}`;
 }
 
 /** Mobile (≤768px) import checklist — labels differ from onboarding IMPORT_PROGRESS_STEPS on purpose. */
@@ -481,9 +579,10 @@ const siteReadStyles: string = String.raw`.vd-url-section{margin-bottom:14px}.vd
 /** Mobile-only (≤768px). Desktop uses existing rules from `styles` / `siteReadStyles`. */
 const verticalDemoMobileStyles = String.raw`@media (max-width:768px){.vd-page-header{align-items:flex-start}.vd-page-header .vd-hero-eyebrow{display:none}.vd-hero-h1{text-align:left;margin-left:0;margin-right:0;max-width:100%}.vd-hero-sub{text-align:left;margin-left:0;margin-right:0;max-width:100%}.vd-m-card{border:2px solid var(--va);border-radius:20px;background:#fff;padding:18px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.04)}.vd-m-card-title{margin:0 0 6px;font-size:15px;font-weight:900;color:#111827;letter-spacing:-.02em}.vd-m-card-sub{margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.5}.vd-m-url-row{display:flex;flex-direction:column;gap:10px}.vd-m-url-row .vd-url-btn{width:100%;padding:14px 16px;font-size:15px;text-align:center}.vd-m-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#9CA3AF;font-size:12px;font-weight:500}.vd-m-divider::before,.vd-m-divider::after{content:'';flex:1;height:1px;background:#E5E7EB}.vd-m-acc{border:0;background:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#6B7280;padding:10px 0;width:100%;text-align:left}.vd-m-acc-chev{font-size:10px;transition:transform .2s;display:inline-block}.vd-m-acc-chev.open{transform:rotate(180deg)}.vd-m-acc-body{border:1px solid #E5E7EB;border-radius:16px;background:#F9FAFB;padding:14px;display:flex;flex-direction:column;gap:12px;margin-bottom:12px}.vd-m-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.vd-m-load-subtitle{margin:0 0 14px;font-size:14px;line-height:1.5;color:#475569;text-align:center}.vd-m-spin{border:3px solid color-mix(in srgb,var(--va) 22%,#E5E7EB);border-top-color:var(--va);border-radius:999px;width:32px;height:32px;animation:vdSpin .75s linear infinite;margin:0 auto 14px}.vd-m-prog{height:6px;border-radius:999px;background:#E5E7EB;overflow:hidden;margin:14px 0 16px}.vd-m-prog-fill{height:100%;border-radius:999px;background:var(--va);width:0;transition:width .45s ease}.vd-m-rows{display:flex;flex-direction:column;gap:10px;text-align:left}.vd-m-row{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:#9CA3AF}.vd-m-row.done{color:#10B981}.vd-m-row.active{color:#111827}.vd-m-ico{width:22px;height:22px;border-radius:999px;border:2px solid #E5E7EB;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}.vd-m-row.done .vd-m-ico{background:#10B981;border-color:#10B981;color:#fff}.vd-m-row.active .vd-m-ico{border-color:var(--va)}.vd-m-row-spin{width:10px;height:10px;border:2px solid #D1D5DB;border-top-color:var(--va);border-radius:999px;animation:vdSpin .75s linear infinite}.vd-m-pill{font-size:12px;color:#6B7280;line-height:1.45;text-align:center;background:#F3F4F6;border-radius:12px;padding:10px 12px;margin-top:10px}.vd-m-escape{background:none;border:none;cursor:pointer;font-size:12px;font-weight:500;color:#9CA3AF;padding:0;margin-top:10px;display:block;width:100%;text-align:center;text-decoration:underline;text-underline-offset:2px}.vd-m-escape:hover{color:#6B7280}.vd-m-badge{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin:0 auto 12px;width:fit-content}.vd-m-badge-dot{width:8px;height:8px;border-radius:50%}.vd-m-badge--ready{border:1px solid #A7F3D0;background:#ECFDF5;color:#047857}.vd-m-badge--ready .vd-m-badge-dot{background:#10B981}.vd-m-badge--amber{border:1px solid #FDE68A;background:#FFFBEB;color:#92400E}.vd-m-badge--amber .vd-m-badge-dot{background:#F59E0B}.vd-m-badge--grey{border:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280}.vd-m-badge--grey .vd-m-badge-dot{background:#9CA3AF}.vd-m-found-info{font-size:12px;color:#64748B;line-height:1.5;margin:12px 0 0;padding:10px 12px;background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0}.vd-m-found-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px}.vd-m-found-row:last-child{margin-bottom:0}.vd-m-found-ic{font-size:16px;line-height:1;width:24px;text-align:center;flex-shrink:0}.vd-m-found-k{font-weight:600;color:#64748B;min-width:72px;flex-shrink:0}.vd-m-found-v{color:#111827;font-weight:600;flex:1;min-width:0}.vd-m-link{background:none;border:none;cursor:pointer;padding:0;margin-top:8px;font-size:13px;font-weight:500;color:var(--va);text-decoration:underline;text-underline-offset:2px;text-align:left}.vd-m-sms-card{border-radius:16px;background:#F1F5F9;padding:14px;margin:14px 0;font-size:14px;line-height:1.55;color:#334155}.vd-m-cap{background:#F8FAFC;border-radius:16px;padding:14px;margin-bottom:14px}.vd-m-cap-label{font-size:10px;font-weight:900;letter-spacing:.1em;color:#64748B;margin-bottom:10px}.vd-m-cap-row{display:flex;gap:10px;font-size:13px;margin-bottom:8px;align-items:flex-start}.vd-m-cap-row:last-child{margin-bottom:0}.vd-m-banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#EFF6FF;border:1px solid #BFDBFE;font-size:13px;color:#1E40AF;line-height:1.5;margin-bottom:14px}.vd-m-trust-line{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 18px;font-size:12px;font-weight:600;color:#64748B;margin:12px 0 8px}.vd-m-pay-pill{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600;color:#475569;background:#F3F4F6;border-radius:999px;padding:10px 14px;margin:0 auto 12px;max-width:420px;text-align:center}.vd-m-try{font-size:13px;color:#9CA3AF;text-decoration:underline;text-underline-offset:3px;background:none;border:none;cursor:pointer;padding:0;margin:10px auto 0;display:block;text-align:center;font-weight:500}.vd-m-try:hover{color:#64748B}.vd-m-live-tweak .vd-status-pill.completed{background:#F3F4F6;border-color:#E5E7EB;color:#6B7280}.vd-m-live-tweak .vd-status-pill.completed .vd-status-dot{background:#9CA3AF;animation:none}.vd-m-live-tweak .vd-status-body{color:#6B7280}.vd-field input,.vd-field textarea,.vd-url-input{font-size:16px !important}}`;
 const verticalDemoUiTweaks = String.raw`@media (max-width:768px){.vd-page-header{align-items:center}.vd-hero-h1,.vd-hero-sub{text-align:center;margin-left:auto;margin-right:auto}.vd-m-card{border:1px solid #e5e7eb}}`;
+const serviceVariantStyles = String.raw`.vd-svc-chevron{width:28px;height:28px;border:1px solid #E5E7EB;border-radius:999px;background:#fff;color:#6B7280;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer;transition:transform .16s,border-color .16s,color .16s,background .16s;-webkit-appearance:none}.vd-svc-chevron:hover{border-color:var(--va);color:var(--va);background:color-mix(in srgb,var(--va) 5%,#fff)}.vd-svc-chevron.open{transform:rotate(180deg);border-color:color-mix(in srgb,var(--va) 35%,#E5E7EB);color:var(--va)}.vd-svc-chevron-placeholder{width:28px;height:28px;display:inline-block}.vd-svc-variant-panel{border:1px solid #E5E7EB;border-radius:13px;background:#F9FAFB;padding:8px 10px;margin:-3px 0 4px 26px}.vd-svc-variant-panel.mobile{margin:0;border-top:none;border-radius:0 0 12px 12px;background:#fff}.vd-svc-variant{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid #EEF2F7;font-size:12px}.vd-svc-variant:first-child{border-top:none}.vd-svc-variant-main{min-width:0}.vd-svc-variant-label{font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vd-svc-variant-meta{color:#9CA3AF;margin-top:1px}.vd-svc-variant-price{font-weight:700;color:#111827;font-variant-numeric:tabular-nums;white-space:nowrap}`;
 
 function cloneServices(services: DemoServiceCategory[]): DemoServiceCategory[] {
-  return services.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i })) }));
+  return services.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i, variants: i.variants?.map((variant) => ({ ...variant })) })) }));
 }
 function ensureSessionId(): string {
   if (typeof window === 'undefined') return 'demo_session_server';
@@ -546,6 +645,7 @@ type DemoExperienceProps = {
   initialCity?: string | null;
   initialLogoUrl?: string | null;
   initialServices?: string[];
+  initialServiceDetails?: PreparedDemoServiceDetail[];
   initialStaffNames?: string[];
   initialPrimaryHours?: string | null;
   initialSecondaryHours?: string | null;
@@ -571,6 +671,7 @@ export function DemoExperience({
   initialCity,
   initialLogoUrl,
   initialServices,
+  initialServiceDetails,
   initialStaffNames,
   initialPrimaryHours,
   initialSecondaryHours,
@@ -583,6 +684,21 @@ export function DemoExperience({
   const resolvedDemoPhoneE164 = useMemo(() => normalizeDemoPhoneE164(demoPhoneE164), [demoPhoneE164]);
   const verticalDemoPhoneTel = useMemo(() => `tel:${resolvedDemoPhoneE164}`, [resolvedDemoPhoneE164]);
   const verticalDemoPhoneDisplay = useMemo(() => formatE164ForDisplay(resolvedDemoPhoneE164), [resolvedDemoPhoneE164]);
+  const initialPreparedServiceCategories: DemoServiceCategory[] = buildDemoServiceCategoriesFromPrepared(initialServiceDetails);
+  const initialLegacyServiceCategories: DemoServiceCategory[] =
+    initialServices && initialServices.length > 0
+      ? [{
+          id: 'services',
+          label: 'Services',
+          items: initialServices.slice(0, 40).map((name) => ({ name, price: 0, enabled: true })),
+        }]
+      : [];
+  const initialDemoServiceCategories: DemoServiceCategory[] =
+    initialPreparedServiceCategories.length > 0
+      ? initialPreparedServiceCategories
+      : initialLegacyServiceCategories.length > 0
+        ? initialLegacyServiceCategories
+        : config.serviceCategories;
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: initialBusinessName?.trim() || config.defaultBusinessName,
@@ -592,17 +708,11 @@ export function DemoExperience({
     secondaryHours: initialSecondaryHours?.trim() || config.hours.secondary,
     staff: initialStaffNames && initialStaffNames.length > 0 ? initialStaffNames.join(', ') : config.staffPlaceholder,
     notes: '',
-    services:
-      initialServices && initialServices.length > 0
-        ? [{
-            id: 'services',
-            label: 'Services',
-            items: initialServices.slice(0, 40).map((name) => ({ name, price: 0, enabled: true })),
-          }]
-        : cloneServices(config.serviceCategories),
+    services: cloneServices(initialDemoServiceCategories),
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(config.serviceCategories[0]?.id ?? '');
+  const [selectedCategory, setSelectedCategory] = useState(initialDemoServiceCategories[0]?.id ?? config.serviceCategories[0]?.id ?? '');
+  const [expandedServiceRows, setExpandedServiceRows] = useState<Record<string, boolean>>({});
   const [stage, setStage] = useState<DemoStage>('idle');
   const [statusText, setStatusText] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
@@ -798,6 +908,51 @@ export function DemoExperience({
         c.id === catId ? { ...c, items: c.items.map((item, i) => (i === idx ? { ...item, ...patch } : item)) } : c,
       ),
     }));
+  }
+
+  function serviceRowKey(catId: string, itemName: string, idx: number) {
+    return `${catId}:${idx}:${itemName.toLowerCase()}`;
+  }
+
+  function renderServiceVariantChevron(catId: string, item: DemoServiceCategory['items'][number], idx: number) {
+    const rowKey = serviceRowKey(catId, item.name, idx);
+    const hasVariants = (item.variants?.length ?? 0) > 0;
+    if (!hasVariants) return <span className="vd-svc-chevron-placeholder" aria-hidden="true" />;
+    const expanded = Boolean(expandedServiceRows[rowKey]);
+    return (
+      <button
+        type="button"
+        className={`vd-svc-chevron${expanded ? ' open' : ''}`}
+        aria-label={`${expanded ? 'Hide' : 'Show'} variants for ${item.name}`}
+        aria-expanded={expanded}
+        onClick={() => setExpandedServiceRows((cur) => ({ ...cur, [rowKey]: !cur[rowKey] }))}
+      >
+        ▾
+      </button>
+    );
+  }
+
+  function renderServiceVariantPanel(catId: string, item: DemoServiceCategory['items'][number], idx: number, mobile = false) {
+    const rowKey = serviceRowKey(catId, item.name, idx);
+    const variants = item.variants ?? [];
+    if (!variants.length || !expandedServiceRows[rowKey]) return null;
+    return (
+      <div className={`vd-svc-variant-panel${mobile ? ' mobile' : ''}`}>
+        {variants.map((variant, variantIdx) => {
+          const price = formatDemoServiceVariantPrice(variant);
+          const meta = [variant.duration, variant.notes].map((value) => value?.trim()).filter(Boolean).join(' · ');
+          return (
+            <div className="vd-svc-variant" key={`${rowKey}-variant-${variantIdx}-${variant.label}`}>
+              <div className="vd-svc-variant-main">
+                <div className="vd-svc-variant-label">{variant.label}</div>
+                {meta ? <div className="vd-svc-variant-meta">{meta}</div> : null}
+              </div>
+              {price ? <div className="vd-svc-variant-price">{price}</div> : null}
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   function validate(): string[] {
@@ -1131,7 +1286,20 @@ export function DemoExperience({
         staffNames: splitStaff(business.staff),
         useDefaultFallbacks: sitePhase !== 'ready',
         services: business.services.flatMap((c) =>
-          c.items.map((item) => ({ category: c.label, name: item.name, price: item.price, duration: item.duration, enabled: item.enabled })),
+          c.items.map((item) => ({
+            category: c.label,
+            name: item.name,
+            price: item.price,
+            duration: item.duration,
+            enabled: item.enabled,
+            variants: item.variants?.map((variant) => ({
+              label: variant.label,
+              price: variant.price ?? null,
+              duration: variant.duration ?? null,
+              priceType: variant.priceType ?? null,
+              notes: variant.notes ?? null,
+            })),
+          })),
         ),
       },
       demoVertical: config.slug,
@@ -2145,7 +2313,6 @@ export function DemoExperience({
   };
 
   function PreparedDemoStartPanel() {
-    const preparedServiceCount = initialServices?.map((name) => name.trim()).filter(Boolean).length ?? 0;
     const preparedStaff = initialStaffNames?.map((name) => name.trim()).filter(Boolean).slice(0, 8) ?? [];
     const preparedHours = [business.primaryHours, business.secondaryHours]
       .map((value) => value.trim())
@@ -2171,10 +2338,17 @@ export function DemoExperience({
               <span className="vd-found-val">{preparedHours}</span>
             </div>
           ) : null}
-          {preparedServiceCount > 0 ? (
-            <div className="vd-found-row">
+          {currentServiceCategorySummary.length > 0 ? (
+            <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
               <span className="vd-found-key">Services</span>
-              <span className="vd-found-val">{preparedServiceCount} services</span>
+              <div className="vd-found-chips">
+                {currentServiceCategorySummary.slice(0, 8).map((cat) => (
+                  <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
+                ))}
+                {currentServiceCategorySummary.length > 8 ? (
+                  <span className="vd-found-chip">+{currentServiceCategorySummary.length - 8} more</span>
+                ) : null}
+              </div>
             </div>
           ) : null}
           {preparedStaff.length > 0 ? (
@@ -2215,7 +2389,7 @@ export function DemoExperience({
   }
 
   return (
-    <MarketingLayout styles={[...styles, siteReadStyles, verticalDemoMobileStyles, verticalDemoUiTweaks]} scriptPrefix={`vertical-demo-${config.slug}`}>
+    <MarketingLayout styles={[...styles, siteReadStyles, serviceVariantStyles, verticalDemoMobileStyles, verticalDemoUiTweaks]} scriptPrefix={`vertical-demo-${config.slug}`}>
       <>
         {turnstileSiteKey ? (
           <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" onLoad={() => setTurnstileReady(true)} />
@@ -2434,35 +2608,37 @@ export function DemoExperience({
                             </div>
                             <div style={{ border: '0.5px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
                               {activeCategory?.items.map((item, idx) => (
-                                <div
-                                  key={`${activeCategory.id}-${item.name}`}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '9px 10px',
-                                    background: '#F9FAFB',
-                                    borderTop: idx === 0 ? 'none' : '0.5px solid #E5E7EB',
-                                  }}
-                                >
-                                  <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} style={{ flexShrink: 0, accentColor: 'var(--va)' }} />
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, color: item.enabled ? '#1F2937' : '#9CA3AF', textDecoration: item.enabled ? 'none' : 'line-through' }}>{item.name}</div>
-                                    {item.duration ? <div style={{ fontSize: 11, color: '#9CA3AF' }}>{item.duration}</div> : null}
+                                <div key={`${activeCategory.id}-${item.name}`}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 8,
+                                      padding: '9px 10px',
+                                      background: '#F9FAFB',
+                                      borderTop: idx === 0 ? 'none' : '0.5px solid #E5E7EB',
+                                    }}
+                                  >
+                                    <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} style={{ flexShrink: 0, accentColor: 'var(--va)' }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 13, color: item.enabled ? '#1F2937' : '#9CA3AF', textDecoration: item.enabled ? 'none' : 'line-through' }}>{item.name}</div>
+                                      {item.duration ? <div style={{ fontSize: 11, color: '#9CA3AF' }}>{item.duration}</div> : null}
+                                    </div>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1, opacity: item.enabled ? 1 : 0.4 }}>
+                                      <span style={{ fontSize: 12, color: '#6B7280' }}>$</span>
+                                      <input
+                                        className="vd-svc-price"
+                                        type="number"
+                                        inputMode="numeric"
+                                        min={0}
+                                        value={item.price}
+                                        onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
+                                        style={{ width: 44, fontSize: 12, textAlign: 'center' }}
+                                      />
+                                    </div>
+                                    {renderServiceVariantChevron(activeCategory.id, item, idx)}
                                   </div>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1, opacity: item.enabled ? 1 : 0.4 }}>
-                                    <span style={{ fontSize: 12, color: '#6B7280' }}>$</span>
-                                    <input
-                                      className="vd-svc-price"
-                                      type="number"
-                                      inputMode="numeric"
-                                      min={0}
-                                      value={item.price}
-                                      onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
-                                      style={{ width: 44, fontSize: 12, textAlign: 'center' }}
-                                    />
-                                  </div>
-                                  <span aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', pointerEvents: 'none', userSelect: 'none' }}>›</span>
+                                  {renderServiceVariantPanel(activeCategory.id, item, idx, true)}
                                 </div>
                               ))}
                             </div>
@@ -2661,16 +2837,20 @@ export function DemoExperience({
                             </div>
                             <div className="vd-svc-list">
                               {activeCategory?.items.map((item, idx) => (
-                                <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
-                                  <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
-                                  <div>
-                                    <div className="vd-svc-name">{item.name}</div>
-                                    {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                                <div key={`${activeCategory.id}-${item.name}`}>
+                                  <div className="vd-svc-row">
+                                    <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
+                                    <div className="vd-svc-info">
+                                      <div className="vd-svc-name">{item.name}</div>
+                                      {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                                    </div>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                      <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                                      <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                    </div>
+                                    {renderServiceVariantChevron(activeCategory.id, item, idx)}
                                   </div>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                    <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
-                                    <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
-                                  </div>
+                                  {renderServiceVariantPanel(activeCategory.id, item, idx)}
                                 </div>
                               ))}
                             </div>
@@ -2796,17 +2976,20 @@ export function DemoExperience({
                           </div>
                           <div className="vd-svc-list">
                             {activeCategory?.items.map((item, idx) => (
-                              <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
-                                <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
-                                <div className="vd-svc-info">
-                                  <div className="vd-svc-name">{item.name}</div>
-                                  {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                              <div key={`${activeCategory.id}-${item.name}`}>
+                                <div className="vd-svc-row">
+                                  <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
+                                  <div className="vd-svc-info">
+                                    <div className="vd-svc-name">{item.name}</div>
+                                    {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                                  </div>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                    <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                                    <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                  </div>
+                                  {renderServiceVariantChevron(activeCategory.id, item, idx)}
                                 </div>
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                  <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
-                                  <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
-                                </div>
-                                <span className="vd-svc-chevron" aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', userSelect: 'none', paddingLeft: 4 }}>›</span>
+                                {renderServiceVariantPanel(activeCategory.id, item, idx)}
                               </div>
                             ))}
                           </div>
@@ -2952,16 +3135,20 @@ export function DemoExperience({
                         </div>
                         <div className="vd-svc-list">
                           {activeCategory?.items.map((item, idx) => (
-                            <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
-                              <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
-                              <div>
-                                <div className="vd-svc-name">{item.name}</div>
-                                {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                            <div key={`${activeCategory.id}-${item.name}`}>
+                              <div className="vd-svc-row">
+                                <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
+                                <div className="vd-svc-info">
+                                  <div className="vd-svc-name">{item.name}</div>
+                                  {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                                </div>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                  <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                                  <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                </div>
+                                {renderServiceVariantChevron(activeCategory.id, item, idx)}
                               </div>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
-                                <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
-                              </div>
+                              {renderServiceVariantPanel(activeCategory.id, item, idx)}
                             </div>
                           ))}
                         </div>

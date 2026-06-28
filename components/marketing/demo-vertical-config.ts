@@ -1,5 +1,13 @@
 export type DemoVerticalSlug = 'nail-salon' | 'hair-salon' | 'day-spa' | 'med-spa' | 'beauty-clinic';
 
+export type DemoServiceVariant = {
+  label: string;
+  price?: number | null;
+  duration?: string | null;
+  priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
+  notes?: string | null;
+};
+
 export type DemoServiceCategory = {
   id: string;
   label: string;
@@ -8,6 +16,7 @@ export type DemoServiceCategory = {
     price: number;
     duration?: string;
     enabled: boolean;
+    variants?: DemoServiceVariant[];
   }>;
 };
 

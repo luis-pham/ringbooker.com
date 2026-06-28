@@ -185,12 +185,13 @@ function looksLikePromoServiceName(value: string): boolean {
 function isInvalidMergedServiceName(value: string): boolean {
   const name = value.trim();
   return !name
+    || /^NEW\s+/.test(name)
     || /^(?:\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|book online|schedule|reserve|appointment|consultation required)$/i.test(name)
     || /\$/.test(name)
     || looksLikePromoServiceName(name)
     || /\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name)
     || (name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2
-    || /^(?:you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)
+    || /^(?:you|your|our|we|at|experience|discover|looking|relax,|no wash|with or without)\b/i.test(name)
     || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(name);
 }
 function mergeServiceRecords(current: ImportedServiceSuggestion, service: ImportedServiceSuggestion, variants: NonNullable<ImportedServiceSuggestion['variants']>): ImportedServiceSuggestion {
@@ -308,7 +309,7 @@ function looksLikeProseServiceName(name: string): boolean {
   return false;
 }
 function shouldKeepStaticServiceAlongsideLlm(service: ImportedServiceSuggestion): boolean {
-  if (service.sourceHint === 'service_matrix_table' || service.sourceHint === 'service_menu_list') return false;
+  if (service.sourceHint === 'service_matrix_table' || service.sourceHint === 'service_menu_list' || service.sourceHint === 'repeated_card') return false;
   if (looksLikePromoServiceName(service.name ?? '')) return false;
   if (looksLikeProseServiceName(service.name ?? '')) return false;
   return (service.confidence ?? 0) >= 0.72
@@ -316,7 +317,6 @@ function shouldKeepStaticServiceAlongsideLlm(service: ImportedServiceSuggestion)
     || service.source === 'JSON-LD'
     || service.sourceHint === 'semantic'
     || service.sourceHint === 'heading_sibling'
-    || service.sourceHint === 'repeated_card'
     || service.sourceHint === 'simple_price_table';
 }
 export function computeCompleteness(suggestions: Omit<ImportSuggestions, 'completeness'>): WebsiteImportCompleteness {

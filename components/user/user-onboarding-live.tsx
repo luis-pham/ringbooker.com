@@ -818,8 +818,37 @@ function formatServiceVariant(variant: ServiceVariant): string {
 }
 
 function serviceNeedsAttention(service: ServiceItem): boolean {
-  if (service.variants?.length) return service.needsReview === true || service.variants.some((variant) => variant.priceAmount === null || variant.priceAmount === undefined || !((variant.durationText ?? '').trim() || variant.durationMinutes));
+  if (service.variants?.length) {
+    return service.needsReview === true || service.variants.some((variant) => {
+      const hasKnownPrice = variant.priceType === 'consultation' || variant.priceType === 'varies' || variant.priceAmount !== null && variant.priceAmount !== undefined;
+      const hasDuration = Boolean((variant.durationText ?? '').trim() || variant.durationMinutes);
+      return !hasKnownPrice || !hasDuration;
+    });
+  }
   return service.price === 0 || !serviceDurationText(service).trim() || service.needsReview === true;
+}
+
+function servicePriceNeedsAttention(service: ServiceItem): boolean {
+  return service.variants?.length ? serviceNeedsAttention(service) : service.price === 0;
+}
+
+function serviceDurationNeedsAttention(service: ServiceItem): boolean {
+  return service.variants?.length ? serviceNeedsAttention(service) : !serviceDurationText(service).trim();
+}
+
+function servicePriceWarningTitle(service: ServiceItem): string | undefined {
+  if (!servicePriceNeedsAttention(service)) return undefined;
+  if (service.variants?.length) return 'Some options are missing price or duration. Edit this service to review.';
+  return "This service has no price. AI will say 'price on consultation'.";
+}
+
+function serviceDurationDisplay(service: ServiceItem): string {
+  return serviceDurationText(service) || (service.variants?.length ? 'See options' : '');
+}
+
+function servicePriceDisplay(service: ServiceItem): string {
+  const price = formatServicePrice(service);
+  return servicePriceNeedsAttention(service) ? `⚠ ${price}` : price;
 }
 
 function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceItem[] {
@@ -3838,7 +3867,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
               ) : null}
               {items.map(({ service, index }) => {
                 const editingInline = serviceEditor?.mode === 'inline' && serviceEditor.index === index;
-                const duration = serviceDurationText(service);
+                const duration = serviceDurationDisplay(service);
+                const priceNeedsReview = servicePriceNeedsAttention(service);
+                const durationNeedsReview = serviceDurationNeedsAttention(service);
                 return (
                   <div className="onb-service-row-wrap" key={`${group}-${index}`}>
                     {editingInline ? (
@@ -3857,11 +3888,10 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                               </span>
                             ) : null}
                           </span>
-                          <span className={`onb-service-price ${service.price === 0 ? 'warn' : ''}`} title={service.price === 0 ? "This service has no price. AI will say 'price on consultation'." : undefined}>
-                            {service.price === 0 ? '⚠ ' : ''}
-                            {formatServicePrice(service)}
+                          <span className={`onb-service-price ${priceNeedsReview ? 'warn' : ''}`} title={servicePriceWarningTitle(service)}>
+                            {servicePriceDisplay(service)}
                           </span>
-                          <span className={`onb-service-duration ${duration ? '' : 'warn'}`} title={!duration ? "No duration set. AI won't estimate appointment length." : undefined}>
+                          <span className={`onb-service-duration ${durationNeedsReview ? 'warn' : ''}`} title={durationNeedsReview ? "Some duration details need review." : undefined}>
                             {duration || 'Add time ⚠'}
                           </span>
                           <span className="onb-service-edit-link" aria-hidden>
@@ -3891,9 +3921,9 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                               <div className="svc-variants">{service.variants.slice(0, 3).map(formatServiceVariant).join(' · ')}</div>
                             ) : null}
                             <div className="svc-meta">
-                              <span className={`svc-price ${service.price === 0 ? 'zero' : ''}`}>{service.price === 0 ? '$0 ⚠' : formatServicePrice(service)}</span>
+                              <span className={`svc-price ${priceNeedsReview ? 'zero' : ''}`}>{servicePriceDisplay(service)}</span>
                               <span>·</span>
-                              <span className={`svc-duration ${duration ? '' : 'missing'}`}>{duration || 'Add time ⚠'}</span>
+                              <span className={`svc-duration ${durationNeedsReview ? 'missing' : ''}`}>{duration || 'Add time ⚠'}</span>
                               <span>·</span>
                               <button
                                 type="button"

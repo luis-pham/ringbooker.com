@@ -100,6 +100,40 @@ async function fetchSalonLogo(websiteUrl: string | null, instagramUrl: string | 
   return null;
 }
 
+type PreparedDemoServiceVariant = NonNullable<NonNullable<SalesPreparedDemoConfig['services']>[number]['variants']>[number];
+
+function toPreparedDemoServiceVariants(
+  variants: Array<{
+    label?: string | null;
+    durationMinutes?: number | null;
+    durationText?: string | null;
+    priceAmount?: number | null;
+    duration?: string | null;
+    price?: number | null;
+    priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
+    notes?: string | null;
+  }> | undefined,
+): PreparedDemoServiceVariant[] {
+  return (variants ?? [])
+    .slice(0, 20)
+    .map((variant, index) => {
+      const duration = (variant.durationText ?? variant.duration ?? '').trim() || (variant.durationMinutes ? `${variant.durationMinutes} min` : null);
+      const price = typeof variant.priceAmount === 'number'
+        ? variant.priceAmount
+        : typeof variant.price === 'number'
+          ? variant.price
+          : null;
+      return {
+        label: (variant.label ?? '').trim() || duration || (price !== null ? `$${price}` : `Option ${index + 1}`),
+        price,
+        duration,
+        priceType: variant.priceType ?? null,
+        notes: variant.notes ?? null,
+      };
+    })
+    .filter((variant) => variant.label || variant.duration || variant.price !== null);
+}
+
 export function registerDemoRoutes(app: Hono, path: (route: string) => string, deps: DemoDeps): void {
   app.post(path('/public/demo/request'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_outbound_disabled');
@@ -1171,6 +1205,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
           name: s.name,
           price: s.priceAmount ?? null,
           duration: s.durationText ?? null,
+          variants: toPreparedDemoServiceVariants(s.variants),
         }));
         importedStaff = (result.suggestions.staffSuggestions ?? []).slice(0, 8).map((s) => s.name).filter(Boolean);
         importedLogoUrl = result.logoUrl ?? null;
@@ -1260,6 +1295,15 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         city: demo.city,
         logoUrl: demo.logoUrl ?? null,
         services: (demo.demoConfig.services ?? []).map((s) => s.name).filter(Boolean),
+        serviceDetails: (demo.demoConfig.services ?? [])
+          .map((s) => ({
+            category: s.category,
+            name: s.name,
+            price: s.price ?? null,
+            duration: s.duration ?? null,
+            variants: toPreparedDemoServiceVariants(s.variants),
+          }))
+          .filter((s) => s.name),
         staffNames: (demo.demoConfig.staffNames ?? []).filter(Boolean),
         primaryHours: demo.demoConfig.primaryHours ?? null,
         secondaryHours: demo.demoConfig.secondaryHours ?? null,

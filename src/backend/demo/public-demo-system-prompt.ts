@@ -23,6 +23,13 @@ export type DemoConfigInput = {
     price?: number | null;
     duration?: string | null;
     enabled?: boolean;
+    variants?: Array<{
+      label: string;
+      price?: number | null;
+      duration?: string | null;
+      priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
+      notes?: string | null;
+    }>;
   }>;
 };
 
@@ -243,12 +250,22 @@ export function buildPublicDemoSystemPrompt(input: {
     ? input.demoConfig.services.filter((s) => s.enabled !== false)
     : allowDefaultFallbacks ? defaults?.services ?? [] : [];
 
-  const services = rawServices.slice(0, 40).map((s) => ({
-    category: sanitizeDemoTextField(s.category, 60),
-    name: sanitizeDemoTextField(s.name, 100),
-    price: typeof s.price === 'number' ? s.price : undefined,
-    duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
-  }));
+  const services = rawServices.slice(0, 40).map((s) => {
+    const variants = 'variants' in s ? s.variants : undefined;
+    return {
+      category: sanitizeDemoTextField(s.category, 60),
+      name: sanitizeDemoTextField(s.name, 100),
+      price: typeof s.price === 'number' ? s.price : undefined,
+      duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
+      variants: variants?.slice(0, 20).map((variant) => ({
+        label: sanitizeDemoTextField(variant.label, 80),
+        price: typeof variant.price === 'number' ? variant.price : undefined,
+        duration: variant.duration ? sanitizeDemoTextField(variant.duration, 60) : undefined,
+        priceType: variant.priceType ?? undefined,
+        notes: variant.notes ? sanitizeDemoTextField(variant.notes, 160) : undefined,
+      })).filter((variant) => variant.label || variant.duration || typeof variant.price === 'number'),
+    };
+  });
 
   const primaryHours = input.demoConfig?.primaryHours || (allowDefaultFallbacks ? defaults?.primaryHours : undefined);
   const secondaryHours = input.demoConfig?.secondaryHours || (allowDefaultFallbacks ? defaults?.secondaryHours : undefined);

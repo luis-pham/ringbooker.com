@@ -312,12 +312,21 @@ export const startInboundSchema = z.object({
 });
 
 // Structured service item for demo prompt building — server-side only
+const demoServiceVariantSchema = z.object({
+  label: z.string().max(80),
+  price: z.number().min(0).max(100000).nullable().optional(),
+  duration: z.string().max(60).nullable().optional(),
+  priceType: z.enum(['fixed', 'from', 'varies', 'consultation']).nullable().optional(),
+  notes: z.string().max(160).nullable().optional(),
+});
+
 export const demoServiceItemSchema = z.object({
   category: z.string().max(60),
   name: z.string().max(100),
   price: z.number().min(0).max(100000).nullable().optional(),
   duration: z.string().max(60).nullable().optional(),
   enabled: z.boolean().optional(),
+  variants: z.array(demoServiceVariantSchema).max(20).optional(),
 });
 
 export const publicDemoRequestSchema = z.object({

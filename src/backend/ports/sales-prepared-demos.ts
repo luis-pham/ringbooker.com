@@ -8,6 +8,13 @@ export type SalesPreparedDemoService = {
   name: string;
   price?: number | null;
   duration?: string | null;
+  variants?: Array<{
+    label: string;
+    price?: number | null;
+    duration?: string | null;
+    priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
+    notes?: string | null;
+  }>;
 };
 
 export type SalesPreparedDemoConfig = {

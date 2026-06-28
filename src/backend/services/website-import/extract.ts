@@ -86,9 +86,11 @@ export function inferGroup(name: string): string {
   if (/hair\s*extension|extensions?.*hair/.test(lower)) return 'Hair Extensions';
   if (/acrylic|extension|dip powder|nail/.test(lower)) return 'Acrylics / Extensions';
   if (/\b(lash|brow|eyebrow)\b/.test(lower)) return 'Brows & Lashes';
-  if (/\b(wax|bikini|brazilian|half leg|full leg|lip)\b/.test(lower)) return 'Waxing';
   if (/balayage|highlight|lightening|tint|retouch|root|color|colour/.test(lower)) return 'Hair Color';
-  if (/haircut|\bcut\b|blowout|blow\s*out|styling|updo|keratin|hair/.test(lower)) return 'Haircuts';
+  if (/brazilian\s+blowout|keratin|smoothing|straightening/.test(lower)) return 'Treatments';
+  if (/haircut|\bcut\b|\bmen'?s?\b|\bwomen'?s?\b|\bchildren'?s?\b|blowout|blow\s*out|blow\s*dry|styling|updo|hair/.test(lower)) return 'Haircuts';
+  if (/restorative|conditioning|botanical|shine treatment|scalp treatment|bond building|strengthening/.test(lower)) return 'Treatments';
+  if (/\b(wax|bikini|brazilian|half leg|full leg|lip)\b/.test(lower)) return 'Waxing';
   if (/massage/.test(lower)) return 'Massage';
   if (/facial|hydrafacial|peel/.test(lower)) return 'Facials';
   if (/botox|dysport|filler|inject/.test(lower)) return 'Injectables';
@@ -355,6 +357,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     const name = collapseRepeatedServiceName(cleanServiceName(input.name));
     if (name.length < 3 || name.length > 90) return;
     if (/\$/.test(name)) return;
+    if (/^NEW\s+/.test(name)) return;
     // A real service name never contains an embedded price token ("Lip 425+ Brow and Lip")
     // — that is a mangled price-table parse where the leading "$" was dropped.
     if (/\d{2,}\s*\+/.test(name)) return;
@@ -364,7 +367,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     if (looksLikeDescriptionServiceName(name)) return;
     if (isStylistPricingRowName(name)) return;
     if ((name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2) return;
-    if (/^(this is|service includes|includes|perfect for|ideal for|not sure|our service|pricing is based|you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)) return;
+    if (/^(this is|service includes|includes|perfect for|ideal for|not sure|no wash|with or without|our service|pricing is based|you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)) return;
     const categoryName = input.group?.trim() || inferGroup(name);
     const key = `${categoryName.toLowerCase()}::${name.toLowerCase()}`;
     const priceAmount = input.priceAmount ?? (input.priceText ? Number(input.priceText) : null);
@@ -686,6 +689,7 @@ function extractTextServiceMatrixServices(text: string, source: string): Importe
 function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSuggestion[] {
   const services = new Map<string, ImportedServiceSuggestion>();
   const invalidServiceName = (value: string) => /^(?:price\b.*|\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|schedule|reserve|appointment|consultation required)$/i.test(value.trim())
+    || /^NEW\s+/.test(value.trim())
     || /^[a-z]\s+\w/.test(value.trim())
     || SERVICE_MENU_SOURCE_RE.test(value)
     || ECOMMERCE_CONTEXT_RE.test(value)
@@ -697,12 +701,15 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
     for (const block of preview.serviceBlocks ?? []) {
       const parsed = splitServiceHeadingPrefix(block.serviceName);
       const group = block.groupHeading?.trim() || parsed.group || inferGroup(parsed.name);
+      const serviceName = block.sourceHint === 'service_matrix_table'
+        ? qualifyMatrixServiceName(parsed.name, group)
+        : parsed.name;
       const duration = block.durationText ? parseDurationText(block.durationText) : null;
       const priceMatch = block.priceText?.match(/\$?\s*(\d{2,4})/);
       const priceAmount = plausiblePrice(priceMatch ? Number(priceMatch[1]) : null);
-      if (parsed.name.length < 3 || parsed.name.length > 90) continue;
-      if (invalidServiceName(parsed.name)) continue;
-      const key = `${group}:${parsed.name}`.toLowerCase();
+      if (serviceName.length < 3 || serviceName.length > 90) continue;
+      if (invalidServiceName(serviceName)) continue;
+      const key = `${group}:${serviceName}`.toLowerCase();
       const blockVariants = (block.variants ?? []).flatMap((variant, index) => {
         const variantPrice = plausiblePrice(variant.priceAmount);
         if (typeof variant.priceAmount === 'number' && variantPrice === null) return [];
@@ -738,14 +745,14 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
       const hasRangeOrPlusPrice = Boolean(block.sourceText?.match(/\$\s*\d{1,4}\s*-\s*\$?\s*\d{1,4}\+?|\$\s*\d{1,4}\+/));
       services.set(key, {
         categoryName: group,
-        name: parsed.name,
-        description: block.descriptionText && block.descriptionText.toLowerCase() !== parsed.name.toLowerCase() ? block.descriptionText : null,
-        priceAmount,
+        name: serviceName,
+        description: block.descriptionText && block.descriptionText.toLowerCase() !== serviceName.toLowerCase() ? block.descriptionText : null,
+        priceAmount: blockVariants.length ? null : priceAmount,
         priceCurrency: CURRENCY,
         priceType: block.priceText && /consultation/i.test(block.priceText) ? 'consultation' : block.priceText && (hasRangeOrPlusPrice || /from|starting|\+/i.test(block.priceText)) ? 'from' : priceAmount ? 'fixed' : 'varies',
-        durationText: duration?.durationText ?? block.durationText ?? null,
-        durationMinutes: duration?.durationMinutes ?? null,
-        aliases: aliasFor(parsed.name),
+        durationText: blockVariants.length ? null : duration?.durationText ?? block.durationText ?? null,
+        durationMinutes: blockVariants.length ? null : duration?.durationMinutes ?? null,
+        aliases: aliasFor(serviceName),
         bookingNotes: null,
         bookable: true,
         variants: blockVariants,
@@ -1116,7 +1123,7 @@ function splitServiceHeadingPrefix(rawName: string): { group: string | null; nam
     }
     if (!stripped) break;
   }
-  if (group === 'Color' && /^(touch-up|correction|gloss|blocking)$/i.test(cleaned)) cleaned = `Color ${cleaned}`;
+  if (group === 'Color' && /^(touch-up|correction|gloss|blocking|balance)$/i.test(cleaned)) cleaned = `Color ${cleaned}`;
   return { group, name: cleaned };
 }
 
@@ -1156,11 +1163,203 @@ function serviceNameFromLink(link: PagePreview['links'][number]): string | null 
 
 function cleanMarkdownText(value: string): string {
   return value
+    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
     .replace(/\*\*/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function markdownTableCells(line: string): string[] | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('|') || !trimmed.includes('|')) return null;
+  const cells = trimmed
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cleanMarkdownText(cell))
+    .map((cell) => cell.replace(/^[-–—]+$/g, '').trim());
+  if (cells.length < 2) return null;
+  if (cells.every((cell) => !cell || /^:?-{3,}:?$/.test(cell))) return null;
+  return cells;
+}
+
+function parseMarkdownTablePriceCell(value: string): {
+  priceAmount: number | null;
+  priceCurrency: string;
+  priceType: ImportedServiceSuggestion['priceType'];
+  raw: string;
+} | null {
+  const raw = cleanMarkdownText(value);
+  if (!raw || /^[-–—]+$/.test(raw)) return null;
+  if (/^\d{1,3}\s*(?:min|mins|minute|minutes|hr|hrs|hour|hours)\+?$/i.test(raw)) return null;
+  if (/\b(?:consult|call|book online|quoted|varies|depending on)\b/i.test(raw) && !/\d/.test(raw)) {
+    return { priceAmount: null, priceCurrency: CURRENCY, priceType: /consult|quoted/i.test(raw) ? 'consultation' : 'varies', raw };
+  }
+  const match = raw.match(/(?:from|starting(?:\s+at)?|starts\s+at)?\s*\$?\s*(\d{1,5})(?:\.\d{1,2})?\s*\+?/i);
+  if (!match) return null;
+  const priceAmount = Number(match[1]);
+  if (!Number.isFinite(priceAmount) || priceAmount > 2000) return null;
+  return {
+    priceAmount,
+    priceCurrency: CURRENCY,
+    priceType: /\+|\b(from|starting(?:\s+at)?|starts\s+at)\b/i.test(raw) ? 'from' : 'fixed',
+    raw,
+  };
+}
+
+function markdownTableHeaderLabels(cells: string[] | null, width: number): string[] {
+  if (!cells || cells.length !== width) return [];
+  if (cells.slice(1).some((cell) => parseMarkdownTablePriceCell(cell))) return [];
+  if (!cells.slice(1).some((cell) => cell.trim().length > 0)) return [];
+  return cells.map((cell) => cleanMarkdownText(cell)).slice(0, width);
+}
+
+function looksLikeMarkdownTableNote(value: string): boolean {
+  const name = cleanMarkdownText(value);
+  if (!name) return true;
+  if (/^(?:please|prices?|starting prices?|book|booking|call|text|powered by|based on|take-home|sold in|with or without|includes?|perfect for|ideal for|we|our|you|your)\b/i.test(name)) return true;
+  if (/\b(?:depending on|complimentary consultation|schedule a|appointment|network|technology meets|after \d+ service|price variation|education, experience)\b/i.test(name)) return true;
+  if (/[.!?]$/.test(name) && name.split(/\s+/).length > 4) return true;
+  if (name.split(/\s+/).length > 8) return true;
+  return false;
+}
+
+function isMarkdownTableServiceName(value: string, contextGroup: string | null, hasPrice: boolean): boolean {
+  const name = cleanServiceName(value);
+  if (!isServiceListItem(name)) return false;
+  if (looksLikeMarkdownTableNote(name)) return false;
+  if (/^(?:signature|deluxe|platinum|basic|classic|premium)$/i.test(name)) return false;
+  if (hasPrice && contextGroup) return true;
+  if (hasPrice && /\b(men'?s?|women'?s?|child(?:ren)?'?s?|shampoo|blow\s*dry|style|bikini|leg|lip|chin|brow|wax)\b/i.test(name)) return true;
+  return /\b(haircut|cut|color|colour|highlight|lowlight|balayage|retouch|blowout|blow\s*dry|style|treatment|restorative|facial|hydrafacial|massage|wax|bikini|extension|keratin|bridal|makeup|corrective|creative)\b/i.test(name);
+}
+
+function categoryFromMarkdownTableGroup(group: string | null, serviceName: string): string {
+  const cleaned = cleanMarkdownText(group ?? '');
+  if (/^(?:cuts?|cutting)$/i.test(cleaned)) return 'Haircuts';
+  if (/^(?:colou?r|colou?ring)$/i.test(cleaned)) return 'Hair Color';
+  if (/^(?:additional|add[-\s]?on)\s+(?:treatments?|services?)(?:\s+or\s+(?:treatments?|services?))?$/i.test(cleaned)) {
+    const inferred = inferGroup(serviceName);
+    return inferred === 'General Services' ? 'Treatments' : inferred;
+  }
+  if (/(?:^|\s)(?:professional|pro)\s+treatments?$/i.test(cleaned)) {
+    const inferred = inferGroup(serviceName);
+    return inferred === 'General Services' ? 'Treatments' : inferred;
+  }
+  return categoryFromServiceListGroup(group, serviceName);
+}
+
+function markdownTableHeaderLabelForPrice(header: string[] | null, rowWidth: number, priceIndex: number): string {
+  if (!header) return '';
+  if (header.length === rowWidth) return header[priceIndex + 1]?.trim() ?? '';
+  if (header.length === rowWidth - 1) return header[priceIndex]?.trim() ?? '';
+  return '';
+}
+
+function markdownHeaderHasDurationVariants(header: string[] | null, rowWidth: number): boolean {
+  if (!header || (header.length !== rowWidth && header.length !== rowWidth - 1)) return false;
+  return header.some((cell) => Boolean(parseDurationText(cell)));
+}
+
+function adjustMarkdownTablePriceForService(
+  serviceName: string,
+  categoryName: string,
+  price: ReturnType<typeof parseMarkdownTablePriceCell>,
+): ReturnType<typeof parseMarkdownTablePriceCell> {
+  if (!price?.priceAmount) return price;
+  const raw = price.raw.replace(/\s+/g, '');
+  // Rendered markdown occasionally loses a price separator and prepends a stray digit
+  // to a small add-on price. Only repair obvious add-ons with no "$" token and an
+  // otherwise implausibly high three-digit price.
+  const smallAddOnItem = /\b(wax(?:ing)?|brow|lash|add[-\s]?on)\b/i.test(categoryName)
+    && /\b(lip|chin|brow|eyebrow|upper\s+lip|nostril|ear)\b/i.test(serviceName);
+  const mashedSmallPrice = raw.match(/^4(\d{2})\+?$/);
+  if (!/\$/.test(price.raw) && smallAddOnItem && price.priceAmount > 200 && mashedSmallPrice) {
+    return { ...price, priceAmount: Number(mashedSmallPrice[1]) };
+  }
+  return price;
+}
+
+function extractServicesFromMarkdownTables(previews: PagePreview[]): ImportedServiceSuggestion[] {
+  const services = new Map<string, ImportedServiceSuggestion>();
+  for (const preview of previews) {
+    const markdown = preview.markdown ?? '';
+    if (!markdown) continue;
+    let currentGroup: string | null = null;
+    let lastHeader: string[] | null = null;
+
+    for (const rawLine of markdown.split(/\n+/)) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
+      if (heading) {
+        const text = cleanMarkdownText(heading[2]);
+        currentGroup = isServiceListGroup(text) ? text : null;
+        lastHeader = null;
+        continue;
+      }
+
+      const cells = markdownTableCells(line);
+      if (!cells) continue;
+      const prices = cells.slice(1).map(parseMarkdownTablePriceCell);
+      const hasPrice = prices.some(Boolean);
+      const headerLabels = markdownTableHeaderLabels(cells, cells.length);
+      if (!hasPrice && headerLabels.length) {
+        lastHeader = headerLabels;
+        continue;
+      }
+
+      const name = cleanServiceName(cells[0] ?? '');
+      if (!isMarkdownTableServiceName(name, currentGroup, hasPrice)) continue;
+      const categoryName = categoryFromMarkdownTableGroup(currentGroup, name);
+      const hasHeaderVariants = markdownHeaderHasDurationVariants(lastHeader, cells.length);
+      if (hasHeaderVariants && (preview.serviceBlocks ?? []).some((block) => block.sourceHint === 'service_matrix_table')) continue;
+      const displayName = hasHeaderVariants ? qualifyMatrixServiceName(name, categoryName) : name;
+      const variants = prices.flatMap((rawPrice, index) => {
+        const price = adjustMarkdownTablePriceForService(displayName, categoryName, rawPrice);
+        if (!price) return [];
+        const label = markdownTableHeaderLabelForPrice(lastHeader, cells.length, index);
+        const duration = label ? parseDurationText(label) : null;
+        return [{
+          label: duration?.durationText ?? (label || price.raw),
+          durationMinutes: duration?.durationMinutes ?? null,
+          durationText: duration?.durationText ?? null,
+          priceAmount: price.priceAmount,
+          priceCurrency: price.priceCurrency,
+          priceType: price.priceType,
+          sortOrder: index,
+          notes: null,
+        }];
+      });
+      const firstPrice = adjustMarkdownTablePriceForService(displayName, categoryName, prices.find(Boolean) ?? null);
+      const key = `${categoryName}:${displayName}`.toLowerCase();
+      if (services.has(key)) continue;
+      const hasMultiplePriceColumns = variants.length > 1 || hasHeaderVariants;
+      services.set(key, {
+        categoryName,
+        name: displayName,
+        priceAmount: hasMultiplePriceColumns ? null : firstPrice?.priceAmount ?? null,
+        priceCurrency: CURRENCY,
+        priceType: hasMultiplePriceColumns
+          ? variants.some((variant) => variant.priceType === 'from') ? 'from' : 'varies'
+          : firstPrice?.priceType ?? (/\bconsult/i.test(cells.slice(1).join(' ')) ? 'consultation' : 'varies'),
+        durationText: null,
+        durationMinutes: null,
+        aliases: aliasFor(name),
+        bookable: true,
+        variants: hasMultiplePriceColumns ? variants : [],
+        source: preview.url,
+        sourceHint: hasMultiplePriceColumns ? 'service_matrix_table' : 'simple_price_table',
+        confidence: hasPrice ? 0.88 : 0.72,
+        needsReview: !hasPrice || hasMultiplePriceColumns,
+        evidenceSnippet: cleanMarkdownText(line).slice(0, 220),
+      });
+    }
+  }
+  return [...services.values()].slice(0, 120);
 }
 
 function extractServicesFromMarkdownPriceHeadings(previews: PagePreview[]): ImportedServiceSuggestion[] {
@@ -1246,7 +1445,7 @@ function isServiceListGroup(value: string): boolean {
   const cleaned = cleanMarkdownText(value);
   if (cleaned.length < 3 || cleaned.length > 100) return false;
   if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
-  return /\b(services?|hair|color|colour|cuts?|extensions?|restoration|replacement|methods?|weddings?|formal|makeup|make-up|nails?|manicure|pedicure|massage|facials?|waxing|lashes?|brows?|skin|treatments?)\b/i.test(cleaned);
+  return /\b(services?|hair|color|colour|coloring|colouring|cuts?|extensions?|restoration|replacement|methods?|weddings?|formal|makeup|make-up|nails?|manicure|pedicure|massage|facials?|waxing|lashes?|brows?|skin|treatments?)\b/i.test(cleaned);
 }
 
 function isServiceListItem(value: string): boolean {
@@ -1472,9 +1671,19 @@ function dedupeBy<T>(items: T[], keyFn: (item: T) => string): T[] {
 }
 
 function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
+  const hasPriceOrVariants = (service: ImportedServiceSuggestion) => (
+    typeof service.priceAmount === 'number' || (service.variants?.length ?? 0) > 0
+  );
+  const hasStructuredPriceEvidence = services.some((service) =>
+    ['simple_price_table', 'service_matrix_table', 'semantic', 'heading_sibling'].includes(service.sourceHint ?? '')
+    && hasPriceOrVariants(service));
   const byKey = new Map<string, ImportedServiceSuggestion>();
   for (const service of services) {
     if (looksLikeDescriptionServiceName(service.name)) continue;
+    if (hasStructuredPriceEvidence) {
+      if ((service.sourceHint === 'service_menu_list' && service.priceType !== 'consultation') || service.sourceHint === 'repeated_card') continue;
+      if (!hasPriceOrVariants(service) && service.priceType !== 'consultation' && service.source !== 'JSON-LD' && (service.confidence ?? 0) <= 0.68) continue;
+    }
     const key = `${service.categoryName}:${service.name}`.toLowerCase();
     const existing = byKey.get(key);
     if (!existing) {
@@ -1921,6 +2130,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const services = [
     ...extractServicesFromJsonLd(input.previews),
     ...extractServicesFromBlocks(input.previews),
+    ...extractServicesFromMarkdownTables(input.previews),
     ...extractServicesFromMarkdownLists(input.previews),
     ...extractServicesFromMarkdownPriceHeadings(input.previews),
     ...input.previews.flatMap((p) => {
