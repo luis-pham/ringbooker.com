@@ -900,6 +900,7 @@ export function DemoExperience({
       const delayCheckpoints: Array<[number, string]> = [
         [5000, 'Still importing your website — some websites take a moment to read.'],
         [10000, "We're still reading your site. Please wait a little longer."],
+        [32000, 'Still reading your website…'],
       ];
       siteLoadTimersRef.current = [
         ...stepCheckpoints.map((delay) =>
@@ -908,19 +909,14 @@ export function DemoExperience({
         ...delayCheckpoints.map(([delay, msg]) =>
           window.setTimeout(() => setSiteDelayMessage(msg), delay),
         ),
-        // Backend demo import budget is 25s (runs the LLM extractor); allow margin over it.
-        window.setTimeout(() => {
-          setSiteLoadError("We couldn't read your website.");
-          setSitePhase('error');
-        }, 32000),
       ];
     }
     if (mobile) {
       mobileImportTimersRef.current.push(
         window.setTimeout(() => {
-          resetMobileImportUi();
-          setSiteLoadError("We couldn't read your website.");
-          setSitePhase('error');
+          setMobileImportSubline('Still reading your website…');
+          setMobileImportPill('This website is taking a little longer, but we are still importing it.');
+          setMobileImportEscape(true);
         }, 32000),
       );
     }

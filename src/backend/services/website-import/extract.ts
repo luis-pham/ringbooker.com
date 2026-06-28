@@ -173,7 +173,9 @@ function applyHoursLine(hours: Record<string, unknown>, line: string): void {
     hours[closedDay] = { closed: true };
     return;
   }
-  const dayName = '(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)';
+  // Longest day spellings first; the two-letter forms (mo/tu/we/…) match the schema.org
+  // openingHours string form. Backtracking handles the prefix overlap (e.g. "mo" vs "monday").
+  const dayName = '(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues|tue|thurs|thur|thu|wed|fri|sat|sun|mo|tu|we|th|fr|sa|su)';
   const time = '(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)';
   const match = compact.match(new RegExp(`^${dayName}(?:\\s*(?:-|to|&|and|,|/)\\s*${dayName})?\\s*:?,?\\s*${time}\\s*(?:-|to)\\s*${time}`, 'i'));
   if (!match) return;
@@ -188,7 +190,9 @@ function applyHoursLine(hours: Record<string, unknown>, line: string): void {
 function parseHoursText(lines: string[]): Record<string, unknown> | null {
   const hours: Record<string, unknown> = {};
   for (const line of lines) {
-    for (const part of line.split(/(?:\n|;|\|)/).map((item) => item.trim()).filter(Boolean)) applyHoursLine(hours, part);
+    // Split on comma too so the schema.org openingHours string form
+    // ("Mo 09:00-16:00, Tu 09:00-18:00, …") yields one entry per day.
+    for (const part of line.split(/(?:\n|;|\||,)/).map((item) => item.trim()).filter(Boolean)) applyHoursLine(hours, part);
   }
   return Object.keys(hours).length ? hours : null;
 }
@@ -1270,6 +1274,8 @@ function isLikelyStaffName(value: string): boolean {
   if (/^(?:master\s+)?(?:colorist|hairstylist|stylist|artist|apprentice|junior\s+stylist|studio\s+director|tooth\s+gem\s+specialist|hair\s+replacement\s+specialist)$/i.test(cleaned)) return false;
   if (/^(home|services?|artists?|team|staff|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours|salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
+  // Service-category words (often lifted from nav/headings) are never a person's name.
+  if (/^(hair|colou?r|cut|cuts|style|styling|nails?|skin|brows?|lash(?:es)?|wax(?:ing)?|makeup|facials?|massage|treatments?|extensions?|blowout|manicure|pedicure|menu|gallery|pricing|prices?|gift\s*cards?|promotions?|reviews?)$/i.test(cleaned)) return false;
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
 }
 

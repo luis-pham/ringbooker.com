@@ -403,11 +403,43 @@ function markdownLinks(markdown: string, baseUrl: string): Array<{ href: string;
   return links.slice(0, 120);
 }
 
+/** Strip inline Markdown (bold/italic/code/links) so a heading like "**Best Salon**" or
+ *  "[Home](/)" does not leak its syntax into business-name/heading fields. */
+function stripInlineMarkdown(value: string): string {
+  return value
+    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
+    .replace(/[*_`~]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Recover JSON-LD blocks from the page HTML that Cloudflare returns alongside markdown. The
+ *  markdown-only preview otherwise drops LocalBusiness/Organization structured data — the most
+ *  reliable source for the business name, hours, address and phone. Regex-based to avoid a full
+ *  cheerio parse of each (often >1MB) crawled HTML document. */
+function jsonLdFromHtml(html?: string): unknown[] {
+  if (!html) return [];
+  const out: unknown[] = [];
+  for (const match of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    const raw = match[1]?.trim();
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) out.push(...parsed);
+      else out.push(parsed);
+    } catch {
+      // Ignore invalid site-provided JSON-LD.
+    }
+  }
+  return out;
+}
+
 function pagePreviewFromCrawlPage(page: CfCrawlPage): PagePreview {
   if (!page.markdown.trim() && page.html?.trim()) return previewHtml(page.html, page.url);
   const text = plainTextFromMarkdown(page.markdown);
-  const h1 = markdownHeadings(page.markdown, 1)[0] ?? page.metadata.title ?? '';
-  const h2s = markdownHeadings(page.markdown, 2);
+  const h1 = stripInlineMarkdown(markdownHeadings(page.markdown, 1)[0] ?? page.metadata.title ?? '');
+  const h2s = markdownHeadings(page.markdown, 2).map(stripInlineMarkdown).filter(Boolean);
   const priceCount = (text.match(/\$\s?\d{1,4}|\b\d{2,4}\s*(?:and\s+up|up|\+)\b/gi) ?? []).length;
   const durationCount = (text.match(/\b\d{1,3}\s*(?:min|mins|minute|minutes|hour|hours|hr|hrs)\+?\b/gi) ?? []).length;
   const serviceKeywordCount = (text.match(/\b(nail|manicure|pedicure|acrylic|gel|shellac|dip powder|nail art|hair|haircut|color|colour|lightening|tint|retouch|touch\s*-?\s*up|highlights|balayage|blowout|keratin|spa|massage|facial|waxing|wax|brow|eyebrow|lashes|lash|makeup|threading|microblading|botox|filler|injectable|laser|skin|hydrafacial|peel|treatment|consultation)\b/gi) ?? []).length;
@@ -431,7 +463,7 @@ function pagePreviewFromCrawlPage(page: CfCrawlPage): PagePreview {
     serviceKeywordCount,
     internalServiceLikeLinkCount,
     links,
-    jsonLd: [],
+    jsonLd: jsonLdFromHtml(page.html),
     contentScore: Math.min(100, Math.floor(text.length / 120) + priceCount * 8 + durationCount * 4 + serviceKeywordCount * 2),
   };
 }
