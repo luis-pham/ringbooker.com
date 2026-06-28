@@ -1148,6 +1148,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
     // payload is only fallback. Best-effort — a failed import still yields a demo.
     let importedServices: NonNullable<SalesPreparedDemoConfig['services']> = [];
     let importedStaff: string[] = [];
+    let importedLogoUrl: string | null = null;
     if (p.websiteUrl && getEnv().WEBSITE_IMPORT_ENABLED) {
       try {
         const env = getEnv();
@@ -1172,6 +1173,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
           duration: s.durationText ?? null,
         }));
         importedStaff = (result.suggestions.staffSuggestions ?? []).slice(0, 8).map((s) => s.name).filter(Boolean);
+        importedLogoUrl = result.logoUrl ?? null;
       } catch (err) {
         logger.warn({ err }, 'sales_demo_context_import_failed');
       }
@@ -1181,7 +1183,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
     const services: NonNullable<SalesPreparedDemoConfig['services']> =
       importedServices.length > 0 ? importedServices : p.services.map((name) => ({ category: verticalLabel, name }));
     const staffNames = importedStaff.length > 0 ? importedStaff : p.staffNames;
-    const logoUrl = await fetchSalonLogo(p.websiteUrl ?? null, p.instagramUrl ?? null);
+    const logoUrl = importedLogoUrl ?? await fetchSalonLogo(p.websiteUrl ?? null, p.instagramUrl ?? null);
 
     const demoConfig: SalesPreparedDemoConfig = {
       services,

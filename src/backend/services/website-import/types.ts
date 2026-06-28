@@ -265,4 +265,5 @@ export type WebsiteImportResult = {
   ok: boolean;
   suggestions: ImportSuggestions;
   diagnostics: ImportDiagnostics;
+  logoUrl?: string | null;
 };

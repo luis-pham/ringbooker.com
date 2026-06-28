@@ -11,7 +11,8 @@ import { lookupGooglePlaces } from './google-places';
 import { extractWebsiteImportWithLlm, LLM_TOP_PAGE_MARKDOWN_BUDGET } from './llm';
 import { classifyCandidate, selectPages, toDiagnostic } from './scoring';
 import { renderHtml, type RenderConfig } from './render';
-import type { CandidateUrl, PagePreview, WebsiteImportResult } from './types';
+import { crawlWithCloudflare, CF_CRAWL_TIMEOUT_MS, type CfCrawlPage } from './cf-crawler';
+import type { CandidateBucket, CandidateUrl, PagePreview, SelectedPageDiagnostic, WebsiteImportResult } from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -345,15 +346,119 @@ function emptyResult(sourceUrl: string, sourceType = detectImportSource(new URL(
     ok: false,
     suggestions,
     diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: {}, warnings: ['Import returned no readable website content.'], fallbackUsed: [] },
+    logoUrl: null,
   };
 }
 
-export async function importWebsiteForOnboarding(input: { url: string }, opts: ImportOptions = {}): Promise<WebsiteImportResult> {
-  // Whole-import wall-clock budget. Every fetch clamps its timeout to the remaining
-  // budget, so the import returns within ~deadlineMs even on slow/large sites.
+function cloudflareAccountIdFromRenderEndpoint(renderEndpoint?: string | null): string | null {
+  if (!renderEndpoint) return null;
+  try {
+    const parsed = new URL(renderEndpoint);
+    const match = parsed.pathname.match(/\/accounts\/([^/]+)\/browser-rendering\/(?:content|crawl)\/?$/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function plainTextFromMarkdown(markdown: string): string {
+  return markdown
+    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[`*_>#|-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function markdownHeadings(markdown: string, level: 1 | 2): string[] {
+  const hashes = '#'.repeat(level);
+  return [...markdown.matchAll(new RegExp(`^${hashes}\\s+(.+)$`, 'gm'))]
+    .map((match) => match[1]?.replace(/\s+/g, ' ').trim())
+    .filter((heading): heading is string => Boolean(heading))
+    .slice(0, level === 1 ? 1 : 12);
+}
+
+function markdownLinks(markdown: string, baseUrl: string): Array<{ href: string; text: string }> {
+  const links: Array<{ href: string; text: string }> = [];
+  for (const match of markdown.matchAll(/\[([^\]]*)]\(([^)\s]+)[^)]*\)/g)) {
+    const text = (match[1] ?? '').replace(/\s+/g, ' ').trim();
+    const href = match[2] ?? '';
+    if (!href || href.startsWith('#')) continue;
+    try {
+      links.push({ href: new URL(href, baseUrl).toString(), text });
+    } catch {
+      // Ignore malformed third-party links.
+    }
+  }
+  return links.slice(0, 120);
+}
+
+function pagePreviewFromCrawlPage(page: CfCrawlPage): PagePreview {
+  if (!page.markdown.trim() && page.html?.trim()) return previewHtml(page.html, page.url);
+  const text = plainTextFromMarkdown(page.markdown);
+  const h1 = markdownHeadings(page.markdown, 1)[0] ?? page.metadata.title ?? '';
+  const h2s = markdownHeadings(page.markdown, 2);
+  const priceCount = (text.match(/\$\s?\d{1,4}|\b\d{2,4}\s*(?:and\s+up|up|\+)\b/gi) ?? []).length;
+  const durationCount = (text.match(/\b\d{1,3}\s*(?:min|mins|minute|minutes|hour|hours|hr|hrs)\+?\b/gi) ?? []).length;
+  const serviceKeywordCount = (text.match(/\b(nail|manicure|pedicure|acrylic|gel|shellac|dip powder|nail art|hair|haircut|color|colour|lightening|tint|retouch|touch\s*-?\s*up|highlights|balayage|blowout|keratin|spa|massage|facial|waxing|wax|brow|eyebrow|lashes|lash|makeup|threading|microblading|botox|filler|injectable|laser|skin|hydrafacial|peel|treatment|consultation)\b/gi) ?? []).length;
+  const links = markdownLinks(page.markdown, page.url);
+  const internalServiceLikeLinkCount = links.filter((link) => {
+    try {
+      return new URL(link.href).origin === new URL(page.url).origin && /service|menu|treatment|pricing|team|staff|artist|stylist/i.test(`${link.text} ${link.href}`);
+    } catch {
+      return false;
+    }
+  }).length;
+  return {
+    url: page.url,
+    title: page.metadata.title ?? h1,
+    h1,
+    h2s,
+    firstTextChars: text.slice(0, 12_000),
+    markdown: page.markdown,
+    priceCount,
+    durationCount,
+    serviceKeywordCount,
+    internalServiceLikeLinkCount,
+    links,
+    jsonLd: [],
+    contentScore: Math.min(100, Math.floor(text.length / 120) + priceCount * 8 + durationCount * 4 + serviceKeywordCount * 2),
+  };
+}
+
+function crawlPageBucket(url: string, index: number): CandidateBucket {
+  if (index === 0) return 'homepage';
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    if (/(?:team|staff|artist|artists|stylist|stylists|provider|providers|our-team|ourteam)/.test(path)) return 'staff_team';
+    if (/(?:faq|questions|help)/.test(path)) return 'faq';
+    if (/(?:policy|policies|cancellation|privacy|terms)/.test(path)) return 'policies';
+    if (/(?:contact|hours|location|visit)/.test(path)) return 'contact_hours';
+    if (/(?:book|booking|appointment|appointments|schedule)/.test(path)) return 'booking';
+    if (/(?:service|services|menu|pricing|price|hair|hairmenu|cut|style|color|colour|texture|extension|extention|facial|facials|wax|lash|brow|treatment|treatments)/.test(path)) return 'service_child';
+  } catch {
+    // Keep the page usable even if a third-party URL is malformed.
+  }
+  return 'noise';
+}
+
+function diagnosticsFromCrawlPages(pages: CfCrawlPage[]): SelectedPageDiagnostic[] {
+  return pages.map((page, index) => {
+    const bucket = crawlPageBucket(page.url, index);
+    return {
+      url: page.url,
+      bucket,
+      score: Math.max(10, 100 - index * 4),
+      source: index === 0 ? 'homepage' : 'sitemap',
+      reason: 'Selected by Cloudflare Browser Rendering /crawl markdown output.',
+    };
+  });
+}
+
+async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, opts: ImportOptions = {}): Promise<WebsiteImportResult> {
   const deadline = Date.now() + (opts.deadlineMs ?? DEFAULT_DEADLINE_MS);
   const fetchOpts: ImportOptions = { ...opts, deadline };
-  const concurrency = Math.max(1, opts.fetchConcurrency ?? DEFAULT_FETCH_CONCURRENCY);
   const remainingBudget = () => Math.max(0, deadline - Date.now());
 
   let startUrl: URL;
@@ -367,15 +472,72 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   }
 
   const sourceType = detectImportSource(startUrl);
+  const warnings: string[] = [];
+  const fallbackUsed: string[] = [];
+  let finalPreviews: PagePreview[] = [];
+  let selectedPages: SelectedPageDiagnostic[] = [];
+  let logoUrl: string | null = null;
   let googlePlaces = sourceType === 'google_maps'
     ? await lookupGooglePlaces({ url: startUrl, sourceType, apiKey: opts.googlePlacesApiKey, fetcher: opts.fetcher, timeoutMs: Math.min(opts.timeoutMs ?? 5_000, remainingBudget()) })
     : null;
-  const homepage = await fetchText(startUrl.toString(), fetchOpts);
-  if (!homepage) {
-    // The website is unreadable (down, slow, or blocking the crawler). For normal
-    // websites, fall back to the Google Places business listing so a broken site
-    // still yields name/phone/address/hours instead of an empty import.
-    if (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey) {
+
+  const useStaticHomepageFallback = async (reason: string) => {
+    const homepage = await fetchText(startUrl.toString(), fetchOpts);
+    if (!homepage) return false;
+    const preview = previewHtml(homepage.text, homepage.url);
+    finalPreviews = [preview];
+    selectedPages = [{ url: homepage.url, bucket: 'homepage', score: 100, source: 'homepage', reason }];
+    fallbackUsed.push('static_homepage');
+    return true;
+  };
+
+  if (!shouldDeepCrawlSource(sourceType)) {
+    await useStaticHomepageFallback('Platform/social URLs are not recursively crawled.');
+    const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces });
+    if (!suggestions.bookingUrl.value) suggestions.bookingUrl = { value: startUrl.toString(), confidence: 0.75, source: 'Platform profile' };
+    return {
+      ok: suggestions.status !== 'failed',
+      suggestions,
+      diagnostics: {
+        selectedPages,
+        skippedPagesSummary: ['Platform/social URLs are not recursively crawled.'],
+        sitemapSourcesFound: [],
+        serviceHubPagesFound: [],
+        childServicePagesFound: [],
+        confidenceSummary: { services: suggestions.serviceCatalog.confidence },
+        warnings: suggestions.warnings,
+        fallbackUsed: fallbackUsed.length ? fallbackUsed : ['static_homepage'],
+      },
+      logoUrl: null,
+    };
+  }
+
+  const accountId = cloudflareAccountIdFromRenderEndpoint(opts.renderEndpoint);
+  if (accountId && opts.renderApiKey && remainingBudget() > 3_000) {
+    try {
+      const crawl = await crawlWithCloudflare(startUrl.toString(), {
+        accountId,
+        apiKey: opts.renderApiKey,
+        limit: opts.maxPages ?? 10,
+        depth: 2,
+        fetcher: opts.fetcher,
+        timeoutMs: Math.min(CF_CRAWL_TIMEOUT_MS, remainingBudget()),
+      });
+      finalPreviews = crawl.pages.map(pagePreviewFromCrawlPage);
+      selectedPages = diagnosticsFromCrawlPages(crawl.pages);
+      logoUrl = crawl.logoUrl;
+      if (finalPreviews.length) fallbackUsed.push('cloudflare_crawl');
+      else warnings.push('Cloudflare /crawl completed but returned no readable markdown pages.');
+    } catch (error) {
+      warnings.push(error instanceof Error ? error.message : 'cloudflare_crawl_failed');
+    }
+  } else {
+    warnings.push('Cloudflare /crawl was not configured; used static homepage fallback.');
+  }
+
+  if (!finalPreviews.length) {
+    const recovered = await useStaticHomepageFallback('Used static homepage fallback because Cloudflare /crawl did not return readable markdown.');
+    if (!recovered && !googlePlaces && opts.googlePlacesApiKey) {
       googlePlaces = await lookupGooglePlaces({
         url: startUrl,
         sourceType,
@@ -385,6 +547,9 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
         timeoutMs: Math.min(opts.timeoutMs ?? 5_000, remainingBudget()),
       }).catch(() => null);
     }
+  }
+
+  if (!finalPreviews.length) {
     if (googlePlaces) {
       const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: [], googlePlaces });
       return {
@@ -397,166 +562,21 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
           serviceHubPagesFound: [],
           childServicePagesFound: [],
           confidenceSummary: { hours: suggestions.hours.confidence, contact: suggestions.businessProfile.phone.confidence },
-          warnings: [...suggestions.warnings, 'The website could not be read. Details came from the Google Places business listing — please review them.'],
+          warnings: [...suggestions.warnings, ...warnings, 'The website could not be read. Details came from the Google Places business listing — please review them.'],
           fallbackUsed: ['google_places'],
         },
+        logoUrl: null,
       };
     }
-    return emptyResult(startUrl.toString(), sourceType);
-  }
-  // Recover JS-rendered sites (Wix, SPAs, booking-platform profiles) through an
-  // optional headless-render service. No-op when no render endpoint is configured.
-  let homepageHtml = homepage.text;
-  let renderUsed = false;
-  const renderConfig: RenderConfig = { endpoint: opts.renderEndpoint ?? null, apiKey: opts.renderApiKey ?? null };
-  const initialSiteBuilder = detectSiteBuilder(homepageHtml);
-  // Render any thin homepage, not just ones whose JS builder we recognize: an unrecognized
-  // SPA/JS site also ships near-empty HTML, and we only KEEP the rendered output when it is
-  // actually richer than the static HTML (guarded below), so a wasted render is harmless.
-  const shouldTryRender = Boolean(renderConfig.endpoint)
-    && remainingBudget() > 3_000
-    && (hasThinContent(homepageHtml) || !shouldDeepCrawlSource(sourceType));
-  if (shouldTryRender) {
-    const rendered = await renderHtml(homepage.url, renderConfig, { fetcher: opts.fetcher, timeoutMs: Math.min(12_000, remainingBudget()) });
-    if (rendered && rendered.length > homepageHtml.length && !hasThinContent(rendered)) {
-      homepageHtml = rendered;
-      renderUsed = true;
-    }
-  }
-  const homepagePreview = previewHtml(homepageHtml, homepage.url);
-  const siteBuilder = detectSiteBuilder(homepageHtml) ?? initialSiteBuilder;
-  const thinHomepage = hasThinContent(homepageHtml);
-  const spaWarning = () => siteBuilder && thinHomepage && !renderUsed
-    ? `Site appears to be a JavaScript SPA (${siteBuilder}). Extracted content may be incomplete — configure a headless-render service (WEBSITE_IMPORT_RENDER_URL) for full extraction.`
-    : null;
-  // Thin content without a known SPA builder usually means an image-based site
-  // (service menu shipped as images) or a custom JS-rendered site we cannot read.
-  const thinContentWarning = () => !siteBuilder && thinHomepage && !renderUsed
-    ? 'The homepage has very little readable text — the site may be image-based or render content with JavaScript. Imported details may be incomplete; please review carefully.'
-    : null;
-
-  if (!shouldDeepCrawlSource(sourceType)) {
-    const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: [homepagePreview], googlePlaces });
-    if (!suggestions.bookingUrl.value) suggestions.bookingUrl = { value: startUrl.toString(), confidence: 0.75, source: 'Platform profile' };
-    return {
-      ok: suggestions.status !== 'failed',
-      suggestions,
-      diagnostics: { selectedPages: [{ url: homepage.url, bucket: 'homepage', score: 100, source: 'homepage', reason: 'Platform profile; deep crawl skipped' }], skippedPagesSummary: ['Platform/social URLs are not recursively crawled.'], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: { services: suggestions.serviceCatalog.confidence }, warnings: suggestions.warnings, fallbackUsed: renderUsed ? ['headless_render'] : ['static'] },
-    };
+    const result = emptyResult(startUrl.toString(), sourceType);
+    result.diagnostics.warnings.push(...warnings);
+    return result;
   }
 
-  const rootUrl = `${startUrl.origin}/`;
-  const candidates: CandidateUrl[] = [candidateFromUrl(homepage.url, 'homepage')!];
-  if (new URL(homepage.url).pathname !== '/') {
-    const rootCandidate = candidateFromUrl(rootUrl, 'nav', 'Home', homepage.url);
-    if (rootCandidate) candidates.push(rootCandidate);
-  }
-  for (const link of extractLinks(homepageHtml, homepage.url)) {
-    if (new URL(link.href).origin === startUrl.origin) {
-      const candidate = candidateFromUrl(link.href, /contact|hours|location/i.test(link.text) ? 'footer' : 'nav', link.text, homepage.url);
-      if (candidate) candidates.push(candidate);
-    }
-  }
-  candidates.push(...commonServicePageCandidates(startUrl.origin, homepage.url));
-  const sitemap = await discoverSitemapCandidates(startUrl.origin, fetchOpts, concurrency);
-  candidates.push(...sitemap.candidates);
-
-  const seen = new Map<string, CandidateUrl>();
-  for (const candidate of candidates) if (!seen.has(candidate.url)) seen.set(candidate.url, candidate);
-  const unique = [...seen.values()].slice(0, 200);
-
-  const previewMap = new Map<string, PagePreview>([[homepage.url, homepagePreview]]);
-  const setPreview = (requestedUrl: string, preview: PagePreview) => {
-    previewMap.set(requestedUrl, preview);
-    previewMap.set(preview.url, preview);
-  };
-  const fetchPreview = async (candidate: CandidateUrl, allowRender: boolean) => {
-    const fetched = await fetchText(candidate.url, fetchOpts);
-    let preview = fetched ? previewHtml(fetched.text, fetched.url) : undefined;
-    const shouldRenderPage = allowRender
-      && Boolean(renderConfig.endpoint)
-      && remainingBudget() > 3_000
-      && (isWeakPreview(preview) || (isJsRenderedSiteBuilder(siteBuilder) && !hasUsefulPreviewContent(preview)));
-    if (shouldRenderPage) {
-      const renderUrl = fetched?.url ?? candidate.url;
-      const rendered = await renderHtml(renderUrl, renderConfig, { fetcher: opts.fetcher, timeoutMs: Math.min(12_000, remainingBudget()) });
-      if (rendered) {
-        const renderedPreview = previewHtml(rendered, renderUrl);
-        if (shouldKeepRenderedPreview(renderedPreview, preview)) {
-          preview = renderedPreview;
-          renderUsed = true;
-        }
-      }
-    }
-    if (preview) setPreview(candidate.url, preview);
-    return preview ?? null;
-  };
-  // Preview-fetch budget is 24 pages. Rank candidates by path/anchor relevance first
-  // so the budget is spent on likely service/contact/staff pages instead of being
-  // consumed by sitemap insertion order.
-  const nonHomepage = unique.filter((c) => c.source !== 'homepage');
-  const previewTargets = nonHomepage
-    .map((candidate) => ({ candidate, score: classifyCandidate(candidate).score }))
-    .sort((a, b) => b.score - a.score)
-    .map((item) => item.candidate)
-    .slice(0, 24);
-  // Always preview the site root — salons routinely keep hours/contact in the footer.
-  const rootCandidate = nonHomepage.find((c) => c.url === rootUrl);
-  if (rootCandidate && !previewTargets.includes(rootCandidate)) previewTargets.push(rootCandidate);
-  await mapPool(previewTargets, concurrency, async (candidate) => {
-    const roughScore = classifyCandidate(candidate).score;
-    await fetchPreview(candidate, roughScore >= 35);
-  });
-
-  let scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
-  let selected = selectPages(scored, opts.maxPages ?? 10);
-
-  const childCandidates: CandidateUrl[] = [];
-  for (const item of selected.filter((s) => s.bucket === 'service_hub').slice(0, 2)) {
-    const preview = previewMap.get(item.candidate.url);
-    if (!preview) continue;
-    for (const link of preview.links.slice(0, 30)) {
-      if (new URL(link.href).origin !== startUrl.origin) continue;
-      const child = candidateFromUrl(link.href, 'service_hub_child', link.text, item.candidate.url);
-      if (child) childCandidates.push(child);
-    }
-  }
-  await mapPool(childCandidates.slice(0, opts.maxChildServicePages ?? 3), concurrency, async (child) => {
-    if (!previewMap.has(child.url)) {
-      await fetchPreview(child, true);
-    }
-    if (!unique.some((c) => c.url === child.url)) unique.push(child);
-  });
-  scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
-  selected = selectPages(scored, opts.maxPages ?? 10);
-
-  await mapPool(selected, concurrency, async (item) => {
-    const existingPreview = previewMap.get(item.candidate.url);
-    const selectedNeedsFetch = !existingPreview
-      || isWeakPreview(existingPreview)
-      || (item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0);
-    const selectedNeedsRender = Boolean(renderConfig.endpoint)
-      && (isWeakPreview(existingPreview) || (isJsRenderedSiteBuilder(siteBuilder) && !hasUsefulPreviewContent(existingPreview)));
-    if (!selectedNeedsFetch && !selectedNeedsRender) return;
-    await fetchPreview(item.candidate, selectedNeedsRender);
-  });
-
-  const selectedPreviews = selected.map((item) => previewMap.get(item.candidate.url)).filter((p): p is PagePreview => Boolean(p));
-  const supplementalRootPreview = previewMap.get(rootUrl);
-  const finalPreviewMap = new Map<string, PagePreview>();
-  for (const preview of selectedPreviews.length ? selectedPreviews : [homepagePreview]) finalPreviewMap.set(preview.url, preview);
-  if (supplementalRootPreview) finalPreviewMap.set(supplementalRootPreview.url, supplementalRootPreview);
-  const finalPreviews = [...finalPreviewMap.values()];
-  // Run Google Places lookup and LLM extraction in parallel to save ~500ms.
-  // LLM receives googlePlaces: null here; the merged result is used in buildSuggestions below.
-  // Both calls are clamped to the remaining import budget so the whole import stays within deadlineMs.
   const budgetForEnrichment = remainingBudget();
   const staticHints = (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey)
     ? buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews })
     : null;
-  // Decide whether to run the LLM before kicking off enrichment. The global budget gate
-  // is consumed only when we would actually call the LLM (enabled + enough time left), so
-  // a capped day or a budget-starved import never burns a token.
   const llmWantsToRun = Boolean(opts.llmEnabled) && budgetForEnrichment >= MIN_LLM_BUDGET_MS;
   let llmGloballyCapped = false;
   let runLlm = llmWantsToRun;
@@ -581,7 +601,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
         })
       : Promise.resolve(googlePlaces),
     extractWebsiteImportWithLlm(
-      { sourceUrl: startUrl.toString(), previews: finalPreviews, googlePlaces: null, selectedPages: selected.map(toDiagnostic) },
+      { sourceUrl: startUrl.toString(), previews: finalPreviews, googlePlaces: null, selectedPages },
       {
         enabled: runLlm,
         apiKey: opts.openAiApiKey,
@@ -595,43 +615,38 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const finalGooglePlaces = googlePlacesResult.status === 'fulfilled' ? googlePlacesResult.value : googlePlaces;
   const llmExtraction = llmResult.status === 'fulfilled' ? llmResult.value : null;
   const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction });
-  const serviceHubPagesFound = selected.filter((s) => s.bucket === 'service_hub').map((s) => s.candidate.url);
-  const childServicePagesFound = selected.filter((s) => s.bucket === 'service_child').map((s) => s.candidate.url);
-  const hasRecoveredJsRenderedContent = suggestions.serviceCatalog.services.length > 0
-    || (suggestions.staffSuggestions ?? []).length > 0;
-  // Completeness self-check: if the most service-rich page's menu was longer than the LLM's
-  // single-pass input budget, some services may not have been read. Surface it so a partial
-  // catalog is flagged for review instead of silently looking complete.
-  const richestPageMarkdownLength = finalPreviews.reduce((max, page) => {
-    const length = page.markdown?.length ?? page.firstTextChars.length;
-    return length > max ? length : max;
-  }, 0);
+  const servicePagesFound = selectedPages.filter((page) => page.bucket === 'service_hub' || page.bucket === 'service_child').map((page) => page.url);
+  const richestPageMarkdownLength = finalPreviews.reduce((max, page) => Math.max(max, page.markdown?.length ?? page.firstTextChars.length), 0);
   const menuExceededSinglePassBudget = richestPageMarkdownLength > LLM_TOP_PAGE_MARKDOWN_BUDGET;
-  const jsRenderedPreviewWarning = isJsRenderedSiteBuilder(siteBuilder) && !renderUsed && !hasRecoveredJsRenderedContent && finalPreviews.some(isWeakPreview)
-    ? `Site appears to be a JavaScript-rendered site (${siteBuilder}). Extracted content may be incomplete — configure a headless-render service (WEBSITE_IMPORT_RENDER_URL) for full extraction.`
-    : null;
   const allWarnings = [
     ...suggestions.warnings,
-    ...(jsRenderedPreviewWarning ? [jsRenderedPreviewWarning] : []),
-    ...(spaWarning() ? [spaWarning()!] : []),
-    ...(thinContentWarning() ? [thinContentWarning()!] : []),
-    ...(siteBuilder && !isJsRenderedSiteBuilder(siteBuilder) && !spaWarning() ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
+    ...warnings,
     ...(llmGloballyCapped ? ['AI enrichment was skipped due to a temporary daily limit; details came from static extraction. Please review carefully.'] : []),
     ...(menuExceededSinglePassBudget ? ['This menu was longer than could be read in a single pass — some services may be missing. Please review and add any that are absent.'] : []),
   ];
-  const result = {
+
+  return {
     ok: suggestions.status !== 'failed',
     suggestions,
     diagnostics: {
-      selectedPages: selected.map(toDiagnostic),
-      skippedPagesSummary: [`${Math.max(0, unique.length - selected.length)} candidate pages were not selected by relevance/budget.`],
-      sitemapSourcesFound: sitemap.sitemapSourcesFound,
-      serviceHubPagesFound,
-      childServicePagesFound,
-      confidenceSummary: { services: suggestions.serviceCatalog.confidence, businessProfile: suggestions.businessProfile.name.confidence, contact: suggestions.businessProfile.phone.confidence, overall: suggestions.completeness?.overallConfidence ?? 0 },
+      selectedPages,
+      skippedPagesSummary: [`Cloudflare /crawl returned ${finalPreviews.length} readable markdown page(s).`],
+      sitemapSourcesFound: [],
+      serviceHubPagesFound: servicePagesFound,
+      childServicePagesFound: [],
+      confidenceSummary: {
+        services: suggestions.serviceCatalog.confidence,
+        businessProfile: suggestions.businessProfile.name.confidence,
+        contact: suggestions.businessProfile.phone.confidence,
+        overall: suggestions.completeness?.overallConfidence ?? 0,
+      },
       warnings: allWarnings,
-      fallbackUsed: ['static', ...(renderUsed ? ['headless_render'] : []), ...(finalGooglePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])],
+      fallbackUsed: [...new Set([...fallbackUsed, ...(finalGooglePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])])],
     },
+    logoUrl,
   };
-  return result;
+}
+
+export async function importWebsiteForOnboarding(input: { url: string }, opts: ImportOptions = {}): Promise<WebsiteImportResult> {
+  return importWebsiteForOnboardingWithCloudflare(input, opts);
 }
