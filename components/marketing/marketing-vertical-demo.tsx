@@ -2342,50 +2342,51 @@ export function DemoExperience({
                       </div>
                       <h2 className="vd-status-h" style={{ marginTop: 0 }}>Your AI receptionist is ready</h2>
                       <p className="vd-status-body">We set up the demo using your salon&apos;s info.</p>
-                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16 }}>
-                        <div className="vd-svc-label" style={{ marginBottom: 12, letterSpacing: '.06em' }}>WHAT WE FOUND</div>
-                        {!mobileFoundEdit ? (
-                          <>
-                            {business.businessName || extractedData.businessName ? (
-                              <div className="vd-m-found-row">
-                                <span className="vd-m-found-ic" aria-hidden>🏪</span>
-                                <span className="vd-m-found-k">Business</span>
-                                <span className="vd-m-found-v">{business.businessName || extractedData.businessName}</span>
-                              </div>
-                            ) : null}
-                            {business.address || business.city || extractedData.address || extractedData.city ? (
-                              <div className="vd-m-found-row">
-                                <span className="vd-m-found-ic" aria-hidden>📍</span>
-                                <span className="vd-m-found-k">Address</span>
-                                <span className="vd-m-found-v" style={{ fontSize: 12, fontWeight: 500 }}>
-                                  {business.address || business.city || extractedData.address || extractedData.city}
-                                </span>
-                              </div>
-                            ) : null}
-                            <div className="vd-m-found-row">
-                              <span className="vd-m-found-ic" aria-hidden>🕐</span>
-                              <span className="vd-m-found-k">Hours</span>
-                              <span className="vd-m-found-v">{business.primaryHours || extractedData.hours || '—'}</span>
+                      {!mobileFoundEdit ? (
+                        <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', color: '#9CA3AF', textTransform: 'uppercase' }}>WHAT WE FOUND</span>
+                            <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: 'var(--va)', padding: 0 }} onClick={() => setMobileFoundEdit(true)}>Edit</button>
+                          </div>
+                          {business.businessName || extractedData.businessName ? (
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
+                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Business</span>
+                              <span style={{ color: '#111827', fontWeight: 500 }}>{business.businessName || extractedData.businessName}</span>
                             </div>
-                            {currentServiceCategorySummary.length > 0 ? (
-                              <div className="vd-m-found-row" style={{ flexWrap: 'wrap' }}>
-                                <span className="vd-m-found-ic" aria-hidden>✂️</span>
-                                <span className="vd-m-found-k">Services</span>
-                                <span className="vd-m-found-v" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                  {currentServiceCategorySummary.slice(0, 8).map((cat) => (
-                                    <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
-                                  ))}
-                                  {currentServiceCategorySummary.length > 8 ? (
-                                    <span className="vd-found-chip">+{currentServiceCategorySummary.length - 8} more</span>
-                                  ) : null}
-                                </span>
+                          ) : null}
+                          {business.address || business.city || extractedData.address || extractedData.city ? (
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
+                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Address</span>
+                              <span style={{ color: '#111827' }}>{business.address || business.city || extractedData.address || extractedData.city}</span>
+                            </div>
+                          ) : null}
+                          <div style={{ display: 'flex', gap: 8, marginBottom: currentServiceCategorySummary.length > 0 ? 7 : 0, fontSize: 12 }}>
+                            <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Hours</span>
+                            <span style={{ color: '#111827' }}>{business.primaryHours || extractedData.hours || '—'}</span>
+                          </div>
+                          {currentServiceCategorySummary.length > 0 ? (
+                            <div style={{ display: 'flex', gap: 8, fontSize: 12, alignItems: 'flex-start' }}>
+                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0, paddingTop: 2 }}>Services</span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {currentServiceCategorySummary.slice(0, 4).map((cat) => (
+                                  <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
+                                ))}
+                                {currentServiceCategorySummary.length > 4 ? (
+                                  <span className="vd-found-chip">+{currentServiceCategorySummary.length - 4} more</span>
+                                ) : null}
                               </div>
-                            ) : null}
-                          </>
-                        ) : (
-                          <>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div style={{ borderTop: '1px solid #E5E7EB' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #E5E7EB', marginBottom: 12 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>Edit details</span>
+                            <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--va)', padding: 0 }} onClick={() => setMobileFoundEdit(false)}>Done</button>
+                          </div>
+                          <div style={{ paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
                             <div className="vd-field vd-field-compact" style={{ marginBottom: 10 }}>
-                              <label htmlFor="vd-m-edit-name">Business</label>
+                              <label htmlFor="vd-m-edit-name" style={{ fontSize: 11, color: '#9CA3AF' }}>Business</label>
                               <input
                                 id="vd-m-edit-name"
                                 value={business.businessName}
@@ -2394,7 +2395,7 @@ export function DemoExperience({
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                               <div className="vd-field vd-field-compact">
-                                <label htmlFor="vd-m-edit-city">City / state</label>
+                                <label htmlFor="vd-m-edit-city" style={{ fontSize: 11, color: '#9CA3AF' }}>City / state</label>
                                 <input
                                   id="vd-m-edit-city"
                                   value={business.city}
@@ -2402,7 +2403,7 @@ export function DemoExperience({
                                 />
                               </div>
                               <div className="vd-field vd-field-compact">
-                                <label htmlFor="vd-m-edit-hours">Hours</label>
+                                <label htmlFor="vd-m-edit-hours" style={{ fontSize: 11, color: '#9CA3AF' }}>Hours</label>
                                 <input
                                   id="vd-m-edit-hours"
                                   value={business.primaryHours}
@@ -2412,7 +2413,7 @@ export function DemoExperience({
                               </div>
                             </div>
                             <div className="vd-field vd-field-compact">
-                              <label htmlFor="vd-m-edit-staff">{config.staffLabel} (optional)</label>
+                              <label htmlFor="vd-m-edit-staff" style={{ fontSize: 11, color: '#9CA3AF' }}>{config.staffLabel} (optional)</label>
                               <input
                                 id="vd-m-edit-staff"
                                 value={business.staff}
@@ -2420,39 +2421,67 @@ export function DemoExperience({
                                 onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
                               />
                             </div>
-                          </>
-                        )}
-                      </div>
-                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, marginTop: 16 }}>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14, marginTop: 14 }}>
                         <div className="vd-svc-label" style={{ marginBottom: 8 }}>{config.serviceLabel}</div>
-                        <div className="vd-tabs" style={{ overflowX: 'auto', flexWrap: 'nowrap' }}>
+                        <div style={{ display: 'flex', overflowX: 'auto', gap: 6, paddingBottom: 8, scrollbarWidth: 'none' }}>
                           {business.services.map((cat) => (
-                            <button key={cat.id} type="button" className={`vd-tab ${selectedCategory === cat.id ? 'on' : ''}`} onClick={() => setSelectedCategory(cat.id)}>
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setSelectedCategory(cat.id)}
+                              style={{
+                                flexShrink: 0,
+                                border: selectedCategory === cat.id ? 'none' : '0.5px solid #E5E7EB',
+                                borderRadius: 20,
+                                padding: '5px 12px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                background: selectedCategory === cat.id ? '#1a1a1a' : '#F9FAFB',
+                                color: selectedCategory === cat.id ? '#fff' : '#6B7280',
+                              }}
+                            >
                               {cat.label}
                             </button>
                           ))}
                         </div>
-                        <div className="vd-svc-list">
+                        <div style={{ border: '0.5px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
                           {activeCategory?.items.map((item, idx) => (
-                            <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
-                              <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
-                              <div className="vd-svc-info">
-                                <div className="vd-svc-name">{item.name}</div>
-                                {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                            <div
+                              key={`${activeCategory.id}-${item.name}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '9px 10px',
+                                background: '#F9FAFB',
+                                borderTop: idx === 0 ? 'none' : '0.5px solid #E5E7EB',
+                              }}
+                            >
+                              <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} style={{ flexShrink: 0, accentColor: 'var(--va)' }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, color: item.enabled ? '#1F2937' : '#9CA3AF', textDecoration: item.enabled ? 'none' : 'line-through' }}>{item.name}</div>
+                                {item.duration ? <div style={{ fontSize: 11, color: '#9CA3AF' }}>{item.duration}</div> : null}
                               </div>
-                              <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
-                              <span className="vd-svc-chevron" aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', userSelect: 'none', paddingLeft: 4 }}>›</span>
+                              <input
+                                className="vd-svc-price"
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                value={item.price}
+                                onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
+                                style={{ width: 48, fontSize: 12, textAlign: 'center', opacity: item.enabled ? 1 : 0.4 }}
+                              />
+                              <span aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', pointerEvents: 'none', userSelect: 'none' }}>›</span>
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div style={{ borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0 0', marginTop: 16 }}>
+                      <div style={{ borderTop: '1px solid #E5E7EB', padding: '12px 0 0', marginTop: 14 }}>
                         <p style={{ margin: 0, fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>You&apos;ll review everything during onboarding before going live.</p>
-                        {mobileFoundEdit ? (
-                          <button type="button" className="vd-m-link" style={{ marginTop: 0, marginLeft: 12, whiteSpace: 'nowrap' }} onClick={() => setMobileFoundEdit(false)}>Done</button>
-                        ) : (
-                          <button type="button" className="vd-m-link" style={{ marginTop: 0, marginLeft: 12, whiteSpace: 'nowrap' }} onClick={() => setMobileFoundEdit(true)}>Edit →</button>
-                        )}
                       </div>
                       {turnstileSiteKey ? (
                         <div style={turnstileWrapperStyle}>
