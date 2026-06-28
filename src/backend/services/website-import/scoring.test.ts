@@ -8,8 +8,8 @@ function scoredItem(url: string, bucket: CandidateBucket, score: number) {
   return { candidate: candidate(url), bucket, score, reason: '' };
 }
 
-function candidate(url: string, anchorText = ''): CandidateUrl {
-  return { url, anchorText, source: 'nav', pathTokens: new URL(url).pathname.split('/').filter(Boolean) };
+function candidate(url: string, anchorText = '', source: CandidateUrl['source'] = 'nav'): CandidateUrl {
+  return { url, anchorText, source, pathTokens: new URL(url).pathname.split('/').filter(Boolean) };
 }
 
 function preview(overrides: Partial<PagePreview>): PagePreview {
@@ -26,6 +26,19 @@ test('non-standard paths use anchor and heading evidence', () => {
   assert.equal(classifyCandidate(candidate('https://x.test/page-1', 'Balayage')).bucket, 'service_child');
   assert.equal(classifyCandidate(candidate('https://x.test/page-2', 'Hair Extensions')).bucket, 'service_child');
   assert.equal(classifyCandidate(candidate('https://x.test/location/nyc'), preview({ firstTextChars: '123 Main St Open Monday to Friday' })).bucket, 'contact_hours');
+});
+
+test('concatenated service category slugs are treated as child menu pages', () => {
+  assert.equal(classifyCandidate(candidate('https://x.test/cutandstyle'), preview({ h1: 'Cut + Style', priceCount: 4, serviceKeywordCount: 5 })).bucket, 'service_child');
+  assert.equal(classifyCandidate(candidate('https://x.test/textureandextentions'), preview({ h1: 'Texture + Extensions', firstTextChars: 'Services can only be booked with participating stylists.', priceCount: 3, serviceKeywordCount: 5 })).bucket, 'service_child');
+  assert.equal(classifyCandidate(candidate('https://x.test/contactus'), preview({ h1: 'Contact us', firstTextChars: '123 Main St Open Monday to Friday' })).bucket, 'contact_hours');
+});
+
+test('service hub child links can promote category pages to service child', () => {
+  assert.equal(classifyCandidate(
+    candidate('https://x.test/textureandextentions', 'Texture & Extensions', 'service_hub_child'),
+    preview({ h1: 'Texture and Extensions', h2s: ['Texture + Extensions'], priceCount: 3, serviceKeywordCount: 8 }),
+  ).bucket, 'service_child');
 });
 
 test('page selection prioritizes multiple service child pages for pricing extraction', () => {

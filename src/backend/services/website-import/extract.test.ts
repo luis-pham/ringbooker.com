@@ -726,6 +726,27 @@ test('extracts prices from markdown service headings without description bleed',
   assert.equal(suggestions.serviceCatalog.services.some((service) => /Color application/i.test(service.name)), false);
 });
 
+test('extracts unpriced markdown service headings inside service sections', () => {
+  const preview = {
+    ...previewHtml('<html><body><h1>Services</h1></body></html>', 'https://markdown-price.test/textureandextentions'),
+    markdown: [
+      '## Texture + Extensions',
+      '### Texture Treatments',
+      '#### Keratin Treatment $350+',
+      '#### Beaded Sew-in Wefts',
+      '### Hair Extensions',
+      '#### Vomor Tape-ins',
+      '## Contact',
+      '#### Gilbert: 480.786.9778',
+    ].join('\n'),
+  };
+  const suggestions = buildSuggestions({ sourceUrl: 'https://markdown-price.test', sourceType: 'normal_website', previews: [preview] });
+
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Beaded Sew-in Wefts' && service.categoryName === 'Texture Treatments' && service.priceType === 'consultation'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Vomor Tape-ins' && service.categoryName === 'Hair Extensions'));
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Gilbert/i.test(service.name)), false);
+});
+
 test('extracts Love and Hair Peace style services, staff, and visible FAQs', () => {
   const servicesPreview = previewHtml(`
     <html><body>

@@ -1209,7 +1209,34 @@ function extractServicesFromMarkdownPriceHeadings(previews: PagePreview[]): Impo
         currentGroup = null;
         continue;
       }
-      if (isServiceListGroup(text)) currentGroup = text;
+      if (isServiceListGroup(text)) {
+        currentGroup = text;
+        continue;
+      }
+      if (currentGroup && heading[1].length >= 3 && isServiceListItem(text)) {
+        const parsed = splitServiceHeadingPrefix(text);
+        const name = cleanServiceName(parsed.name);
+        if (!isServiceListItem(name)) continue;
+        const categoryName = categoryFromServiceListGroup(parsed.group ?? currentGroup, name);
+        const key = `${categoryName}:${name}`.toLowerCase();
+        if (services.has(key)) continue;
+        services.set(key, {
+          categoryName,
+          name,
+          priceAmount: null,
+          priceCurrency: CURRENCY,
+          priceType: /\b(consult|extensions?|wefts?|tapes?)\b/i.test(`${name} ${categoryName}`) ? 'consultation' : 'varies',
+          durationText: null,
+          durationMinutes: null,
+          aliases: aliasFor(name),
+          bookable: true,
+          source: preview.url,
+          sourceHint: 'service_menu_list',
+          confidence: 0.68,
+          needsReview: true,
+          evidenceSnippet: cleanMarkdownText(line).slice(0, 220),
+        });
+      }
     }
   }
   return [...services.values()].slice(0, 80);

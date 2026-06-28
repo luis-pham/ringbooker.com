@@ -623,6 +623,65 @@ async function augmentPreviewsFromCandidates(
   return { previews: [...byUrl.values()], renderedCount };
 }
 
+function countPreviewsInBucket(
+  previews: PagePreview[],
+  startUrl: URL,
+  candidates: CandidateUrl[],
+  bucket: CandidateBucket,
+): number {
+  const candidateByUrl = new Map(dedupeCandidates(candidates).map((candidate) => [normalizedUrlKey(candidate.url), candidate]));
+  const rootKey = normalizedUrlKey(`${startUrl.origin}/`);
+  return previews.filter((preview, index) => {
+    const key = normalizedUrlKey(preview.url);
+    const candidate = candidateByUrl.get(key)
+      ?? candidateFromUrl(preview.url, key === rootKey ? 'homepage' : 'sitemap', undefined, startUrl.toString())
+      ?? { url: preview.url, source: index === 0 ? 'homepage' : 'sitemap', pathTokens: [], discoveredFrom: startUrl.toString() } satisfies CandidateUrl;
+    return classifyImportCandidate(candidate, preview).bucket === bucket;
+  }).length;
+}
+
+function selectMissingSitemapBucketCandidates(
+  candidates: CandidateUrl[],
+  existingPreviews: PagePreview[],
+  bucket: CandidateBucket,
+  maxTargets: number,
+): CandidateUrl[] {
+  if (maxTargets <= 0) return [];
+  const existing = new Set(existingPreviews.map((preview) => normalizedUrlKey(preview.url)));
+  return dedupeCandidates(candidates)
+    .filter((candidate) => !existing.has(normalizedUrlKey(candidate.url)))
+    .map((candidate) => ({ candidate, ...classifyImportCandidate(candidate) }))
+    .filter((item) => item.bucket === bucket && item.score >= 45)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxTargets)
+    .map((item) => item.candidate);
+}
+
+async function addSpecificCandidatePreviews(
+  previews: PagePreview[],
+  targets: CandidateUrl[],
+  opts: ImportOptions,
+  renderConfig: RenderConfig,
+  remainingBudget: () => number,
+  options: { concurrency: number; forceRender?: boolean },
+): Promise<{ previews: PagePreview[]; renderedCount: number }> {
+  if (!targets.length) return { previews, renderedCount: 0 };
+  let renderedCount = 0;
+  const fetched = await mapPool(targets, options.concurrency, async (candidate) => {
+    if (remainingBudget() <= 1_000) return null;
+    return previewCandidate(candidate, opts, renderConfig, remainingBudget, options.forceRender);
+  });
+  const byUrl = new Map(previews.map((preview) => [normalizedUrlKey(preview.url), preview]));
+  for (const item of fetched) {
+    if (!item?.preview) continue;
+    if (item.usedRender) renderedCount += 1;
+    const key = normalizedUrlKey(item.preview.url);
+    const existing = byUrl.get(key);
+    if (!existing || shouldKeepRenderedPreview(item.preview, existing)) byUrl.set(key, item.preview);
+  }
+  return { previews: [...byUrl.values()], renderedCount };
+}
+
 function selectFinalPreviews(
   previews: PagePreview[],
   startUrl: URL,
@@ -931,6 +990,20 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     });
     finalPreviews = secondAugment.previews;
     if (secondAugment.renderedCount > 0) fallbackUsed.push('headless_render');
+
+    const afterAugmentCandidates = seedCandidates(startUrl, finalPreviews, sitemap.candidates);
+    const desiredChildPages = Math.min(opts.maxChildServicePages ?? 6, maxPages);
+    const existingChildPages = countPreviewsInBucket(finalPreviews, startUrl, afterAugmentCandidates, 'service_child');
+    const missingChildSlots = desiredChildPages - existingChildPages;
+    if (missingChildSlots > 0 && sitemap.candidates.length && remainingBudget() > 2_000) {
+      const rescueTargets = selectMissingSitemapBucketCandidates(sitemap.candidates, finalPreviews, 'service_child', missingChildSlots);
+      const rescued = await addSpecificCandidatePreviews(finalPreviews, rescueTargets, fetchOpts, renderConfig, remainingBudget, {
+        concurrency: Math.min(concurrency, 4),
+        forceRender: fallbackUsed.includes('cloudflare_crawl'),
+      });
+      finalPreviews = rescued.previews;
+      if (rescued.renderedCount > 0) fallbackUsed.push('headless_render');
+    }
 
     const finalSelection = selectFinalPreviews(finalPreviews, startUrl, seedCandidates(startUrl, finalPreviews, sitemap.candidates), maxPages);
     finalPreviews = finalSelection.previews;

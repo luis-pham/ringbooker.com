@@ -522,7 +522,7 @@ export async function createOpenAiRealtimeClientSecret(params: {
  * Google Places enrichment on slower sites and yields partial/wrong hours & services,
  * so the demo import would diverge from onboarding for the same URL.
  */
-export const WEBSITE_IMPORT_BUDGET_MS = 60_000;
+export const WEBSITE_IMPORT_BUDGET_MS = 120_000;
 
 export const WEBSITE_IMPORT_LLM_GLOBAL_IDENTITY = 'global:website_import_llm';
 export const WEBSITE_IMPORT_LLM_CAP_ALERT_COOLDOWN_MS = 60 * 60_000;

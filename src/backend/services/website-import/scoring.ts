@@ -1,7 +1,7 @@
 import type { CandidateBucket, CandidateUrl, PagePreview, SelectedPageDiagnostic } from './types';
 
-const SERVICE_WORDS = /\b(service|services|menu|pricing|price|treatment|treatments|salon|spa|beauty|hair|haircut|color|balayage|manicure|pedicure|waxing|massage|facial|botox|laser|injectable|lashes|brow)\b/i;
-const SPECIFIC_SERVICE = /\b(balayage|hydrafacial|botox|filler|gel manicure|deluxe pedicure|eyebrow wax|waxing|massage|facial|hair color|highlights|haircut|hair cut|hair extensions?|brazilian blowout|bridal hair|make-?up|acrylic|dip powder)\b/i;
+const SERVICE_WORDS = /\b(service|services|menu|pricing|price|treatment|treatments|salon|spa|beauty|hair|haircut|cut|cuts|style|styling|texture|extensions?|exten[st]ions?|color|balayage|manicure|pedicure|waxing|massage|facial|botox|laser|injectable|lashes|brow)\b/i;
+const SPECIFIC_SERVICE = /\b(balayage|hydrafacial|botox|filler|gel manicure|deluxe pedicure|eyebrow wax|waxing|massage|facial|hair color|highlights|haircut|hair cut|cut and style|hair extensions?|brazilian blowout|bridal hair|make-?up|acrylic|dip powder|keratin|perm)\b/i;
 const STAFF_WORDS = /\b(staff|team|stylist|stylists|providers|artists|technicians|experts|injectors|estheticians|barbers)\b/i;
 const POLICY_WORDS = /\b(policy|policies|cancellation|no-show|no show|deposit|refund|terms|appointment|late|prep|aftercare)\b/i;
 const FAQ_WORDS = /\b(faq|faqs|questions|help)\b/i;
@@ -9,7 +9,8 @@ const PROMO_WORDS = /\b(specials|promotions|offers|deals|membership|packages)\b/
 const ECOMMERCE_WORDS = /\b(shop|store|product|products|collection|collections|cart|checkout|retail|merch|gift-card|gift cards|buy|add to cart)\b/i;
 const EXACT_SERVICE_PATH = /(?:^|\/)(services?|service-menu|salon-services|hair-services|menu|treatments?)(?:\/|$)/i;
 const EXACT_SERVICE_LABEL = /\b(services?|service menu|salon services|hair services|treatments?|menu)\b/i;
-const SERVICE_CATEGORY_WORDS = /\b(hair|haircut|haircuts|cut|cuts|color|colour|balayage|highlight|highlights|wax|waxing|lash|lashes|brow|brows|facial|facials|massage|spa|nail|nails|manicure|pedicure|botox|filler|injectable|injectables|laser|skin|makeup|make-up)\b/i;
+const SERVICE_CATEGORY_WORDS = /\b(hair|haircut|haircuts|cut|cuts|style|styling|blowout|blow-dry|color|colour|balayage|highlight|highlights|texture|extensions?|exten[st]ions?|keratin|perm|wax|waxing|lash|lashes|brow|brows|facial|facials|massage|spa|nail|nails|manicure|pedicure|botox|filler|injectable|injectables|laser|skin|scalp|conditioning|makeup|make-up)\b/i;
+const COMPACT_SERVICE_CATEGORY_SLUG_RE = /(?:haircut|haircuts|cut|cuts|style|styling|blowout|blowdry|color|colour|balayage|highlight|highlights|texture|extension|extensions|extention|extentions|keratin|perm|wax|waxing|lash|lashes|brow|brows|facial|facials|massage|spa|nail|nails|manicure|pedicure|botox|filler|injectable|injectables|laser|skin|scalp|conditioning|treatment|treatments)/i;
 const MENU_INTENT_WORDS = /\b(menu|menus|service|services|pricing|prices|price|treatment|treatments|therapy)\b/i;
 const ARTICLE_PATH = /\/(?:f|blog|blogs|news|article|articles|post|posts|stories?|s\/stories)\//i;
 const SERVICE_AREA_PATH = /\/(?:contact-us\/)?service-areas?\/?$|\/areas-of-service\//i;
@@ -28,6 +29,20 @@ function normalizeIntentText(value: string): string {
 
 function hasCategoryMenuIntent(value: string): boolean {
   return SERVICE_CATEGORY_WORDS.test(value) && MENU_INTENT_WORDS.test(value);
+}
+
+function hasCategorySlugIntent(pathSignal: string): boolean {
+  let segments: string[];
+  try {
+    segments = new URL(pathSignal, 'https://example.test').pathname.split('/').filter(Boolean);
+  } catch {
+    segments = pathSignal.split('/').filter(Boolean);
+  }
+  const last = segments.at(-1);
+  if (!last) return false;
+  const normalized = normalizeIntentText(last);
+  if (SERVICE_CATEGORY_WORDS.test(normalized)) return true;
+  return COMPACT_SERVICE_CATEGORY_SLUG_RE.test(normalized.replace(/\s+/g, ''));
 }
 
 function servicePathIntent(pathSignal: string, labelSignal: string, articleIntent: boolean): { serviceMenu: boolean; categoryPage: boolean } {
@@ -62,10 +77,13 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
   const exactStaffPath = /\/(?:staff|team|our-team|artists?|stylists?)\/?$/i.test(pathSignal);
   const exactServiceHubPath = /\/(?:our-services|services|service-menu|salon-services)\/?$/i.test(pathSignal);
   const pathIntent = servicePathIntent(pathSignal, `${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`, articleIntent);
+  const categorySlugIntent = !articleIntent && !serviceAreaIntent && !policyPageIntent && !exactStaffPath && hasCategorySlugIntent(pathSignal);
+  const categorySlugConfirmed = categorySlugIntent && (!preview || preview.priceCount > 0 || preview.durationCount > 0 || preview.serviceKeywordCount >= 2 || (preview.serviceBlocks?.length ?? 0) > 0);
   const serviceIntent = !articleIntent && !serviceAreaIntent && !policyPageIntent && (
     EXACT_SERVICE_PATH.test(pathSignal)
     || EXACT_SERVICE_LABEL.test(`${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`)
     || pathIntent.serviceMenu
+    || categorySlugConfirmed
   );
   const ecommercePageIntent = ecommerceIntent && !serviceIntent;
 
@@ -93,11 +111,11 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
     bucket = isHomepage || ecommercePageIntent ? bucket : 'service_child'; score += ecommercePageIntent ? 8 : 45; reasons.push('Specific service signal');
   }
   if (serviceIntent) {
-    if (!isHomepage && !isServiceHubChild && !staffContext) {
-      bucket = exactServiceHubPath ? 'service_hub' : pathIntent.categoryPage ? 'service_child' : bucket === 'service_child' ? bucket : 'service_hub';
+    if (!isHomepage && (!staffContext || categorySlugConfirmed || pathIntent.categoryPage || isServiceHubChild)) {
+      bucket = exactServiceHubPath ? 'service_hub' : (pathIntent.categoryPage || categorySlugConfirmed || isServiceHubChild) ? 'service_child' : bucket === 'service_child' ? bucket : 'service_hub';
     }
-    score += exactServiceHubPath ? 90 : pathIntent.categoryPage ? 70 : 60;
-    reasons.push(exactServiceHubPath ? 'Exact services page' : pathIntent.categoryPage ? 'Category service menu' : 'Explicit services page');
+    score += exactServiceHubPath ? 90 : (pathIntent.categoryPage || categorySlugConfirmed) ? 70 : 60;
+    reasons.push(exactServiceHubPath ? 'Exact services page' : (pathIntent.categoryPage || categorySlugConfirmed) ? 'Category service menu' : 'Explicit services page');
   } else if (!articleIntent && !serviceAreaIntent && !policyPageIntent && (/service|menu|pricing|treatment/.test(primaryPageSignal) || (preview && preview.priceCount > 0 && preview.internalServiceLikeLinkCount >= 2))) {
     bucket = bucket === 'service_child' || isHomepage || isServiceHubChild || staffContext || ecommercePageIntent ? bucket : 'service_hub'; score += ecommercePageIntent ? 6 : 35; reasons.push('Service hub/menu signal');
   }
