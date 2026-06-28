@@ -2336,10 +2336,6 @@ export function DemoExperience({
                     </div>
                   ) : sitePhase === 'ready' && extractedData && !siteManualFallback ? (
                     <div className="vd-form-card">
-                      <div className="vd-m-badge vd-m-badge--ready">
-                        <span className="vd-m-badge-dot" aria-hidden />
-                        Ready to demo
-                      </div>
                       <h2 className="vd-status-h" style={{ marginTop: 0 }}>Your AI receptionist is ready</h2>
                       <p className="vd-status-body">We set up the demo using your salon&apos;s info.</p>
                       {!mobileFoundEdit ? (
@@ -2861,6 +2857,10 @@ export function DemoExperience({
                               onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
                             />
                           )}
+                        </div>
+                        <div className="vd-found-row">
+                          <span className="vd-found-key">Stylists</span>
+                          <span className="vd-found-val">{business.staff || '—'}</span>
                         </div>
                         {currentServiceCategorySummary.length > 0 ? (
                           <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
