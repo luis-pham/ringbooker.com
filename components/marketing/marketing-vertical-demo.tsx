@@ -2356,7 +2356,7 @@ export function DemoExperience({
                           ) : null}
                           {business.address || business.city || extractedData.address || extractedData.city ? (
                             <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
-                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Address</span>
+                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>City / state</span>
                               <span style={{ color: '#111827' }}>{business.address || business.city || extractedData.address || extractedData.city}</span>
                             </div>
                           ) : null}
@@ -2426,8 +2426,8 @@ export function DemoExperience({
                               />
                             </div>
                           </div>
-                          <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14, marginTop: 14 }}>
-                            <div className="vd-svc-label" style={{ marginBottom: 8 }}>Services</div>
+                          <div style={{ paddingTop: 14, marginTop: 14 }}>
+                            <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 8 }}>Services</div>
                             <div style={{ display: 'flex', overflowX: 'auto', gap: 6, paddingBottom: 8, scrollbarWidth: 'none' }}>
                               {business.services.map((cat) => (
                                 <button
@@ -2468,15 +2468,18 @@ export function DemoExperience({
                                     <div style={{ fontSize: 13, color: item.enabled ? '#1F2937' : '#9CA3AF', textDecoration: item.enabled ? 'none' : 'line-through' }}>{item.name}</div>
                                     {item.duration ? <div style={{ fontSize: 11, color: '#9CA3AF' }}>{item.duration}</div> : null}
                                   </div>
-                                  <input
-                                    className="vd-svc-price"
-                                    type="number"
-                                    inputMode="numeric"
-                                    min={0}
-                                    value={item.price}
-                                    onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
-                                    style={{ width: 48, fontSize: 12, textAlign: 'center', opacity: item.enabled ? 1 : 0.4 }}
-                                  />
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1, opacity: item.enabled ? 1 : 0.4 }}>
+                                    <span style={{ fontSize: 12, color: '#6B7280' }}>$</span>
+                                    <input
+                                      className="vd-svc-price"
+                                      type="number"
+                                      inputMode="numeric"
+                                      min={0}
+                                      value={item.price}
+                                      onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })}
+                                      style={{ width: 44, fontSize: 12, textAlign: 'center' }}
+                                    />
+                                  </div>
                                   <span aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', pointerEvents: 'none', userSelect: 'none' }}>›</span>
                                 </div>
                               ))}
@@ -2682,7 +2685,10 @@ export function DemoExperience({
                                     <div className="vd-svc-name">{item.name}</div>
                                     {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
                                   </div>
-                                  <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                    <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                                    <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -2797,8 +2803,8 @@ export function DemoExperience({
                             onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
                           />
                         </div>
-                        <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14 }}>
-                          <div className="vd-svc-label">{config.serviceLabel}</div>
+                        <div style={{ paddingTop: 14 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 8 }}>Services</div>
                           <div className="vd-tabs">
                             {business.services.map((cat) => (
                               <button key={cat.id} type="button" className={`vd-tab ${selectedCategory === cat.id ? 'on' : ''}`} onClick={() => setSelectedCategory(cat.id)}>
@@ -2814,7 +2820,10 @@ export function DemoExperience({
                                   <div className="vd-svc-name">{item.name}</div>
                                   {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
                                 </div>
-                                <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                  <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                                  <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                </div>
                                 <span className="vd-svc-chevron" aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, color: 'currentColor', cursor: 'default', userSelect: 'none', paddingLeft: 4 }}>›</span>
                               </div>
                             ))}
@@ -2823,18 +2832,18 @@ export function DemoExperience({
                         <button type="button" className="vd-found-edit" onClick={() => setImportedDetailsEdit(false)}>Done editing</button>
                       </div>
                     ) : (
-                      <div className="vd-found-card">
-                        <div className="vd-found-head">What we found</div>
+                      <div>
+                        <div className="vd-found-head" style={{ marginBottom: 12 }}>What we found</div>
                         {business.businessName || extractedData.businessName ? (
                           <div className="vd-found-row">
-                            <span className="vd-found-key">Name</span>
+                            <span className="vd-found-key">Business</span>
                             <span className="vd-found-val">{business.businessName || extractedData.businessName}</span>
                           </div>
                         ) : null}
                         {business.address || business.city || extractedData.address || extractedData.city ? (
                           <div className="vd-found-row">
-                            <span className="vd-found-key">Address</span>
-                            <span className="vd-found-val" style={{ fontSize: 12, fontWeight: 500, color: '#4B5563' }}>
+                            <span className="vd-found-key">City / state</span>
+                            <span className="vd-found-val">
                               {business.address || business.city || extractedData.address || extractedData.city}
                             </span>
                           </div>
@@ -2963,7 +2972,10 @@ export function DemoExperience({
                                 <div className="vd-svc-name">{item.name}</div>
                                 {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
                               </div>
-                              <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                                <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                              </div>
                             </div>
                           ))}
                         </div>
