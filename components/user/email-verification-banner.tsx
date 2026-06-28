@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 type AuthMeResponse = {
   ok?: boolean;
@@ -10,6 +11,7 @@ type AuthMeResponse = {
 };
 
 export function EmailVerificationBanner({ initialEmailVerified }: { initialEmailVerified?: boolean }) {
+  const pathname = usePathname();
   const [emailVerified, setEmailVerified] = useState(initialEmailVerified);
   const [message, setMessage] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
@@ -60,7 +62,15 @@ export function EmailVerificationBanner({ initialEmailVerified }: { initialEmail
     }
   }, []);
 
-  if (emailVerified !== false) return null;
+  if (
+    emailVerified !== false ||
+    pathname === '/user/login' ||
+    pathname === '/user/signup' ||
+    pathname === '/user/forgot-password' ||
+    pathname === '/user/reset-password'
+  ) {
+    return null;
+  }
 
   return (
     <div className="email-verification-banner" role="status">

@@ -319,6 +319,23 @@ export function inferTimezoneFromAddress(address?: string | null): ImportField<s
   return match ? field(match.timezone, 0.72, 'Address') : null;
 }
 
+function looksLikeDescriptionServiceName(name: string): boolean {
+  const cleaned = name.trim();
+  if (!cleaned) return true;
+  if (/[!?]/.test(cleaned)) return true;
+  if (/[.,;:]\s+\S/.test(cleaned)) return true;
+  if (cleaned.split(/\s+/).length > 7) return true;
+  if (/^(?:can|recommended|great|perfect|same|add|booked|pricing|services?)\b/i.test(cleaned)) return true;
+  if (/\b(recommended\s+maintenance|finished\s+with|participating\s+stylists|add\s*on\s+to\s+any\s+service|refer(?:ral)?|gift\s+(?:card|for)|to\s+say\s+thanks)\b/i.test(cleaned)) return true;
+  const words = cleaned
+    .toLowerCase()
+    .replace(/[’']/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !/^(with|from|service|services|treatment|treatments|style|styles|hair|facial|waxing|color|colour)$/.test(word));
+  return words.length >= 4 && new Set(words).size < words.length;
+}
+
 export function extractServicesFromText(text: string, source: string): ImportedServiceSuggestion[] {
   text = normalizePriceSeparators(text);
   const services = new Map<string, ImportedServiceSuggestion>();
@@ -344,6 +361,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     if (/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name)) return;
     if (/^[a-z]\s+\w/.test(name)) return;
     if (SERVICE_MENU_SOURCE_RE.test(name)) return;
+    if (looksLikeDescriptionServiceName(name)) return;
     if (isStylistPricingRowName(name)) return;
     if ((name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2) return;
     if (/^(this is|service includes|includes|perfect for|ideal for|not sure|our service|pricing is based|you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)) return;
@@ -672,26 +690,33 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
     || SERVICE_MENU_SOURCE_RE.test(value)
     || ECOMMERCE_CONTEXT_RE.test(value)
     || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(value);
+  const plausiblePrice = (amount: number | null | undefined) => (
+    typeof amount === 'number' && Number.isFinite(amount) && amount >= 0 && amount <= 2000
+  ) ? amount : null;
   for (const preview of previews) {
     for (const block of preview.serviceBlocks ?? []) {
       const parsed = splitServiceHeadingPrefix(block.serviceName);
       const group = block.groupHeading?.trim() || parsed.group || inferGroup(parsed.name);
       const duration = block.durationText ? parseDurationText(block.durationText) : null;
       const priceMatch = block.priceText?.match(/\$?\s*(\d{2,4})/);
-      const priceAmount = priceMatch ? Number(priceMatch[1]) : null;
+      const priceAmount = plausiblePrice(priceMatch ? Number(priceMatch[1]) : null);
       if (parsed.name.length < 3 || parsed.name.length > 90) continue;
       if (invalidServiceName(parsed.name)) continue;
       const key = `${group}:${parsed.name}`.toLowerCase();
-      const blockVariants = (block.variants ?? []).map((variant, index) => ({
-        label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${index + 1}`),
-        durationMinutes: variant.durationMinutes ?? null,
-        durationText: variant.durationText ?? (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
-        priceAmount: variant.priceAmount ?? null,
-        priceCurrency: variant.priceCurrency ?? CURRENCY,
-        priceType: variant.priceType ?? 'fixed',
-        sortOrder: variant.sortOrder ?? index,
-        notes: variant.notes ?? null,
-      })).filter((variant) => variant.label || variant.durationText || variant.priceAmount !== null).slice(0, 20);
+      const blockVariants = (block.variants ?? []).flatMap((variant, index) => {
+        const variantPrice = plausiblePrice(variant.priceAmount);
+        if (typeof variant.priceAmount === 'number' && variantPrice === null) return [];
+        return [{
+          label: variant.label?.trim() || variant.durationText?.trim() || (variantPrice !== null ? `$${variantPrice}` : `Option ${index + 1}`),
+          durationMinutes: variant.durationMinutes ?? null,
+          durationText: variant.durationText ?? (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+          priceAmount: variantPrice,
+          priceCurrency: variant.priceCurrency ?? CURRENCY,
+          priceType: variant.priceType ?? 'fixed',
+          sortOrder: variant.sortOrder ?? index,
+          notes: variant.notes ?? null,
+        }];
+      }).filter((variant) => variant.label || variant.durationText || variant.priceAmount !== null).slice(0, 20);
       if (services.has(key)) {
         const existing = services.get(key);
         if (existing && blockVariants.length) {
@@ -1138,6 +1163,58 @@ function cleanMarkdownText(value: string): string {
     .trim();
 }
 
+function extractServicesFromMarkdownPriceHeadings(previews: PagePreview[]): ImportedServiceSuggestion[] {
+  const services = new Map<string, ImportedServiceSuggestion>();
+  const pricedHeadingRe = /^(?:#{2,6}\s+|[-*]\s+)(.{3,100}?)(?:\s+[—-]\s+|\s+)(?:from|starting at|starts at)?\s*\$\s?(\d{2,4})(\+)?\s*$/i;
+  for (const preview of previews) {
+    const markdown = preview.markdown ?? '';
+    if (!markdown) continue;
+    let currentGroup: string | null = null;
+    for (const rawLine of markdown.split(/\n+/)) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
+      const priced = line.match(pricedHeadingRe);
+      if (priced) {
+        const rawName = cleanMarkdownText(priced[1]);
+        const parsed = splitServiceHeadingPrefix(rawName);
+        const name = cleanServiceName(parsed.name);
+        if (!isServiceListItem(name)) continue;
+        const categoryName = categoryFromServiceListGroup(parsed.group ?? currentGroup, name);
+        const priceAmount = Number(priced[2]);
+        if (!Number.isFinite(priceAmount) || priceAmount < 0 || priceAmount > 2000) continue;
+        const key = `${categoryName}:${name}`.toLowerCase();
+        if (services.has(key)) continue;
+        services.set(key, {
+          categoryName,
+          name,
+          priceAmount,
+          priceCurrency: CURRENCY,
+          priceType: priced[3] || /\b(from|starting at|starts at)\b/i.test(line) ? 'from' : 'fixed',
+          durationText: null,
+          durationMinutes: null,
+          aliases: aliasFor(name),
+          bookable: true,
+          source: preview.url,
+          sourceHint: 'heading_sibling',
+          confidence: 0.86,
+          needsReview: false,
+          evidenceSnippet: cleanMarkdownText(line).slice(0, 220),
+        });
+        continue;
+      }
+      if (!heading) continue;
+      const text = cleanMarkdownText(heading[2]);
+      if (/^(contact|contact us|contact information|hours of operation|testimonials?|faq|payment plans?|service areas?)$/i.test(text)) {
+        currentGroup = null;
+        continue;
+      }
+      if (isServiceListGroup(text)) currentGroup = text;
+    }
+  }
+  return [...services.values()].slice(0, 80);
+}
+
 function isServiceListGroup(value: string): boolean {
   const cleaned = cleanMarkdownText(value);
   if (cleaned.length < 3 || cleaned.length > 100) return false;
@@ -1266,13 +1343,35 @@ function cleanStaffName(value: string): string {
   return value.replace(/^(team|staff|meet|our)\s+/i, '').replace(/\s+/g, ' ').trim();
 }
 
+function splitSharedStaffNames(value: string): string[] {
+  const cleaned = cleanStaffName(value);
+  if (!/\s*&\s*|\s+and\s+/i.test(cleaned)) return [cleaned];
+  const parts = cleaned.split(/\s*(?:&|\band\b)\s*/i).map((part) => part.trim()).filter(Boolean);
+  if (parts.length !== 2) return [cleaned];
+  const secondWords = parts[1].split(/\s+/).filter(Boolean);
+  if (parts[0].split(/\s+/).length === 1 && secondWords.length >= 2) {
+    const sharedLast = secondWords.slice(1).join(' ');
+    return [`${parts[0]} ${sharedLast}`, parts[1]];
+  }
+  return parts;
+}
+
+function staffRoleFromSectionHeading(value: string): string | null {
+  const cleaned = cleanMarkdownText(value);
+  if (!cleaned || cleaned.length > 80) return null;
+  if (/\b(guest\s+care|front\s+desk|reception|receptionist|owners?|operators?|management|managers?|stylists?|artists?|barbers?|providers?|technicians?)\b/i.test(cleaned)) {
+    return normalizeStaffRole(cleaned) ?? cleaned;
+  }
+  return null;
+}
+
 function isLikelyStaffName(value: string): boolean {
   const cleaned = cleanStaffName(value);
   if (!cleaned || cleaned.length < 2 || cleaned.length > 60) return false;
   if (/\d|@|#|\/|\$/.test(cleaned)) return false;
   if (/^(master|massage|licensed|certified|senior|lead|medical|hairstylist|stylist|colorist|artist|apprentice|junior|receptionist|director|specialist|expert|owner|manager)$/i.test(cleaned)) return false;
   if (/^(?:master\s+)?(?:colorist|hairstylist|stylist|artist|apprentice|junior\s+stylist|studio\s+director|tooth\s+gem\s+specialist|hair\s+replacement\s+specialist)$/i.test(cleaned)) return false;
-  if (/^(home|services?|artists?|team|staff|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
+  if (/^(home|services?|artists?|stylists?|team|staff|guest\s+care|front\s+desk|reception|receptionist|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours|salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
   // Service-category words (often lifted from nav/headings) are never a person's name.
   if (/^(hair|colou?r|cut|cuts|style|styling|nails?|skin|brows?|lash(?:es)?|wax(?:ing)?|makeup|facials?|massage|treatments?|extensions?|blowout|manicure|pedicure|menu|gallery|pricing|prices?|gift\s*cards?|promotions?|reviews?)$/i.test(cleaned)) return false;
@@ -1348,6 +1447,7 @@ function dedupeBy<T>(items: T[], keyFn: (item: T) => string): T[] {
 function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
   const byKey = new Map<string, ImportedServiceSuggestion>();
   for (const service of services) {
+    if (looksLikeDescriptionServiceName(service.name)) continue;
     const key = `${service.categoryName}:${service.name}`.toLowerCase();
     const existing = byKey.get(key);
     if (!existing) {
@@ -1434,7 +1534,13 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
 
     faqSuggestions.push(...extractVisibleFaqs(preview));
 
-    if (/(staff|team|stylist|artist|provider|injector|esthetician|barber|about)/i.test(lowerContext)) {
+    const primaryStaffContext = `${preview.url} ${preview.title} ${preview.h1}`.toLowerCase();
+    const headingStaffContext = preview.h2s.join(' ').toLowerCase();
+    const hasStaffPageContext = /(staff|team|stylist|artist|provider|injector|esthetician|barber)/i.test(primaryStaffContext)
+      || /\b(our\s+team|meet\s+(?:the\s+)?team|team\s+members|staff\s+members)\b/i.test(headingStaffContext);
+    const hasEmptyTeamMessage = /\b(?:sorry,\s*)?none of our team members meet your selected criteria\b/i.test(text)
+      || /\bno team members (?:were )?(?:found|available|match)\b/i.test(text);
+    if (hasStaffPageContext && !hasEmptyTeamMessage) {
       // Structured STAFF_MEMBER: blocks from DOM extraction (includes Role: when available)
       const structuredStaffRe = /^STAFF_MEMBER:\s*([^|\n]+?)(?:\s*\|\s*Role:\s*([^|\n]+?))?(?:\s*\|\s*Bio:\s*([^\n]+))?$/gim;
       let structuredStaffCount = 0;
@@ -1457,40 +1563,87 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
       }
 
       if (structuredStaffCount === 0) {
-        // Fallback: "Name - Role" inline patterns
-        const staffLineRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–—,|]\s*)?(Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Director|Founder|Specialist|Therapist|Aesthetician|Nail\s+Tech)\b/g;
-        for (const match of text.matchAll(staffLineRe)) {
-          const name = cleanStaffName(match[1]);
+        const explicitStaffLineRe = /^\s*(?:#{1,6}\s*)?(.{2,80}?)\s*(?:\/\/|[-–—,|])\s*((?:Hair\s+|Nail\s+|Lash\s+|Brow\s+|Makeup\s+)?(?:Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Director|Founder|Specialist|Therapist|Aesthetician|Nail\s+Tech)|Owners?\s+and\s+Operators?)\s*$/gim;
+        for (const match of (preview.markdown ?? text).matchAll(explicitStaffLineRe)) {
+          const role = normalizeStaffRole(match[2]) ?? match[2].trim();
+          for (const rawName of splitSharedStaffNames(match[1])) {
+            const name = cleanStaffName(rawName);
+            if (!isLikelyStaffName(name)) continue;
+            structuredStaffCount += 1;
+            staffSuggestions.push({
+              name,
+              role,
+              specialties: [],
+              source: 'website',
+              sourceUrl: preview.url,
+              confidence: 0.72,
+              evidenceSnippet: sanitizeSnippet(match[0]),
+            });
+          }
+        }
+
+        let currentSectionRole: string | null = null;
+        for (const rawLine of (preview.markdown ?? '').split(/\n+/)) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          const heading = line.match(/^#{1,6}\s+(.+)$/);
+          if (heading) {
+            currentSectionRole = staffRoleFromSectionHeading(heading[1]);
+            continue;
+          }
+          if (!currentSectionRole) continue;
+          if (/^(?:---+|!?\[|Open Menu|Close Menu|Book Now)/i.test(line)) continue;
+          if (/\/\/|[-–—,|]/.test(line)) continue;
+          const name = cleanStaffName(cleanMarkdownText(line));
           if (!isLikelyStaffName(name)) continue;
+          structuredStaffCount += 1;
           staffSuggestions.push({
             name,
-            role: match[2].trim(),
+            role: currentSectionRole,
             specialties: [],
             source: 'website',
             sourceUrl: preview.url,
-            confidence: 0.68,
-            evidenceSnippet: sanitizeSnippet(match[0]),
+            confidence: 0.66,
+            evidenceSnippet: sanitizeSnippet(`${name} ${currentSectionRole}`),
           });
         }
 
-        const staffBioSentenceRe = /\b([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+){0,2})[ \t]+is[ \t]+([^.\n]{0,360})/g;
-        for (const match of text.matchAll(staffBioSentenceRe)) {
-          const name = cleanStaffName(match[1]);
-          if (!isLikelyStaffName(name)) continue;
-          const roleMatch = match[2].match(/\b((?:licensed|certified|experienced|senior)\s+)?(massage\s+therapist|stylist|colorist|artist|provider|technician|injector|esthetician|barber|owner|manager|director|founder|specialist|therapist|aesthetician|nail\s+tech)\b/i);
-          if (!roleMatch) continue;
-          const role = normalizeStaffRole(roleMatch[0]) ?? staffRoleFromContext(lowerContext);
-          const bio = sanitizeSnippet(match[0], 500);
-          staffSuggestions.push({
-            name,
-            role,
-            specialties: [],
-            bio,
-            source: 'website',
-            sourceUrl: preview.url,
-            confidence: bio ? 0.76 : 0.66,
-            evidenceSnippet: sanitizeSnippet(match[0]),
-          });
+        if (structuredStaffCount === 0) {
+          // Fallback: "Name - Role" inline patterns
+          const staffLineRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:(?:\/\/|[-–—,|])\s*)?((?:Hair\s+|Nail\s+|Lash\s+|Brow\s+|Makeup\s+)?(?:Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Director|Founder|Specialist|Therapist|Aesthetician|Nail\s+Tech))\b/g;
+          for (const match of text.matchAll(staffLineRe)) {
+            const name = cleanStaffName(match[1]);
+            if (!isLikelyStaffName(name)) continue;
+            staffSuggestions.push({
+              name,
+              role: match[2].trim(),
+              specialties: [],
+              source: 'website',
+              sourceUrl: preview.url,
+              confidence: 0.68,
+              evidenceSnippet: sanitizeSnippet(match[0]),
+            });
+          }
+
+          const staffBioSentenceRe = /\b([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+){0,2})[ \t]+is[ \t]+([^.\n]{0,360})/g;
+          for (const match of text.matchAll(staffBioSentenceRe)) {
+            const name = cleanStaffName(match[1]);
+            if (!isLikelyStaffName(name)) continue;
+            const roleMatch = match[2].match(/\b((?:licensed|certified|experienced|senior)\s+)?(massage\s+therapist|stylist|colorist|artist|provider|technician|injector|esthetician|barber|owner|manager|director|founder|specialist|therapist|aesthetician|nail\s+tech)\b/i);
+            if (!roleMatch) continue;
+            const role = normalizeStaffRole(roleMatch[0]) ?? staffRoleFromContext(lowerContext);
+            const bio = sanitizeSnippet(match[0], 500);
+            staffSuggestions.push({
+              name,
+              role,
+              specialties: [],
+              bio,
+              source: 'website',
+              sourceUrl: preview.url,
+              confidence: bio ? 0.76 : 0.66,
+              evidenceSnippet: sanitizeSnippet(match[0]),
+            });
+          }
         }
       }
     }
@@ -1742,6 +1895,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
     ...extractServicesFromJsonLd(input.previews),
     ...extractServicesFromBlocks(input.previews),
     ...extractServicesFromMarkdownLists(input.previews),
+    ...extractServicesFromMarkdownPriceHeadings(input.previews),
     ...input.previews.flatMap((p) => {
       const hasStructuredServiceEvidence = (p.serviceBlocks?.length ?? 0) >= 3 || (p.serviceBlocks ?? []).some((block) => block.sourceHint === 'service_matrix_table');
       return hasStructuredServiceEvidence ? [] : extractServicesFromText(`${p.h1}\n${p.firstTextChars}`, p.url);

@@ -259,7 +259,7 @@ function isLikelyServiceName(value: string): boolean {
   if (!value || value.length < 3 || value.length > 120) return false;
   if (/^[a-z]\s+\w/.test(value)) return false;
   if (/^(home|services?|book|booking|contact|about|hours|pricing)$/i.test(value)) return false;
-  return /\b(blow\s*out|blowout|color|lightening|tint|retouch|touch\s*-?\s*up|cut|haircut|style|package|scrub|treatment|extensions?|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe|curly|men'?s?|women'?s?|children'?s|up-?do|relaxing|therapeutic|reflexology|stone|body)\b/i.test(value);
+  return /\b(blow\s*out|blowout|color|lightening|tint|retouch|touch\s*-?\s*up|cut|haircut|style|package|scrub|treatment|extensions?|hydrafacial|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe|curly|men'?s?|women'?s?|children'?s|up-?do|relaxing|therapeutic|reflexology|stone|body)\b/i.test(value);
 }
 
 function isLikelySpecificServiceHeading(value: string): boolean {
@@ -424,8 +424,10 @@ function priceFromCell(value: string): { amount: number | null; type: 'fixed' | 
   if (/varies|call/i.test(text)) return { amount: null, type: 'varies', raw: text };
   const match = text.match(/\$?\s*(\d{1,5})(?:\.\d{1,2})?\s*\+?/);
   if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount > 2000) return null;
   return {
-    amount: Number(match[1]),
+    amount,
     type: /from|starting|starts|\+/i.test(text) ? 'from' : 'fixed',
     raw: text,
   };
@@ -439,6 +441,8 @@ function simplePriceTableBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
   const seen = new Set<string>();
   $('table').each((_, tableEl) => {
     const table = $(tableEl);
+    const tableClass = table.attr('class') ?? '';
+    if (/service[_-]?levels/i.test(tableClass) || table.find('.serv-title,.serv-header,.serv-price').length > 0) return;
     const tableText = cleanElementText(table);
     if (!tableText || looksLikeNonServiceBlock(tableText) || isEcommerceContext($)) return;
     const rows = table.find('tr').toArray();
@@ -491,6 +495,126 @@ function simplePriceTableBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
         sourceHint: 'simple_price_table',
         confidence: price ? 0.80 : 0.52,
         evidenceSnippet: `${nameText}: ${rawPrice}`.slice(0, 220),
+      });
+    }
+  });
+  return blocks.slice(0, 80);
+}
+
+function serviceLevelTableBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
+  const blocks: ServiceBlock[] = [];
+  const seen = new Set<string>();
+  const push = (block: ServiceBlock) => {
+    const key = `${block.groupHeading ?? ''}:${block.serviceName}:${(block.variants ?? []).map((variant) => `${variant.label}:${variant.priceAmount}`).join('|')}`.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    blocks.push(block);
+  };
+  $('table').each((_, tableEl) => {
+    const table = $(tableEl);
+    const tableClass = table.attr('class') ?? '';
+    if (!/service[_-]?levels/i.test(tableClass) && table.find('.serv-title,.serv-header,.serv-price').length === 0) return;
+    const tableText = cleanElementText(table);
+    if (!tableText || looksLikeNonServiceBlock(tableText) || isEcommerceContext($)) return;
+    const group = nearestSectionHeading($, table) ?? cleanBlockText(table.prevAll('h1,h2,h3').first().text());
+    const groupHeading = group && isLikelyServiceGroup(group) ? group : null;
+
+    let currentName: string | null = null;
+    let variants: NonNullable<ServiceBlock['variants']> = [];
+    const flushVertical = () => {
+      if (!currentName || variants.length === 0) {
+        currentName = null;
+        variants = [];
+        return;
+      }
+      const serviceName = splitBlockNameDescription(currentName).name.replace(/\s+/g, ' ').trim();
+      if (isLikelyServiceName(serviceName) && !looksLikeNonServiceBlock(serviceName)) {
+        const evidence = `${serviceName}: ${variants.map((variant) => `${variant.label} ${variant.priceAmount ?? variant.priceType}`).join(' | ')}`;
+        push({
+          groupHeading,
+          serviceName,
+          descriptionText: null,
+          priceText: variants[0]?.priceAmount !== null && variants[0]?.priceAmount !== undefined ? `$${variants[0].priceAmount}` : null,
+          durationText: variants[0]?.durationText ?? null,
+          sourceText: evidence.slice(0, 600),
+          sourceHint: 'service_matrix_table',
+          confidence: 0.86,
+          evidenceSnippet: evidence.slice(0, 220),
+          variants,
+        });
+      }
+      currentName = null;
+      variants = [];
+    };
+
+    table.find('tr').each((_, rowEl) => {
+      const cells = $(rowEl).children('th,td').toArray();
+      if (cells.length === 0) return;
+      const texts = cells.map((cellEl) => cleanElementText($(cellEl)));
+      const first = $(cells[0]);
+      if (first.hasClass('serv-title') || Number(first.attr('colspan') ?? 1) > 1 && texts[0] && !priceFromCell(texts[0])) {
+        flushVertical();
+        currentName = texts[0];
+        return;
+      }
+      if (currentName && cells.length >= 2 && ($(cells[0]).hasClass('serv-header') || $(cells[1]).hasClass('serv-price'))) {
+        const label = texts[0];
+        const price = priceFromCell(texts[1]);
+        const duration = durationFromHeader(label);
+        if (label && price) {
+          variants.push({
+            label: duration?.label ?? label,
+            durationMinutes: duration?.minutes ?? null,
+            durationText: duration?.label ?? null,
+            priceAmount: price.amount,
+            priceCurrency: 'USD',
+            priceType: price.type,
+            sortOrder: variants.length,
+            notes: null,
+          });
+        }
+      }
+    });
+    flushVertical();
+
+    const rowElements = table.find('tr').toArray();
+    const rows = rowElements.map((rowEl) =>
+      $(rowEl).children('th,td').toArray().map((cellEl) => cleanElementText($(cellEl))),
+    );
+    const headerIndex = rowElements.findIndex((rowEl) => $(rowEl).children('th').length >= 2);
+    const header = headerIndex >= 0 ? rows[headerIndex] : undefined;
+    if (!header || header.filter(Boolean).length < 2) return;
+    for (const row of rows.slice(headerIndex + 1).filter((entry) => entry.filter(Boolean).length >= 2)) {
+      const serviceName = splitBlockNameDescription(row[0] ?? '').name.replace(/\s+/g, ' ').trim();
+      if (!isLikelyServiceName(serviceName) || looksLikeNonServiceBlock(serviceName)) continue;
+      const rowVariants = header.slice(1).flatMap((label, index) => {
+        const price = priceFromCell(row[index + 1] ?? '');
+        if (!label || !price) return [];
+        const duration = durationFromHeader(label);
+        return [{
+          label: duration?.label ?? label,
+          durationMinutes: duration?.minutes ?? null,
+          durationText: duration?.label ?? null,
+          priceAmount: price.amount,
+          priceCurrency: 'USD',
+          priceType: price.type,
+          sortOrder: index,
+          notes: null,
+        }];
+      });
+      if (rowVariants.length === 0) continue;
+      const evidence = `${header.join(' | ')} / ${row.join(' | ')}`;
+      push({
+        groupHeading,
+        serviceName,
+        descriptionText: null,
+        priceText: rowVariants[0]?.priceAmount !== null && rowVariants[0]?.priceAmount !== undefined ? `$${rowVariants[0].priceAmount}` : null,
+        durationText: rowVariants[0]?.durationText ?? null,
+        sourceText: evidence.slice(0, 600),
+        sourceHint: 'service_matrix_table',
+        confidence: 0.86,
+        evidenceSnippet: evidence.slice(0, 220),
+        variants: rowVariants,
       });
     }
   });
@@ -661,6 +785,7 @@ function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
     }
   });
 
+  for (const block of serviceLevelTableBlocks($)) pushBlock(block);
   for (const block of simplePriceTableBlocks($)) pushBlock(block);
   for (const block of serviceMatrixTableBlocks($)) pushBlock(block);
   for (const block of repeatedCardServiceBlocks($)) pushBlock(block);

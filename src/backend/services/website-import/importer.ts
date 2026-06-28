@@ -103,7 +103,7 @@ type ImportOptions = {
 
 export const DEFAULT_WEBSITE_IMPORT_MAX_BYTES = 1_500_000;
 /** Default total import budget. The caller (demo vs onboarding) overrides this. */
-const DEFAULT_DEADLINE_MS = 55_000;
+const DEFAULT_DEADLINE_MS = 120_000;
 const DEFAULT_FETCH_CONCURRENCY = 6;
 /** LLM needs at least this much remaining budget to be worth calling. */
 const MIN_LLM_BUDGET_MS = 4_000;
@@ -162,6 +162,15 @@ const FETCH_HEADERS = {
   'accept-language': 'en-US,en;q=0.9',
   'cache-control': 'no-cache',
 } as const;
+
+function looksLikeEmptyOrNotFoundPage(text: string): boolean {
+  const compact = text.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return !compact || /^(?:404|not found|page not found|not found \|)/i.test(compact);
+}
 
 async function safeFetchPinned(url: string, opts: ImportOptions & { signal: AbortSignal }): Promise<Response> {
   const resolved = await resolveSafeUrl(url, { lookup: opts.lookup });
@@ -271,7 +280,23 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
         }
         const contentType = response.headers.get('content-type') ?? '';
         if (!/html|xml|text|markdown/i.test(contentType) && contentType) return null;
-        const raw = await readResponseTextWithLimit(response, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
+        let raw = await readResponseTextWithLimit(response, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
+        if (opts.fetcher && looksLikeEmptyOrNotFoundPage(raw)) {
+          const parsedCurrent = new URL(current);
+          const alt = parsedCurrent.pathname === '/' && !parsedCurrent.search && current.endsWith('/')
+            ? current.slice(0, -1)
+            : !current.endsWith('/') && !parsedCurrent.search
+              ? `${current}/`
+              : null;
+          if (alt) {
+            const altResponse = await opts.fetcher(alt, {
+              redirect: 'manual',
+              signal: controller.signal,
+              headers: FETCH_HEADERS,
+            });
+            if (altResponse.ok) raw = await readResponseTextWithLimit(altResponse, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
+          }
+        }
         return { url: finalUrl, text: raw };
       } finally {
         clearTimeout(timeout);
@@ -370,6 +395,270 @@ function cloudflareAccountIdFromRenderEndpoint(renderEndpoint?: string | null): 
   }
 }
 
+function normalizedUrlKey(value: string): string {
+  try {
+    const parsed = new URL(value);
+    parsed.hash = '';
+    for (const key of [...parsed.searchParams.keys()]) {
+      const lower = key.toLowerCase();
+      if (/^utm_/.test(lower) || ['fbclid', 'gclid', 'itemid', 'variantid', 'productid', 'sku'].includes(lower)) parsed.searchParams.delete(key);
+    }
+    if (parsed.pathname !== '/') parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    return parsed.toString();
+  } catch {
+    return value;
+  }
+}
+
+function isSameOrigin(url: string, origin: string): boolean {
+  try {
+    return new URL(url).origin === origin;
+  } catch {
+    return false;
+  }
+}
+
+function pathForScoring(url: string): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname).toLowerCase();
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
+function classifyImportCandidate(candidate: CandidateUrl, preview?: PagePreview): { bucket: CandidateBucket; score: number; reason: string } {
+  const base = classifyCandidate(candidate, preview);
+  const path = pathForScoring(candidate.url);
+  let { bucket, score } = base;
+  const reasons = [base.reason];
+
+  if (/\/(?:about\/)?(?:meet[-_]?the[-_]?team|our[-_]?team|team|staff|artists?|stylists?|providers?|technicians?)\/?$/i.test(path)) {
+    bucket = 'staff_team';
+    score += 150;
+    reasons.push('Targeted staff/team sitemap path');
+  }
+  if (/\/(?:salon[-_]?polic(?:y|ies)|polic(?:y|ies)|privacy[-_]?policy|terms|cancellation|refund)(?:\/|$)/i.test(path)) {
+    bucket = 'policies';
+    score += 150;
+    reasons.push('Targeted policy sitemap path');
+  }
+  if (/(?:^|\/)(?:hairmenu|wax[-_]?lash[-_]?brow[-_]?menu|advanced[-_]?facials?[-_]?menu)(?:\/|$)/i.test(path)) {
+    bucket = 'service_child';
+    score += 150;
+    reasons.push('Targeted category menu path');
+  }
+  if (/\/(?:services?|spa)(?:\/|$)/i.test(path) && !/service[-_]?areas?/.test(path)) {
+    bucket = /\/(?:services?|spa)\/?$/i.test(path) ? 'service_hub' : 'service_child';
+    score += 130;
+    reasons.push('Targeted service/spa sitemap path');
+  }
+  if (/\/(?:contact(?:-us)?|locations?|hours|visit-us)\/?$/i.test(path)) {
+    bucket = 'contact_hours';
+    score += 65;
+    reasons.push('Targeted contact/location path');
+  }
+  if (/\/(?:faqs?|questions)\/?$/i.test(path)) {
+    bucket = 'faq';
+    score += 50;
+    reasons.push('Targeted FAQ path');
+  }
+
+  if (/\/(?:careers?|jobs?|promotions?|specials?|reviews?|giving-back|covid|aveda(?:\/|$)|book-now)/i.test(path)) {
+    score -= 120;
+    reasons.push('Marketing/career/noise path deprioritized');
+  }
+
+  return { bucket, score, reason: reasons.filter(Boolean).join('; ') };
+}
+
+function dedupeCandidates(candidates: CandidateUrl[]): CandidateUrl[] {
+  const seen = new Set<string>();
+  const out: CandidateUrl[] = [];
+  for (const candidate of candidates) {
+    const key = normalizedUrlKey(candidate.url);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(candidate);
+  }
+  return out;
+}
+
+function candidatesFromPreviewLinks(previews: PagePreview[], origin: string): CandidateUrl[] {
+  const candidates: CandidateUrl[] = [];
+  for (const preview of previews) {
+    const parentPath = pathForScoring(preview.url);
+    const source: CandidateUrl['source'] = /\/(?:services?|service-menu|salon-services|menu|spa|hairmenu)(?:\/|$)/i.test(parentPath)
+      ? 'service_hub_child'
+      : 'nav';
+    for (const link of preview.links) {
+      if (!isSameOrigin(link.href, origin)) continue;
+      const candidate = candidateFromUrl(link.href, source, link.text, preview.url);
+      if (candidate) {
+        candidate.parentUrl = preview.url;
+        candidates.push(candidate);
+      }
+    }
+  }
+  return candidates;
+}
+
+function seedCandidates(startUrl: URL, previews: PagePreview[], sitemapCandidates: CandidateUrl[]): CandidateUrl[] {
+  const origin = startUrl.origin;
+  const root = candidateFromUrl(`${origin}/`, 'homepage', 'Home', startUrl.toString());
+  const start = candidateFromUrl(startUrl.toString(), startUrl.pathname === '/' ? 'homepage' : 'nav', startUrl.pathname === '/' ? 'Home' : undefined, startUrl.toString());
+  const commonCandidates = sitemapCandidates.length ? [] : commonServicePageCandidates(origin, startUrl.toString());
+  return dedupeCandidates([
+    ...(root ? [root] : []),
+    ...(start ? [start] : []),
+    ...candidatesFromPreviewLinks(previews, origin),
+    ...sitemapCandidates,
+    ...commonCandidates,
+  ]);
+}
+
+function selectTargetCandidates(candidates: CandidateUrl[], existingPreviews: PagePreview[], maxTargets: number): CandidateUrl[] {
+  if (maxTargets <= 0) return [];
+  const existing = new Set(existingPreviews.map((preview) => normalizedUrlKey(preview.url)));
+  const scored = dedupeCandidates(candidates)
+    .filter((candidate) => !existing.has(normalizedUrlKey(candidate.url)))
+    .map((candidate) => ({ candidate, ...classifyImportCandidate(candidate) }))
+    .filter((item) => item.score >= 45 && item.bucket !== 'noise' && item.bucket !== 'ecommerce_product' && item.bucket !== 'promotions' && item.bucket !== 'booking')
+    .sort((a, b) => b.score - a.score);
+
+  const selected: typeof scored = [];
+  const addBucket = (bucket: CandidateBucket, count: number) => {
+    for (const item of scored.filter((entry) => entry.bucket === bucket)) {
+      if (selected.length >= maxTargets) return;
+      if (selected.some((entry) => normalizedUrlKey(entry.candidate.url) === normalizedUrlKey(item.candidate.url))) continue;
+      if (selected.filter((entry) => entry.bucket === bucket).length >= count) continue;
+      selected.push(item);
+    }
+  };
+
+  addBucket('staff_team', 2);
+  addBucket('policies', 2);
+  addBucket('service_hub', 2);
+  addBucket('service_child', Math.max(4, maxTargets));
+  addBucket('contact_hours', 2);
+  addBucket('faq', 1);
+  for (const item of scored) {
+    if (selected.length >= maxTargets) break;
+    if (!selected.some((entry) => normalizedUrlKey(entry.candidate.url) === normalizedUrlKey(item.candidate.url))) selected.push(item);
+  }
+  return selected.map((item) => item.candidate);
+}
+
+async function previewCandidate(
+  candidate: CandidateUrl,
+  opts: ImportOptions,
+  renderConfig: RenderConfig,
+  remainingBudget: () => number,
+  forceRender = false,
+): Promise<{ preview: PagePreview; usedRender: boolean } | null> {
+  let staticPreview: PagePreview | undefined;
+  let staticHtml: string | undefined;
+  const fetched = await fetchText(candidate.url, opts);
+  if (fetched?.text) {
+    staticHtml = fetched.text;
+    staticPreview = previewHtml(fetched.text, fetched.url);
+  }
+
+  const builder = staticHtml ? detectSiteBuilder(staticHtml) : null;
+  const shouldRender = Boolean(renderConfig.endpoint)
+    && remainingBudget() > 2_000
+    && (
+      forceRender
+      || !staticPreview
+      || (staticHtml ? hasThinContent(staticHtml) : false)
+      || isJsRenderedSiteBuilder(builder)
+      || isWeakPreview(staticPreview)
+    );
+
+  if (shouldRender) {
+    const renderedHtml = await renderHtml(candidate.url, renderConfig, {
+      fetcher: opts.fetcher,
+      timeoutMs: Math.min(18_000, Math.max(1_000, remainingBudget())),
+    });
+    if (renderedHtml?.trim()) {
+      const renderedPreview = previewHtml(renderedHtml, candidate.url);
+      if (forceRender || shouldKeepRenderedPreview(renderedPreview, staticPreview)) return { preview: renderedPreview, usedRender: true };
+    }
+  }
+
+  if (!staticPreview) return null;
+  if (looksLikeEmptyOrNotFoundPage(staticPreview.firstTextChars || staticPreview.h1 || staticPreview.title)) return null;
+  const classified = classifyImportCandidate(candidate, staticPreview);
+  const keepWeakStatic = candidate.source === 'homepage'
+    || candidate.source === 'sitemap'
+    || classified.bucket === 'staff_team'
+    || classified.bucket === 'about_team'
+    || classified.bucket === 'policies';
+  if (!keepWeakStatic && isWeakPreview(staticPreview) && !hasUsefulPreviewContent(staticPreview)) return null;
+  return { preview: staticPreview, usedRender: false };
+}
+
+async function augmentPreviewsFromCandidates(
+  previews: PagePreview[],
+  candidates: CandidateUrl[],
+  opts: ImportOptions,
+  renderConfig: RenderConfig,
+  remainingBudget: () => number,
+  options: { maxTargets: number; concurrency: number; forceRender?: boolean },
+): Promise<{ previews: PagePreview[]; renderedCount: number }> {
+  const targets = selectTargetCandidates(candidates, previews, options.maxTargets);
+  if (!targets.length) return { previews, renderedCount: 0 };
+  let renderedCount = 0;
+  const fetched = await mapPool(targets, options.concurrency, async (candidate) => {
+    if (remainingBudget() <= 1_000) return null;
+    return previewCandidate(candidate, opts, renderConfig, remainingBudget, options.forceRender);
+  });
+  const byUrl = new Map(previews.map((preview) => [normalizedUrlKey(preview.url), preview]));
+  for (const item of fetched) {
+    if (!item?.preview) continue;
+    if (item.usedRender) renderedCount += 1;
+    const key = normalizedUrlKey(item.preview.url);
+    const existing = byUrl.get(key);
+    if (!existing || shouldKeepRenderedPreview(item.preview, existing)) byUrl.set(key, item.preview);
+  }
+  return { previews: [...byUrl.values()], renderedCount };
+}
+
+function selectFinalPreviews(
+  previews: PagePreview[],
+  startUrl: URL,
+  candidates: CandidateUrl[],
+  maxPages: number,
+): { previews: PagePreview[]; selectedPages: SelectedPageDiagnostic[] } {
+  const candidateByUrl = new Map(dedupeCandidates(candidates).map((candidate) => [normalizedUrlKey(candidate.url), candidate]));
+  const rootKey = normalizedUrlKey(`${startUrl.origin}/`);
+  const scored = previews.map((preview, index) => {
+    const key = normalizedUrlKey(preview.url);
+    const candidate = candidateByUrl.get(key)
+      ?? candidateFromUrl(preview.url, key === rootKey ? 'homepage' : 'sitemap', undefined, startUrl.toString())
+      ?? { url: preview.url, source: index === 0 ? 'homepage' : 'sitemap', pathTokens: [], discoveredFrom: startUrl.toString() } satisfies CandidateUrl;
+    const classified = classifyImportCandidate(candidate, preview);
+    return { candidate, preview, ...classified };
+  });
+  const eligible = scored.filter((item) => {
+    if (item.bucket === 'homepage') return true;
+    if (item.bucket === 'about_team' && item.score < 40) return false;
+    if (['noise', 'ecommerce_product', 'promotions', 'booking'].includes(item.bucket) && item.score < 50) return false;
+    return item.score >= 10;
+  });
+  const selected = selectPages(eligible, maxPages) as typeof scored;
+  const selectedKeys = new Set(selected.map((item) => normalizedUrlKey(item.preview.url)));
+  return {
+    previews: previews.filter((preview) => selectedKeys.has(normalizedUrlKey(preview.url))),
+    selectedPages: selected.map((item) => ({
+      url: item.preview.url,
+      bucket: item.bucket,
+      score: item.score,
+      source: item.candidate.source,
+      reason: item.reason,
+    })),
+  };
+}
+
 function plainTextFromMarkdown(markdown: string): string {
   return markdown
     .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
@@ -437,6 +726,7 @@ function jsonLdFromHtml(html?: string): unknown[] {
 
 function pagePreviewFromCrawlPage(page: CfCrawlPage): PagePreview {
   if (!page.markdown.trim() && page.html?.trim()) return previewHtml(page.html, page.url);
+  const htmlPreview = page.html?.trim() ? previewHtml(page.html, page.url) : undefined;
   const text = plainTextFromMarkdown(page.markdown);
   const h1 = stripInlineMarkdown(markdownHeadings(page.markdown, 1)[0] ?? page.metadata.title ?? '');
   const h2s = markdownHeadings(page.markdown, 2).map(stripInlineMarkdown).filter(Boolean);
@@ -453,18 +743,23 @@ function pagePreviewFromCrawlPage(page: CfCrawlPage): PagePreview {
   }).length;
   return {
     url: page.url,
-    title: page.metadata.title ?? h1,
-    h1,
-    h2s,
+    title: page.metadata.title ?? (h1 || (htmlPreview?.title ?? '')),
+    h1: h1 || (htmlPreview?.h1 ?? ''),
+    h2s: h2s.length ? h2s : htmlPreview?.h2s ?? [],
     firstTextChars: text.slice(0, 12_000),
     markdown: page.markdown,
-    priceCount,
-    durationCount,
-    serviceKeywordCount,
-    internalServiceLikeLinkCount,
-    links,
+    serviceBlocks: htmlPreview?.serviceBlocks,
+    policyBlocks: htmlPreview?.policyBlocks,
+    priceCount: Math.max(priceCount, htmlPreview?.priceCount ?? 0),
+    durationCount: Math.max(durationCount, htmlPreview?.durationCount ?? 0),
+    serviceKeywordCount: Math.max(serviceKeywordCount, htmlPreview?.serviceKeywordCount ?? 0),
+    internalServiceLikeLinkCount: Math.max(internalServiceLikeLinkCount, htmlPreview?.internalServiceLikeLinkCount ?? 0),
+    links: links.length ? links : htmlPreview?.links ?? [],
     jsonLd: jsonLdFromHtml(page.html),
-    contentScore: Math.min(100, Math.floor(text.length / 120) + priceCount * 8 + durationCount * 4 + serviceKeywordCount * 2),
+    contentScore: Math.max(
+      htmlPreview?.contentScore ?? 0,
+      Math.min(100, Math.floor(text.length / 120) + priceCount * 8 + durationCount * 4 + serviceKeywordCount * 2),
+    ),
   };
 }
 
@@ -518,17 +813,36 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   let finalPreviews: PagePreview[] = [];
   let selectedPages: SelectedPageDiagnostic[] = [];
   let logoUrl: string | null = null;
+  const concurrency = Math.max(1, Math.min(opts.fetchConcurrency ?? DEFAULT_FETCH_CONCURRENCY, 8));
+  const renderConfig: RenderConfig = { endpoint: opts.renderEndpoint, apiKey: opts.renderApiKey };
+  let sitemapDiscovery: Promise<{ candidates: CandidateUrl[]; sitemapSourcesFound: string[] }> | null = null;
+  const loadSitemapDiscovery = () => {
+    if (!shouldDeepCrawlSource(sourceType)) return Promise.resolve({ candidates: [] as CandidateUrl[], sitemapSourcesFound: [] as string[] });
+    sitemapDiscovery ??= discoverSitemapCandidates(startUrl.origin, fetchOpts, Math.min(concurrency, 4)).catch((error) => {
+        warnings.push(error instanceof Error ? `sitemap_discovery_failed:${error.message}` : 'sitemap_discovery_failed');
+        return { candidates: [] as CandidateUrl[], sitemapSourcesFound: [] as string[] };
+      });
+    return sitemapDiscovery;
+  };
   let googlePlaces = sourceType === 'google_maps'
     ? await lookupGooglePlaces({ url: startUrl, sourceType, apiKey: opts.googlePlacesApiKey, fetcher: opts.fetcher, timeoutMs: Math.min(opts.timeoutMs ?? 5_000, remainingBudget()) })
     : null;
 
   const useStaticHomepageFallback = async (reason: string) => {
-    const homepage = await fetchText(startUrl.toString(), fetchOpts);
+    const startCandidate = candidateFromUrl(
+      startUrl.toString(),
+      startUrl.pathname === '/' ? 'homepage' : 'nav',
+      startUrl.pathname === '/' ? 'Home' : undefined,
+      startUrl.toString(),
+    );
+    if (!startCandidate) return false;
+    const homepage = await previewCandidate(startCandidate, fetchOpts, renderConfig, remainingBudget);
     if (!homepage) return false;
-    const preview = previewHtml(homepage.text, homepage.url);
+    const preview = homepage.preview;
     finalPreviews = [preview];
-    selectedPages = [{ url: homepage.url, bucket: 'homepage', score: 100, source: 'homepage', reason }];
+    selectedPages = [{ url: preview.url, bucket: startUrl.pathname === '/' ? 'homepage' : 'service_hub', score: 100, source: startCandidate.source, reason }];
     fallbackUsed.push('static_homepage');
+    if (homepage.usedRender) fallbackUsed.push('headless_render');
     return true;
   };
 
@@ -593,6 +907,34 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
         timeoutMs: Math.min(opts.timeoutMs ?? 5_000, remainingBudget()),
       }).catch(() => null);
     }
+  }
+
+  const sitemap = finalPreviews.length
+    ? await loadSitemapDiscovery()
+    : { candidates: [] as CandidateUrl[], sitemapSourcesFound: [] as string[] };
+  const maxPages = opts.maxPages ?? 20;
+  if (finalPreviews.length && remainingBudget() > 2_000) {
+    const candidates = seedCandidates(startUrl, finalPreviews, sitemap.candidates);
+    const firstAugment = await augmentPreviewsFromCandidates(finalPreviews, candidates, fetchOpts, renderConfig, remainingBudget, {
+      maxTargets: fallbackUsed.includes('cloudflare_crawl') ? Math.min(8, maxPages) : Math.max(0, maxPages - finalPreviews.length),
+      concurrency: Math.min(concurrency, 4),
+      forceRender: fallbackUsed.includes('cloudflare_crawl'),
+    });
+    finalPreviews = firstAugment.previews;
+    if (firstAugment.renderedCount > 0) fallbackUsed.push('headless_render');
+
+    const childCandidates = seedCandidates(startUrl, finalPreviews, sitemap.candidates);
+    const secondAugment = await augmentPreviewsFromCandidates(finalPreviews, childCandidates, fetchOpts, renderConfig, remainingBudget, {
+      maxTargets: Math.min(opts.maxChildServicePages ?? 6, Math.max(0, maxPages + 6 - finalPreviews.length)),
+      concurrency: Math.min(concurrency, 4),
+      forceRender: fallbackUsed.includes('cloudflare_crawl'),
+    });
+    finalPreviews = secondAugment.previews;
+    if (secondAugment.renderedCount > 0) fallbackUsed.push('headless_render');
+
+    const finalSelection = selectFinalPreviews(finalPreviews, startUrl, seedCandidates(startUrl, finalPreviews, sitemap.candidates), maxPages);
+    finalPreviews = finalSelection.previews;
+    selectedPages = finalSelection.selectedPages;
   }
 
   if (!finalPreviews.length) {
@@ -662,6 +1004,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   const llmExtraction = llmResult.status === 'fulfilled' ? llmResult.value : null;
   const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction });
   const servicePagesFound = selectedPages.filter((page) => page.bucket === 'service_hub' || page.bucket === 'service_child').map((page) => page.url);
+  const childServicePagesFound = selectedPages.filter((page) => page.bucket === 'service_child').map((page) => page.url);
   const richestPageMarkdownLength = finalPreviews.reduce((max, page) => Math.max(max, page.markdown?.length ?? page.firstTextChars.length), 0);
   const menuExceededSinglePassBudget = richestPageMarkdownLength > LLM_TOP_PAGE_MARKDOWN_BUDGET;
   const allWarnings = [
@@ -677,9 +1020,9 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     diagnostics: {
       selectedPages,
       skippedPagesSummary: [`Cloudflare /crawl returned ${finalPreviews.length} readable markdown page(s).`],
-      sitemapSourcesFound: [],
+      sitemapSourcesFound: sitemap.sitemapSourcesFound,
       serviceHubPagesFound: servicePagesFound,
-      childServicePagesFound: [],
+      childServicePagesFound,
       confidenceSummary: {
         services: suggestions.serviceCatalog.confidence,
         businessProfile: suggestions.businessProfile.name.confidence,

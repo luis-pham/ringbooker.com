@@ -689,6 +689,43 @@ test('extracts artist page staff names and bio snippets from heading cards', () 
   assert.equal(secondary.staffSuggestions.some((staff) => /Artists?|Salon/i.test(staff.name)), false);
 });
 
+test('extracts staff lines with slash role separators', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h1>Meet the Team</h1>
+      <h2>Guest Care</h2>
+      <p>Zoey S.</p>
+      <h2>Stylists</h2>
+      <p>Bailey // Hair Stylist</p>
+      <p>Jess | Colorist</p>
+    </body></html>
+  `, 'https://slash-staff.test/team');
+  const secondary = extractSecondaryKnowledge([preview]);
+
+  assert.ok(secondary.staffSuggestions.some((staff) => staff.name === 'Bailey' && staff.role === 'Hair Stylist'));
+  assert.ok(secondary.staffSuggestions.some((staff) => staff.name === 'Jess' && staff.role === 'Colorist'));
+  assert.ok(secondary.staffSuggestions.some((staff) => staff.name === 'Zoey S.' && staff.role === 'Guest Care'));
+});
+
+test('extracts prices from markdown service headings without description bleed', () => {
+  const preview = {
+    ...previewHtml('<html><body><h1>Services</h1></body></html>', 'https://markdown-price.test/color'),
+    markdown: [
+      '## Hair Color',
+      'Color application for up to 1 Inch of regrowth.',
+      '#### Retouch $60+',
+      'Recommended Maintenance: 6-8 Weeks',
+      '#### Full Balayage $215+',
+    ].join('\n'),
+  };
+  const suggestions = buildSuggestions({ sourceUrl: 'https://markdown-price.test', sourceType: 'normal_website', previews: [preview] });
+
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Retouch')?.priceAmount, 60);
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Retouch')?.priceType, 'from');
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Full Balayage')?.priceAmount, 215);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Color application/i.test(service.name)), false);
+});
+
 test('extracts Love and Hair Peace style services, staff, and visible FAQs', () => {
   const servicesPreview = previewHtml(`
     <html><body>

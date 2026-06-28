@@ -104,6 +104,28 @@ test('a confident small LLM catalog still beats noisy static service extraction'
   assert.deepEqual(names, ['Adult Hair Cut', 'Clean Repeated Card Service']);
 });
 
+test('LLM service names merge with static prices across category drift and drop promo prices', () => {
+  const result = mergeImportSuggestions({
+    staticFacts: baseStaticFacts({
+      services: [
+        svc('Blow-Dry Style', { categoryName: 'Haircuts', source: 'Website', confidence: 0.8, priceAmount: 50, priceType: 'from', sourceHint: 'heading_sibling' }),
+        svc('GIFT FOR YOU +', { categoryName: 'General Services', source: 'Website', confidence: 0.8, priceAmount: 20, priceType: 'fixed', sourceHint: 'heading_sibling' }),
+      ],
+    }),
+    llm: {
+      serviceCatalog: {
+        confidence: 0.86,
+        services: [svc('Blow-Dry Style', { categoryName: 'Haircuts & Styles', source: 'AI', confidence: 0.75, priceAmount: null })],
+      },
+    } as LlmImportExtraction,
+  });
+
+  assert.deepEqual(result.serviceCatalog.services.map((service) => service.name), ['Blow-Dry Style']);
+  assert.equal(result.serviceCatalog.services[0]?.categoryName, 'Haircuts & Styles');
+  assert.equal(result.serviceCatalog.services[0]?.priceAmount, 50);
+  assert.equal(result.serviceCatalog.services.some((service) => /gift/i.test(service.name)), false);
+});
+
 test('LLM secondary knowledge wins duplicate staff and FAQ keys', () => {
   const staticStaff: StaffSuggestion = { name: 'Mia Chen', source: 'website', confidence: 0.62 };
   const llmStaff: StaffSuggestion = { name: 'Mia Chen', role: 'Color Specialist', specialties: ['Balayage'], source: 'llm', confidence: 0.88 };

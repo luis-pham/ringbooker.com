@@ -258,6 +258,21 @@ test('normal website import probes common artists path for staff suggestions', a
   assert.ok(result.diagnostics.selectedPages.some((page) => page.bucket === 'staff_team' && page.url.includes('/artists')));
 });
 
+test('normal website import prioritizes policy pages from sitemap', async () => {
+  const html: Record<string, string> = {
+    'https://policy.test/': '<html><head><title>Policy Salon</title></head><body><h1>Policy Salon</h1><p>Hair salon.</p></body></html>',
+    'https://policy.test/robots.txt': 'Sitemap: https://policy.test/sitemap.xml',
+    'https://policy.test/sitemap.xml': '<urlset><url><loc>https://policy.test/privacy-policy</loc></url><url><loc>https://policy.test/about</loc></url></urlset>',
+    'https://policy.test/privacy-policy': '<html><head><title>Salon Policies</title></head><body><h1>Salon Policies</h1><h2>Cancellation Policy</h2><p>Please cancel at least 24 hours before your appointment to avoid a cancellation fee.</p></body></html>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://policy.test' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url, url.endsWith('.xml') ? 'application/xml' : 'text/html'),
+  });
+  assert.ok(result.diagnostics.selectedPages.some((page) => page.bucket === 'policies' && page.url.endsWith('/privacy-policy')));
+  assert.ok(result.suggestions.policySuggestions.some((policy) => policy.type === 'cancellation' && /24 hours/i.test(policy.content)));
+});
+
 test('WordPress-style trailing slash redirects are followed without normalization loops', async () => {
   const html: Record<string, string> = {
     'https://slash.test/': '<h1>Slash Salon</h1><a href="/services/balayage">Balayage</a>',
@@ -612,6 +627,7 @@ test('LLM payload includes structured service blocks before flattened text', () 
   assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.serviceName, 'Essential Blowout');
   assert.match(payload.schemaHint, /extract EVERY service/i);
   assert.match(payload.schemaHint, /reject non-services/i);
+  assert.match(payload.schemaHint, /Blow-Dry Style \$50\+/i);
 });
 
 test('LLM service normalizer drops rejected and invalid service blocks', () => {
@@ -643,9 +659,29 @@ test('LLM payload includes staff page hints for artist analysis', () => {
     selectedPages: [{ url: 'https://artist-payload.test/artists', bucket: 'staff_team', score: 80, source: 'nav', reason: 'Staff/team signals' }],
   });
   assert.equal(payload.secondaryKnowledgeHints.staffPages[0]?.bucket, 'staff_team');
-  assert.match(payload.secondaryKnowledgeHints.staffPages[0]?.text ?? '', /STAFF_MEMBER:\s*Danielle/i);
+  assert.match(payload.secondaryKnowledgeHints.staffPages[0]?.text ?? '', /Danielle/i);
+  assert.match(payload.secondaryKnowledgeHints.staffPages[0]?.text ?? '', /Color artist and stylist/i);
   assert.match(payload.schemaHint, /staffSuggestions/i);
   assert.match(payload.schemaHint, /bio/i);
+});
+
+test('LLM payload prioritizes real staff pages over nav-only team mentions', () => {
+  const homepage = previewHtml('<html><body><a href="/team">Our Team</a><p>Welcome to the salon.</p></body></html>', 'https://staff-payload.test');
+  const referral = previewHtml('<html><body><a href="/team">Our Team</a><h1>$20 Gift For You</h1><p>Refer a friend and get a reward.</p></body></html>', 'https://staff-payload.test/referral');
+  const team = previewHtml('<html><body><h1>Meet the Team</h1><p>Bailey // Hair Stylist</p><p>Jess // Hair Stylist</p></body></html>', 'https://staff-payload.test/team');
+  const payload = buildLlmImportPayload({
+    sourceUrl: 'https://staff-payload.test',
+    previews: [homepage, referral, team],
+    selectedPages: [
+      { url: 'https://staff-payload.test', bucket: 'homepage', score: 100, source: 'homepage', reason: 'test' },
+      { url: 'https://staff-payload.test/referral', bucket: 'noise', score: 80, source: 'nav', reason: 'test' },
+      { url: 'https://staff-payload.test/team', bucket: 'staff_team', score: 90, source: 'nav', reason: 'test' },
+    ],
+  });
+
+  assert.equal(payload.secondaryKnowledgeHints.staffPages[0]?.url, 'https://staff-payload.test/team');
+  assert.equal(payload.secondaryKnowledgeHints.staffPages.some((page) => page.url.endsWith('/referral')), false);
+  assert.ok(payload.pages.some((page) => page.url.endsWith('/team') && page.bucket === 'staff_team' && /Bailey.*Hair Stylist/i.test(page.text)));
 });
 
 test('completeness scoring marks missing hours and weak services for review', async () => {

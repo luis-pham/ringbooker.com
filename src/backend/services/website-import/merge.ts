@@ -170,15 +170,52 @@ function splitMergedServiceName(service: ImportedServiceSuggestion): ImportedSer
     durationMinutes: service.durationMinutes ?? duration?.durationMinutes ?? null,
   };
 }
+function normalizeServiceNameKey(value: string): string {
+  return normalizeText(value)
+    .replace(/[’']/g, '')
+    .replace(/\badd\s*-?\s*on\b/g, 'addon')
+    .replace(/[+&]/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function looksLikePromoServiceName(value: string): boolean {
+  return /\b(gift\s+(?:for|card)|refer(?:ral)?|friend|to\s+say\s+thanks|spread\s+the\s+word|newsletter|career|apply\s+now|job\s+opening|event|party)\b/i.test(value);
+}
 function isInvalidMergedServiceName(value: string): boolean {
   const name = value.trim();
   return !name
     || /^(?:\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|book online|schedule|reserve|appointment|consultation required)$/i.test(name)
     || /\$/.test(name)
+    || looksLikePromoServiceName(name)
     || /\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name)
     || (name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2
     || /^(?:you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)
     || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(name);
+}
+function mergeServiceRecords(current: ImportedServiceSuggestion, service: ImportedServiceSuggestion, variants: NonNullable<ImportedServiceSuggestion['variants']>): ImportedServiceSuggestion {
+  const incomingWins = (service.confidence ?? 0) > (current.confidence ?? 0);
+  const base = incomingWins ? service : current;
+  const other = incomingWins ? current : service;
+  const displayName = base.source !== 'AI' && other.source === 'AI' ? other.name.trim() : base.name.trim();
+  const merged: ImportedServiceSuggestion = {
+    ...base,
+    categoryName: base.source !== 'AI' && other.source === 'AI' ? canonicalServiceGroupName(other.categoryName) : canonicalServiceGroupName(base.categoryName),
+    name: displayName,
+    variants,
+  };
+  if ((merged.priceAmount === null || merged.priceAmount === undefined) && other.priceAmount !== null && other.priceAmount !== undefined) {
+    merged.priceAmount = other.priceAmount;
+    merged.priceCurrency = other.priceCurrency ?? merged.priceCurrency ?? 'USD';
+    merged.priceType = other.priceType ?? merged.priceType ?? 'fixed';
+  }
+  if (!merged.durationText && other.durationText) merged.durationText = other.durationText;
+  if (!merged.durationMinutes && other.durationMinutes) merged.durationMinutes = other.durationMinutes;
+  if (!merged.description && other.description) merged.description = other.description;
+  if (!merged.bookingNotes && other.bookingNotes) merged.bookingNotes = other.bookingNotes;
+  if (!merged.evidenceSnippet && other.evidenceSnippet) merged.evidenceSnippet = other.evidenceSnippet;
+  merged.needsReview = Boolean(base.needsReview || other.needsReview);
+  return merged;
 }
 function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
   const map = new Map<string, ImportedServiceSuggestion>();
@@ -188,19 +225,15 @@ function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceS
     if (!name) continue;
     if (isInvalidMergedServiceName(name)) continue;
     const category = canonicalServiceGroupName(service.categoryName);
-    const key = `${category}:${name}`.toLowerCase();
+    const key = normalizeServiceNameKey(name);
+    if (!key) continue;
     const current = map.get(key);
     if (!current) {
       map.set(key, { ...service, categoryName: category, name, variants: normalizeServiceVariantsForMerge(service.variants) });
       continue;
     }
     const mergedVariants = mergeServiceVariants(current.variants, service.variants);
-    if ((service.confidence ?? 0) > (current.confidence ?? 0)) {
-      map.set(key, { ...service, categoryName: category, name, variants: mergedVariants });
-    } else {
-      current.variants = mergedVariants;
-      if (mergedVariants.length) current.needsReview = current.needsReview || service.needsReview;
-    }
+    map.set(key, mergeServiceRecords(current, service, mergedVariants));
   }
   return [...map.values()].slice(0, 80);
 }
@@ -276,6 +309,7 @@ function looksLikeProseServiceName(name: string): boolean {
 }
 function shouldKeepStaticServiceAlongsideLlm(service: ImportedServiceSuggestion): boolean {
   if (service.sourceHint === 'service_matrix_table' || service.sourceHint === 'service_menu_list') return false;
+  if (looksLikePromoServiceName(service.name ?? '')) return false;
   if (looksLikeProseServiceName(service.name ?? '')) return false;
   return (service.confidence ?? 0) >= 0.72
     || (!service.sourceHint && (service.confidence ?? 0) >= 0.66)
