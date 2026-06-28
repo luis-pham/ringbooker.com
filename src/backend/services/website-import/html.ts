@@ -95,6 +95,46 @@ export function htmlToStructuredMarkdown(html: string): string {
     .trim();
 }
 
+function decodeJsonStringLiteral(value: string): string | null {
+  try {
+    const parsed = JSON.parse(`"${value}"`) as unknown;
+    return typeof parsed === 'string' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function embeddedBuilderTextFromHtml(html: string): string {
+  const rows: string[] = [];
+  const seen = new Set<string>();
+  const push = (value: string | null) => {
+    if (!value) return;
+    const cleaned = value
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .map((line) => cleanBlockText(line))
+      .filter((line) =>
+        line.length >= 2
+        && !/^https?:\/\//i.test(line)
+        && !/^\/(?:uploads|assets)\//i.test(line)
+        && !/\.(?:jpe?g|png|gif|webp|svg)(?:\?|$)/i.test(line)
+        && !/^[a-f0-9-]{20,}$/i.test(line)
+        && !/^[\W_]+$/.test(line))
+      .join('\n')
+      .trim();
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push(cleaned);
+  };
+
+  for (const match of html.matchAll(/"insert"\s*:\s*"((?:\\.|[^"\\])*)"/g)) {
+    push(decodeJsonStringLiteral(match[1]));
+  }
+  return rows.join('\n');
+}
+
 export function extractJsonLd(html: string): unknown[] {
   const $ = cheerio.load(html);
   const out: unknown[] = [];
@@ -635,7 +675,9 @@ function looksLikePersonName(value: string): boolean {
   const cleaned = cleanStaffText(value);
   if (!cleaned || cleaned.length < 2 || cleaned.length > 60) return false;
   if (/\d|@|#|\/|\$/.test(cleaned)) return false;
-  if (/^(home|services?|artists?|team|staff|contact|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
+  if (/^(home|services?|artists?|team|staff|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
+  if (/^(master|massage|licensed|certified|senior|lead|medical|hairstylist|stylist|colorist|artist|apprentice|junior|receptionist|director|specialist|expert|owner|manager)$/i.test(cleaned)) return false;
+  if (/^(?:master\s+)?(?:colorist|hairstylist|stylist|artist|apprentice|junior\s+stylist|studio\s+director|tooth\s+gem\s+specialist|hair\s+replacement\s+specialist)$/i.test(cleaned)) return false;
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours)\b/i.test(cleaned)) return false;
   if (/\b(salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
@@ -701,13 +743,46 @@ function structuredStaffText($: cheerio.CheerioAPI, url = ''): string {
     }
   });
 
-  // Strategy 3: any h2/h3/h4 that is a person name (flat structure)
-  $('h2,h3,h4').each((_, el) => {
+  function roleAndBioFromSiblings(nameEl: cheerio.Cheerio<AnyNode>): { role: string | null; bio: string } {
+    const level = Number((nameEl.get(0) as { tagName?: string } | undefined)?.tagName?.replace('h', '') ?? '6');
+    const stopTags = Array.from({ length: Math.max(1, level) }, (_, i) => `h${i + 1}`).join(',');
+    let cursor = nameEl.next();
+    let role: string | null = null;
+    const bioParts: string[] = [];
+    let scanned = 0;
+    while (cursor.length && scanned < 20) {
+      if (cursor.is(stopTags)) break;
+      const tag = (cursor.get(0)?.tagName ?? '').toLowerCase();
+      const text = cleanStaffText(cursor.text());
+      if (!text) {
+        cursor = cursor.next();
+        scanned += 1;
+        continue;
+      }
+      if (!role && /^h[3-6]$/.test(tag) && text.length < 100 && !looksLikePersonName(text)) {
+        role = text;
+        cursor = cursor.next();
+        scanned += 1;
+        continue;
+      }
+      if (tag === 'p' || cursor.find('p').length) {
+        const paragraphText = tag === 'p' ? text : cursor.find('p').map((_, p) => cleanStaffText($(p).text())).get().join(' ');
+        if (paragraphText.length > 8 && !/^online booking/i.test(paragraphText)) bioParts.push(paragraphText);
+      }
+      cursor = cursor.next();
+      scanned += 1;
+    }
+    return { role, bio: bioParts.join(' ').slice(0, 500) };
+  }
+
+  // Strategy 3: flat staff pages where each person is a heading followed by role/bio.
+  $('h1,h2,h3,h4').each((_, el) => {
     const heading = cleanStaffText($(el).text());
     if (!looksLikePersonName(heading)) return;
-    const wrapper = $(el).closest('.flexible-column-wrapper, .wp-block-column, .team-member, [class*="team"], [class*="staff"], [class*="artist"]');
+    const wrapper = $(el).closest('.flexible-column-wrapper, .wp-block-column, .team-member, [class*="team"], [class*="staff"], [class*="artist"], [class*="member"], [class*="card"]');
     const container = wrapper.length ? wrapper : $(el).parent();
-    pushStaffRow(heading, roleFromContainer(container, $(el)), bioFromContainer(container));
+    const sibling = roleAndBioFromSiblings($(el));
+    pushStaffRow(heading, roleFromContainer(container, $(el)) ?? sibling.role, sibling.bio || bioFromContainer(container));
   });
 
   return rows.join('\n');
@@ -752,8 +827,9 @@ export function previewHtml(html: string, url: string): PagePreview {
   const structuredServices = structuredServiceText($);
   const structuredStaff = structuredStaffText($, url);
   const policyBlocks = extractPolicyBlocks($);
-  const text = [structuredServices, structuredStaff, visibleTextFromHtml(html)].filter(Boolean).join('\n');
-  const markdown = htmlToStructuredMarkdown(html);
+  const embeddedText = embeddedBuilderTextFromHtml(html);
+  const text = [structuredServices, structuredStaff, visibleTextFromHtml(html), embeddedText].filter(Boolean).join('\n');
+  const markdown = [htmlToStructuredMarkdown(html), embeddedText].filter(Boolean).join('\n\n');
   const links = extractLinks(html, url);
   const priceCount = (text.match(PRICE_PATTERN) ?? []).length;
   const durationCount = (text.match(DURATION_PATTERN) ?? []).length;

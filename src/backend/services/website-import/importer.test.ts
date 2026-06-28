@@ -102,6 +102,54 @@ test('renders weak Square/SPA child menu and staff pages selected from sitemap',
   assert.ok(result.diagnostics.fallbackUsed.includes('headless_render'));
 });
 
+test('extracts Square/Weebly quill state when rendered DOM remains empty', async () => {
+  const renderEndpoint = 'https://render-square-state.test/content';
+  const squareShell = (title: string) => `<html><head><title>${title}</title><script>window.__BOOTSTRAP_STATE__ = {"siteData":{"site":{"properties":{"framework":{"name":"square"}}}}}</script></head><body><div id="app"></div></body></html>`;
+  const statePage = (title: string, inserts: string[]) => `<html><head><title>${title}</title></head><body><script>window.__BOOTSTRAP_STATE__ = ${JSON.stringify({
+    page: {
+      cells: inserts.map((insert) => ({
+        content: { properties: { textConfig: { content: { quill: { ops: [{ insert }] } } } } },
+      })),
+    },
+  })}</script></body></html>`;
+  const html: Record<string, string> = {
+    'https://square-state.test/': squareShell('Home | Hair Syndicate 5 Salon and Spa'),
+    'https://square-state.test/robots.txt': 'Sitemap: https://square-state.test/sitemap.xml',
+    'https://square-state.test/sitemap.xml': [
+      '<urlset>',
+      '<url><loc>https://square-state.test/hairmenu</loc></url>',
+      '<url><loc>https://square-state.test/our-team</loc></url>',
+      '</urlset>',
+    ].join(''),
+    'https://square-state.test/hairmenu': squareShell('Hair Salon | Hair Syndicate 5 Salon and Spa'),
+    'https://square-state.test/our-team': squareShell('Our Staff | Hair Syndicate 5 Salon and Spa'),
+  };
+  const rendered: Record<string, string> = {
+    'https://square-state.test/hairmenu': statePage('Hair Salon | Hair Syndicate 5 Salon and Spa', [
+      "Adult Hair Cut - 25 and up\nLong Hair Cuts - 30 and up\nChildren's Cuts - 22\nBalayage - 160 and up\n",
+    ]),
+    'https://square-state.test/our-team': statePage('Our Staff | Hair Syndicate 5 Salon and Spa', [
+      'Cassandra is a licensed massage therapist who has been involved in massage for over five years.',
+    ]),
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://square-state.test' }, {
+    lookup,
+    renderEndpoint,
+    fetcher: async (url, init) => {
+      if (url === renderEndpoint) {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { url?: string };
+        return response(rendered[body.url ?? ''] ?? squareShell('Rendered Home'), url);
+      }
+      return response(html[url] ?? '<h1>Not found</h1>', url, url.endsWith('.xml') ? 'application/xml' : 'text/html');
+    },
+  });
+
+  assert.ok(result.diagnostics.fallbackUsed.includes('headless_render'));
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.name === 'Adult Hair Cut' && service.priceAmount === 25));
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.name === 'Balayage' && service.priceAmount === 160));
+  assert.equal(result.suggestions.staffSuggestions.find((staff) => staff.name === 'Cassandra')?.role, 'Massage Therapist');
+});
+
 test('selected service child pages are fetched even when outside initial preview window', async () => {
   const fillerLinks = Array.from({ length: 30 }, (_, index) => `<a href="/page-${index}">About ${index}</a>`).join('');
   const html: Record<string, string> = {

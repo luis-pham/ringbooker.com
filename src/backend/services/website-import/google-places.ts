@@ -39,7 +39,11 @@ function mapHours(raw: unknown): Record<string, unknown> | null {
     const close = toTime(rawPeriod.close?.hour, rawPeriod.close?.minute);
     if (key && open && close) hours[key] = { open, close };
   }
-  return Object.keys(hours).length ? hours : null;
+  if (!Object.keys(hours).length) return null;
+  for (const key of DAY_KEYS) {
+    if (!hours[key]) hours[key] = { closed: true };
+  }
+  return hours;
 }
 
 function mapPrimaryType(categories: string[]): string | null {

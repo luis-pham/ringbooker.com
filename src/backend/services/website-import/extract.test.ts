@@ -72,6 +72,17 @@ test('Google Places hours override website hours and phone conflicts warn', () =
   assert.ok(suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
 });
 
+test('uses visible homepage brand before SEO service title when H1 is missing', () => {
+  const preview = previewHtml(
+    '<html><head><title>Massage Therapy | Salon | Grand Prairie Massage | Facial | Spa | Hair Syndicate 5 Salon and Spa</title></head><body><main><p>Hair Syndicate 5</p><p>At Hair Syndicate, we specialize in cutting-edge hair styling and spa treatments.</p></main></body></html>',
+    'https://hairsyndicate.test',
+  );
+  const suggestions = buildSuggestions({ sourceUrl: 'https://hairsyndicate.test', sourceType: 'normal_website', previews: [preview] });
+  assert.equal(suggestions.businessProfile.name.value, 'Hair Syndicate 5');
+  assert.equal(suggestions.businessProfile.name.source, 'Website');
+  assert.equal(suggestions.businessProfile.name.confidence, 0.74);
+});
+
 test('normal website import keeps website address formatting when Places only adds country suffix', () => {
   const preview = previewHtml('<script type="application/ld+json">{"@type":"Organization","name":"RAW Hair & Co."}</script><p>Address:223 N Bishop Ave, Dallas, TX 75208 Telephone:(469) 965-8500 Hours Of Operation MondayCLOSED Tuesday10 AM - 5 PM Wednesday10 AM - 8 PM Thursday9 AM - 8 PM Friday & Saturday9 AM - 6 PM Sunday11 AM - 6 PM</p>', 'https://rawhairandco.com');
   const suggestions = buildSuggestions({
@@ -676,4 +687,75 @@ test('extracts artist page staff names and bio snippets from heading cards', () 
   const maryann = secondary.staffSuggestions.find((staff) => staff.name === 'Maryann');
   assert.equal(maryann?.bio, 'Senior color artist specializing in Aveda color.');
   assert.equal(secondary.staffSuggestions.some((staff) => /Artists?|Salon/i.test(staff.name)), false);
+});
+
+test('extracts Love and Hair Peace style services, staff, and visible FAQs', () => {
+  const servicesPreview = previewHtml(`
+    <html><body>
+      <h1>Our Services</h1>
+      <h2>Basic Services</h2>
+      <ul>
+        <li>Hair Cuts</li>
+        <li>Hair Color</li>
+        <li>Blow out style</li>
+      </ul>
+      <h2>Hair Restoration / Extension Methods</h2>
+      <ul>
+        <li>Cyberhair Accents</li>
+        <li>Micro Point Links & Solutions</li>
+        <li>Seamless hair extensions</li>
+      </ul>
+      <a href="/areas-of-service/harrisburg-hair-extensions">Hair Extensions Harrisburg</a>
+      <a href="/service_type/hair-extensions/">Hair Extensions</a>
+    </body></html>
+  `, 'https://love.test/our-services');
+  const taxonomyPreview = previewHtml(`
+    <html><body>
+      <h1>Hair Extensions</h1>
+      <ul><li>Uncategorized 0</li></ul>
+    </body></html>
+  `, 'https://love.test/service_type/hair-extensions');
+  const seoContentPreview = previewHtml(`
+    <html><body>
+      <h1>Hair Loss Specialists Philadelphia</h1>
+      <h2>Exceptional Treatments for All Hair Types</h2>
+      <ul>
+        <li>Straight hair</li>
+        <li>Wavy hair</li>
+        <li>Curly hair</li>
+      </ul>
+      <h2>Contact Us</h2>
+    </body></html>
+  `, 'https://love.test/hair-loss-specialists-philadelphia');
+  const staffPreview = previewHtml(`
+    <html><head><title>Staff - Love And Hair Peace</title></head><body>
+      <h1>Staff</h1>
+      <h2>Cassie</h2>
+      <h3>Hair Restoration & Extension Expert/Salon Owner</h3>
+      <p>Cassie is a seasoned hair stylist and cosmetic hair restoration expert.</p>
+      <h2>Kate</h2>
+      <h3>Master Colorist/Hairstylist</h3>
+      <p>Kate has been a prominent figure in the beauty industry since 2005.</p>
+    </body></html>
+  `, 'https://love.test/staff');
+  const faqPreview = previewHtml(`
+    <html><head><title>FAQ - Love And Hair Peace</title></head><body>
+      <h1>FAQ</h1>
+      <h2>Do I have to come in for a consultation?</h2>
+      <p>Yes, a consultation helps us choose the right hair solution.</p>
+      <h2>How long do extensions last?</h2>
+      <p>Longevity depends on the method, hair type, and home care.</p>
+    </body></html>
+  `, 'https://love.test/faq');
+
+  const suggestions = buildSuggestions({ sourceUrl: 'https://love.test', sourceType: 'normal_website', previews: [servicesPreview, taxonomyPreview, seoContentPreview, staffPreview, faqPreview] });
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Hair Cuts' && service.categoryName === 'Haircuts'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Cyberhair Accents' && service.categoryName === 'Hair Restoration / Extension Methods'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Seamless hair extensions' && service.priceType === 'varies'));
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Basic Services/i.test(service.name)), false);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Uncategorized|Harrisburg|Straight hair|Wavy hair|Curly hair/i.test(service.name)), false);
+  assert.ok(suggestions.staffSuggestions.some((staff) => staff.name === 'Cassie' && staff.role === 'Hair Restoration & Extension Expert/Salon Owner'));
+  assert.ok(suggestions.staffSuggestions.some((staff) => staff.name === 'Kate' && /prominent figure/i.test(staff.bio ?? '')));
+  assert.ok(suggestions.faqSuggestions.some((faq) => faq.question === 'Do I have to come in for a consultation?'));
+  assert.ok(suggestions.faqSuggestions.some((faq) => faq.question === 'How long do extensions last?'));
 });

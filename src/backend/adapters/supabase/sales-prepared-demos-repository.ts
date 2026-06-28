@@ -17,6 +17,7 @@ type SalesPreparedDemoRow = {
   state: string | null;
   website_url: string | null;
   instagram_url: string | null;
+  logo_url: string | null;
   demo_config: SalesPreparedDemoConfig | null;
   system_prompt: string | null;
   expires_at: string;
@@ -35,6 +36,7 @@ function toDomain(row: SalesPreparedDemoRow): SalesPreparedDemo {
     state: row.state,
     websiteUrl: row.website_url,
     instagramUrl: row.instagram_url,
+    logoUrl: row.logo_url ?? null,
     demoConfig: row.demo_config ?? {},
     systemPrompt: row.system_prompt,
     expiresAt: row.expires_at,
@@ -60,6 +62,7 @@ export class SupabaseSalesPreparedDemosRepository implements SalesPreparedDemosR
           state: params.state ?? null,
           website_url: params.websiteUrl ?? null,
           instagram_url: params.instagramUrl ?? null,
+          logo_url: params.logoUrl ?? null,
           demo_config: params.demoConfig,
           system_prompt: params.systemPrompt ?? null,
           expires_at: params.expiresAt.toISOString(),
@@ -83,6 +86,7 @@ export class SupabaseSalesPreparedDemosRepository implements SalesPreparedDemosR
         state: params.state ?? null,
         website_url: params.websiteUrl ?? null,
         instagram_url: params.instagramUrl ?? null,
+        logo_url: params.logoUrl ?? null,
         demo_config: params.demoConfig,
         system_prompt: params.systemPrompt ?? null,
         expires_at: params.expiresAt.toISOString(),

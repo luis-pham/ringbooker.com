@@ -101,21 +101,21 @@ function formatDemoApiHours(hours: DemoApiHours | null | undefined): string {
   const parts: string[] = [];
   let rangeStart: string | null = null;
   let rangePrev: string | null = null;
-  let rangeTime: string | null = null;
+  let rangeValue: string | null = null;
   const flush = () => {
     if (!rangeStart) return;
     const label = rangeStart === rangePrev
       ? (ABB[rangeStart] ?? rangeStart)
       : `${ABB[rangeStart] ?? rangeStart}–${ABB[rangePrev ?? rangeStart] ?? rangePrev}`;
-    if (rangeTime) parts.push(`${label} ${rangeTime}`);
-    rangeStart = null; rangePrev = null; rangeTime = null;
+    if (rangeValue) parts.push(`${label} ${rangeValue}`);
+    rangeStart = null; rangePrev = null; rangeValue = null;
   };
   for (const day of ORDER) {
     const entry = hours[day];
-    if (!entry || 'closed' in entry) { flush(); continue; }
-    const timeStr = `${fmtTime(entry.open)}–${fmtTime(entry.close)}`;
-    if (timeStr === rangeTime) { rangePrev = day; }
-    else { flush(); rangeStart = day; rangePrev = day; rangeTime = timeStr; }
+    if (!entry) { flush(); continue; }
+    const value = 'closed' in entry ? 'closed' : `${fmtTime(entry.open)}–${fmtTime(entry.close)}`;
+    if (value === rangeValue) { rangePrev = day; }
+    else { flush(); rangeStart = day; rangePrev = day; rangeValue = value; }
   }
   flush();
   return parts.join(', ');
@@ -137,6 +137,9 @@ const STATE_ABBR: Record<string, string> = {
 
 function parseCityFromAddress(address: string): { displayCity: string; formCity: string } {
   let parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+  while (parts.length > 1 && /^(?:usa|u\.s\.a\.|us|united states|united states of america)$/i.test(parts[parts.length - 1] ?? '')) {
+    parts = parts.slice(0, -1);
+  }
   // Strip trailing pure-digit zip codes (e.g. "75204")
   while (parts.length > 1 && /^\d{4,5}$/.test(parts[parts.length - 1] ?? '')) {
     parts = parts.slice(0, -1);
@@ -260,6 +263,29 @@ function useMediaMax768(): boolean {
     return () => mq.removeEventListener('change', fn);
   }, []);
   return m;
+}
+
+function useMediaMax400(): boolean {
+  const [m, setM] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width:399px)');
+    const fn = () => setM(mq.matches);
+    fn();
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return m;
+}
+
+function initialsForBusinessName(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((word) => word.trim()[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'RB';
 }
 
 function demoHostnameFromUrl(raw: string): string {
@@ -517,6 +543,7 @@ type DemoExperienceProps = {
   /** Seed values for a sales prepared demo — pre-fills the business so the demo is personalized. */
   initialBusinessName?: string;
   initialCity?: string | null;
+  initialLogoUrl?: string | null;
   initialServices?: string[];
   initialStaffNames?: string[];
   initialPrimaryHours?: string | null;
@@ -541,6 +568,7 @@ export function DemoExperience({
   preparedDemoSlug,
   initialBusinessName,
   initialCity,
+  initialLogoUrl,
   initialServices,
   initialStaffNames,
   initialPrimaryHours,
@@ -617,20 +645,33 @@ export function DemoExperience({
   const siteLoadStartRef = useRef<number>(0);
 
   const isMobileDemo = useMediaMax768();
+  const isVerySmallDemo = useMediaMax400();
   const isMobileDemoRef = useRef(false);
   useEffect(() => {
     isMobileDemoRef.current = isMobileDemo;
   }, [isMobileDemo]);
 
+  const preparedLogoUrl = isPreparedDemo && initialLogoUrl?.trim() ? initialLogoUrl.trim() : null;
+  const [preparedLogoFailed, setPreparedLogoFailed] = useState(false);
+  useEffect(() => {
+    setPreparedLogoFailed(false);
+  }, [preparedLogoUrl]);
+
   const demoDisplayName = useMemo(
     () => business.businessName.trim() || config.defaultBusinessName,
     [business.businessName, config.defaultBusinessName],
   );
+  const demoInitials = useMemo(() => initialsForBusinessName(demoDisplayName), [demoDisplayName]);
+  const displayedPreparedLogoUrl = preparedLogoUrl && !preparedLogoFailed ? preparedLogoUrl : null;
   const preparedDemoCity = initialCity?.trim() ?? '';
   const pageEyebrow = isPreparedDemo
     ? `RINGBOOKER DEMO FOR ${demoDisplayName.toLocaleUpperCase('en-US')}`
     : config.eyebrow;
-  const pageTitle = isPreparedDemo ? `Hear ${demoDisplayName}'s AI Receptionist` : config.title;
+  const pageTitle = isPreparedDemo
+    ? isVerySmallDemo
+      ? `${demoDisplayName}'s AI Receptionist`
+      : `Hear ${demoDisplayName}'s AI Receptionist`
+    : config.title;
   const pageSubtitle = isPreparedDemo
     ? preparedDemoCity
       ? `This demo is customized for ${demoDisplayName} in ${preparedDemoCity}`
@@ -1089,7 +1130,7 @@ export function DemoExperience({
       website: '',
       demoConfig: {
         address: business.address || undefined,
-        city: business.city || (sitePhase === 'ready' ? undefined : config.defaultCity),
+        city: business.address ? undefined : business.city || (sitePhase === 'ready' ? undefined : config.defaultCity),
         primaryHours: business.primaryHours,
         secondaryHours: business.secondaryHours,
         staffNames: splitStaff(business.staff),
@@ -2117,9 +2158,20 @@ export function DemoExperience({
       .join(' / ');
 
     return (
-      <div className="vd-form-card">
-        <div className="vd-found-card">
-          <div className="vd-found-head">Prepared demo</div>
+      <div className="vd-form-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, boxShadow: 'none', padding: '10px 0 0' }}>
+        <div className="vd-found-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, padding: '0 0 14px' }}>
+          <div
+            className="vd-found-head"
+            style={{
+              color: 'var(--mk-text-muted,#64748b)',
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: 0,
+              textTransform: 'none',
+            }}
+          >
+            Your personalized demo
+          </div>
           <div className="vd-found-row">
             <span className="vd-found-key">Name</span>
             <span className="vd-found-val">{demoDisplayName}</span>
@@ -2139,7 +2191,7 @@ export function DemoExperience({
           {preparedServiceCount > 0 ? (
             <div className="vd-found-row">
               <span className="vd-found-key">Services</span>
-              <span className="vd-found-val">{preparedServiceCount} loaded</span>
+              <span className="vd-found-val">{preparedServiceCount} services</span>
             </div>
           ) : null}
           {preparedStaff.length > 0 ? (
@@ -2198,6 +2250,46 @@ export function DemoExperience({
               <span>›</span>
               <span>{verticalLabel}</span>
             </nav>
+            {isPreparedDemo ? (
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '0 auto 14px' }}>
+                {displayedPreparedLogoUrl ? (
+                  <img
+                    src={displayedPreparedLogoUrl}
+                    alt={demoDisplayName}
+                    width={56}
+                    height={56}
+                    onError={() => setPreparedLogoFailed(true)}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 12,
+                      border: '0.5px solid var(--mk-border-soft,#E8ECF1)',
+                      objectFit: 'cover',
+                      background: '#fff',
+                    }}
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 12,
+                      background: 'color-mix(in srgb,var(--va) 12%,#fff)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                      fontWeight: 500,
+                      color: 'var(--va)',
+                      border: '0.5px solid color-mix(in srgb,var(--va) 20%,#E8ECF1)',
+                    }}
+                  >
+                    {demoInitials}
+                  </div>
+                )}
+              </div>
+            ) : null}
             <p className="hero-eyebrow vd-hero-eyebrow">{pageEyebrow}</p>
             <h1 className="vd-hero-h1">{pageTitle}</h1>
             <p className="vd-hero-sub">{pageSubtitle}</p>
@@ -2641,24 +2733,14 @@ export function DemoExperience({
                             onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                           />
                         </div>
-                        <div className="vd-2col">
-                          <div className="vd-field vd-field-compact">
-                            <label htmlFor="vd-imported-city">City / state</label>
-                            <input
-                              id="vd-imported-city"
-                              value={business.city}
-                              onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
-                            />
-                          </div>
-                          <div className="vd-field vd-field-compact">
-                            <label htmlFor="vd-imported-staff">{config.staffLabel}</label>
-                            <input
-                              id="vd-imported-staff"
-                              value={business.staff}
-                              placeholder="Not found on website"
-                              onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
-                            />
-                          </div>
+                        <div className="vd-field" style={{ marginBottom: 14 }}>
+                          <label htmlFor="vd-imported-staff">{config.staffLabel}</label>
+                          <input
+                            id="vd-imported-staff"
+                            value={business.staff}
+                            placeholder="Not found on website"
+                            onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
+                          />
                         </div>
                         <div className="vd-2col">
                           <div className="vd-field vd-field-compact">
@@ -3090,7 +3172,26 @@ export function DemoExperience({
                   <span className="vd-phone-time">9:41</span>
                   <span className="vd-phone-icons">● ▲ ■</span>
                 </div>
-                <div className="vd-phone-avatar" aria-hidden />
+                {displayedPreparedLogoUrl ? (
+                  <img
+                    src={displayedPreparedLogoUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    onError={() => setPreparedLogoFailed(true)}
+                    className="vd-phone-avatar"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      objectFit: 'cover',
+                      border: '0.5px solid rgba(255,255,255,.24)',
+                      background: '#fff',
+                    }}
+                  />
+                ) : (
+                  <div className="vd-phone-avatar" aria-hidden />
+                )}
                 <div className="vd-phone-name">{demoDisplayName}</div>
                 <div className="vd-phone-subtitle">
                   {stage === 'queued' || stage === 'dialing'

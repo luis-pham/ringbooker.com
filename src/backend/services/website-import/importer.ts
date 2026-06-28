@@ -48,6 +48,16 @@ function isWeakPreview(preview: PagePreview | undefined): boolean {
     && preview.durationCount === 0;
 }
 
+function hasUsefulPreviewContent(preview: PagePreview | undefined): boolean {
+  if (!preview) return false;
+  return preview.firstTextChars.trim().length >= 800
+    || (preview.serviceBlocks?.length ?? 0) > 0
+    || preview.priceCount > 0
+    || preview.durationCount > 0
+    || preview.serviceKeywordCount >= 4
+    || preview.internalServiceLikeLinkCount >= 2;
+}
+
 function shouldKeepRenderedPreview(rendered: PagePreview, existing: PagePreview | undefined): boolean {
   if (!existing) return !isWeakPreview(rendered);
   const renderedServiceBlocks = rendered.serviceBlocks?.length ?? 0;
@@ -270,6 +280,7 @@ function candidateFromUrl(url: string, source: CandidateUrl['source'], anchorTex
       const lower = key.toLowerCase();
       if (/^utm_/.test(lower) || ['fbclid', 'gclid', 'itemid', 'variantid', 'productid', 'sku'].includes(lower)) parsed.searchParams.delete(key);
     }
+    if (parsed.pathname.length > 1) parsed.pathname = parsed.pathname.replace(/\/+$/, '');
     return { url: parsed.toString(), source, anchorText, pathTokens: parsed.pathname.split(/[\/\-_]+/).filter(Boolean), discoveredFrom };
   } catch {
     return null;
@@ -465,7 +476,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     const shouldRenderPage = allowRender
       && Boolean(renderConfig.endpoint)
       && remainingBudget() > 3_000
-      && (isWeakPreview(preview) || isJsRenderedSiteBuilder(siteBuilder));
+      && (isWeakPreview(preview) || (isJsRenderedSiteBuilder(siteBuilder) && !hasUsefulPreviewContent(preview)));
     if (shouldRenderPage) {
       const renderUrl = fetched?.url ?? candidate.url;
       const rendered = await renderHtml(renderUrl, renderConfig, { fetcher: opts.fetcher, timeoutMs: Math.min(12_000, remainingBudget()) });
@@ -498,7 +509,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   });
 
   let scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
-  let selected = selectPages(scored, opts.maxPages ?? 8);
+  let selected = selectPages(scored, opts.maxPages ?? 10);
 
   const childCandidates: CandidateUrl[] = [];
   for (const item of selected.filter((s) => s.bucket === 'service_hub').slice(0, 2)) {
@@ -517,7 +528,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     if (!unique.some((c) => c.url === child.url)) unique.push(child);
   });
   scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
-  selected = selectPages(scored, opts.maxPages ?? 8);
+  selected = selectPages(scored, opts.maxPages ?? 10);
 
   await mapPool(selected, concurrency, async (item) => {
     const existingPreview = previewMap.get(item.candidate.url);
@@ -525,7 +536,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       || isWeakPreview(existingPreview)
       || (item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0);
     const selectedNeedsRender = Boolean(renderConfig.endpoint)
-      && (isWeakPreview(existingPreview) || isJsRenderedSiteBuilder(siteBuilder));
+      && (isWeakPreview(existingPreview) || (isJsRenderedSiteBuilder(siteBuilder) && !hasUsefulPreviewContent(existingPreview)));
     if (!selectedNeedsFetch && !selectedNeedsRender) return;
     await fetchPreview(item.candidate, selectedNeedsRender);
   });
@@ -577,7 +588,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
         model: opts.llmModel,
         maxTokens: opts.llmMaxTokens,
         fetcher: opts.fetcher,
-        timeoutMs: Math.min(15_000, budgetForEnrichment),
+        timeoutMs: Math.min(22_000, budgetForEnrichment),
       },
     ),
   ]);
@@ -586,6 +597,8 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction });
   const serviceHubPagesFound = selected.filter((s) => s.bucket === 'service_hub').map((s) => s.candidate.url);
   const childServicePagesFound = selected.filter((s) => s.bucket === 'service_child').map((s) => s.candidate.url);
+  const hasRecoveredJsRenderedContent = suggestions.serviceCatalog.services.length > 0
+    || (suggestions.staffSuggestions ?? []).length > 0;
   // Completeness self-check: if the most service-rich page's menu was longer than the LLM's
   // single-pass input budget, some services may not have been read. Surface it so a partial
   // catalog is flagged for review instead of silently looking complete.
@@ -594,7 +607,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     return length > max ? length : max;
   }, 0);
   const menuExceededSinglePassBudget = richestPageMarkdownLength > LLM_TOP_PAGE_MARKDOWN_BUDGET;
-  const jsRenderedPreviewWarning = isJsRenderedSiteBuilder(siteBuilder) && !renderUsed && finalPreviews.some(isWeakPreview)
+  const jsRenderedPreviewWarning = isJsRenderedSiteBuilder(siteBuilder) && !renderUsed && !hasRecoveredJsRenderedContent && finalPreviews.some(isWeakPreview)
     ? `Site appears to be a JavaScript-rendered site (${siteBuilder}). Extracted content may be incomplete — configure a headless-render service (WEBSITE_IMPORT_RENDER_URL) for full extraction.`
     : null;
   const allWarnings = [

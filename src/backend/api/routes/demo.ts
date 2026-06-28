@@ -76,6 +76,30 @@ type DemoDeps = {
   runtimeInfo?: RuntimeInfo;
 };
 
+async function fetchSalonLogo(websiteUrl: string | null, instagramUrl: string | null): Promise<string | null> {
+  if (websiteUrl) {
+    try {
+      const normalizedWebsiteUrl = /^https?:\/\//i.test(websiteUrl) ? websiteUrl : `https://${websiteUrl}`;
+      const domain = new URL(normalizedWebsiteUrl).hostname;
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      const res = await fetch(faviconUrl, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+      if (res.ok) return faviconUrl;
+    } catch {}
+  }
+
+  if (instagramUrl) {
+    try {
+      const username = instagramUrl
+        .replace(/\/$/, '')
+        .split('/')
+        .pop();
+      if (username) return `https://unavatar.io/instagram/${username}`;
+    } catch {}
+  }
+
+  return null;
+}
+
 export function registerDemoRoutes(app: Hono, path: (route: string) => string, deps: DemoDeps): void {
   app.post(path('/public/demo/request'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_outbound_disabled');
@@ -1157,6 +1181,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
     const services: NonNullable<SalesPreparedDemoConfig['services']> =
       importedServices.length > 0 ? importedServices : p.services.map((name) => ({ category: verticalLabel, name }));
     const staffNames = importedStaff.length > 0 ? importedStaff : p.staffNames;
+    const logoUrl = await fetchSalonLogo(p.websiteUrl ?? null, p.instagramUrl ?? null);
 
     const demoConfig: SalesPreparedDemoConfig = {
       services,
@@ -1196,6 +1221,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       state: p.state || null,
       websiteUrl: p.websiteUrl ?? null,
       instagramUrl: p.instagramUrl ?? null,
+      logoUrl: logoUrl ?? null,
       demoConfig,
       systemPrompt,
       expiresAt,
@@ -1230,6 +1256,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         vertical: demo.vertical,
         businessName: demo.businessName,
         city: demo.city,
+        logoUrl: demo.logoUrl ?? null,
         services: (demo.demoConfig.services ?? []).map((s) => s.name).filter(Boolean),
         staffNames: (demo.demoConfig.staffNames ?? []).filter(Boolean),
         primaryHours: demo.demoConfig.primaryHours ?? null,

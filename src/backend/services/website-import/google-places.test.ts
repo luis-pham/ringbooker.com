@@ -18,6 +18,7 @@ test('Google Places success maps to sanitized suggestion fields', async () => {
   assert.equal(result?.phone, '(555) 123-4567');
   assert.equal(result?.primaryType, 'nail_salon');
   assert.deepEqual(result?.hours?.mon, { open: '09:00', close: '19:00' });
+  assert.deepEqual(result?.hours?.sun, { closed: true });
   assert.equal(JSON.stringify(result).includes('test-key'), false);
 });
 

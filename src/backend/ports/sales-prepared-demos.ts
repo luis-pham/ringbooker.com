@@ -27,6 +27,7 @@ export type SalesPreparedDemo = {
   state: string | null;
   websiteUrl: string | null;
   instagramUrl: string | null;
+  logoUrl: string | null;
   demoConfig: SalesPreparedDemoConfig;
   systemPrompt: string | null;
   expiresAt: string;
@@ -44,6 +45,7 @@ export type UpsertPreparedDemoParams = {
   state?: string | null;
   websiteUrl?: string | null;
   instagramUrl?: string | null;
+  logoUrl?: string | null;
   demoConfig: SalesPreparedDemoConfig;
   systemPrompt?: string | null;
   expiresAt: Date;

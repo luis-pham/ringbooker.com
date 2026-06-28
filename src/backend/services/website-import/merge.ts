@@ -256,6 +256,19 @@ function dedupeSuggestions<T>(items: T[], keyFn: (item: T) => string, max = 40):
   }
   return [...map.values()].slice(0, max);
 }
+function dedupeLlmFirstSuggestions<T>(staticItems: T[] | undefined, llmItems: T[] | undefined, keyFn: (item: T) => string, max = 40): T[] {
+  return dedupeSuggestions([...(llmItems ?? []), ...(staticItems ?? [])], keyFn, max);
+}
+function shouldKeepStaticServiceAlongsideLlm(service: ImportedServiceSuggestion): boolean {
+  if (service.sourceHint === 'service_matrix_table' || service.sourceHint === 'service_menu_list') return false;
+  return (service.confidence ?? 0) >= 0.72
+    || (!service.sourceHint && (service.confidence ?? 0) >= 0.66)
+    || service.source === 'JSON-LD'
+    || service.sourceHint === 'semantic'
+    || service.sourceHint === 'heading_sibling'
+    || service.sourceHint === 'repeated_card'
+    || service.sourceHint === 'simple_price_table';
+}
 export function computeCompleteness(suggestions: Omit<ImportSuggestions, 'completeness'>): WebsiteImportCompleteness {
   const missingFields: string[] = [];
   const lowConfidenceFields: string[] = [];
@@ -310,9 +323,9 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   // truth. The static matrix/menu-list extractors can mis-join table column headers (e.g.
   // "Cash Price Credit Price") into service names, so drop those when the LLM is strong and
   // keep only static finds from cleaner extractors that the LLM may have missed.
-  const llmStrong = llmServices.length >= 3;
-  const staticForMerge = llmStrong
-    ? staticServices.filter((service) => service.sourceHint !== 'service_matrix_table' && service.sourceHint !== 'service_menu_list')
+  const llmAuthoritative = llmServices.length >= 3 || (llmServices.length > 0 && (llm?.serviceCatalog?.confidence ?? 0) >= 0.72);
+  const staticForMerge = llmAuthoritative
+    ? staticServices.filter(shouldKeepStaticServiceAlongsideLlm)
     : staticServices;
   const services = dedupeServices(llmServices.length ? [...llmServices, ...staticForMerge] : staticServices);
   const serviceConfidence = services.length >= 3 ? Math.max(llm?.serviceCatalog?.confidence ?? 0, 0.78) : services.length > 0 ? Math.max(llm?.serviceCatalog?.confidence ?? 0, 0.55) : 0;
@@ -353,10 +366,10 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
     : choose(input.staticFacts.primaryType, maybeLlm(llm?.businessProfile?.primaryType), placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.primaryType, placeConfidence ? 0.72 : 0) : null);
   const bookingUrl = choose(input.staticFacts.bookingUrl, maybeLlm(llm?.bookingUrl));
   const categories = serviceGroups(services, llm);
-  const staffSuggestions = dedupeSuggestions([...(input.staticFacts.staffSuggestions ?? []), ...(llm?.staffSuggestions ?? [])], (item) => item.name, 25);
-  const policySuggestions = dedupeSuggestions([...(input.staticFacts.policySuggestions ?? []), ...(llm?.policySuggestions ?? [])], (item) => `${item.type}:${item.title}:${item.content}`, 25);
-  const faqSuggestions = dedupeSuggestions([...(input.staticFacts.faqSuggestions ?? []), ...(llm?.faqSuggestions ?? [])], (item) => item.question, 40);
-  const promotionSuggestions = dedupeSuggestions([...(input.staticFacts.promotionSuggestions ?? []), ...(llm?.promotionSuggestions ?? [])], (item) => item.title, 20);
+  const staffSuggestions = dedupeLlmFirstSuggestions(input.staticFacts.staffSuggestions, llm?.staffSuggestions, (item) => item.name, 25);
+  const policySuggestions = dedupeLlmFirstSuggestions(input.staticFacts.policySuggestions, llm?.policySuggestions, (item) => `${item.type}:${item.title}:${item.content}`, 25);
+  const faqSuggestions = dedupeLlmFirstSuggestions(input.staticFacts.faqSuggestions, llm?.faqSuggestions, (item) => item.question, 40);
+  const promotionSuggestions = dedupeLlmFirstSuggestions(input.staticFacts.promotionSuggestions, llm?.promotionSuggestions, (item) => item.title, 20);
   const bookingSetupSuggestions = dedupeSuggestions([...(input.staticFacts.bookingSetupSuggestions ?? []), ...(llm?.bookingSetupSuggestions ?? [])], (item) => `${item.type}:${item.value ?? item.label}`, 20);
   const base: Omit<ImportSuggestions, 'completeness'> = {
     status: name.value || phone.value || address.value || hours.value || services.length ? (services.length || phone.value || address.value || hours.value ? 'success' : 'partial') : 'failed',

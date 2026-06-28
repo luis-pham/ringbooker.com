@@ -31,6 +31,14 @@ function cacheKey(url: string): string {
   }
 }
 
+function shouldCacheResult(result: WebsiteImportResult): boolean {
+  if (!result.ok) return false;
+  const usedHeadlessRender = result.diagnostics.fallbackUsed.includes('headless_render');
+  const jsRenderedIncomplete = !usedHeadlessRender
+    && result.diagnostics.warnings.some((warning) => /javascript(?:-rendered|\s+spa)|headless-render|WEBSITE_IMPORT_RENDER_URL/i.test(warning));
+  return !jsRenderedIncomplete;
+}
+
 /** Test/ops helper — drops all cached and in-flight imports. */
 export function clearWebsiteImportCache(): void {
   cache.clear();
@@ -68,7 +76,7 @@ export async function importWebsiteWithCache(
   const promise = (async () => {
     try {
       const result = await importFn();
-      if (result.ok) {
+      if (shouldCacheResult(result)) {
         const existing = cache.get(key);
         // Don't let a thinner crawl overwrite a still-fresh richer one.
         const keepExisting = existing && existing.expiresAt > Date.now() && existing.qualityBudgetMs > requestedBudgetMs;
