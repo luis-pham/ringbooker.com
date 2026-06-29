@@ -28,7 +28,6 @@ type SmsListItem = {
 
 type SmsMessage = SmsListItem & {
   body?: string | null;
-  rawPayload?: unknown;
 };
 
 type SmsResponse = {
@@ -84,7 +83,6 @@ const adminSmsStyles = [
 .sms-detail-box{padding:12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--panel-2)}
 .sms-detail-box .sms-detail-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:4px}
 .sms-body-box{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
-.sms-raw{max-height:320px;overflow:auto;padding:12px;border-radius:var(--r-sm);border:1px solid var(--line);background:#050506;color:#d4d4d8;font-size:12px;line-height:1.55}
 .sms-dialog{width:min(760px,calc(100vw - 32px));border:1px solid var(--line);border-radius:var(--r-lg);background:var(--panel);color:var(--text);padding:0;box-shadow:var(--shadow)}
 .sms-dialog::backdrop{background:rgba(0,0,0,.58)}
 .sms-dialog-inner{padding:20px}
@@ -412,8 +410,6 @@ export function AdminSmsLive() {
                     </div>
                   </div>
                   <div className="note sms-body-box">{detail.body || 'No text body'}</div>
-                  <h3 style={{ marginTop: 18 }}>Raw payload</h3>
-                  <pre className="sms-raw">{JSON.stringify(detail.rawPayload ?? null, null, 2)}</pre>
                 </>
               ) : null}
             </div>
