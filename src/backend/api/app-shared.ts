@@ -1291,6 +1291,21 @@ export const adminCallsListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional(),
 });
 
+export const adminSmsReadFilterSchema = z.enum(['all', 'read', 'unread']);
+
+export const adminSmsListQuerySchema = z.object({
+  q: z.preprocess((v) => (v === '' || v == null ? undefined : String(v).trim()), z.string().max(200).optional()),
+  toNumber: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : String(v).trim()),
+    z.string().max(40).optional(),
+  ),
+  read: adminSmsReadFilterSchema.optional().default('all'),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 export const adminShopCallsQuerySchema = z.object({
   callsPage: z.coerce.number().int().min(1).max(10_000).optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -2693,6 +2708,7 @@ export function demoCallDurationSeconds(row: Pick<DemoAdminCallListRow, 'connect
 export const ADMIN_CALL_LIST_PAGE_SIZE = 20;
 export const ADMIN_CALL_CHART_SAMPLE = 8000;
 export const ADMIN_DEMO_LIST_PAGE_SIZE = 20;
+export const ADMIN_SMS_LIST_PAGE_SIZE = 25;
 export const ADMIN_DEMO_CHART_SAMPLE = 8000;
 export const ADMIN_WEB_DEMO_MERGE_CAP = 2500;
 

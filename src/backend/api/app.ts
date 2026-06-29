@@ -1,7 +1,41 @@
 import { Hono } from 'hono';
 
 import type { RealtimeAgentRuntime } from '@/src/agent/realtime/types';
-import type { BlogPostsRepository, BookingsRepository, BusinessKnowledgeSuggestionsRepository, BillingNotificationsRepository, BillingCustomersRepository, BillingSubscriptionsRepository, CommercialAccountsRepository, CommercialGoLiveApprovalEventsRepository, CallbacksRepository, CallLogsRepository, JobsRepository, MissedCallsRepository, OutboundMessagesRepository, ProviderEventsRepository, ShopStaffRepository, ShopStaffServicesRepository, ShopsRepository, AuthUsersRepository, ContactRequestsRepository, DemoSessionsRepository, HandoffSessionsRepository, ShopAccessStatesRepository, ShopLocationsRepository, ShopOverageChargesRepository, ShopUsageAlertsRepository, ShopRoutingRulesRepository, ShopActiveCallSessionsRepository, TestCallAttemptsRepository, ForwardingTestSessionsRepository, VoiceCallLegsRepository, CustomersRepository, VagaroWebhookEventsRepository } from '@/src/backend/ports/repositories';
+import type {
+  AuthUsersRepository,
+  BillingCustomersRepository,
+  BillingNotificationsRepository,
+  BillingSubscriptionsRepository,
+  BlogPostsRepository,
+  BookingsRepository,
+  BusinessKnowledgeSuggestionsRepository,
+  CallbacksRepository,
+  CallLogsRepository,
+  CommercialAccountsRepository,
+  CommercialGoLiveApprovalEventsRepository,
+  ContactRequestsRepository,
+  CustomersRepository,
+  DemoSessionsRepository,
+  ForwardingTestSessionsRepository,
+  HandoffSessionsRepository,
+  JobsRepository,
+  MissedCallsRepository,
+  OutboundMessagesRepository,
+  ProviderEventsRepository,
+  ShopAccessStatesRepository,
+  ShopActiveCallSessionsRepository,
+  ShopLocationsRepository,
+  ShopOverageChargesRepository,
+  ShopRoutingRulesRepository,
+  ShopStaffRepository,
+  ShopStaffServicesRepository,
+  ShopUsageAlertsRepository,
+  ShopsRepository,
+  SmsMessagesRepository,
+  TestCallAttemptsRepository,
+  VagaroWebhookEventsRepository,
+  VoiceCallLegsRepository,
+} from '@/src/backend/ports/repositories';
 import type { WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { SalesPreparedDemosRepository } from '@/src/backend/ports/sales-prepared-demos';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
@@ -68,9 +102,10 @@ export function createBackendApp(deps: {
   callLogsRepository?: CallLogsRepository;
   recordingStorage?: CallRecordingStorage;
   customersRepository?: CustomersRepository;
-	  missedCallsRepository?: MissedCallsRepository;
-	  outboundMessagesRepository?: OutboundMessagesRepository;
-	  handoffSessionsRepository?: HandoffSessionsRepository;
+  missedCallsRepository?: MissedCallsRepository;
+  outboundMessagesRepository?: OutboundMessagesRepository;
+  smsMessagesRepository?: SmsMessagesRepository;
+  handoffSessionsRepository?: HandoffSessionsRepository;
   voiceCallLegsRepository?: VoiceCallLegsRepository;
   shopStaffRepository?: ShopStaffRepository;
   shopStaffServicesRepository?: ShopStaffServicesRepository;
@@ -180,6 +215,7 @@ export function createBackendApp(deps: {
     shopAccessStatesRepository: deps.shopAccessStatesRepository,
     testCallAttemptsRepository: deps.testCallAttemptsRepository,
     customersRepository: deps.customersRepository,
+    smsMessagesRepository: deps.smsMessagesRepository,
     forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
     recordingStorage: deps.recordingStorage,
     commercialAccountsRepository: deps.commercialAccountsRepository,
@@ -331,6 +367,7 @@ export function createBackendApp(deps: {
     callbacksRepository: deps.callbacksRepository,
     customersRepository: deps.customersRepository,
     outboundMessagesRepository: deps.outboundMessagesRepository,
+    smsMessagesRepository: deps.smsMessagesRepository,
     handoffSessionsRepository: deps.handoffSessionsRepository,
     voiceCallLegsRepository: deps.voiceCallLegsRepository,
     missedCallsRepository: deps.missedCallsRepository,

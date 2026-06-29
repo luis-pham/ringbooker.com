@@ -17,6 +17,7 @@ import {
   IconPhone,
   IconShop,
   IconSliders,
+  IconSms,
   IconUsers,
 } from '@/components/admin/admin-sidebar-icons';
 
@@ -52,6 +53,7 @@ const GROUPS: NavGroup[] = [
     id: 'system',
     label: 'System',
     items: [
+      { href: '/admin/sms', label: 'SMS Inbox' },
       { href: '/admin/billing', label: 'Billing' },
       { href: '/admin/users', label: 'Users & roles' },
       { href: '/admin/system-health', label: 'System health' },
@@ -68,6 +70,7 @@ const GROUP_ICON: Record<string, ComponentType> = {
 const ITEM_ICON: Record<string, ComponentType> = {
   '/admin/calls': IconLeafCalls,
   '/admin/demos': IconDemo,
+  '/admin/sms': IconSms,
   '/admin/leads': IconLeads,
   '/admin/blog': IconBlog,
   '/admin/billing': IconBilling,
@@ -89,6 +92,7 @@ function defaultOpenForPath(pathname: string): Record<string, boolean> {
   if (p.startsWith('/admin/calls') || p.startsWith('/admin/demos')) next.calls = true;
   else if (p.startsWith('/admin/leads') || p.startsWith('/admin/blog')) next.marketing = true;
   else if (
+    p.startsWith('/admin/sms') ||
     p.startsWith('/admin/billing') ||
     p.startsWith('/admin/users') ||
     p.startsWith('/admin/system-health')

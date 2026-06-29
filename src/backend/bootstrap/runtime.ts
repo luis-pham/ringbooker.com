@@ -15,6 +15,7 @@ import { InMemoryBillingNotificationsRepository } from '@/src/backend/adapters/m
 import { InMemoryBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/memory/business-knowledge-suggestions-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
 import { InMemoryOutboundMessagesRepository } from '@/src/backend/adapters/memory/outbound-messages-repository';
+import { InMemorySmsMessagesRepository } from '@/src/backend/adapters/memory/sms-messages-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryVagaroWebhookEventsRepository } from '@/src/backend/adapters/memory/vagaro-webhook-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
@@ -54,6 +55,7 @@ import { SupabaseBillingNotificationsRepository } from '@/src/backend/adapters/s
 import { SupabaseBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/supabase/business-knowledge-suggestions-repository';
 import { SupabaseCallbacksRepository } from '@/src/backend/adapters/supabase/callbacks-repository';
 import { SupabaseOutboundMessagesRepository } from '@/src/backend/adapters/supabase/outbound-messages-repository';
+import { SupabaseSmsMessagesRepository } from '@/src/backend/adapters/supabase/sms-messages-repository';
 import { SupabaseProviderEventsRepository } from '@/src/backend/adapters/supabase/provider-events-repository';
 import { SupabaseVagaroWebhookEventsRepository } from '@/src/backend/adapters/supabase/vagaro-webhook-events-repository';
 import { SupabaseShopsRepository } from '@/src/backend/adapters/supabase/shops-repository';
@@ -201,6 +203,7 @@ export function createBackendRuntime() {
             bookingsRepository: new SupabaseBookingsRepository(supabase),
             callbacksRepository: new SupabaseCallbacksRepository(supabase),
             outboundMessagesRepository: new SupabaseOutboundMessagesRepository(supabase),
+            smsMessagesRepository: new SupabaseSmsMessagesRepository(supabase),
             callLogsRepository: new SupabaseCallLogsRepository(supabase),
             missedCallsRepository: new SupabaseMissedCallsRepository(supabase),
             authUsersRepository: new SupabaseAuthUsersRepository(supabase),
@@ -238,6 +241,7 @@ export function createBackendRuntime() {
           bookingsRepository: new InMemoryBookingsRepository(),
           callbacksRepository: new InMemoryCallbacksRepository(),
           outboundMessagesRepository: new InMemoryOutboundMessagesRepository(),
+          smsMessagesRepository: new InMemorySmsMessagesRepository(),
           callLogsRepository: new InMemoryCallLogsRepository(),
           missedCallsRepository: new InMemoryMissedCallsRepository(),
           authUsersRepository: new InMemoryAuthUsersRepository(),
@@ -367,6 +371,7 @@ export function createBackendRuntime() {
     callLogsRepository: repositories.callLogsRepository,
     recordingStorage,
     missedCallsRepository: repositories.missedCallsRepository,
+    smsMessagesRepository: repositories.smsMessagesRepository,
     handoffSessionsRepository: repositories.handoffSessionsRepository,
     voiceCallLegsRepository: repositories.voiceCallLegsRepository,
     authUsersRepository: repositories.authUsersRepository,
@@ -413,6 +418,7 @@ export function createBackendRuntime() {
     bookingsRepository: repositories.bookingsRepository,
     callbacksRepository: repositories.callbacksRepository,
     outboundMessagesRepository: repositories.outboundMessagesRepository,
+    smsMessagesRepository: repositories.smsMessagesRepository,
     callLogsRepository: repositories.callLogsRepository,
     recordingStorage,
     missedCallsRepository: repositories.missedCallsRepository,

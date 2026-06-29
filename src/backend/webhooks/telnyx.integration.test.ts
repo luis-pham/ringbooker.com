@@ -8,6 +8,8 @@ import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repos
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
+import { InMemorySmsMessagesRepository } from '@/src/backend/adapters/memory/sms-messages-repository';
+import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 const keyPair = generateKeyPairSync('ed25519');
@@ -18,6 +20,30 @@ applyRequiredTestEnv({
 function signTelnyxPayload(params: { body: string; timestamp: string }): string {
   const message = Buffer.from(`${params.timestamp}|${params.body}`, 'utf8');
   return sign(null, message, keyPair.privateKey).toString('base64');
+}
+
+async function postSignedTelnyxWebhook(app: ReturnType<typeof createBackendApp>, body: string) {
+  const timestamp = `${Date.now()}`;
+  const signature = signTelnyxPayload({ body, timestamp });
+  return app.request('/webhooks/telnyx', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'telnyx-timestamp': timestamp,
+      'telnyx-signature-ed25519': signature,
+    },
+    body,
+  });
+}
+
+function setSmsInboxWhitelist(value: string) {
+  process.env.TELNYX_SMS_INBOX_ALLOWED_NUMBERS = value;
+  resetEnvCacheForTests();
+}
+
+function clearSmsInboxWhitelist() {
+  delete process.env.TELNYX_SMS_INBOX_ALLOWED_NUMBERS;
+  resetEnvCacheForTests();
 }
 
 test('telnyx webhook dedupes and enqueues one missed-call followup job', async () => {
@@ -97,6 +123,176 @@ test('telnyx webhook dedupes and enqueues one missed-call followup job', async (
     workerId: 'test-worker-2',
   });
   assert.equal(leasedSecond, null);
+});
+
+test('telnyx inbound SMS is stored only for whitelisted inbox numbers', async () => {
+  setSmsInboxWhitelist('+17145550123');
+  const smsMessagesRepository = new InMemorySmsMessagesRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    smsMessagesRepository,
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'message.received',
+      id: 'evt-sms-allowed-1',
+      payload: {
+        id: 'msg-allowed-1',
+        to: [{ phone_number: '+17145550123' }],
+        from: { phone_number: '+14155550101' },
+        text: 'Can I book tomorrow?',
+        received_at: '2026-06-29T15:00:00.000Z',
+      },
+    },
+  });
+
+  const response = await postSignedTelnyxWebhook(app, body);
+  assert.equal(response.status, 200);
+
+  const list = await smsMessagesRepository.listAdminSmsMessages({
+    allowedToNumbers: ['+17145550123'],
+    page: 1,
+    limit: 10,
+    read: 'all',
+  });
+  assert.equal(list.total, 1);
+  assert.equal(list.items[0]?.fromNumber, '+14155550101');
+  assert.equal(list.items[0]?.toNumber, '+17145550123');
+  assert.equal(list.items[0]?.bodyPreview, 'Can I book tomorrow?');
+});
+
+test('telnyx inbound SMS outside whitelist is acknowledged and not stored', async () => {
+  setSmsInboxWhitelist('+17145550123');
+  const smsMessagesRepository = new InMemorySmsMessagesRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    smsMessagesRepository,
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'message.received',
+      id: 'evt-sms-outside-1',
+      payload: {
+        id: 'msg-outside-1',
+        to: '+17145550999',
+        from: '+14155550102',
+        text: 'Outside inbox',
+      },
+    },
+  });
+
+  const response = await postSignedTelnyxWebhook(app, body);
+  assert.equal(response.status, 200);
+
+  const list = await smsMessagesRepository.listAdminSmsMessages({
+    allowedToNumbers: ['+17145550123'],
+    page: 1,
+    limit: 10,
+    read: 'all',
+  });
+  assert.equal(list.total, 0);
+});
+
+test('telnyx inbound SMS duplicate message id stores one inbox row', async () => {
+  setSmsInboxWhitelist('+17145550123');
+  const smsMessagesRepository = new InMemorySmsMessagesRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    smsMessagesRepository,
+  });
+
+  const payload = {
+    id: 'msg-duplicate-1',
+    to: '+17145550123',
+    from: '+14155550103',
+    text: 'Duplicate body',
+  };
+  const firstBody = JSON.stringify({
+    data: { event_type: 'message.received', id: 'evt-sms-dupe-1', payload },
+  });
+  const secondBody = JSON.stringify({
+    data: { event_type: 'message.received', id: 'evt-sms-dupe-2', payload },
+  });
+
+  assert.equal((await postSignedTelnyxWebhook(app, firstBody)).status, 200);
+  assert.equal((await postSignedTelnyxWebhook(app, secondBody)).status, 200);
+
+  const list = await smsMessagesRepository.listAdminSmsMessages({
+    allowedToNumbers: ['+17145550123'],
+    page: 1,
+    limit: 10,
+    read: 'all',
+  });
+  assert.equal(list.total, 1);
+  assert.equal(list.items[0]?.telnyxMessageId, 'msg-duplicate-1');
+});
+
+test('telnyx inbound SMS with missing body still stores metadata', async () => {
+  setSmsInboxWhitelist('+17145550123');
+  const smsMessagesRepository = new InMemorySmsMessagesRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    smsMessagesRepository,
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'message.received',
+      id: 'evt-sms-missing-body-1',
+      payload: {
+        id: 'msg-missing-body-1',
+        to: '+17145550123',
+        from: '+14155550104',
+      },
+    },
+  });
+
+  const response = await postSignedTelnyxWebhook(app, body);
+  assert.equal(response.status, 200);
+
+  const list = await smsMessagesRepository.listAdminSmsMessages({
+    allowedToNumbers: ['+17145550123'],
+    page: 1,
+    limit: 10,
+    read: 'all',
+  });
+  assert.equal(list.total, 1);
+  assert.equal(list.items[0]?.bodyPreview, null);
+});
+
+test('telnyx inbound SMS with missing whitelist is acknowledged and not stored', async () => {
+  clearSmsInboxWhitelist();
+  const smsMessagesRepository = new InMemorySmsMessagesRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    smsMessagesRepository,
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'message.received',
+      id: 'evt-sms-no-whitelist-1',
+      payload: {
+        id: 'msg-no-whitelist-1',
+        to: '+17145550123',
+        from: '+14155550105',
+        text: 'No whitelist',
+      },
+    },
+  });
+
+  const response = await postSignedTelnyxWebhook(app, body);
+  assert.equal(response.status, 200);
+
+  const list = await smsMessagesRepository.listAdminSmsMessages({
+    allowedToNumbers: ['+17145550123'],
+    page: 1,
+    limit: 10,
+    read: 'all',
+  });
+  assert.equal(list.total, 0);
 });
 
 test('telnyx missed inbound does not enqueue follow-up when billing gate deps are missing', async () => {

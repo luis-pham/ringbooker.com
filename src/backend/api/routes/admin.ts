@@ -3,6 +3,7 @@ import {
   ADMIN_CALL_CHART_SAMPLE,
   ADMIN_CALL_LIST_PAGE_SIZE,
   ADMIN_DEMO_LIST_PAGE_SIZE,
+  ADMIN_SMS_LIST_PAGE_SIZE,
   ADMIN_WEB_DEMO_MERGE_CAP,
   adminCallsListQuerySchema,
   adminCommercialAccountSchema,
@@ -20,6 +21,7 @@ import {
   adminShopLocationSchema,
   adminShopRoutingRuleSchema,
   adminShopSettingsUpdateSchema,
+  adminSmsListQuerySchema,
   adminUpdatePlanSchema,
   adminUserPatchSchema,
   adminUserSetPasswordSchema,
@@ -86,6 +88,7 @@ import type {
   CallbacksRepository,
   CustomersRepository,
   OutboundMessagesRepository,
+  SmsMessagesRepository,
   HandoffSessionsRepository,
   VoiceCallLegsRepository,
   MissedCallsRepository,
@@ -107,6 +110,10 @@ import type {
   ContactRequestStatus,
 } from '@/src/backend/domain/types';
 import type { AdminTrialEndingSoonItem } from '@/src/backend/services/admin/admin-dashboard-trial-watchlist';
+import {
+  getAllowedSmsInboxNumbers,
+  normalizeSmsInboxPhoneNumber,
+} from '@/src/backend/services/sms/sms-inbox-allowlist';
 
 type AdminDeps = {
   jobsRepository?: JobsRepository;
@@ -135,6 +142,7 @@ type AdminDeps = {
   callbacksRepository?: CallbacksRepository;
   customersRepository?: CustomersRepository;
   outboundMessagesRepository?: OutboundMessagesRepository;
+  smsMessagesRepository?: SmsMessagesRepository;
   handoffSessionsRepository?: HandoffSessionsRepository;
   voiceCallLegsRepository?: VoiceCallLegsRepository;
   missedCallsRepository?: MissedCallsRepository;
@@ -1212,6 +1220,122 @@ export function registerAdminRoutes(app: Hono, path: (route: string) => string, 
         dateTo: dateTo ?? null,
       },
     });
+  });
+
+  app.get(path('/admin/sms'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_sms');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    const smsMessagesRepository = deps.smsMessagesRepository;
+    if (!smsMessagesRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const parsed = adminSmsListQuerySchema.safeParse({
+      q: c.req.query('q'),
+      toNumber: c.req.query('toNumber'),
+      read: c.req.query('read'),
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+      page: c.req.query('page'),
+      limit: c.req.query('limit'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+
+    const allowedNumbers = getAllowedSmsInboxNumbers();
+    const page = parsed.data.page ?? 1;
+    const pageSize = parsed.data.limit ?? ADMIN_SMS_LIST_PAGE_SIZE;
+    const requestedToNumber = parsed.data.toNumber ? normalizeSmsInboxPhoneNumber(parsed.data.toNumber) : null;
+    if (parsed.data.toNumber && !requestedToNumber) {
+      return c.json({ ok: false, error: 'invalid_to_number' }, 400);
+    }
+
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+    if (parsed.data.dateFrom) dateFrom = new Date(`${parsed.data.dateFrom}T00:00:00.000Z`);
+    if (parsed.data.dateTo) dateTo = new Date(`${parsed.data.dateTo}T23:59:59.999Z`);
+    if (dateFrom && dateTo && dateFrom.getTime() > dateTo.getTime()) {
+      return c.json({ ok: false, error: 'invalid_date_range' }, 400);
+    }
+
+    if (allowedNumbers.length === 0 || (requestedToNumber && !allowedNumbers.includes(requestedToNumber))) {
+      return c.json({
+        ok: true,
+        items: [],
+        allowedNumbers,
+        inboxConfigured: allowedNumbers.length > 0,
+        pagination: { page, pageSize, total: 0 },
+        filter: {
+          q: parsed.data.q ?? null,
+          toNumber: requestedToNumber,
+          read: parsed.data.read,
+          dateFrom: parsed.data.dateFrom ?? null,
+          dateTo: parsed.data.dateTo ?? null,
+        },
+      });
+    }
+
+    const result = await smsMessagesRepository.listAdminSmsMessages({
+      allowedToNumbers: allowedNumbers,
+      q: parsed.data.q ?? null,
+      toNumber: requestedToNumber,
+      read: parsed.data.read,
+      dateFrom,
+      dateTo,
+      page,
+      limit: pageSize,
+    });
+
+    return c.json({
+      ok: true,
+      items: result.items,
+      allowedNumbers,
+      inboxConfigured: true,
+      pagination: { page, pageSize, total: result.total },
+      filter: {
+        q: parsed.data.q ?? null,
+        toNumber: requestedToNumber,
+        read: parsed.data.read,
+        dateFrom: parsed.data.dateFrom ?? null,
+        dateTo: parsed.data.dateTo ?? null,
+      },
+    });
+  });
+
+  app.get(path('/admin/sms/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_sms_detail');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.smsMessagesRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const id = parseAdminResourceUuid(c.req.param('id'));
+    if (!id) return c.json({ ok: false, error: 'invalid_sms_message_id' }, 400);
+
+    const message = await deps.smsMessagesRepository.getAdminSmsMessageById(id, getAllowedSmsInboxNumbers());
+    if (!message) return c.json({ ok: false, error: 'sms_message_not_found' }, 404);
+    return c.json({ ok: true, message });
+  });
+
+  app.post(path('/admin/sms/:id/read'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_sms_read');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.smsMessagesRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const id = parseAdminResourceUuid(c.req.param('id'));
+    if (!id) return c.json({ ok: false, error: 'invalid_sms_message_id' }, 400);
+
+    const message = await deps.smsMessagesRepository.markSmsMessageRead(id, getAllowedSmsInboxNumbers());
+    if (!message) return c.json({ ok: false, error: 'sms_message_not_found' }, 404);
+    return c.json({ ok: true, message });
   });
 
   app.get(path('/admin/demo-calls'), async (c) => {

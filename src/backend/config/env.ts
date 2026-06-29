@@ -89,6 +89,7 @@ function createValidatedEnv() {
       TELNYX_APP_ID: z.string().min(1),
       TELNYX_MESSAGING_PROFILE: z.string().min(1),
       TELNYX_SMS_SENDER_NUMBER: z.string().optional(),
+      TELNYX_SMS_INBOX_ALLOWED_NUMBERS: optionalNonEmptyStringEnv,
       TELNYX_WEBHOOK_PUBLIC_KEY: z.string().min(1),
       TELNYX_WEBHOOK_MAX_SKEW_SECONDS: z.coerce.number().int().positive().default(300),
       /** When true, POST /webhooks/telnyx/call-control accepts Telnyx Call Control Application events (Phase 2+). */

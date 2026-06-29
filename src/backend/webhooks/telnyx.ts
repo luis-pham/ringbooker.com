@@ -13,6 +13,7 @@ import type {
   ProviderEventsRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
+  SmsMessagesRepository,
   TestCallAttemptsRepository,
 } from '@/src/backend/ports/repositories';
 import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
@@ -22,6 +23,10 @@ import { securityAudit } from '@/src/backend/security/audit-log';
 import { getClientIp } from '@/src/backend/security/rate-limit';
 import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import {
+  getAllowedSmsInboxNumbers,
+  normalizeSmsInboxPhoneNumber,
+} from '@/src/backend/services/sms/sms-inbox-allowlist';
 import { maskPhone } from '@/src/backend/utils/pii';
 
 const telnyxEnvelopeSchema = z.object({
@@ -48,6 +53,39 @@ function firstString(payload: unknown, keys: string[]): string | null {
       const nested = value as Record<string, unknown>;
       if (typeof nested.phone_number === 'string' && nested.phone_number.trim().length > 0) {
         return nested.phone_number.trim();
+      }
+    }
+  }
+  return null;
+}
+
+function firstPhone(payload: unknown, keys: string[]): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const record = payload as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === 'string' && item.trim().length > 0) return item.trim();
+        if (item && typeof item === 'object') {
+          const itemRecord = item as Record<string, unknown>;
+          if (typeof itemRecord.phone_number === 'string' && itemRecord.phone_number.trim().length > 0) {
+            return itemRecord.phone_number.trim();
+          }
+          if (typeof itemRecord.phoneNumber === 'string' && itemRecord.phoneNumber.trim().length > 0) {
+            return itemRecord.phoneNumber.trim();
+          }
+        }
+      }
+    }
+    if (value && typeof value === 'object') {
+      const nested = value as Record<string, unknown>;
+      if (typeof nested.phone_number === 'string' && nested.phone_number.trim().length > 0) {
+        return nested.phone_number.trim();
+      }
+      if (typeof nested.phoneNumber === 'string' && nested.phoneNumber.trim().length > 0) {
+        return nested.phoneNumber.trim();
       }
     }
   }
@@ -88,6 +126,110 @@ function isSmsOptOutMessage(eventType: string, payload: unknown): boolean {
   return ['stop', 'stopall', 'unsubscribe', 'cancel', 'end', 'quit'].includes(message);
 }
 
+function isInboundSmsMessage(eventType: string): boolean {
+  const normalized = eventType.toLowerCase();
+  return normalized === 'message.received' || normalized.endsWith('.message.received');
+}
+
+function extractMediaUrls(payload: unknown): string[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const record = payload as Record<string, unknown>;
+  const values = [record.media_urls, record.mediaUrls, record.media].filter(Boolean);
+  const urls: string[] = [];
+  for (const value of values) {
+    if (!Array.isArray(value)) continue;
+    for (const item of value) {
+      if (typeof item === 'string' && item.trim()) {
+        urls.push(item.trim());
+        continue;
+      }
+      if (item && typeof item === 'object') {
+        const itemRecord = item as Record<string, unknown>;
+        for (const key of ['url', 'content_url', 'media_url']) {
+          const nested = itemRecord[key];
+          if (typeof nested === 'string' && nested.trim()) urls.push(nested.trim());
+        }
+      }
+    }
+  }
+  return [...new Set(urls)];
+}
+
+let smsInboxWhitelistWarned = false;
+
+async function saveInboundSmsForAdminInbox(params: {
+  smsMessagesRepository?: SmsMessagesRepository;
+  event: {
+    id: string;
+    event_type: string;
+    payload?: unknown;
+  };
+  rawPayload: unknown;
+  log: ReturnType<typeof withLogContext>;
+}): Promise<void> {
+  if (!isInboundSmsMessage(params.event.event_type)) return;
+  if (!params.smsMessagesRepository) {
+    params.log.warn({ eventId: params.event.id, eventType: params.event.event_type }, 'telnyx_sms_inbox_repository_unavailable');
+    return;
+  }
+
+  const allowedNumbers = getAllowedSmsInboxNumbers();
+  if (allowedNumbers.length === 0) {
+    if (!smsInboxWhitelistWarned) {
+      smsInboxWhitelistWarned = true;
+      params.log.warn({ eventId: params.event.id }, 'telnyx_sms_inbox_whitelist_empty');
+    }
+    return;
+  }
+
+  const toNumber = normalizeSmsInboxPhoneNumber(firstPhone(params.event.payload, ['to', 'to_number']));
+  const fromNumber = normalizeSmsInboxPhoneNumber(firstPhone(params.event.payload, ['from', 'from_number']));
+  if (!toNumber || !fromNumber) {
+    params.log.warn(
+      {
+        eventId: params.event.id,
+        eventType: params.event.event_type,
+        toNumber: toNumber ? maskPhone(toNumber) : null,
+        fromNumber: fromNumber ? maskPhone(fromNumber) : null,
+      },
+      'telnyx_sms_inbox_missing_phone',
+    );
+    return;
+  }
+  if (!allowedNumbers.includes(toNumber)) {
+    params.log.info(
+      { eventId: params.event.id, toNumber: maskPhone(toNumber) },
+      'telnyx_sms_inbox_number_not_allowed',
+    );
+    return;
+  }
+
+  const telnyxMessageId = firstString(params.event.payload, ['id', 'message_id', 'messageId']);
+  const receivedAt = firstString(params.event.payload, ['received_at', 'created_at', 'sent_at']);
+  const body = firstString(params.event.payload, ['text', 'body']) ?? '';
+  const saved = await params.smsMessagesRepository.saveInboundFromTelnyxEvent({
+    telnyxMessageId,
+    telnyxEventId: params.event.id,
+    fromNumber,
+    toNumber,
+    body,
+    mediaUrls: extractMediaUrls(params.event.payload),
+    eventType: params.event.event_type,
+    rawPayload: params.rawPayload,
+    receivedAt,
+  });
+  params.log.info(
+    {
+      eventId: params.event.id,
+      telnyxMessageId: telnyxMessageId ?? null,
+      fromNumber: maskPhone(fromNumber),
+      toNumber: maskPhone(toNumber),
+      created: saved.created,
+    },
+    'telnyx_sms_inbox_saved',
+  );
+}
+
 export async function handleTelnyxWebhook(
   c: Context,
   deps: {
@@ -102,6 +244,7 @@ export async function handleTelnyxWebhook(
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     testCallAttemptsRepository?: TestCallAttemptsRepository;
     customersRepository?: CustomersRepository;
+    smsMessagesRepository?: SmsMessagesRepository;
   },
 ) {
   const bodyText = await c.req.text();
@@ -316,6 +459,13 @@ export async function handleTelnyxWebhook(
         }
       }
     }
+
+    await saveInboundSmsForAdminInbox({
+      smsMessagesRepository: deps.smsMessagesRepository,
+      event,
+      rawPayload: parsedBody,
+      log,
+    });
 
     if (deps.jobsRepository && deps.shopsRepository && isCallbackRequestMessage(event.event_type, event.payload)) {
       const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'to_number']));

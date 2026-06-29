@@ -65,6 +65,15 @@ export function IconDemo() {
   );
 }
 
+export function IconSms() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+      <path d="M8 9h8M8 13h5" />
+    </svg>
+  );
+}
+
 export function IconLeads() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden>

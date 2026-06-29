@@ -19,6 +19,7 @@ import type {
   ShopStaffRepository,
   ShopStaffServicesRepository,
   ShopsRepository,
+  SmsMessagesRepository,
   TestCallAttemptsRepository,
   VagaroWebhookEventsRepository,
   VoiceCallLegsRepository,
@@ -57,6 +58,7 @@ type WebhookDeps = {
   shopAccessStatesRepository?: ShopAccessStatesRepository;
   testCallAttemptsRepository?: TestCallAttemptsRepository;
   customersRepository?: CustomersRepository;
+  smsMessagesRepository?: SmsMessagesRepository;
   forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   recordingStorage?: CallRecordingStorage;
   commercialAccountsRepository?: CommercialAccountsRepository;
@@ -91,6 +93,7 @@ export function registerWebhookRoutes(app: Hono, path: (route: string) => string
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         testCallAttemptsRepository: deps.testCallAttemptsRepository,
         customersRepository: deps.customersRepository,
+        smsMessagesRepository: deps.smsMessagesRepository,
       });
     })(),
   );

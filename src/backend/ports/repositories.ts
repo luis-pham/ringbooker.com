@@ -1074,6 +1074,66 @@ export interface OutboundMessagesRepository {
   countRecentByPhone?(params: { shopId: string; customerPhone: string; since: Date }): Promise<number>;
 }
 
+export type SmsMessageDirection = 'inbound' | 'outbound';
+export type SmsMessageReadFilter = 'all' | 'read' | 'unread';
+
+export interface SmsMessageRecord {
+  id: string;
+  shopId?: string | null;
+  locationId?: string | null;
+  telnyxMessageId?: string | null;
+  telnyxEventId: string;
+  direction: SmsMessageDirection;
+  fromNumber: string;
+  toNumber: string;
+  body?: string | null;
+  mediaUrls: string[];
+  provider: string;
+  eventType: string;
+  rawPayload: unknown;
+  receivedAt: string;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SmsMessageListItem = Omit<SmsMessageRecord, 'body' | 'rawPayload'> & {
+  bodyPreview?: string | null;
+};
+
+export interface SmsMessagesListFilters {
+  allowedToNumbers: string[];
+  q?: string | null;
+  toNumber?: string | null;
+  read?: SmsMessageReadFilter;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+  page: number;
+  limit: number;
+}
+
+export interface SmsMessagesRepository {
+  saveInboundFromTelnyxEvent(params: {
+    shopId?: string | null;
+    locationId?: string | null;
+    telnyxMessageId?: string | null;
+    telnyxEventId: string;
+    fromNumber: string;
+    toNumber: string;
+    body?: string | null;
+    mediaUrls?: string[];
+    eventType: string;
+    rawPayload: unknown;
+    receivedAt?: Date | string | null;
+  }): Promise<{ record: SmsMessageRecord; created: boolean }>;
+  listAdminSmsMessages(filters: SmsMessagesListFilters): Promise<{
+    items: SmsMessageListItem[];
+    total: number;
+  }>;
+  getAdminSmsMessageById(id: string, allowedToNumbers: string[]): Promise<SmsMessageRecord | null>;
+  markSmsMessageRead(id: string, allowedToNumbers: string[]): Promise<SmsMessageRecord | null>;
+}
+
 export type AuthRole = 'user' | 'admin';
 
 export interface AuthUserRecord {
