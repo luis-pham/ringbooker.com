@@ -2360,7 +2360,7 @@ export function DemoExperience({
           </div>
           {preparedLocation ? (
             <div className="vd-found-row">
-              <span className="vd-found-key">Location</span>
+              <span className="vd-found-key">Address</span>
               <span className="vd-found-val">{preparedLocation}</span>
             </div>
           ) : null}
@@ -2543,7 +2543,7 @@ export function DemoExperience({
                           ) : null}
                           {business.address || business.city || extractedData.address || extractedData.city ? (
                             <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
-                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>City / state</span>
+                              <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Address</span>
                               <span style={{ color: '#111827' }}>{business.address || business.city || extractedData.address || extractedData.city}</span>
                             </div>
                           ) : null}
@@ -2586,11 +2586,12 @@ export function DemoExperience({
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                               <div className="vd-field vd-field-compact">
-                                <label htmlFor="vd-m-edit-city" style={{ fontSize: 11, color: '#9CA3AF' }}>City / state</label>
+                                <label htmlFor="vd-m-edit-address" style={{ fontSize: 11, color: '#9CA3AF' }}>Address</label>
                                 <input
-                                  id="vd-m-edit-city"
-                                  value={business.city}
-                                  onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                                  id="vd-m-edit-address"
+                                  value={business.address}
+                                  placeholder={business.city || 'Not found on website'}
+                                  onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                                 />
                               </div>
                               <div className="vd-field vd-field-compact">
@@ -2740,11 +2741,12 @@ export function DemoExperience({
                         </div>
                         <div className="vd-m-grid2" style={{ marginTop: 10 }}>
                           <div className="vd-field vd-field-compact">
-                            <label htmlFor="vd-m6-city">City / state</label>
+                            <label htmlFor="vd-m6-address">Address</label>
                             <input
-                              id="vd-m6-city"
-                              value={business.city}
-                              onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                              id="vd-m6-address"
+                              value={business.address}
+                              placeholder="e.g. 123 Main St, Los Angeles, CA"
+                              onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                             />
                           </div>
                           <div className="vd-field vd-field-compact">
@@ -2835,8 +2837,8 @@ export function DemoExperience({
                         <div className="vd-m-acc-body">
                           <div className="vd-m-grid2">
                             <div className="vd-field vd-field-compact">
-                              <label htmlFor="vd-m-city">City / state</label>
-                              <input id="vd-m-city" value={business.city} onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))} />
+                              <label htmlFor="vd-m-address">Address</label>
+                              <input id="vd-m-address" value={business.address} placeholder="e.g. 123 Main St, Los Angeles, CA" onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))} />
                             </div>
                             <div className="vd-field vd-field-compact">
                               <label htmlFor="vd-m-hours">Hours</label>
@@ -2970,12 +2972,12 @@ export function DemoExperience({
                         </div>
                         <div className="vd-2col" style={{ marginBottom: 10 }}>
                           <div className="vd-field vd-field-compact">
-                            <label htmlFor="vd-imported-city">City / state</label>
+                            <label htmlFor="vd-imported-address">Address</label>
                             <input
-                              id="vd-imported-city"
-                              value={business.city}
-                              placeholder="Not found on website"
-                              onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                              id="vd-imported-address"
+                              value={business.address}
+                              placeholder={business.city || 'Not found on website'}
+                              onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                             />
                           </div>
                           <div className="vd-field vd-field-compact">
@@ -3038,7 +3040,7 @@ export function DemoExperience({
                         ) : null}
                         {business.address || business.city || extractedData.address || extractedData.city ? (
                           <div className="vd-found-row">
-                            <span className="vd-found-key">City / state</span>
+                            <span className="vd-found-key">Address</span>
                             <span className="vd-found-val">
                               {business.address || business.city || extractedData.address || extractedData.city}
                             </span>
@@ -3137,8 +3139,8 @@ export function DemoExperience({
                     <div className="vd-adv-body">
                       <div className="vd-2col">
                         <div className="vd-field vd-field-compact">
-                          <label htmlFor="vd-city">City / state</label>
-                          <input id="vd-city" value={business.city} onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))} />
+                          <label htmlFor="vd-address">Address</label>
+                          <input id="vd-address" value={business.address} placeholder="e.g. 123 Main St, Los Angeles, CA" onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))} />
                         </div>
                         <div className="vd-field vd-field-compact">
                           <label htmlFor="vd-staff">{config.staffLabel}</label>
