@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { z } from 'zod';
 import {
   ADMIN_CALL_CHART_SAMPLE,
   ADMIN_CALL_LIST_PAGE_SIZE,
@@ -114,6 +115,29 @@ import {
   getAllowedSmsInboxNumbers,
   normalizeSmsInboxPhoneNumber,
 } from '@/src/backend/services/sms/sms-inbox-allowlist';
+
+const adminOutboundSmsListQuerySchema = z.object({
+  shopId: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : String(v).trim()),
+    z.string().uuid().optional(),
+  ),
+  fromNumber: z.preprocess((v) => (v === '' || v == null ? undefined : String(v).trim()), z.string().max(80).optional()),
+  toNumber: z.preprocess((v) => (v === '' || v == null ? undefined : String(v).trim()), z.string().max(80).optional()),
+  status: z.preprocess((v) => (v === '' || v == null ? undefined : String(v).trim()), z.string().max(80).optional()),
+  messageType: z.preprocess((v) => (v === '' || v == null ? undefined : String(v).trim()), z.string().max(120).optional()),
+  q: z.preprocess((v) => (v === '' || v == null ? undefined : String(v).trim()), z.string().max(200).optional()),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+function outboundBodyPreview(body?: string | null): string | null {
+  if (!body) return null;
+  const singleLine = body.replace(/\s+/g, ' ').trim();
+  if (singleLine.length <= 180) return singleLine;
+  return `${singleLine.slice(0, 177)}...`;
+}
 
 type AdminDeps = {
   jobsRepository?: JobsRepository;
@@ -1300,6 +1324,148 @@ export function registerAdminRoutes(app: Hono, path: (route: string) => string, 
         read: parsed.data.read,
         dateFrom: parsed.data.dateFrom ?? null,
         dateTo: parsed.data.dateTo ?? null,
+      },
+    });
+  });
+
+  app.get(path('/admin/sms/outbound'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_sms_outbound');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    const outboundMessagesRepository = deps.outboundMessagesRepository;
+    if (!outboundMessagesRepository?.listAdminOutboundMessages) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const parsed = adminOutboundSmsListQuerySchema.safeParse({
+      shopId: c.req.query('shopId'),
+      fromNumber: c.req.query('fromNumber'),
+      toNumber: c.req.query('toNumber'),
+      status: c.req.query('status'),
+      messageType: c.req.query('messageType'),
+      q: c.req.query('q'),
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+      page: c.req.query('page'),
+      limit: c.req.query('limit'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+
+    const page = parsed.data.page ?? 1;
+    const pageSize = parsed.data.limit ?? ADMIN_SMS_LIST_PAGE_SIZE;
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+    if (parsed.data.dateFrom) dateFrom = new Date(`${parsed.data.dateFrom}T00:00:00.000Z`);
+    if (parsed.data.dateTo) dateTo = new Date(`${parsed.data.dateTo}T23:59:59.999Z`);
+    if (dateFrom && dateTo && dateFrom.getTime() > dateTo.getTime()) {
+      return c.json({ ok: false, error: 'invalid_date_range' }, 400);
+    }
+
+    const [result, shops] = await Promise.all([
+      outboundMessagesRepository.listAdminOutboundMessages({
+        shopId: parsed.data.shopId ?? null,
+        fromNumber: parsed.data.fromNumber ?? null,
+        toNumber: parsed.data.toNumber ?? null,
+        status: parsed.data.status ?? null,
+        messageType: parsed.data.messageType ?? null,
+        q: parsed.data.q ?? null,
+        dateFrom,
+        dateTo,
+        page,
+        limit: pageSize,
+      }),
+      deps.shopsRepository ? deps.shopsRepository.list({ limit: 1000 }).catch(() => []) : Promise.resolve([]),
+    ]);
+    const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
+
+    return c.json({
+      ok: true,
+      items: result.items.map((message) => ({
+        id: message.id,
+        shopId: message.shopId,
+        shopName: shopNameById.get(message.shopId) ?? null,
+        messageType: message.messageType ?? message.category,
+        status: message.status,
+        fromNumber: message.fromNumber ?? null,
+        toNumber: message.toNumber ?? message.customerPhone,
+        bodyPreview: outboundBodyPreview(message.body),
+        createdAt: message.createdAt ?? null,
+        submittedAt: message.submittedAt ?? null,
+        deliveredAt: message.deliveredAt ?? null,
+        failedAt: message.failedAt ?? null,
+        errorCode: message.errorCode ?? null,
+        errorMessage: message.errorMessage ?? null,
+        attempts: message.attempts ?? 0,
+        telnyxMessageId: message.telnyxMessageId ?? message.providerMessageId ?? null,
+      })),
+      pagination: { page, pageSize, total: result.total },
+      filter: {
+        shopId: parsed.data.shopId ?? null,
+        fromNumber: parsed.data.fromNumber ?? null,
+        toNumber: parsed.data.toNumber ?? null,
+        status: parsed.data.status ?? null,
+        messageType: parsed.data.messageType ?? null,
+        q: parsed.data.q ?? null,
+        dateFrom: parsed.data.dateFrom ?? null,
+        dateTo: parsed.data.dateTo ?? null,
+      },
+    });
+  });
+
+  app.get(path('/admin/sms/outbound/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_sms_outbound_detail');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.outboundMessagesRepository?.getAdminOutboundMessageById) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const id = parseAdminResourceUuid(c.req.param('id'));
+    if (!id) return c.json({ ok: false, error: 'invalid_outbound_message_id' }, 400);
+
+    const message = await deps.outboundMessagesRepository.getAdminOutboundMessageById(id);
+    if (!message) return c.json({ ok: false, error: 'outbound_message_not_found' }, 404);
+    const shop = deps.shopsRepository ? await deps.shopsRepository.findById(message.shopId).catch(() => null) : null;
+
+    return c.json({
+      ok: true,
+      message: {
+        id: message.id,
+        shopId: message.shopId,
+        shopName: shop?.name ?? null,
+        locationId: message.locationId ?? null,
+        customerId: message.customerId ?? null,
+        bookingId: message.bookingId ?? null,
+        callId: message.callId ?? null,
+        jobId: message.jobId ?? null,
+        messageType: message.messageType ?? message.category,
+        category: message.category,
+        status: message.status,
+        fromNumber: message.fromNumber ?? null,
+        toNumber: message.toNumber ?? message.customerPhone,
+        customerPhone: message.customerPhone,
+        body: message.body ?? null,
+        bodyPreview: outboundBodyPreview(message.body),
+        mediaUrls: message.mediaUrls ?? [],
+        provider: message.provider ?? 'telnyx',
+        providerMessageId: message.providerMessageId ?? null,
+        telnyxMessageId: message.telnyxMessageId ?? message.providerMessageId ?? null,
+        telnyxEventId: message.telnyxEventId ?? null,
+        idempotencyKey: message.idempotencyKey ?? null,
+        providerRequest: message.providerRequest ?? null,
+        providerResponse: message.providerResponse ?? null,
+        providerStatusPayload: message.providerStatusPayload ?? null,
+        errorCode: message.errorCode ?? null,
+        errorMessage: message.errorMessage ?? null,
+        attempts: message.attempts ?? 0,
+        createdAt: message.createdAt ?? null,
+        updatedAt: message.updatedAt ?? null,
+        lastAttemptAt: message.lastAttemptAt ?? null,
+        submittedAt: message.submittedAt ?? null,
+        deliveredAt: message.deliveredAt ?? null,
+        failedAt: message.failedAt ?? null,
       },
     });
   });

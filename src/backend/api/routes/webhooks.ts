@@ -12,6 +12,7 @@ import type {
   HandoffSessionsRepository,
   JobsRepository,
   MissedCallsRepository,
+  OutboundMessagesRepository,
   ProviderEventsRepository,
   ShopAccessStatesRepository,
   ShopActiveCallSessionsRepository,
@@ -59,6 +60,7 @@ type WebhookDeps = {
   testCallAttemptsRepository?: TestCallAttemptsRepository;
   customersRepository?: CustomersRepository;
   smsMessagesRepository?: SmsMessagesRepository;
+  outboundMessagesRepository?: OutboundMessagesRepository;
   forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   recordingStorage?: CallRecordingStorage;
   commercialAccountsRepository?: CommercialAccountsRepository;
@@ -94,6 +96,7 @@ export function registerWebhookRoutes(app: Hono, path: (route: string) => string
         testCallAttemptsRepository: deps.testCallAttemptsRepository,
         customersRepository: deps.customersRepository,
         smsMessagesRepository: deps.smsMessagesRepository,
+        outboundMessagesRepository: deps.outboundMessagesRepository,
       });
     })(),
   );

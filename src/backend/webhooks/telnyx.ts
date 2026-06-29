@@ -10,6 +10,7 @@ import type {
   DemoSessionsRepository,
   JobsRepository,
   MissedCallsRepository,
+  OutboundMessagesRepository,
   ProviderEventsRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
@@ -33,9 +34,99 @@ const telnyxEnvelopeSchema = z.object({
   data: z.object({
     event_type: z.string(),
     id: z.string(),
+    occurred_at: z.string().optional(),
     payload: z.unknown().optional(),
   }),
 });
+
+export type TelnyxOutboundMessageStatusEvent = {
+  eventId: string;
+  eventType: 'message.sent' | 'message.finalized';
+  occurredAt: Date | null;
+  telnyxMessageId: string;
+  direction: 'outbound';
+  fromNumber: string | null;
+  toNumber: string | null;
+  telnyxStatus: string | null;
+  errors: unknown[];
+  completedAt: Date | null;
+  rawPayload: unknown;
+};
+
+function isTelnyxOutboundStatusEventType(eventType: string): eventType is 'message.sent' | 'message.finalized' {
+  return eventType === 'message.sent' || eventType === 'message.finalized';
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function parseOptionalDate(value: unknown): Date | null {
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function firstToRecordStatus(payload: Record<string, unknown>): string | null {
+  const to = payload.to;
+  const firstTo = Array.isArray(to) ? to[0] : to;
+  const record = asRecord(firstTo);
+  const status = record?.status;
+  return typeof status === 'string' && status.trim() ? status.trim().toLowerCase() : null;
+}
+
+export function extractTelnyxError(errors: unknown): { errorCode: string | null; errorMessage: string | null } {
+  if (!Array.isArray(errors) || errors.length === 0) return { errorCode: null, errorMessage: null };
+  const first = errors[0];
+  if (typeof first === 'string') return { errorCode: null, errorMessage: first };
+  if (!first || typeof first !== 'object') return { errorCode: null, errorMessage: null };
+  const record = first as Record<string, unknown>;
+  const code = typeof record.code === 'string' && record.code.trim() ? record.code.trim() : null;
+  const detail = typeof record.detail === 'string' && record.detail.trim() ? record.detail.trim() : null;
+  const title = typeof record.title === 'string' && record.title.trim() ? record.title.trim() : null;
+  let fallback: string | null = null;
+  try {
+    fallback = JSON.stringify(first);
+  } catch {
+    fallback = null;
+  }
+  return {
+    errorCode: code,
+    errorMessage: detail ?? title ?? fallback,
+  };
+}
+
+export function extractTelnyxOutboundMessageStatusEvent(body: unknown): TelnyxOutboundMessageStatusEvent | null {
+  const envelope = asRecord(body);
+  const data = asRecord(envelope?.data);
+  if (!data) return null;
+  const eventType = typeof data?.event_type === 'string' ? data.event_type : null;
+  if (!eventType || !isTelnyxOutboundStatusEventType(eventType)) return null;
+  const eventId = typeof data.id === 'string' && data.id.trim() ? data.id.trim() : null;
+  const payload = asRecord(data.payload);
+  if (!eventId || !payload) return null;
+
+  const direction = typeof payload.direction === 'string' ? payload.direction.toLowerCase() : null;
+  if (direction !== 'outbound') return null;
+
+  const telnyxMessageId = firstString(payload, ['id', 'message_id', 'messageId']);
+  if (!telnyxMessageId) return null;
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+
+  return {
+    eventId,
+    eventType,
+    occurredAt: parseOptionalDate(data.occurred_at),
+    telnyxMessageId,
+    direction: 'outbound',
+    fromNumber: normalizePhone(firstPhone(payload, ['from', 'from_number'])),
+    toNumber: normalizePhone(firstPhone(payload, ['to', 'to_number'])),
+    telnyxStatus: firstToRecordStatus(payload),
+    errors,
+    completedAt: parseOptionalDate(payload.completed_at),
+    rawPayload: payload,
+  };
+}
 
 function normalizePhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -245,6 +336,7 @@ export async function handleTelnyxWebhook(
     testCallAttemptsRepository?: TestCallAttemptsRepository;
     customersRepository?: CustomersRepository;
     smsMessagesRepository?: SmsMessagesRepository;
+    outboundMessagesRepository?: OutboundMessagesRepository;
   },
 ) {
   const bodyText = await c.req.text();
@@ -318,6 +410,77 @@ export async function handleTelnyxWebhook(
       eventType: event.event_type,
       payload: parsed.data,
     });
+
+    const outboundStatusEvent = extractTelnyxOutboundMessageStatusEvent(parsedBody);
+    if (outboundStatusEvent) {
+      const errorInfo = extractTelnyxError(outboundStatusEvent.errors);
+      let result: 'updated' | 'not_found' | 'ignored_downgrade' | 'ignored_non_outbound' = 'not_found';
+      let repositoryUnavailable = false;
+      if (!deps.outboundMessagesRepository?.markDeliveryStatus) {
+        repositoryUnavailable = true;
+        log.warn(
+          {
+            eventId: outboundStatusEvent.eventId,
+            eventType: outboundStatusEvent.eventType,
+            telnyxMessageId: outboundStatusEvent.telnyxMessageId,
+            telnyxStatus: outboundStatusEvent.telnyxStatus,
+          },
+          'telnyx_outbound_sms_status_repository_unavailable',
+        );
+      } else {
+        const update = await deps.outboundMessagesRepository.markDeliveryStatus({
+          telnyxMessageId: outboundStatusEvent.telnyxMessageId,
+          telnyxEventId: outboundStatusEvent.eventId,
+          eventType: outboundStatusEvent.eventType,
+          telnyxStatus: outboundStatusEvent.telnyxStatus,
+          providerStatusPayload: outboundStatusEvent.rawPayload,
+          occurredAt: outboundStatusEvent.occurredAt,
+          completedAt: outboundStatusEvent.completedAt,
+          errorCode: errorInfo.errorCode,
+          errorMessage: errorInfo.errorMessage,
+        });
+        result = update.result;
+      }
+
+      const logPayload = {
+        eventId: outboundStatusEvent.eventId,
+        eventType: outboundStatusEvent.eventType,
+        telnyxMessageId: outboundStatusEvent.telnyxMessageId,
+        telnyxStatus: outboundStatusEvent.telnyxStatus,
+        fromNumber: outboundStatusEvent.fromNumber ? maskPhone(outboundStatusEvent.fromNumber) : null,
+        toNumber: outboundStatusEvent.toNumber ? maskPhone(outboundStatusEvent.toNumber) : null,
+        result,
+      };
+      if (repositoryUnavailable) {
+        log.info(logPayload, 'telnyx_outbound_sms_status_acknowledged_without_repository');
+      } else if (result === 'not_found') {
+        log.warn(logPayload, 'telnyx_outbound_sms_status_message_not_found');
+      } else {
+        log.info(logPayload, 'telnyx_outbound_sms_status_processed');
+      }
+      await deps.providerEventsRepository.clearProcessingError('telnyx', event.id);
+      incrementMetric('webhook_requests_total', {
+        provider: 'telnyx',
+        outcome: 'processed',
+      });
+      return c.json({ ok: true, outboundSms: result }, 200);
+    }
+
+    if (isTelnyxOutboundStatusEventType(event.event_type)) {
+      const statusPayload = asRecord(event.payload);
+      const direction = typeof statusPayload?.direction === 'string' ? statusPayload.direction.toLowerCase() : null;
+      const ignoredResult = direction && direction !== 'outbound' ? 'ignored_non_outbound' : 'ignored';
+      log.warn(
+        { eventId: event.id, eventType: event.event_type, result: ignoredResult },
+        'telnyx_outbound_sms_status_ignored_unmatchable',
+      );
+      await deps.providerEventsRepository.clearProcessingError('telnyx', event.id);
+      incrementMetric('webhook_requests_total', {
+        provider: 'telnyx',
+        outcome: 'processed',
+      });
+      return c.json({ ok: true, outboundSms: ignoredResult }, 200);
+    }
 
     const providerCallId = firstString(event.payload, ['call_control_id', 'call_leg_id', 'call_session_id']);
     const requestIdFromPayload = firstString(event.payload, ['client_state', 'request_id']);

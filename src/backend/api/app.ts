@@ -216,6 +216,7 @@ export function createBackendApp(deps: {
     testCallAttemptsRepository: deps.testCallAttemptsRepository,
     customersRepository: deps.customersRepository,
     smsMessagesRepository: deps.smsMessagesRepository,
+    outboundMessagesRepository: deps.outboundMessagesRepository,
     forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
     recordingStorage: deps.recordingStorage,
     commercialAccountsRepository: deps.commercialAccountsRepository,

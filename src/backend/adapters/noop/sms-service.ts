@@ -1,5 +1,5 @@
 import { getEnv } from '@/src/backend/config/env';
-import type { SmsSendResult, SmsService } from '@/src/backend/services/sms/types';
+import type { SmsCategory, SmsSendResult, SmsService } from '@/src/backend/services/sms/types';
 
 export class NoopSmsService implements SmsService {
   async sendSms(params: {
@@ -8,25 +8,20 @@ export class NoopSmsService implements SmsService {
     body: string;
     shopId: string;
     countryCode?: string;
-    category:
-      | 'booking_confirmation'
-      | 'reminder_24h'
-      | 'reminder_2h'
-      | 'missed_call'
-      | 'booking_link'
-      | 'cancellation_alert'
-      | 'booking_request_alert'
-      | 'user_alert'
-      | 'review_request';
+    category: SmsCategory;
     bookingId?: string;
     idempotencyKey: string;
   }): Promise<SmsSendResult> {
-    console.log('[NoopSMS] from:', getEnv().TELNYX_SMS_SENDER_NUMBER || '+18888401886');
+    const from = params.from?.trim() || getEnv().TELNYX_SMS_SENDER_NUMBER?.trim();
+    console.log('[NoopSMS] from:', from ?? 'missing');
     console.log('[NoopSMS] to:', params.to);
     console.log('[NoopSMS] category:', params.category);
-    console.log('[NoopSMS] body:', params.body);
+    console.log('[NoopSMS] bodyLength:', params.body.length);
     return {
       providerMessageId: undefined,
+      fromNumber: from ?? undefined,
+      toNumber: params.to,
+      status: 'noop',
     };
   }
 }

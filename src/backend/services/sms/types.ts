@@ -16,6 +16,10 @@ export type SmsCategory =
 
 export interface SmsSendResult {
   providerMessageId?: string;
+  fromNumber?: string;
+  toNumber?: string;
+  status?: string;
+  raw?: unknown;
 }
 
 export interface SmsService {

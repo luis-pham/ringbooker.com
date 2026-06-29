@@ -5,6 +5,7 @@ import type {
   BillingCustomersRepository,
   BillingNotificationsRepository,
   BillingSubscriptionsRepository,
+  OutboundMessagesRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
@@ -29,6 +30,7 @@ export type ReleaseAbandonedForwardingNumbersRuntime = {
   phoneProvisioningService?: PhoneProvisioningService;
   emailService?: EmailService;
   smsService?: SmsService;
+  outboundMessagesRepository?: OutboundMessagesRepository;
 };
 
 export type ReleaseAbandonedForwardingNumbersResult = {
@@ -63,10 +65,10 @@ function resolveAppBaseUrl(): string {
 
 function resolveSmsFrom(shop: Shop): string | null {
   return (
+    shop.telnyx_number?.trim() ||
+    process.env.TELNYX_SMS_SENDER_NUMBER?.trim() ||
     process.env.RINGBOOKER_OUTBOUND_CALLER_ID?.trim() ||
     process.env.TELNYX_OUTBOUND_CALLER_ID?.trim() ||
-    shop.telnyx_number?.trim() ||
-    shop.phone_number?.trim() ||
     null
   );
 }
@@ -231,6 +233,7 @@ async function sendSmsOnce(params: {
     : `RingBooker: Your forwarding setup expires soon unless billing is completed. ${params.cancelInstructions} Reply STOP to opt out.`;
   const sms = await sendGuardedSms({
     smsService: params.runtime.smsService,
+    outboundMessagesRepository: params.runtime.outboundMessagesRepository,
     shop: params.shop,
     to,
     body,

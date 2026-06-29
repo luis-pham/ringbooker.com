@@ -5,6 +5,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
+import { InMemoryOutboundMessagesRepository } from '@/src/backend/adapters/memory/outbound-messages-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
@@ -293,6 +294,195 @@ test('telnyx inbound SMS with missing whitelist is acknowledged and not stored',
     read: 'all',
   });
   assert.equal(list.total, 0);
+});
+
+test('telnyx outbound SMS finalized webhook updates message delivery status', async () => {
+  const outboundMessagesRepository = new InMemoryOutboundMessagesRepository();
+  const created = await outboundMessagesRepository.createQueued({
+    shopId: '11111111-1111-4111-8111-111111111111',
+    messageType: 'booking_confirmation',
+    fromNumber: '+15551234567',
+    toNumber: '+15559876543',
+    body: 'Your appointment is confirmed',
+    idempotencyKey: 'outbound-delivered',
+  });
+  await outboundMessagesRepository.markSubmitted(created.id, {
+    telnyxMessageId: 'msg-out-delivered-1',
+    submittedAt: new Date('2026-03-05T18:29:00.000Z'),
+  });
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    outboundMessagesRepository,
+  });
+
+  const response = await postSignedTelnyxWebhook(
+    app,
+    JSON.stringify({
+      data: {
+        event_type: 'message.finalized',
+        id: 'evt-out-delivered-1',
+        occurred_at: '2026-03-05T18:30:00.000Z',
+        payload: {
+          id: 'msg-out-delivered-1',
+          direction: 'outbound',
+          from: { phone_number: '+15551234567' },
+          to: [{ phone_number: '+15559876543', status: 'delivered' }],
+          text: 'Your appointment is confirmed',
+          errors: [],
+          completed_at: '2026-03-05T18:31:00.000Z',
+        },
+      },
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true, outboundSms: 'updated' });
+  const message = await outboundMessagesRepository.getAdminOutboundMessageById(created.id);
+  assert.equal(message?.status, 'delivered');
+  assert.equal(message?.deliveredAt, '2026-03-05T18:31:00.000Z');
+  assert.equal(message?.telnyxEventId, 'evt-out-delivered-1');
+  assert.deepEqual(message?.providerStatusPayload, {
+    id: 'msg-out-delivered-1',
+    direction: 'outbound',
+    from: { phone_number: '+15551234567' },
+    to: [{ phone_number: '+15559876543', status: 'delivered' }],
+    text: 'Your appointment is confirmed',
+    errors: [],
+    completed_at: '2026-03-05T18:31:00.000Z',
+  });
+});
+
+test('telnyx outbound SMS message.sent does not downgrade delivered status', async () => {
+  const outboundMessagesRepository = new InMemoryOutboundMessagesRepository();
+  const created = await outboundMessagesRepository.createQueued({
+    shopId: '11111111-1111-4111-8111-111111111111',
+    messageType: 'booking_confirmation',
+    fromNumber: '+15551234567',
+    toNumber: '+15559876543',
+    body: 'Confirmed',
+    idempotencyKey: 'outbound-no-downgrade',
+  });
+  await outboundMessagesRepository.markSubmitted(created.id, {
+    telnyxMessageId: 'msg-out-no-downgrade',
+  });
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    outboundMessagesRepository,
+  });
+
+  assert.equal(
+    (
+      await postSignedTelnyxWebhook(
+        app,
+        JSON.stringify({
+          data: {
+            event_type: 'message.finalized',
+            id: 'evt-out-no-downgrade-delivered',
+            payload: {
+              id: 'msg-out-no-downgrade',
+              direction: 'outbound',
+              to: [{ phone_number: '+15559876543', status: 'delivered' }],
+              completed_at: '2026-03-05T18:31:00.000Z',
+            },
+          },
+        }),
+      )
+    ).status,
+    200,
+  );
+  const lateSentResponse = await postSignedTelnyxWebhook(
+    app,
+    JSON.stringify({
+      data: {
+        event_type: 'message.sent',
+        id: 'evt-out-no-downgrade-sent',
+        occurred_at: '2026-03-05T18:32:00.000Z',
+        payload: {
+          id: 'msg-out-no-downgrade',
+          direction: 'outbound',
+          to: [{ phone_number: '+15559876543', status: 'sent' }],
+        },
+      },
+    }),
+  );
+
+  assert.equal(lateSentResponse.status, 200);
+  assert.deepEqual(await lateSentResponse.json(), { ok: true, outboundSms: 'ignored_downgrade' });
+  const message = await outboundMessagesRepository.getAdminOutboundMessageById(created.id);
+  assert.equal(message?.status, 'delivered');
+  assert.equal(message?.deliveredAt, '2026-03-05T18:31:00.000Z');
+  assert.equal(message?.telnyxEventId, 'evt-out-no-downgrade-sent');
+});
+
+test('telnyx outbound SMS status for unknown message id is acknowledged', async () => {
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    outboundMessagesRepository: new InMemoryOutboundMessagesRepository(),
+  });
+
+  const response = await postSignedTelnyxWebhook(
+    app,
+    JSON.stringify({
+      data: {
+        event_type: 'message.finalized',
+        id: 'evt-out-unknown-message',
+        payload: {
+          id: 'msg-does-not-exist',
+          direction: 'outbound',
+          to: [{ phone_number: '+15559876543', status: 'delivery_failed' }],
+          errors: [{ code: '40310', detail: 'Carrier rejected message' }],
+        },
+      },
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true, outboundSms: 'not_found' });
+});
+
+test('telnyx outbound SMS duplicate provider event is acknowledged once', async () => {
+  const providerEventsRepository = new InMemoryProviderEventsRepository();
+  const outboundMessagesRepository = new InMemoryOutboundMessagesRepository();
+  const created = await outboundMessagesRepository.createQueued({
+    shopId: '11111111-1111-4111-8111-111111111111',
+    messageType: 'booking_confirmation',
+    fromNumber: '+15551234567',
+    toNumber: '+15559876543',
+    body: 'Confirmed',
+    idempotencyKey: 'outbound-duplicate-event',
+  });
+  await outboundMessagesRepository.markSubmitted(created.id, {
+    telnyxMessageId: 'msg-out-duplicate-event',
+  });
+  const app = createBackendApp({
+    providerEventsRepository,
+    outboundMessagesRepository,
+  });
+  const body = JSON.stringify({
+    data: {
+      event_type: 'message.finalized',
+      id: 'evt-out-duplicate-event',
+      payload: {
+        id: 'msg-out-duplicate-event',
+        direction: 'outbound',
+        to: [{ phone_number: '+15559876543', status: 'delivery_failed' }],
+        errors: [{ code: '40310', detail: 'Carrier rejected message' }],
+        completed_at: '2026-03-05T18:31:00.000Z',
+      },
+    },
+  });
+
+  const first = await postSignedTelnyxWebhook(app, body);
+  const duplicate = await postSignedTelnyxWebhook(app, body);
+
+  assert.equal(first.status, 200);
+  assert.equal(duplicate.status, 200);
+  assert.deepEqual(await duplicate.json(), { ok: true });
+  const message = await outboundMessagesRepository.getAdminOutboundMessageById(created.id);
+  assert.equal(message?.status, 'delivery_failed');
+  assert.equal(message?.failedAt, '2026-03-05T18:31:00.000Z');
+  assert.equal(message?.errorCode, '40310');
+  assert.equal(message?.errorMessage, 'Carrier rejected message');
 });
 
 test('telnyx missed inbound does not enqueue follow-up when billing gate deps are missing', async () => {

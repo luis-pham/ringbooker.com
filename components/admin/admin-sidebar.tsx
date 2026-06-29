@@ -61,6 +61,8 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+const OUT_SMS_NAV: NavItem = { href: '/admin/out-sms', label: 'Out SMS' };
+
 const GROUP_ICON: Record<string, ComponentType> = {
   calls: IconPhone,
   marketing: IconMegaphone,
@@ -70,6 +72,7 @@ const GROUP_ICON: Record<string, ComponentType> = {
 const ITEM_ICON: Record<string, ComponentType> = {
   '/admin/calls': IconLeafCalls,
   '/admin/demos': IconDemo,
+  '/admin/out-sms': IconSms,
   '/admin/sms': IconSms,
   '/admin/leads': IconLeads,
   '/admin/blog': IconBlog,
@@ -167,7 +170,7 @@ export function AdminSidebar() {
         {GROUPS.map((group) => {
           const open = Boolean(openGroups[group.id]);
           const hasActive = group.items.some((item) => isActiveHref(item.href, pathname));
-          return (
+          const groupNode = (
             <div key={group.id} className={`nav-group${open ? ' open' : ''}${hasActive ? ' has-active' : ''}`}>
               <button
                 type="button"
@@ -203,6 +206,20 @@ export function AdminSidebar() {
               ) : null}
             </div>
           );
+          if (group.id !== 'calls') return groupNode;
+
+          const outSmsActive = isActiveHref(OUT_SMS_NAV.href, pathname);
+          return [
+            groupNode,
+            <div key="out-sms" className={`nav-group${outSmsActive ? ' has-active' : ''}`}>
+              <a href={OUT_SMS_NAV.href} className="nav-group-toggle">
+                <div className="nav-icon nav-icon--group" aria-hidden>
+                  <ItemGlyph href={OUT_SMS_NAV.href} />
+                </div>
+                <span className="nav-group-title">{OUT_SMS_NAV.label}</span>
+              </a>
+            </div>,
+          ];
         })}
       </div>
       <AdminSidebarShellControls />

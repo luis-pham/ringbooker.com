@@ -1048,14 +1048,90 @@ export interface CallbacksRepository {
 export interface OutboundMessageRecord {
   id: string;
   shopId: string;
+  locationId?: string | null;
+  customerId?: string | null;
   bookingId?: string | null;
+  callId?: string | null;
+  jobId?: string | null;
   customerPhone: string;
   category: string;
+  messageType?: string | null;
+  fromNumber?: string | null;
+  toNumber?: string | null;
+  mediaUrls?: string[];
   body?: string | null;
   status: 'queued' | 'sent' | 'failed' | string;
   providerMessageId?: string | null;
+  telnyxMessageId?: string | null;
+  telnyxEventId?: string | null;
+  providerRequest?: unknown | null;
+  providerResponse?: unknown | null;
+  providerStatusPayload?: unknown | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  attempts?: number;
+  lastAttemptAt?: string | null;
+  submittedAt?: string | null;
+  deliveredAt?: string | null;
+  failedAt?: string | null;
+  idempotencyKey?: string | null;
+  provider?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface OutboundMessageCreateQueuedInput {
+  shopId: string;
+  locationId?: string | null;
+  customerId?: string | null;
+  bookingId?: string | null;
+  callId?: string | null;
+  jobId?: string | null;
+  messageType: string;
+  fromNumber?: string | null;
+  toNumber: string;
+  customerPhone?: string | null;
+  body: string;
+  mediaUrls?: string[];
+  idempotencyKey?: string | null;
+  provider?: string;
+  providerRequest?: unknown | null;
+}
+
+export interface AdminOutboundMessagesFilters {
+  shopId?: string | null;
+  fromNumber?: string | null;
+  toNumber?: string | null;
+  status?: string | null;
+  messageType?: string | null;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+  q?: string | null;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminOutboundMessagesListResult {
+  items: OutboundMessageRecord[];
+  total: number;
+}
+
+export type OutboundDeliveryStatusUpdateResult =
+  | { result: 'updated'; message: OutboundMessageRecord }
+  | { result: 'not_found' }
+  | { result: 'ignored_downgrade'; message: OutboundMessageRecord }
+  | { result: 'ignored_non_outbound' };
+
+export interface OutboundDeliveryStatusUpdateInput {
+  telnyxMessageId: string;
+  telnyxEventId: string;
+  eventType: string;
+  telnyxStatus: string | null;
+  providerStatusPayload: unknown;
+  occurredAt: Date | null;
+  completedAt: Date | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
 }
 
 export interface OutboundMessagesRepository {
@@ -1069,6 +1145,28 @@ export interface OutboundMessagesRepository {
     status: 'queued' | 'sent' | 'failed';
     providerMessageId?: string;
   }): Promise<void>;
+  createQueued?(input: OutboundMessageCreateQueuedInput): Promise<OutboundMessageRecord>;
+  markSending?(id: string): Promise<OutboundMessageRecord | null>;
+  markSubmitted?(
+    id: string,
+    input: {
+      telnyxMessageId?: string | null;
+      providerResponse?: unknown | null;
+      submittedAt?: Date;
+    },
+  ): Promise<OutboundMessageRecord | null>;
+  markSendFailed?(
+    id: string,
+    input: {
+      errorCode: string;
+      errorMessage?: string | null;
+      providerResponse?: unknown | null;
+      failedAt?: Date;
+    },
+  ): Promise<OutboundMessageRecord | null>;
+  listAdminOutboundMessages?(filters: AdminOutboundMessagesFilters): Promise<AdminOutboundMessagesListResult>;
+  getAdminOutboundMessageById?(id: string): Promise<OutboundMessageRecord | null>;
+  markDeliveryStatus?(input: OutboundDeliveryStatusUpdateInput): Promise<OutboundDeliveryStatusUpdateResult>;
   listByBookingId?(bookingId: string): Promise<OutboundMessageRecord[]>;
   listMissedCallSmsSentPhones?(shopId: string, phones: string[]): Promise<Set<string>>;
   countRecentByPhone?(params: { shopId: string; customerPhone: string; since: Date }): Promise<number>;

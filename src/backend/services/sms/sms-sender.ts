@@ -1,4 +1,5 @@
 import { getCountryConfig } from '@/lib/countries/config';
+import { getEnv } from '@/src/backend/config/env';
 import type { SmsCategory, SmsService } from './types';
 
 interface SendSmsParams {
@@ -10,7 +11,11 @@ interface SendSmsParams {
     timezone: string;
     sms_quiet_hours_start?: string | null;
     sms_quiet_hours_end?: string | null;
+    telnyx_number?: string | null;
   };
+  fromNumber?: string | null;
+  locationTelnyxNumber?: string | null;
+  allowGlobalFromFallback?: boolean;
   category: SmsCategory;
   bookingId?: string;
   idempotencyKey: string;
@@ -33,6 +38,37 @@ function parseQuietHour(value: string | null | undefined, fallbackHour: number):
   const minutes = Number(match[2]);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) return fallbackHour * 60;
   return hours * 60 + minutes;
+}
+
+function cleanSenderNumber(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function resolveSmsFromNumber(params: {
+  shop: SendSmsParams['shop'];
+  countryCode?: string | null;
+  fromNumber?: string | null;
+  locationTelnyxNumber?: string | null;
+  allowGlobalFromFallback?: boolean;
+}): string | null {
+  const locationNumber = cleanSenderNumber(params.locationTelnyxNumber);
+  if (locationNumber) return locationNumber;
+
+  const explicitNumber = cleanSenderNumber(params.fromNumber);
+  if (explicitNumber) return explicitNumber;
+
+  const shopNumber = cleanSenderNumber(params.shop.telnyx_number);
+  if (shopNumber) return shopNumber;
+
+  if (params.allowGlobalFromFallback === false) return null;
+
+  const countryConfig = getCountryConfig(params.countryCode);
+  if (countryConfig.sms.senderType === 'sender_id' && countryConfig.sms.senderId) {
+    return countryConfig.sms.senderId;
+  }
+
+  return cleanSenderNumber(getEnv().TELNYX_SMS_SENDER_NUMBER);
 }
 
 /**
@@ -66,9 +102,20 @@ export async function sendSms(
     return { sent: false, reason: 'quiet_hours' };
   }
 
+  const from = resolveSmsFromNumber({
+    shop: params.shop,
+    countryCode,
+    fromNumber: params.fromNumber,
+    locationTelnyxNumber: params.locationTelnyxNumber,
+    allowGlobalFromFallback: params.allowGlobalFromFallback,
+  });
+  if (!from) {
+    return { sent: false, reason: 'missing_from_number' };
+  }
+
   const sms = await smsService.sendSms({
     to: params.to,
-    from: '',
+    from,
     body: params.body,
     shopId: params.shop.id,
     countryCode,

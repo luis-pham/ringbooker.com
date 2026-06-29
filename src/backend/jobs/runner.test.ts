@@ -15,7 +15,7 @@ import type { Shop } from '@/src/backend/domain/types';
 import { createJobHandlers, nextSendableWindowUtc } from '@/src/backend/jobs/runner';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
-applyRequiredTestEnv();
+applyRequiredTestEnv({ TELNYX_SMS_SENDER_NUMBER: '+15555550999' });
 
 function createRuntime() {
   const sentSms: unknown[] = [];

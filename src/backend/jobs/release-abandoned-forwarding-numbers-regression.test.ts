@@ -42,6 +42,13 @@ function createRuntime() {
   return { runtime, emails, sms, releases };
 }
 
+async function allowSmsAnytime(runtime: ReleaseAbandonedForwardingNumbersRuntime, shopId: string) {
+  await runtime.shopsRepository.updateDynamicConfig(shopId, {
+    sms_quiet_hours_start: '00:00',
+    sms_quiet_hours_end: '23:59',
+  });
+}
+
 // 9. 72h cleanup job: does not release live users
 test('regression: cleanup job skips shops with live answering enabled', async () => {
   const { runtime, releases } = createRuntime();
@@ -168,6 +175,7 @@ test('regression: 48h SMS reminder is not sent when sms_owner_opted_in is false'
     forwarding_number_provisioned_at: '2026-05-01T00:00:00.000Z',
     sms_owner_opted_in: true,
   });
+  await allowSmsAnytime(runtime, optedIn.id);
 
   const notOptedIn = await runtime.shopsRepository.create({
     name: 'Not Opted In Salon',

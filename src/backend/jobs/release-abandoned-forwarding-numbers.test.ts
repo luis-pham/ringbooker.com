@@ -44,6 +44,13 @@ function createRuntime() {
   return { runtime, emails, sms, releases };
 }
 
+async function allowSmsAnytime(runtime: ReleaseAbandonedForwardingNumbersRuntime, shopId: string) {
+  await runtime.shopsRepository.updateDynamicConfig(shopId, {
+    sms_quiet_hours_start: '00:00',
+    sms_quiet_hours_end: '23:59',
+  });
+}
+
 test('release abandoned forwarding number after 72 hours without billing', async () => {
   const { runtime, emails, sms, releases } = createRuntime();
   const shop = await runtime.shopsRepository.create({
@@ -70,6 +77,7 @@ test('release abandoned forwarding number after 72 hours without billing', async
     forwarding_type: 'no_answer',
     sms_owner_opted_in: true,
   });
+  await allowSmsAnytime(runtime, shop.id);
   await runtime.shopAccessStatesRepository!.upsert({
     shopId: shop.id,
     liveCallsEnabled: false,
@@ -151,6 +159,7 @@ test('sends 24h email and 48h SMS reminders idempotently before release', async 
     forwarding_number_provisioned_at: '2026-05-01T00:00:00.000Z',
     sms_owner_opted_in: true,
   });
+  await allowSmsAnytime(runtime, shop.id);
 
   const first24 = await runReleaseAbandonedForwardingNumbersJob(runtime, new Date('2026-05-02T01:00:00.000Z'));
   const second24 = await runReleaseAbandonedForwardingNumbersJob(runtime, new Date('2026-05-02T02:00:00.000Z'));

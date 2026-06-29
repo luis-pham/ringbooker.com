@@ -673,21 +673,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           body,
           category: 'booking_confirmation',
           bookingId: payload.data.bookingId,
+          jobId: params.jobId,
           idempotencyKey,
           audience: 'customer',
         });
         if (!sms.sent) return;
-
-        await runtime.outboundMessagesRepository.create({
-          shopId: shop.id,
-          bookingId: payload.data.bookingId,
-          customerPhone: payload.data.toPhone,
-          category: 'booking_confirmation',
-          body,
-          idempotencyKey,
-          status: 'sent',
-          providerMessageId: sms.sms.providerMessageId,
-        });
       } catch (error) {
         logger.warn(
           {
@@ -771,6 +761,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body: smsBody,
         category: 'reminder_24h',
         bookingId: booking.id,
+        jobId: params.jobId,
         idempotencyKey,
         audience: 'customer',
       });
@@ -790,17 +781,6 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
         return;
       }
-
-      await runtime.outboundMessagesRepository.create({
-        shopId: booking.shopId,
-        bookingId: booking.id,
-        customerPhone: booking.customerPhone,
-        category: 'reminder_24h',
-        body: smsBody,
-        idempotencyKey,
-        status: 'sent',
-        providerMessageId: sms.sms.providerMessageId,
-      });
 
       await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
     },
@@ -875,6 +855,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body: smsBody,
         category: 'reminder_2h',
         bookingId: booking.id,
+        jobId: params.jobId,
         idempotencyKey,
         audience: 'customer',
       });
@@ -894,17 +875,6 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
         return;
       }
-
-      await runtime.outboundMessagesRepository.create({
-        shopId: booking.shopId,
-        bookingId: booking.id,
-        customerPhone: booking.customerPhone,
-        category: 'reminder_2h',
-        body: smsBody,
-        idempotencyKey,
-        status: 'sent',
-        providerMessageId: sms.sms.providerMessageId,
-      });
 
       await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
     },
@@ -947,19 +917,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           to: shop.user_phone,
           body,
           category: 'user_alert',
+          jobId: params.jobId,
           idempotencyKey,
           audience: 'owner',
         });
         if (!sms.sent) return;
-        await runtime.outboundMessagesRepository.create({
-          shopId: shop.id,
-          customerPhone: shop.user_phone,
-          category: 'user_alert',
-          body,
-          idempotencyKey,
-          status: 'sent',
-          providerMessageId: sms.sms.providerMessageId,
-        });
       } catch (error) {
         logger.error({ err: error, jobId: params.jobId, shopId: shop.id }, 'handoff_failed_owner_sms_failed');
       }
@@ -1007,20 +969,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         to: payload.data.customerPhone,
         body: smsBody,
         category: 'missed_call',
+        jobId: params.jobId,
         idempotencyKey,
         audience: 'customer',
       });
       if (!sms.sent) return;
-
-      await runtime.outboundMessagesRepository.create({
-        shopId: shop.id,
-        customerPhone: payload.data.customerPhone,
-        category: 'missed_call',
-        body: smsBody,
-        idempotencyKey,
-        status: 'sent',
-        providerMessageId: sms.sms.providerMessageId,
-      });
     },
     booking_link_sms: async (params) => {
       const payload = bookingLinkSmsPayloadSchema.safeParse(params.payload);
@@ -1054,20 +1007,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           to: payload.data.toPhone,
           body: payload.data.message,
           category: 'booking_link',
+          jobId: params.jobId,
           idempotencyKey,
           audience: 'customer',
         });
         if (!sms.sent) return;
-
-        await runtime.outboundMessagesRepository.create({
-          shopId: shop.id,
-          customerPhone: payload.data.toPhone,
-          category: 'booking_link',
-          body: payload.data.message,
-          idempotencyKey,
-          status: 'sent',
-          providerMessageId: sms.sms.providerMessageId,
-        });
       } catch (error) {
         logger.error(
           {
@@ -1115,20 +1059,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           to: shop.user_phone,
           body,
           category: 'cancellation_alert',
+          jobId: params.jobId,
           idempotencyKey,
           audience: 'owner',
         });
         if (!sms.sent) return;
-
-        await runtime.outboundMessagesRepository.create({
-          shopId: shop.id,
-          customerPhone: shop.user_phone,
-          category: 'cancellation_alert',
-          body,
-          idempotencyKey,
-          status: 'sent',
-          providerMessageId: sms.sms.providerMessageId,
-        });
       } catch (error) {
         logger.error(
           {
@@ -1191,20 +1126,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           to: shop.user_phone,
           body,
           category: 'booking_request_alert',
+          jobId: params.jobId,
           idempotencyKey,
           audience: 'owner',
         });
         if (!sms.sent) return;
-
-        await runtime.outboundMessagesRepository.create({
-          shopId: shop.id,
-          customerPhone: shop.user_phone,
-          category: 'booking_request_alert',
-          body,
-          idempotencyKey,
-          status: 'sent',
-          providerMessageId: sms.sms.providerMessageId,
-        });
       } catch (error) {
         logger.error(
           { err: error, jobId: params.jobId, shopId: shop.id },
@@ -1245,19 +1171,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         to: shop.user_phone,
         body,
         category: 'callback_request_alert',
+        jobId: params.jobId,
         idempotencyKey,
         audience: 'owner',
       });
       if (!sms.sent) return;
-      await runtime.outboundMessagesRepository.create({
-        shopId: shop.id,
-        customerPhone: shop.user_phone,
-        category: 'callback_request_alert',
-        body,
-        idempotencyKey,
-        status: 'sent',
-        providerMessageId: sms.sms.providerMessageId,
-      });
     },
     callback_outbound_call: async (params) => {
       const payload = callbackPayloadSchema.safeParse(params.payload);
@@ -1381,6 +1299,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body,
         category: 'review_request',
         bookingId: booking.id,
+        jobId: params.jobId,
         idempotencyKey,
         audience: 'customer',
       });
@@ -1401,16 +1320,6 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         return;
       }
 
-      await runtime.outboundMessagesRepository.create({
-        shopId: shop.id,
-        bookingId: booking.id,
-        customerPhone: booking.customerPhone,
-        category: 'review_request',
-        body,
-        idempotencyKey,
-        status: 'sent',
-        providerMessageId: sms.sms.providerMessageId,
-      });
       await runtime.bookingsRepository.markReviewRequestSent(booking.id);
     },
     post_call_summary: async (params) => {
@@ -1577,27 +1486,18 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           .filter(Boolean)
           .join('\n');
         const idempotencyKey = `job:${params.jobId}:call-summary-owner`;
-        const sms = await sendGuardedSms({
+        await sendGuardedSms({
           smsService: runtime.smsService,
           outboundMessagesRepository: runtime.outboundMessagesRepository,
           shop,
           to: shop.user_phone,
           body,
           category: 'call_summary',
+          callId: payload.data.requestId,
+          jobId: params.jobId,
           idempotencyKey,
           audience: 'owner',
         });
-        if (sms.sent) {
-          await runtime.outboundMessagesRepository.create({
-            shopId: shop.id,
-            customerPhone: shop.user_phone,
-            category: 'call_summary',
-            body,
-            idempotencyKey,
-            status: 'sent',
-            providerMessageId: sms.sms.providerMessageId,
-          });
-        }
       }
     },
     lifecycle_email: async (params) => {
@@ -2102,6 +2002,8 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           to: shop.user_phone,
           body,
           category: 'user_alert',
+          callId: payload.data.callId,
+          jobId: params.jobId,
           idempotencyKey: `job:${params.jobId}:tech-failure-callback`,
           audience: 'owner',
         }).catch((err: unknown) => {
@@ -2144,6 +2046,8 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           to: shop.user_phone,
           body,
           category: 'user_alert',
+          callId: payload.data.callId,
+          jobId: params.jobId,
           idempotencyKey: `job:${params.jobId}:ai-failure-alert`,
           audience: 'owner',
         }).catch((err: unknown) => {
