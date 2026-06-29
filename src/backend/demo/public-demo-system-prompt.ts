@@ -8,6 +8,7 @@ import {
 } from '@/src/agent/prompts';
 import type { VoicePromptCallType } from '@/src/agent/prompts/types';
 import type { BusinessHours } from '@/src/backend/domain/types';
+import { buildDefaultRuntimeGreeting } from '@/src/backend/domain/resolve-effective-runtime-config';
 import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
 
 export type DemoConfigInput = {
@@ -192,26 +193,10 @@ export function buildPublicDemoScriptedWelcomeLine(input: {
   businessType: string;
   demoVertical?: VoicePromptVertical;
 }): string {
-  const businessName = sanitizeDemoTextField(input.shopName, 120) || 'the business';
-  const businessType = sanitizeDemoTextField(input.businessType, 80) || 'business';
-  const resolvedVertical =
-    input.demoVertical ?? (businessType.toLowerCase().includes('nail') ? 'nail-salon' : undefined);
-  const hour = new Date().getUTCHours();
-  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-  switch (resolvedVertical) {
-    case 'nail-salon':
-      return `Hi, it's Mai at ${businessName} — what can I help with?`;
-    case 'hair-salon':
-      return `Hi, Maya at ${businessName} — how can I help?`;
-    case 'day-spa':
-      return `Good ${timeOfDay}, Lily at ${businessName}. What brings you in?`;
-    case 'med-spa':
-      return `Hi, Alex at ${businessName}. What can I help with today?`;
-    case 'beauty-clinic':
-      return `Hi, Morgan at ${businessName}. How can I help you today?`;
-    default:
-      return `Hi, you're through to ${businessName} — what would you like to try?`;
-  }
+  const businessName = sanitizeDemoTextField(input.shopName, 120);
+  return businessName
+    ? buildDefaultRuntimeGreeting(businessName)
+    : 'Thank you for calling, how can I help you today?';
 }
 
 export function buildPublicDemoSystemPrompt(input: {
