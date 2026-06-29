@@ -634,6 +634,7 @@ type DemoExperienceProps = {
   preparedDemoSlug?: string;
   /** Seed values for a sales prepared demo — pre-fills the business so the demo is personalized. */
   initialBusinessName?: string;
+  initialAddress?: string | null;
   initialCity?: string | null;
   initialLogoUrl?: string | null;
   initialServices?: string[];
@@ -660,6 +661,7 @@ export function DemoExperience({
   demoPhoneE164,
   preparedDemoSlug,
   initialBusinessName,
+  initialAddress,
   initialCity,
   initialLogoUrl,
   initialServices,
@@ -694,7 +696,7 @@ export function DemoExperience({
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: initialBusinessName?.trim() || config.defaultBusinessName,
-    address: '',
+    address: initialAddress?.trim() || '',
     city: initialCity?.trim() || config.defaultCity,
     primaryHours: initialPrimaryHours?.trim() || config.hours.primary,
     secondaryHours: initialSecondaryHours?.trim() || config.hours.secondary,
@@ -2347,18 +2349,19 @@ export function DemoExperience({
       .map((value) => value.trim())
       .filter(Boolean)
       .join(' / ');
+    const preparedLocation = business.address.trim() || business.city.trim();
 
     return (
       <div className="vd-form-card" style={{ background: 'var(--surface-1, #fff)', border: '0.5px solid var(--border, #E8ECF1)', borderRadius: 16, padding: '24px 28px' }}>
         <div className="vd-found-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, padding: '0 0 14px' }}>
           <div className="vd-found-row">
-            <span className="vd-found-key">Name</span>
+            <span className="vd-found-key">Business Name</span>
             <span className="vd-found-val">{demoDisplayName}</span>
           </div>
-          {business.city.trim() ? (
+          {preparedLocation ? (
             <div className="vd-found-row">
               <span className="vd-found-key">Location</span>
-              <span className="vd-found-val">{business.city}</span>
+              <span className="vd-found-val">{preparedLocation}</span>
             </div>
           ) : null}
           {preparedHours ? (
@@ -2412,7 +2415,6 @@ export function DemoExperience({
         <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
           {isSubmitting ? 'Starting…' : ctaLabel}
         </button>
-        <p className="vd-cta-note">Personalized from this salon&apos;s prepared sales demo.</p>
       </div>
     );
   }

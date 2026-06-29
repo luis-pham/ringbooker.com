@@ -81,6 +81,7 @@ test('public prepared demo returns prepared services, staff, and hours for /try 
     slug: 'maison-de-mi',
     vertical: 'hair-salon',
     businessName: 'Maison De Mi',
+    address: '714 W Jefferson Blvd #110, Dallas, TX 75208',
     city: 'Dallas',
     logoUrl: 'https://www.google.com/s2/favicons?domain=maisondemisalon.com&sz=128',
     demoConfig: {
@@ -113,6 +114,7 @@ test('public prepared demo returns prepared services, staff, and hours for /try 
     ok: boolean;
     demo: {
       businessName: string;
+      address: string | null;
       logoUrl: string | null;
       services: string[];
       staffNames: string[];
@@ -122,6 +124,7 @@ test('public prepared demo returns prepared services, staff, and hours for /try 
   };
   assert.equal(body.ok, true);
   assert.equal(body.demo.businessName, 'Maison De Mi');
+  assert.equal(body.demo.address, '714 W Jefferson Blvd #110, Dallas, TX 75208');
   assert.equal(body.demo.logoUrl, 'https://www.google.com/s2/favicons?domain=maisondemisalon.com&sz=128');
   assert.deepEqual(body.demo.services, ['Women Cut', 'Full Color']);
   assert.deepEqual(body.demo.staffNames, ['Ian', 'Chloe']);

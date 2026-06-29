@@ -18,6 +18,16 @@ type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 type SiteBuilder = 'nextjs' | 'nuxtjs' | 'react_spa' | 'square_weebly' | 'webflow' | 'wix' | 'squarespace' | 'shopify' | null;
 
+const STATIC_ASSET_PATH_RE = /\.(?:avif|bmp|css|eot|gif|ico|jpe?g|js|mjs|map|mov|mp3|mp4|otf|pdf|png|svg|ttf|webm|webp|woff2?|zip)(?:$|[?#])/i;
+
+function isLikelyStaticAssetUrl(value: string): boolean {
+  try {
+    return STATIC_ASSET_PATH_RE.test(new URL(value).pathname);
+  } catch {
+    return STATIC_ASSET_PATH_RE.test(value);
+  }
+}
+
 function detectSiteBuilder(html: string): SiteBuilder {
   if (/<div[^>]+id=["']__next["']/i.test(html)) return 'nextjs';
   if (/<div[^>]+id=["']__nuxt["']/i.test(html)) return 'nuxtjs';
@@ -169,7 +179,9 @@ function looksLikeEmptyOrNotFoundPage(text: string): boolean {
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return !compact || /^(?:404|not found|page not found|not found \|)/i.test(compact);
+  return !compact
+    || /^(?:404|not found|page not found|not found \||500 internal server error|internal server error|server error|403 forbidden|forbidden|access denied|service unavailable|bad gateway|gateway timeout)/i.test(compact)
+    || /\b(?:the server encountered an internal error|unable to complete your request|error document to handle the request|server misconfiguration|temporarily unavailable)\b/i.test(compact);
 }
 
 async function safeFetchPinned(url: string, opts: ImportOptions & { signal: AbortSignal }): Promise<Response> {
@@ -311,6 +323,7 @@ function candidateFromUrl(url: string, source: CandidateUrl['source'], anchorTex
   try {
     const parsed = new URL(url);
     parsed.hash = '';
+    if (isLikelyStaticAssetUrl(parsed.toString())) return null;
     for (const key of [...parsed.searchParams.keys()]) {
       const lower = key.toLowerCase();
       if (/^utm_/.test(lower) || ['fbclid', 'gclid', 'itemid', 'variantid', 'productid', 'sku'].includes(lower)) parsed.searchParams.delete(key);
@@ -581,7 +594,10 @@ async function previewCandidate(
     });
     if (renderedHtml?.trim()) {
       const renderedPreview = previewHtml(renderedHtml, candidate.url);
-      if (forceRender || shouldKeepRenderedPreview(renderedPreview, staticPreview)) return { preview: renderedPreview, usedRender: true };
+      if (!looksLikeEmptyOrNotFoundPage(renderedPreview.firstTextChars || renderedPreview.h1 || renderedPreview.title)
+        && (forceRender || shouldKeepRenderedPreview(renderedPreview, staticPreview))) {
+        return { preview: renderedPreview, usedRender: true };
+      }
     }
   }
 
@@ -942,8 +958,14 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
         // Leave room for the LLM enrichment pass — the crawl must not consume the whole budget.
         timeoutMs: Math.min(CF_CRAWL_TIMEOUT_MS, Math.max(8_000, remainingBudget() - LLM_ENRICHMENT_RESERVE_MS)),
       });
-      finalPreviews = crawl.pages.map(pagePreviewFromCrawlPage);
-      selectedPages = diagnosticsFromCrawlPages(crawl.pages);
+      const readableCrawlPages = crawl.pages
+        .filter((page) => !isLikelyStaticAssetUrl(page.url))
+        .map((page) => ({ page, preview: pagePreviewFromCrawlPage(page) }))
+        .filter(({ preview }) => !looksLikeEmptyOrNotFoundPage(preview.firstTextChars || preview.h1 || preview.title));
+      const droppedCrawlPages = crawl.pages.length - readableCrawlPages.length;
+      if (droppedCrawlPages > 0) warnings.push(`Dropped ${droppedCrawlPages} Cloudflare crawl page(s) that looked like assets or server error pages.`);
+      finalPreviews = readableCrawlPages.map(({ preview }) => preview);
+      selectedPages = diagnosticsFromCrawlPages(readableCrawlPages.map(({ page }) => page));
       logoUrl = crawl.logoUrl;
       if (finalPreviews.length) fallbackUsed.push('cloudflare_crawl');
       else warnings.push('Cloudflare /crawl completed but returned no readable markdown pages.');
@@ -1038,7 +1060,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   const staticHints = (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey)
     ? buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews })
     : null;
-  const llmWantsToRun = Boolean(opts.llmEnabled) && budgetForEnrichment >= MIN_LLM_BUDGET_MS;
+  const llmWantsToRun = Boolean(opts.llmEnabled && opts.openAiApiKey) && budgetForEnrichment >= MIN_LLM_BUDGET_MS;
   let llmGloballyCapped = false;
   let runLlm = llmWantsToRun;
   if (llmWantsToRun && opts.acquireLlmBudget) {
@@ -1075,6 +1097,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   ]);
   const finalGooglePlaces = googlePlacesResult.status === 'fulfilled' ? googlePlacesResult.value : googlePlaces;
   const llmExtraction = llmResult.status === 'fulfilled' ? llmResult.value : null;
+  const llmAttemptedButFailed = llmWantsToRun && runLlm && !llmExtraction;
   const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction });
   const servicePagesFound = selectedPages.filter((page) => page.bucket === 'service_hub' || page.bucket === 'service_child').map((page) => page.url);
   const childServicePagesFound = selectedPages.filter((page) => page.bucket === 'service_child').map((page) => page.url);
@@ -1083,6 +1106,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   const allWarnings = [
     ...suggestions.warnings,
     ...warnings,
+    ...(llmAttemptedButFailed ? ['AI enrichment failed or timed out; details came from static extraction. Please review carefully.'] : []),
     ...(llmGloballyCapped ? ['AI enrichment was skipped due to a temporary daily limit; details came from static extraction. Please review carefully.'] : []),
     ...(menuExceededSinglePassBudget ? ['This menu was longer than could be read in a single pass — some services may be missing. Please review and add any that are absent.'] : []),
   ];

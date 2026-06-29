@@ -87,7 +87,7 @@ export function inferGroup(name: string): string {
   if (/acrylic|extension|dip powder|nail/.test(lower)) return 'Acrylics / Extensions';
   if (/\b(lash|brow|eyebrow)\b/.test(lower)) return 'Brows & Lashes';
   if (/balayage|highlight|lightening|tint|retouch|root|color|colour/.test(lower)) return 'Hair Color';
-  if (/brazilian\s+blowout|keratin|smoothing|straightening/.test(lower)) return 'Treatments';
+  if (/perm|relaxer|texture|brazilian\s+blowout|keratin|smoothing|straightening/.test(lower)) return 'Treatments';
   if (/haircut|\bcut\b|\bmen'?s?\b|\bwomen'?s?\b|\bchildren'?s?\b|blowout|blow\s*out|blow\s*dry|styling|updo|hair/.test(lower)) return 'Haircuts';
   if (/restorative|conditioning|botanical|shine treatment|scalp treatment|bond building|strengthening/.test(lower)) return 'Treatments';
   if (/\b(wax|bikini|brazilian|half leg|full leg|lip)\b/.test(lower)) return 'Waxing';
@@ -324,9 +324,10 @@ export function inferTimezoneFromAddress(address?: string | null): ImportField<s
 function looksLikeDescriptionServiceName(name: string): boolean {
   const cleaned = name.trim();
   if (!cleaned) return true;
+  const hasStrongServiceNoun = /\b(hair\s*cut|haircut|perm|straightening|relaxer|texture|keratin|balayage|highlight|colou?r|retouch|blow\s*dry|blowout|up-?do|bridal|makeup|facial|massage|wax|lash|brow|manicure|pedicure|extension|treatment)\b/i.test(cleaned);
   if (/[!?]/.test(cleaned)) return true;
   if (/[.,;:]\s+\S/.test(cleaned)) return true;
-  if (cleaned.split(/\s+/).length > 7) return true;
+  if (cleaned.split(/\s+/).length > 7 && !hasStrongServiceNoun) return true;
   if (/^(?:can|recommended|great|perfect|same|add|booked|pricing|services?)\b/i.test(cleaned)) return true;
   if (/\b(recommended\s+maintenance|finished\s+with|participating\s+stylists|add\s*on\s+to\s+any\s+service|refer(?:ral)?|gift\s+(?:card|for)|to\s+say\s+thanks)\b/i.test(cleaned)) return true;
   const words = cleaned
@@ -505,7 +506,7 @@ function parseMatrixPriceCell(value: string): { priceAmount: number | null; pric
   if (!Number.isFinite(priceAmount) || priceAmount > 2000) return null;
   return {
     priceAmount,
-    priceType: /from|starting|starts|\+/i.test(text) ? 'from' : 'fixed',
+    priceType: /from|starting|starts|\+|-\s*\$?\s*\d/i.test(text) ? 'from' : 'fixed',
   };
 }
 
@@ -890,7 +891,7 @@ function isServiceMenuGroupHeading(value: string): boolean {
   const cleaned = cleanServiceName(value);
   if (cleaned.length < 3 || cleaned.length > 90) return false;
   if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
-  return /\b(haircuts?|cuts?|color|colour|styling|blowout|extensions?|treatments?|smoothing|straightening|facials?|massage|waxing|nails?|manicure|pedicure|lashes|brows|makeup|injectables?|laser|skin|services?)\b/i.test(cleaned);
+  return /\b(haircuts?|cuts?|color|colour|styling|blowout|extensions?|treatments?|perm|texture|relaxer|smoothing|straightening|facials?|massage|waxing|nails?|manicure|pedicure|lashes|brows|makeup|injectables?|laser|skin|services?)\b/i.test(cleaned);
 }
 
 function isServiceMenuItemName(value: string): boolean {
@@ -898,7 +899,7 @@ function isServiceMenuItemName(value: string): boolean {
   if (cleaned.length < 3 || cleaned.length > 100) return false;
   if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
   if (/^\d+$/.test(cleaned) || /\?$/.test(cleaned)) return false;
-  return /\b(haircut|cut|curly|men'?s|women'?s|medium|long|short|color|colour|highlight|balayage|toner|root|smudge|shadow|platinum|blow\s*out|up-?do|style|styling|keratin|straightening|conditioner|conditioning|extensions?|weft|i-?tip|tape|installation|removal|consultation|treatment|ritual)\b/i.test(cleaned);
+  return /\b(haircut|cut|curly|men'?s|women'?s|medium|long|short|color|colour|highlight|balayage|toner|root|smudge|shadow|platinum|perm|relaxer|texture|blow\s*out|up-?do|style|styling|keratin|smoothing|straightening|conditioner|conditioning|extensions?|weft|i-?tip|tape|installation|removal|consultation|treatment|ritual)\b/i.test(cleaned);
 }
 
 function serviceMenuGroupHeadings(text: string): string[] {
@@ -1205,7 +1206,7 @@ function parseMarkdownTablePriceCell(value: string): {
   return {
     priceAmount,
     priceCurrency: CURRENCY,
-    priceType: /\+|\b(from|starting(?:\s+at)?|starts\s+at)\b/i.test(raw) ? 'from' : 'fixed',
+    priceType: /\+|-\s*\$?\s*\d|\b(from|starting(?:\s+at)?|starts\s+at)\b/i.test(raw) ? 'from' : 'fixed',
     raw,
   };
 }
@@ -1445,7 +1446,7 @@ function isServiceListGroup(value: string): boolean {
   const cleaned = cleanMarkdownText(value);
   if (cleaned.length < 3 || cleaned.length > 100) return false;
   if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
-  return /\b(services?|hair|color|colour|coloring|colouring|cuts?|extensions?|restoration|replacement|methods?|weddings?|formal|makeup|make-up|nails?|manicure|pedicure|massage|facials?|waxing|lashes?|brows?|skin|treatments?)\b/i.test(cleaned);
+  return /\b(services?|hair|color|colour|coloring|colouring|cuts?|extensions?|restoration|replacement|methods?|weddings?|formal|makeup|make-up|nails?|manicure|pedicure|massage|facials?|waxing|lashes?|brows?|skin|treatments?|perm|texture|relaxer|smoothing|straightening)\b/i.test(cleaned);
 }
 
 function isServiceListItem(value: string): boolean {
@@ -1565,6 +1566,9 @@ function sanitizeSnippet(value: string | null | undefined, maxLength = 220): str
   return cleaned ? cleaned.slice(0, maxLength) : undefined;
 }
 
+const STAFF_ROLE_SUFFIX_SOURCE = String.raw`(?:Hair\s+|Nail\s+|Lash\s+|Brow\s+|Makeup\s+)?(?:Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Director|Founder|Specialist|Therapist|Aesthetician|Nail\s+Tech|Master)`;
+const MARKDOWN_STAFF_HEADING_RE = new RegExp(String.raw`#{1,6}\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})\s+(${STAFF_ROLE_SUFFIX_SOURCE})(?=\s+(?:!\[|#{1,6}\s|PreviousNext|Next|$))`, 'g');
+
 function cleanStaffName(value: string): string {
   return value.replace(/^(team|staff|meet|our)\s+/i, '').replace(/\s+/g, ' ').trim();
 }
@@ -1594,11 +1598,15 @@ function staffRoleFromSectionHeading(value: string): string | null {
 function isLikelyStaffName(value: string): boolean {
   const cleaned = cleanStaffName(value);
   if (!cleaned || cleaned.length < 2 || cleaned.length > 60) return false;
+  const compact = cleaned.replace(/\s+/g, '').toLowerCase();
+  if (/^(?:previous|next|previousnext|nextprevious|prev|back|close|open|menu|learnmore|readmore|viewall|loadmore)$/.test(compact)) return false;
   if (/\d|@|#|\/|\$/.test(cleaned)) return false;
+  if (new RegExp(String.raw`\b${STAFF_ROLE_SUFFIX_SOURCE}\b`, 'i').test(cleaned)) return false;
   if (/^(master|massage|licensed|certified|senior|lead|medical|hairstylist|stylist|colorist|artist|apprentice|junior|receptionist|director|specialist|expert|owner|manager)$/i.test(cleaned)) return false;
   if (/^(?:master\s+)?(?:colorist|hairstylist|stylist|artist|apprentice|junior\s+stylist|studio\s+director|tooth\s+gem\s+specialist|hair\s+replacement\s+specialist)$/i.test(cleaned)) return false;
   if (/^(home|services?|artists?|stylists?|team|staff|guest\s+care|front\s+desk|reception|receptionist|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours|salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
+  if (/\b(?:internal|server|error|forbidden|denied|unavailable|misconfiguration|webmaster|document)\b/i.test(cleaned)) return false;
   // Service-category words (often lifted from nav/headings) are never a person's name.
   if (/^(hair|colou?r|cut|cuts|style|styling|nails?|skin|brows?|lash(?:es)?|wax(?:ing)?|makeup|facials?|massage|treatments?|extensions?|blowout|manicure|pedicure|menu|gallery|pricing|prices?|gift\s*cards?|promotions?|reviews?)$/i.test(cleaned)) return false;
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
@@ -1780,6 +1788,21 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
       // Structured STAFF_MEMBER: blocks from DOM extraction (includes Role: when available)
       const structuredStaffRe = /^STAFF_MEMBER:\s*([^|\n]+?)(?:\s*\|\s*Role:\s*([^|\n]+?))?(?:\s*\|\s*Bio:\s*([^\n]+))?$/gim;
       let structuredStaffCount = 0;
+      for (const match of (preview.markdown ?? '').matchAll(MARKDOWN_STAFF_HEADING_RE)) {
+        const name = cleanStaffName(match[1]);
+        if (!isLikelyStaffName(name)) continue;
+        const role = normalizeStaffRole(match[2]) ?? match[2].trim();
+        structuredStaffCount += 1;
+        staffSuggestions.push({
+          name,
+          role,
+          specialties: [],
+          source: 'website',
+          sourceUrl: preview.url,
+          confidence: 0.74,
+          evidenceSnippet: sanitizeSnippet(match[0]),
+        });
+      }
       for (const match of text.matchAll(structuredStaffRe)) {
         const name = cleanStaffName(match[1]);
         if (!isLikelyStaffName(name)) continue;

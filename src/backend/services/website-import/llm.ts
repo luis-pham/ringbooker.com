@@ -181,8 +181,21 @@ function sanitizeSnippet(value?: string): string | undefined {
   return cleaned ? cleaned.slice(0, 240) : undefined;
 }
 
-function toStaffSuggestion(raw: z.infer<typeof staffSuggestionSchema>): StaffSuggestion {
-  return { name: raw.name.trim(), role: raw.role?.trim(), specialties: raw.specialties.slice(0, 8), bio: raw.bio?.trim(), source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence, evidenceSnippet: sanitizeSnippet(raw.evidenceSnippet) };
+function isInvalidStaffSuggestionName(value: string): boolean {
+  const name = value.trim().replace(/\s+/g, ' ');
+  const compact = name.replace(/\s+/g, '').toLowerCase();
+  return !name
+    || name.length > 60
+    || /^(?:previous|next|previousnext|nextprevious|prev|back|close|open|menu|learnmore|readmore|viewall|loadmore)$/i.test(compact)
+    || /\d|@|#|\/|\$/.test(name)
+    || /^(?:home|services?|artists?|stylists?|team|staff|contact|book(?:ing)?|hours|about|policies?|faq)$/i.test(name)
+    || /\b(?:internal|server|error|forbidden|denied|unavailable|misconfiguration|webmaster|document|policy|booking|services?)\b/i.test(name);
+}
+
+function toStaffSuggestion(raw: z.infer<typeof staffSuggestionSchema>): StaffSuggestion | null {
+  const name = raw.name.trim().replace(/\s+/g, ' ');
+  if (isInvalidStaffSuggestionName(name)) return null;
+  return { name, role: raw.role?.trim(), specialties: raw.specialties.slice(0, 8), bio: raw.bio?.trim(), source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence, evidenceSnippet: sanitizeSnippet(raw.evidenceSnippet) };
 }
 
 function toPolicySuggestion(raw: z.infer<typeof policySuggestionSchema>): PolicySuggestion {
@@ -373,7 +386,7 @@ export function parseLlmImportJson(rawText: string): LlmImportExtraction | null 
     alsoOffers: raw.alsoOffers.map(toImportField).filter((item): item is NonNullable<ReturnType<typeof toImportField>> => Boolean(item)),
     bookingUrl: toImportField(raw.bookingUrl),
     languages: raw.languages.map(toImportField).filter((item): item is NonNullable<ReturnType<typeof toImportField>> => Boolean(item)),
-    staffSuggestions: raw.staffSuggestions.map(toStaffSuggestion),
+    staffSuggestions: raw.staffSuggestions.map(toStaffSuggestion).filter((item): item is StaffSuggestion => Boolean(item)),
     policySuggestions: raw.policySuggestions.map(toPolicySuggestion),
     faqSuggestions: raw.faqSuggestions.map(toFaqSuggestion),
     promotionSuggestions: raw.promotionSuggestions.map(toPromotionSuggestion),

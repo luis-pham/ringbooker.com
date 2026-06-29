@@ -9,6 +9,10 @@ function response(body: string, url: string, type = 'text/html') {
   return new Response(body, { status: 200, headers: { 'content-type': type } }) as Response & { url: string };
 }
 
+function responseWithStatus(body: string, url: string, status: number, type = 'text/html') {
+  return new Response(body, { status, headers: { 'content-type': type } }) as Response & { url: string };
+}
+
 const lookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('normal website import discovers service hub and child service pages', async () => {
@@ -100,6 +104,59 @@ test('renders weak Square/SPA child menu and staff pages selected from sitemap',
   assert.ok(serviceNames.includes('Balayage'));
   assert.ok(result.suggestions.staffSuggestions.some((staff) => staff.name === 'Cassandra'));
   assert.ok(result.diagnostics.fallbackUsed.includes('headless_render'));
+});
+
+test('drops rendered server error pages and static asset candidates while keeping homepage staff/services', async () => {
+  const renderEndpoint = 'https://render-errors.test/content';
+  const serverErrorHtml = [
+    '<html><head><title>500 Internal Server Error</title></head><body>',
+    '<h1>Internal Server Error</h1>',
+    '<p>The server encountered an internal error or misconfiguration and was unable to complete your request.</p>',
+    '<p>Additionally, a 500 Internal Server Error error was encountered while trying to use an ErrorDocument.</p>',
+    '</body></html>',
+  ].join('');
+  const homepage = [
+    '<html><head><title>Maison-like Salon</title></head><body>',
+    '<h1>Maison-like Salon</h1>',
+    '<a href="/artists">Artists</a>',
+    '<a href="/images/maisondemi_color.jpg">Color</a>',
+    '<section><h2>Team</h2>',
+    '<div class="team-member"><h3>Ian Director</h3></div>',
+    '<div class="team-member"><h3>Chloe Master</h3></div>',
+    '<div class="team-member"><h3>Soyoung Stylist</h3></div>',
+    '<span>PreviousNext</span>',
+    '</section>',
+    '<section><h2>Services</h2>',
+    '<h3>Perm</h3><table><tr><td>Perm</td><td>Cash Price</td><td>Credit Price</td></tr><tr><td>Short Perm w/ Hair Cut (Master / Stylist)</td><td>$200 - $350</td><td>$206 - $361</td></tr></table>',
+    '<h3>Straightening</h3><table><tr><td>Straightening</td><td>Cash Price</td><td>Credit Price</td></tr><tr><td>Japanese Straightening</td><td>$450 - $1000</td><td>$464 - $1030</td></tr></table>',
+    '</section>',
+    '</body></html>',
+  ].join('');
+  const result = await importWebsiteForOnboarding({ url: 'https://maison-like.test' }, {
+    lookup,
+    renderEndpoint,
+    fetcher: async (url, init) => {
+      if (url === renderEndpoint) {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { url?: string };
+        return response(body.url?.endsWith('/artists') ? serverErrorHtml : homepage, url);
+      }
+      if (url === 'https://maison-like.test') return response(homepage, url);
+      if (url === 'https://maison-like.test/artists') return responseWithStatus(serverErrorHtml, url, 500);
+      if (url.endsWith('/robots.txt') || url.endsWith('/sitemap.xml')) return responseWithStatus('', url, 404, 'text/plain');
+      if (url.endsWith('.jpg')) return responseWithStatus('not html', url, 200, 'image/jpeg');
+      return responseWithStatus('', url, 404);
+    },
+  });
+
+  const staffNames = result.suggestions.staffSuggestions.map((staff) => staff.name);
+  const serviceNames = result.suggestions.serviceCatalog.services.map((service) => service.name);
+  assert.ok(staffNames.includes('Ian'));
+  assert.ok(staffNames.includes('Chloe'));
+  assert.ok(staffNames.includes('Soyoung'));
+  assert.equal(staffNames.some((name) => /PreviousNext|Internal Server Error/i.test(name)), false);
+  assert.ok(serviceNames.includes('Short Perm w/ Hair Cut (Master / Stylist)'));
+  assert.ok(serviceNames.includes('Japanese Straightening'));
+  assert.equal(result.diagnostics.selectedPages.some((page) => page.url.endsWith('.jpg')), false);
 });
 
 test('extracts Square/Weebly quill state when rendered DOM remains empty', async () => {

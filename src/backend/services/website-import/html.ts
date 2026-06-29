@@ -799,13 +799,26 @@ function cleanStaffText(value: string): string {
 function looksLikePersonName(value: string): boolean {
   const cleaned = cleanStaffText(value);
   if (!cleaned || cleaned.length < 2 || cleaned.length > 60) return false;
+  const compact = cleaned.replace(/\s+/g, '').toLowerCase();
+  if (/^(?:previous|next|previousnext|nextprevious|prev|back|close|open|menu|learnmore|readmore|viewall|loadmore)$/.test(compact)) return false;
+  if (/^(?:team|staff|meet|our)\s+/i.test(cleaned)) return false;
   if (/\d|@|#|\/|\$/.test(cleaned)) return false;
   if (/^(home|services?|artists?|team|staff|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
   if (/^(master|massage|licensed|certified|senior|lead|medical|hairstylist|stylist|colorist|artist|apprentice|junior|receptionist|director|specialist|expert|owner|manager)$/i.test(cleaned)) return false;
   if (/^(?:master\s+)?(?:colorist|hairstylist|stylist|artist|apprentice|junior\s+stylist|studio\s+director|tooth\s+gem\s+specialist|hair\s+replacement\s+specialist)$/i.test(cleaned)) return false;
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours)\b/i.test(cleaned)) return false;
   if (/\b(salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
+  if (/\b(?:internal|server|error|forbidden|denied|unavailable|misconfiguration|webmaster|document)\b/i.test(cleaned)) return false;
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
+}
+
+function splitTrailingStaffRole(value: string): { name: string; role: string | null } {
+  const cleaned = cleanStaffText(value);
+  const match = cleaned.match(/^(.+?)\s+((?:Hair\s+|Nail\s+|Lash\s+|Brow\s+|Makeup\s+)?(?:Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Director|Founder|Specialist|Therapist|Aesthetician|Nail\s+Tech|Master))$/i);
+  if (!match) return { name: cleaned, role: null };
+  const name = cleanStaffText(match[1]);
+  const role = cleanStaffText(match[2]);
+  return looksLikePersonName(name) ? { name, role } : { name: cleaned, role: null };
 }
 
 function structuredStaffText($: cheerio.CheerioAPI, url = ''): string {
@@ -823,10 +836,14 @@ function structuredStaffText($: cheerio.CheerioAPI, url = ''): string {
   const seen = new Set<string>();
 
   function pushStaffRow(name: string, role: string | null, bio: string) {
-    const key = name.toLowerCase();
+    const split = splitTrailingStaffRole(name);
+    const finalName = split.name;
+    const finalRole = role || split.role;
+    if (!looksLikePersonName(finalName)) return;
+    const key = finalName.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    rows.push(`STAFF_MEMBER: ${name}${role ? ` | Role: ${role}` : ''}${bio ? ` | Bio: ${bio}` : ''}`);
+    rows.push(`STAFF_MEMBER: ${finalName}${finalRole ? ` | Role: ${finalRole}` : ''}${bio ? ` | Bio: ${bio}` : ''}`);
   }
 
   function bioFromContainer(container: cheerio.Cheerio<AnyNode>): string {

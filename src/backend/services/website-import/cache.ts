@@ -36,7 +36,13 @@ function shouldCacheResult(result: WebsiteImportResult): boolean {
   const usedHeadlessRender = result.diagnostics.fallbackUsed.includes('headless_render');
   const jsRenderedIncomplete = !usedHeadlessRender
     && result.diagnostics.warnings.some((warning) => /javascript(?:-rendered|\s+spa)|headless-render|WEBSITE_IMPORT_RENDER_URL/i.test(warning));
-  return !jsRenderedIncomplete;
+  const enrichmentOrSourceProblem = result.diagnostics.warnings.some((warning) =>
+    /AI enrichment failed|timed out|server error pages|looked like assets/i.test(warning),
+  );
+  const suspiciousStaff = result.suggestions.staffSuggestions.some((staff) =>
+    /previousnext|internal server error|server encountered an internal error/i.test(`${staff.name} ${staff.bio ?? ''}`),
+  );
+  return !jsRenderedIncomplete && !enrichmentOrSourceProblem && !suspiciousStaff;
 }
 
 /** Test/ops helper — drops all cached and in-flight imports. */

@@ -30,6 +30,7 @@ export type SalesPreparedDemo = {
   slug: string;
   vertical: string;
   businessName: string;
+  address: string | null;
   city: string | null;
   state: string | null;
   websiteUrl: string | null;
@@ -48,6 +49,7 @@ export type UpsertPreparedDemoParams = {
   slug: string;
   vertical: string;
   businessName: string;
+  address?: string | null;
   city?: string | null;
   state?: string | null;
   websiteUrl?: string | null;

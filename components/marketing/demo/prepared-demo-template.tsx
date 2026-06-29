@@ -21,6 +21,7 @@ export type PreparedDemo = {
   slug: string;
   vertical: string;
   businessName: string;
+  address?: string | null;
   city: string | null;
   logoUrl?: string | null;
   services: string[];
@@ -43,6 +44,7 @@ export function PreparedDemoTemplate({ demo, demoPhoneE164 }: PreparedDemoTempla
       demoPhoneE164={demoPhoneE164}
       preparedDemoSlug={demo.slug}
       initialBusinessName={demo.businessName}
+      initialAddress={demo.address}
       initialCity={demo.city}
       initialLogoUrl={demo.logoUrl}
       initialServices={demo.services}

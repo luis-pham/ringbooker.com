@@ -369,6 +369,7 @@ export const salesDemoContextSchema = z.object({
   salesLeadId: z.string().uuid(),
   salonName: z.string().min(1).max(200),
   demoVertical: z.enum(['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic']).default('hair-salon'),
+  address: z.string().max(500).optional().default(''),
   city: z.string().max(120).optional().default(''),
   state: z.string().max(120).optional().default(''),
   services: z.array(z.string().max(120)).max(60).optional().default([]),

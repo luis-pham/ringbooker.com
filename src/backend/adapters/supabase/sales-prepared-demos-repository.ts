@@ -13,6 +13,7 @@ type SalesPreparedDemoRow = {
   slug: string;
   vertical: string;
   business_name: string;
+  address: string | null;
   city: string | null;
   state: string | null;
   website_url: string | null;
@@ -32,6 +33,7 @@ function toDomain(row: SalesPreparedDemoRow): SalesPreparedDemo {
     slug: row.slug,
     vertical: row.vertical,
     businessName: row.business_name,
+    address: row.address ?? null,
     city: row.city,
     state: row.state,
     websiteUrl: row.website_url,
@@ -58,6 +60,7 @@ export class SupabaseSalesPreparedDemosRepository implements SalesPreparedDemosR
         .update({
           vertical: params.vertical,
           business_name: params.businessName,
+          address: params.address ?? null,
           city: params.city ?? null,
           state: params.state ?? null,
           website_url: params.websiteUrl ?? null,
@@ -82,6 +85,7 @@ export class SupabaseSalesPreparedDemosRepository implements SalesPreparedDemosR
         slug: params.slug,
         vertical: params.vertical,
         business_name: params.businessName,
+        address: params.address ?? null,
         city: params.city ?? null,
         state: params.state ?? null,
         website_url: params.websiteUrl ?? null,

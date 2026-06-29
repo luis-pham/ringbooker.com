@@ -134,6 +134,29 @@ function toPreparedDemoServiceVariants(
     .filter((variant) => variant.label || variant.duration || variant.price !== null);
 }
 
+function hasPreparedDemoErrorText(value: string): boolean {
+  return /\b(?:internal\s+server\s+error|server\s+encountered\s+an\s+internal\s+error|server\s+misconfiguration|error\s+document|forbidden|access\s+denied|service\s+unavailable|bad\s+gateway|gateway\s+timeout)\b/i.test(value);
+}
+
+function isPreparedDemoStaffNameUsable(value: string): boolean {
+  const name = value.trim().replace(/\s+/g, ' ');
+  const compact = name.replace(/\s+/g, '').toLowerCase();
+  if (!name || name.length > 60) return false;
+  if (/^(?:previous|next|previousnext|nextprevious|prev|back|close|open|menu|learnmore|readmore|viewall|loadmore)$/.test(compact)) return false;
+  if (hasPreparedDemoErrorText(name)) return false;
+  if (/\d|@|#|\/|\$/.test(name)) return false;
+  if (/^(?:home|services?|artists?|stylists?|team|staff|contact|book(?:ing)?|hours|about|policies?|faq)$/i.test(name)) return false;
+  return true;
+}
+
+function isPreparedDemoServiceNameUsable(value: string): boolean {
+  const name = value.trim().replace(/\s+/g, ' ');
+  if (!name || name.length > 120) return false;
+  if (hasPreparedDemoErrorText(name)) return false;
+  if (/^(?:home|contact|book(?: now)?|online booking|appointment|schedule|previous|next|previousnext)$/i.test(name)) return false;
+  return /[A-Za-z]/.test(name);
+}
+
 export function registerDemoRoutes(app: Hono, path: (route: string) => string, deps: DemoDeps): void {
   app.post(path('/public/demo/request'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_outbound_disabled');
@@ -1183,6 +1206,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
     let importedServices: NonNullable<SalesPreparedDemoConfig['services']> = [];
     let importedStaff: string[] = [];
     let importedLogoUrl: string | null = null;
+    let importedAddress: string | null = null;
     if (p.websiteUrl && getEnv().WEBSITE_IMPORT_ENABLED) {
       try {
         const env = getEnv();
@@ -1200,15 +1224,22 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
             deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
           }),
         );
-        importedServices = (result.suggestions.serviceCatalog.services ?? []).slice(0, 40).map((s) => ({
-          category: s.categoryName,
-          name: s.name,
-          price: s.priceAmount ?? null,
-          duration: s.durationText ?? null,
-          variants: toPreparedDemoServiceVariants(s.variants),
-        }));
-        importedStaff = (result.suggestions.staffSuggestions ?? []).slice(0, 8).map((s) => s.name).filter(Boolean);
+        importedServices = (result.suggestions.serviceCatalog.services ?? [])
+          .filter((s) => isPreparedDemoServiceNameUsable(s.name))
+          .slice(0, 40)
+          .map((s) => ({
+            category: s.categoryName,
+            name: s.name,
+            price: s.priceAmount ?? null,
+            duration: s.durationText ?? null,
+            variants: toPreparedDemoServiceVariants(s.variants),
+          }));
+        importedStaff = (result.suggestions.staffSuggestions ?? [])
+          .map((s) => s.name)
+          .filter(isPreparedDemoStaffNameUsable)
+          .slice(0, 8);
         importedLogoUrl = result.logoUrl ?? null;
+        importedAddress = result.suggestions.businessProfile.address?.value?.trim() || null;
       } catch (err) {
         logger.warn({ err }, 'sales_demo_context_import_failed');
       }
@@ -1219,6 +1250,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       importedServices.length > 0 ? importedServices : p.services.map((name) => ({ category: verticalLabel, name }));
     const staffNames = importedStaff.length > 0 ? importedStaff : p.staffNames;
     const logoUrl = importedLogoUrl ?? await fetchSalonLogo(p.websiteUrl ?? null, p.instagramUrl ?? null);
+    const address = p.address.trim() || importedAddress;
 
     const demoConfig: SalesPreparedDemoConfig = {
       services,
@@ -1254,6 +1286,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       slug,
       vertical: p.demoVertical,
       businessName: p.salonName,
+      address,
       city: p.city || null,
       state: p.state || null,
       websiteUrl: p.websiteUrl ?? null,
@@ -1292,6 +1325,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         slug: demo.slug,
         vertical: demo.vertical,
         businessName: demo.businessName,
+        address: demo.address,
         city: demo.city,
         logoUrl: demo.logoUrl ?? null,
         services: (demo.demoConfig.services ?? []).map((s) => s.name).filter(Boolean),
