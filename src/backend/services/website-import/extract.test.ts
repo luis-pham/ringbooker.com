@@ -718,6 +718,31 @@ test('extracts secondary Business Knowledge suggestions from deterministic websi
   assert.equal(JSON.stringify(suggestions).includes('<script>'), false);
 });
 
+test('extracts card, fee, gift card and return policies from headings', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h1>Salon Policies</h1>
+      <h2>CANCEL / NO-SHOW POLICY</h2>
+      <p>Canceling with less than 24 hours notice will result in a 50% cancellation fee. All no-shows will be charged 100%.</p>
+      <h2>CARD ON FILE</h2>
+      <p>To reserve your appointment, we require a credit card on file. We use your card only to hold your reservation.</p>
+      <h2>SERVICE CHARGE</h2>
+      <p>A 3% fee will be applied to cover processing costs associated with credit card payments.</p>
+      <h2>PRODUCT RETURNS</h2>
+      <p>Unopened products may be returned within 30 days with receipt.</p>
+      <h2>GIFT CERTIFICATES</h2>
+      <p>Gift certificates are not redeemable for cash and cannot be replaced if lost.</p>
+    </body></html>
+  `, 'https://avalon.test/about/policies/');
+  const secondary = extractSecondaryKnowledge([preview]);
+  const byTitle = new Map(secondary.policySuggestions.map((item) => [item.title, item]));
+  assert.equal(byTitle.get('CANCEL / NO-SHOW POLICY')?.type, 'cancellation');
+  assert.equal(byTitle.get('CARD ON FILE')?.type, 'deposit');
+  assert.equal(byTitle.get('SERVICE CHARGE')?.type, 'other');
+  assert.equal(byTitle.get('PRODUCT RETURNS')?.type, 'refund');
+  assert.equal(byTitle.get('GIFT CERTIFICATES')?.type, 'other');
+});
+
 test('extracts artist page staff names and bio snippets from heading cards', () => {
   const preview = previewHtml(`
     <html>

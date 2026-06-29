@@ -1722,12 +1722,12 @@ function detectBookingPlatform(url: string): BookingSetupSuggestion['platform'] 
 
 function classifyPolicyHeading(heading: string): PolicySuggestion['type'] {
   const lower = heading.toLowerCase();
-  if (/cancell/.test(lower)) return 'cancellation';
+  if (/cancel|cancell/.test(lower)) return 'cancellation';
   if (/no.?show|missed\s+appointment/.test(lower)) return 'no_show';
-  if (/deposit|booking\s+fee|retainer/.test(lower)) return 'deposit';
+  if (/deposit|booking\s+fee|retainer|card\s+on\s+file|credit\s+card|required\s+to\s+reserve/.test(lower)) return 'deposit';
   if (/late\s+arrival|late\s+fee|tardy/.test(lower)) return 'late_arrival';
   if (/walk.?in/.test(lower)) return 'walk_ins';
-  if (/refund|return\s+policy/.test(lower)) return 'refund';
+  if (/refund|returns?|return\s+policy|guarantee|redo/.test(lower)) return 'refund';
   if (/aftercare|before\s+your|appointment\s+prep|preparation/.test(lower)) return 'appointment_prep';
   if (/consultation\s+(?:required|policy)/.test(lower)) return 'consultation';
   return 'other';
@@ -1929,11 +1929,14 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
       ['cancellation', /\b(cancellation\s+policy|cancellations?)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Cancellation policy'],
       ['no_show', /\b(no-show|no\s+show|missed\s+appointment)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'No-show policy'],
       ['deposit', /\b(deposit|booking\s+fee|retainer)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Deposit policy'],
+      ['deposit', /\b(card\s+on\s+file|credit\s+card\s+(?:required|on file|required to reserve)|required\s+to\s+reserve)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Card on file'],
       ['late_arrival', /\b(late\s+arrival|late\s+fee)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Late arrival policy'],
       ['walk_ins', /\b(walk-ins?|walk\s+ins?|walk-in\s+policy)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Walk-ins'],
-      ['refund', /\b(refund\s+policy|refunds?)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Refund policy'],
+      ['refund', /\b(refund\s+policy|refunds?|product\s+returns?|returns?|service\s+guarantee|redo\s+policy)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Refund policy'],
       ['appointment_prep', /\b(appointment\s+prep(?:aration)?|aftercare|before\s+your\s+appointment)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Appointment preparation'],
       ['consultation', /\b(consultation\s+required|consultation\s+policy)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Consultation'],
+      ['other', /\b(service\s+charge|processing\s+fee|payment\s+fee|promotion\s+restrictions?)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Additional policy'],
+      ['other', /\bgift\s+(?:cards?|certificates?)\b(?=[^\n]{0,220}\b(?:non-refundable|redeemable|cash|restrictions?|same\s+day|lost|expir(?:e|ation)|cannot|can't)\b)(?:[^\n]|\n(?!\n)){20,600}/gi, 'Gift cards'],
     ];
     for (const [type, pattern, title] of policyTypePatterns) {
       if (headingCapturedPolicyTypes.has(type)) continue;

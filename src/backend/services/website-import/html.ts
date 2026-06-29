@@ -933,7 +933,7 @@ function structuredStaffText($: cheerio.CheerioAPI, url = ''): string {
 function extractPolicyBlocks($: cheerio.CheerioAPI): Array<{ heading: string; content: string }> {
   const blocks: Array<{ heading: string; content: string }> = [];
   const seen = new Set<string>();
-  const policyHeadingRe = /\b(cancell|no.?show|missed\s+appointment|deposit|booking\s+fee|late\s+arrival|walk.?in|refund|aftercare|before\s+your\s+appointment|appointment\s+prep|consultation\s+(?:required|policy)|our\s+polic|important\s+(?:info|notice)|please\s+(?:note|read)|etiquette|terms\s+(?:of|and|&))\b/i;
+  const policyHeadingRe = /\b(cancell|no.?show|missed\s+appointment|deposit|booking\s+fee|late\s+arrival|walk.?in|refund|returns?|aftercare|before\s+your\s+appointment|appointment\s+prep|consultation\s+(?:required|policy)|our\s+polic|important\s+(?:info|notice)|please\s+(?:note|read)|etiquette|terms\s+(?:of|and|&)|card\s+on\s+file|credit\s+card|payment|processing\s+fee|service\s+charge|gift\s+(?:card|certificate)s?|guarantee|redo)\b/i;
   $('h2,h3,h4,h5').each((_, headingEl) => {
     const headingText = cleanBlockText($(headingEl).text());
     if (!headingText || headingText.length < 3 || headingText.length > 120) return;

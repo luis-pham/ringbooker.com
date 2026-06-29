@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { importWebsiteForOnboarding } from './importer';
+import { detectLowPolicyCoverage, importWebsiteForOnboarding } from './importer';
+import { mergePolicyRetryIntoSuggestions } from './merge';
 import { buildLlmImportPayload, parseLlmImportJson } from './llm';
 import { previewHtml } from './html';
+import type { ImportSuggestions, PolicySuggestion } from './types';
 
 function response(body: string, url: string, type = 'text/html') {
   return new Response(body, { status: 200, headers: { 'content-type': type } }) as Response & { url: string };
@@ -14,6 +16,103 @@ function responseWithStatus(body: string, url: string, status: number, type = 't
 }
 
 const lookup = async () => [{ address: '93.184.216.34', family: 4 }];
+
+function importField<T>(value: T | null, confidence = value === null ? 0 : 0.8, source = value === null ? null : 'Website') {
+  return { value, confidence, source };
+}
+
+function policy(type: PolicySuggestion['type'], title: string, content: string, extra: Partial<PolicySuggestion> = {}): PolicySuggestion {
+  return { type, title, content, source: 'website', confidence: 0.75, ...extra };
+}
+
+function minimalImportSuggestions(overrides: Partial<ImportSuggestions> = {}): ImportSuggestions {
+  const base: ImportSuggestions = {
+    status: 'success',
+    sourceUrl: 'https://policy-retry.test',
+    sourceType: 'normal_website',
+    businessProfile: {
+      name: importField('Policy Retry Salon'),
+      primaryType: importField(null),
+      phone: importField(null),
+      website: importField('https://policy-retry.test'),
+      address: importField(null),
+      timezone: importField(null),
+    },
+    hours: importField(null),
+    serviceCatalog: { confidence: 0, source: null, categories: [], services: [] },
+    alsoOffers: [],
+    bookingUrl: importField(null),
+    languages: [],
+    staffSuggestions: [],
+    policySuggestions: [],
+    faqSuggestions: [],
+    promotionSuggestions: [],
+    bookingSetupSuggestions: [],
+    warnings: [],
+    country: null,
+  };
+  return { ...base, ...overrides };
+}
+
+test('policy retry detector triggers on low policy count with policy-related pages', () => {
+  const detected = detectLowPolicyCoverage({
+    suggestions: minimalImportSuggestions({ policySuggestions: [policy('cancellation', 'Cancellation policy', 'Cancel 24 hours ahead.')] }),
+    selectedPages: [{ url: 'https://policy-retry.test/policies', title: 'Salon Policies', bucket: 'policies', markdownLength: 1200, visibleTextLength: 1200 }],
+    discoveredUrls: [],
+    warnings: [],
+    minPolicyCount: 3,
+  });
+  assert.equal(detected.shouldRetryPolicies, true);
+  assert.equal(detected.policiesCount, 1);
+  assert.equal(detected.policyPageCount, 1);
+});
+
+test('policy retry detector does not trigger without policy-related pages', () => {
+  const detected = detectLowPolicyCoverage({
+    suggestions: minimalImportSuggestions({ policySuggestions: [] }),
+    selectedPages: [{ url: 'https://neutral-salon.test/about', title: 'About Us', bucket: 'about_team', markdownLength: 1200, visibleTextLength: 1200 }],
+    discoveredUrls: ['https://neutral-salon.test/about'],
+    warnings: [],
+    minPolicyCount: 3,
+  });
+  assert.equal(detected.shouldRetryPolicies, false);
+  assert.equal(detected.policyPageCount, 0);
+});
+
+test('policy retry merge dedupes the same cancellation policy and prefers richer retry content', () => {
+  const suggestions = minimalImportSuggestions({
+    policySuggestions: [
+      policy('cancellation', 'Cancellation Policy', 'Cancel 24 hours ahead.', { confidence: 0.7, evidenceSnippet: 'Cancel 24 hours ahead.' }),
+    ],
+  });
+  const merged = mergePolicyRetryIntoSuggestions(suggestions, {
+    policySuggestions: [
+      policy('cancellation', 'Cancellation Policy', 'Please cancel at least 24 hours before your appointment to avoid a fee.', { source: 'llm', confidence: 0.9, sourceUrl: 'https://policy-retry.test/policies', evidenceSnippet: 'Please cancel at least 24 hours before your appointment' }),
+      policy('deposit', 'Credit card required', 'A credit card is required to reserve appointments.', { source: 'llm', confidence: 0.88, sourceUrl: 'https://policy-retry.test/policies' }),
+    ],
+    warnings: [],
+  });
+  assert.equal(merged.policySuggestions.length, 2);
+  assert.match(merged.policySuggestions.find((item) => item.type === 'cancellation')?.content ?? '', /avoid a fee/i);
+  assert.ok(merged.warnings.includes('Policy suggestions were improved using policy-page retry.'));
+});
+
+test('policy retry merge keeps distinct policy types', () => {
+  const suggestions = minimalImportSuggestions();
+  const merged = mergePolicyRetryIntoSuggestions(suggestions, {
+    policySuggestions: [
+      policy('cancellation', 'Cancellation', 'Same-day cancellations may be charged.', { source: 'llm' }),
+      policy('no_show', 'No-show', 'No-shows may be charged.', { source: 'llm' }),
+      policy('deposit', 'Deposit', 'A deposit may be required.', { source: 'llm' }),
+      policy('refund', 'Product returns', 'Products may be returned unopened.', { source: 'llm' }),
+      policy('consultation', 'Consultation required', 'Some color services require consultation.', { source: 'llm' }),
+      policy('other', 'Gift cards', 'Gift cards are not redeemable for cash.', { source: 'llm' }),
+    ],
+    warnings: [],
+  });
+  assert.deepEqual(new Set(merged.policySuggestions.map((item) => item.type)), new Set(['cancellation', 'no_show', 'deposit', 'refund', 'consultation', 'other']));
+  assert.equal(merged.policySuggestions.length, 6);
+});
 
 test('normal website import discovers service hub and child service pages', async () => {
   const html: Record<string, string> = {
@@ -508,6 +607,103 @@ test('LLM success merges grouped services and starts-at prices', async () => {
   assert.equal(result.suggestions.bookingSetupSuggestions[0]?.platform, 'vagaro');
   assert.equal(result.diagnostics.fallbackUsed.includes('llm'), true);
   assert.equal(JSON.stringify(result.suggestions).includes('openai-test'), false);
+});
+
+test('service-only retry improves low service coverage without changing the main import flow', async () => {
+  const fullImportPayload = {
+    businessProfile: { name: { value: 'Retry Salon', confidence: 0.85, sourceEvidence: ['h1'] } },
+    serviceCatalog: {
+      confidence: 0.9,
+      categories: [{ name: 'Haircuts', confidence: 0.9, groupKind: 'primary' }],
+      services: [
+        { categoryName: 'Haircuts', name: 'Haircut & Style', priceAmount: null, priceCurrency: 'USD', priceType: 'varies', aliases: [], bookable: true, confidence: 0.9, sourceEvidence: ['services page summary'] },
+      ],
+    },
+    warnings: ['Only 1 services extracted despite multiple service pages found.'],
+  };
+  const serviceRetryPayload = {
+    serviceCatalog: {
+      confidence: 0.95,
+      categories: [{ name: 'Cut & Style', confidence: 0.95, groupKind: 'primary' }],
+      services: [
+        { categoryName: 'Cut & Style', name: 'Blow-Dry Style', priceAmount: 50, priceCurrency: 'USD', priceType: 'from', aliases: [], bookable: true, confidence: 0.95, sourceEvidence: ['Source: https://retry.test/services - Blow-Dry Style $50+'] },
+        { categoryName: 'Cut & Style', name: "Children's Cut", priceAmount: 35, priceCurrency: 'USD', priceType: 'from', aliases: [], bookable: true, confidence: 0.95, sourceEvidence: ["Source: https://retry.test/services - Children's Cut $35+"] },
+        { categoryName: 'Cut & Style', name: 'Clipper Cut', priceAmount: 45, priceCurrency: 'USD', priceType: 'from', aliases: [], bookable: true, confidence: 0.95, sourceEvidence: ['Source: https://retry.test/services - Clipper Cut $45+'] },
+        { categoryName: 'Cut & Style', name: 'Scissor Cut', priceAmount: 50, priceCurrency: 'USD', priceType: 'from', aliases: [], bookable: true, confidence: 0.95, sourceEvidence: ['Source: https://retry.test/services - Scissor Cut $50+'] },
+        { categoryName: 'Cut & Style', name: 'Special Occasion Style', priceAmount: 65, priceCurrency: 'USD', priceType: 'from', aliases: [], bookable: true, confidence: 0.95, sourceEvidence: ['Source: https://retry.test/services - Special Occasion Style $65+'] },
+      ],
+    },
+    warnings: [],
+  };
+  const serviceRows = '<ul><li>Blow-Dry Style $50+</li><li>Children&apos;s Cut $35+</li><li>Clipper Cut $45+</li></ul>';
+  const filler = '<p>Our service menu includes detailed pricing for salon guests.</p>'.repeat(20);
+  let openAiCalls = 0;
+  const result = await importWebsiteForOnboarding({ url: 'https://retry.test' }, {
+    lookup,
+    llmEnabled: true,
+    openAiApiKey: 'openai-test',
+    serviceRetryEnabled: true,
+    fetcher: async (url) => {
+      if (url.includes('api.openai.com')) {
+        openAiCalls += 1;
+        const payload = openAiCalls === 1 ? fullImportPayload : serviceRetryPayload;
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://retry.test/services') return response(`<h1>Services</h1><h2>Cut & Style</h2>${serviceRows}${filler}`, url);
+      return response(url.endsWith('/robots.txt') ? '' : '<h1>Retry Salon</h1><a href="/services">Services</a>', url);
+    },
+  });
+  const serviceNames = result.suggestions.serviceCatalog.services.map((service) => service.name);
+  assert.equal(openAiCalls, 2);
+  assert.ok(result.diagnostics.serviceRetry?.triggered);
+  assert.ok(result.diagnostics.serviceRetry?.improved);
+  assert.ok(result.diagnostics.fallbackUsed.includes('service_retry'));
+  assert.ok(serviceNames.includes('Blow-Dry Style'));
+  assert.ok(serviceNames.includes("Children's Cut"));
+  assert.ok(serviceNames.includes('Clipper Cut'));
+  assert.ok(result.suggestions.warnings.includes('Service catalog was improved using service-page retry.'));
+});
+
+test('policy retry failure keeps original policies and appends a warning', async () => {
+  const fullImportPayload = {
+    businessProfile: { name: { value: 'Policy Flow Salon', confidence: 0.85, sourceEvidence: ['h1'] } },
+    serviceCatalog: { confidence: 0, categories: [], services: [] },
+    policySuggestions: [
+      { type: 'cancellation', title: 'Cancellation policy', content: 'Please cancel 24 hours ahead.', confidence: 0.8, evidenceSnippet: 'cancel 24 hours' },
+    ],
+    warnings: [],
+  };
+  let openAiCalls = 0;
+  const result = await importWebsiteForOnboarding({ url: 'https://policy-flow.test' }, {
+    lookup,
+    llmEnabled: true,
+    openAiApiKey: 'openai-test',
+    policyRetryEnabled: true,
+    policyRetryModel: 'gpt-4.1-mini',
+    policyRetryFallbackModel: 'gpt-4.1-mini',
+    policyRetryMinPolicyCount: 3,
+    fetcher: async (url) => {
+      if (url.includes('api.openai.com')) {
+        openAiCalls += 1;
+        const content = openAiCalls === 1
+          ? JSON.stringify(fullImportPayload)
+          : 'not-json';
+        return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.endsWith('/robots.txt')) return response('Sitemap: https://policy-flow.test/sitemap.xml', url, 'text/plain');
+      if (url.endsWith('/sitemap.xml')) return response('<urlset><url><loc>https://policy-flow.test/policies</loc></url></urlset>', url, 'application/xml');
+      if (url.endsWith('/policies')) {
+        return response('<h1>Salon Policies</h1><p>Booking information for guests.</p>'.padEnd(900, ' Please review before booking.'), url);
+      }
+      return response('<h1>Policy Flow Salon</h1><a href="/policies">Policies</a>', url);
+    },
+  });
+  assert.equal(openAiCalls, 2);
+  assert.equal(result.suggestions.policySuggestions.length, 1);
+  assert.equal(result.suggestions.policySuggestions[0]?.type, 'cancellation');
+  assert.ok(result.diagnostics.policyRetry?.triggered);
+  assert.equal(result.diagnostics.policyRetry?.improved, false);
+  assert.ok(result.suggestions.warnings.includes('Policy retry failed validation; original policySuggestions retained.'));
 });
 
 test('merge cleans LLM service names that include bullet descriptions and duration', async () => {

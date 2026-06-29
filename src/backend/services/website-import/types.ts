@@ -259,6 +259,27 @@ export type ImportDiagnostics = {
   confidenceSummary: Record<string, number>;
   warnings: string[];
   fallbackUsed: string[];
+  serviceRetry?: {
+    enabled: boolean;
+    triggered: boolean;
+    reasons: string[];
+    pagesCount: number;
+    pageUrls: string[];
+    servicesBefore: number;
+    servicesAfter: number;
+    improved: boolean;
+  };
+  policyRetry?: {
+    enabled: boolean;
+    triggered: boolean;
+    reasons: string[];
+    pagesCount: number;
+    pageUrls: string[];
+    policiesBefore: number;
+    policiesAfter: number;
+    improved: boolean;
+    fallbackUsed: boolean;
+  };
 };
 
 export type WebsiteImportResult = {

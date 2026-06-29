@@ -293,6 +293,229 @@ function dedupeSuggestions<T>(items: T[], keyFn: (item: T) => string, max = 40):
 function dedupeLlmFirstSuggestions<T>(staticItems: T[] | undefined, llmItems: T[] | undefined, keyFn: (item: T) => string, max = 40): T[] {
   return dedupeSuggestions([...(llmItems ?? []), ...(staticItems ?? [])], keyFn, max);
 }
+
+function serviceNamePriceTypeKey(service: ImportedServiceSuggestion): string {
+  return [
+    normalizeServiceNameKey(service.name),
+    service.priceAmount ?? 'null',
+    service.priceType ?? 'fixed',
+  ].join(':');
+}
+
+function mergeRetryAliases(a?: string[], b?: string[]): string[] {
+  return [...new Set([...(a ?? []), ...(b ?? [])].map((item) => item.trim()).filter(Boolean))].slice(0, 12);
+}
+
+function mergeRetryEvidence(a?: string | null, b?: string | null): string | null {
+  const parts = [a, b].map((item) => item?.trim()).filter((item): item is string => Boolean(item));
+  return parts.length ? [...new Set(parts)].join(' • ').slice(0, 220) : null;
+}
+
+function mergeRetryServiceRecord(current: ImportedServiceSuggestion, service: ImportedServiceSuggestion): ImportedServiceSuggestion {
+  const incomingWins = (service.confidence ?? 0) >= (current.confidence ?? 0);
+  const base = incomingWins ? service : current;
+  const other = incomingWins ? current : service;
+  const merged: ImportedServiceSuggestion = {
+    ...base,
+    categoryName: canonicalServiceGroupName(base.categoryName || other.categoryName),
+    name: base.name.trim() || other.name.trim(),
+    aliases: mergeRetryAliases(base.aliases, other.aliases),
+    variants: mergeServiceVariants(base.variants, other.variants),
+    evidenceSnippet: mergeRetryEvidence(base.evidenceSnippet, other.evidenceSnippet),
+    needsReview: Boolean(base.needsReview || other.needsReview),
+  };
+  if (!merged.description && other.description) merged.description = other.description;
+  if (!merged.durationText && other.durationText) merged.durationText = other.durationText;
+  if (!merged.durationMinutes && other.durationMinutes) merged.durationMinutes = other.durationMinutes;
+  if ((merged.priceAmount === null || merged.priceAmount === undefined) && other.priceAmount !== null && other.priceAmount !== undefined) {
+    merged.priceAmount = other.priceAmount;
+    merged.priceCurrency = other.priceCurrency ?? merged.priceCurrency ?? 'USD';
+    merged.priceType = other.priceType ?? merged.priceType ?? 'fixed';
+  }
+  if (!merged.bookingNotes && other.bookingNotes) merged.bookingNotes = other.bookingNotes;
+  return merged;
+}
+
+function dedupeServiceRetryServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
+  const byKey = new Map<string, ImportedServiceSuggestion>();
+  for (const rawService of services) {
+    const service = splitMergedServiceName(rawService);
+    const name = service.name?.trim();
+    if (!name || isInvalidMergedServiceName(name)) continue;
+    const categoryName = canonicalServiceGroupName(service.categoryName);
+    const key = serviceNamePriceTypeKey({ ...service, name });
+    if (!key || key.startsWith(':')) continue;
+    const normalized = { ...service, categoryName, name, variants: normalizeServiceVariantsForMerge(service.variants) };
+    const current = byKey.get(key);
+    byKey.set(key, current ? mergeRetryServiceRecord(current, normalized) : normalized);
+  }
+  return [...byKey.values()].slice(0, 80);
+}
+
+function mergeServiceRetryCategories(
+  existing: ImportSuggestions['serviceCatalog']['categories'],
+  retry: ImportSuggestions['serviceCatalog']['categories'],
+  services: ImportedServiceSuggestion[],
+): ImportSuggestions['serviceCatalog']['categories'] {
+  const byKey = new Map<string, ImportSuggestions['serviceCatalog']['categories'][number]>();
+  for (const category of [...existing, ...retry]) {
+    const name = canonicalServiceGroupName(category.name);
+    if (!name.trim()) continue;
+    const key = name.toLowerCase();
+    const normalized = { ...category, name, source: category.source || 'Service catalog' };
+    const current = byKey.get(key);
+    if (!current || normalized.confidence > current.confidence) byKey.set(key, normalized);
+  }
+  for (const service of services) {
+    const name = canonicalServiceGroupName(service.categoryName);
+    const key = name.toLowerCase();
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        name,
+        source: service.source || 'Service retry',
+        confidence: Math.max(0.7, service.confidence ?? 0.7),
+        groupKind: name === 'General Services' ? 'custom' : 'primary',
+      });
+    }
+  }
+  return [...byKey.values()];
+}
+
+function firstPlainHttpUrl(value?: string | null): string | null {
+  if (!value || /\[[^\]]+]\(https?:\/\//i.test(value)) return null;
+  const match = value.match(/https?:\/\/[^\s<>"')\]]+/i);
+  if (!match?.[0]) return null;
+  return match[0].replace(/[.,;:]+$/g, '');
+}
+
+export function normalizeImportSuggestionsForReview(suggestions: ImportSuggestions): ImportSuggestions {
+  let bookingUrl = suggestions.bookingUrl;
+  if (!bookingUrl.value) {
+    const candidate = suggestions.bookingSetupSuggestions
+      .filter((item) => ['booking_link', 'provider_booking', 'booking_platform'].includes(item.type))
+      .map((item) => firstPlainHttpUrl(item.value) ?? firstPlainHttpUrl(item.sourceUrl))
+      .find((url): url is string => Boolean(url));
+    if (candidate) bookingUrl = field(candidate, 0.82, 'Booking setup suggestion');
+  }
+  const base: Omit<ImportSuggestions, 'completeness'> = {
+    ...suggestions,
+    bookingUrl,
+    warnings: [...new Set(suggestions.warnings)].slice(0, 20),
+  };
+  return { ...base, completeness: computeCompleteness(base) };
+}
+
+export function mergeServiceRetryIntoSuggestions(
+  suggestions: ImportSuggestions,
+  retryResult: {
+    serviceCatalog: ImportSuggestions['serviceCatalog'];
+    warnings: string[];
+  },
+): ImportSuggestions {
+  const existingServices = suggestions.serviceCatalog.services;
+  const retryServices = retryResult.serviceCatalog.services ?? [];
+  if (retryServices.length <= existingServices.length) return normalizeImportSuggestionsForReview(suggestions);
+
+  const services = dedupeServiceRetryServices([...existingServices, ...retryServices]);
+  const categories = mergeServiceRetryCategories(
+    suggestions.serviceCatalog.categories,
+    retryResult.serviceCatalog.categories ?? [],
+    services,
+  );
+  const serviceConfidence = services.length >= 3
+    ? Math.max(suggestions.serviceCatalog.confidence, retryResult.serviceCatalog.confidence, 0.78)
+    : Math.max(suggestions.serviceCatalog.confidence, retryResult.serviceCatalog.confidence);
+  const base: Omit<ImportSuggestions, 'completeness'> = {
+    ...suggestions,
+    serviceCatalog: {
+      confidence: serviceConfidence,
+      source: retryResult.serviceCatalog.source ?? suggestions.serviceCatalog.source ?? 'AI service retry',
+      categories,
+      services,
+    },
+    alsoOffers: categories.map((category) => field(category.name, Math.max(0.7, category.confidence), 'Service catalog')),
+    warnings: [
+      ...suggestions.warnings,
+      ...retryResult.warnings.map((warning) => `Service retry: ${warning}`),
+      'Service catalog was improved using service-page retry.',
+    ].filter((warning, index, all) => all.indexOf(warning) === index).slice(0, 20),
+  };
+  return normalizeImportSuggestionsForReview({ ...base, completeness: computeCompleteness(base) });
+}
+
+function normalizedPolicyKey(policy: PolicySuggestion): string {
+  const title = normalizeText(policy.title);
+  if (title) return `${policy.type}:title:${title}`;
+  return `${policy.type}:content:${normalizeText(policy.content).slice(0, 80)}`;
+}
+
+function mergePolicyEvidence(a?: string, b?: string): string | undefined {
+  const parts = [a, b].map((item) => item?.trim()).filter((item): item is string => Boolean(item));
+  return parts.length ? [...new Set(parts)].join(' • ').slice(0, 240) : undefined;
+}
+
+function mergePolicyRecord(current: PolicySuggestion, incoming: PolicySuggestion): PolicySuggestion {
+  const incomingMoreUseful = incoming.content.length > current.content.length || incoming.confidence > current.confidence;
+  const base = incomingMoreUseful ? incoming : current;
+  const other = incomingMoreUseful ? current : incoming;
+  return {
+    ...base,
+    sourceUrl: base.sourceUrl ?? other.sourceUrl,
+    evidenceSnippet: mergePolicyEvidence(base.evidenceSnippet, other.evidenceSnippet),
+    confidence: Math.max(base.confidence, other.confidence),
+  };
+}
+
+function policyRelatedText(value?: string | null): boolean {
+  return /\b(policy|polic(?:y|ies)|cancell?ation|cancel|no[-\s]?show|deposit|refund|return|late|arrival|walk[-\s]?ins?|appointment|booking|book|faq|terms|gift\s*card|gift\s*certificate|guarantee|redo|credit\s*card|payment|fee|consultation|privacy|etiquette|prep|prepare|call\s+to\s+book|not\s+bookable)\b/i.test(value ?? '');
+}
+
+function mergePolicyRetryFaqs(existing: FaqSuggestion[], retry: FaqSuggestion[] | undefined): FaqSuggestion[] {
+  const relatedRetry = (retry ?? []).filter((item) => policyRelatedText(`${item.question} ${item.answer}`));
+  return dedupeSuggestions([...existing, ...relatedRetry], (item) => item.question, 40);
+}
+
+function mergePolicyRetryBookingSetup(existing: BookingSetupSuggestion[], retry: BookingSetupSuggestion[] | undefined): BookingSetupSuggestion[] {
+  const allowed = new Set<BookingSetupSuggestion['type']>(['consultation_required', 'call_to_book', 'booking_link', 'provider_booking']);
+  const relatedRetry = (retry ?? []).filter((item) => allowed.has(item.type) && policyRelatedText(`${item.label} ${item.value ?? ''}`));
+  return dedupeSuggestions([...existing, ...relatedRetry], (item) => `${item.type}:${item.value ?? item.label}`, 20);
+}
+
+export function mergePolicyRetryIntoSuggestions(
+  suggestions: ImportSuggestions,
+  retryResult: {
+    policySuggestions: PolicySuggestion[];
+    faqSuggestions?: FaqSuggestion[];
+    bookingSetupSuggestions?: BookingSetupSuggestion[];
+    warnings: string[];
+  },
+): ImportSuggestions {
+  const existingPolicies = suggestions.policySuggestions;
+  const retryPolicies = retryResult.policySuggestions ?? [];
+  if (retryPolicies.length <= existingPolicies.length) return normalizeImportSuggestionsForReview(suggestions);
+
+  const byKey = new Map<string, PolicySuggestion>();
+  for (const policy of [...existingPolicies, ...retryPolicies]) {
+    const key = normalizedPolicyKey(policy);
+    const current = byKey.get(key);
+    byKey.set(key, current ? mergePolicyRecord(current, policy) : policy);
+  }
+  const policySuggestions = [...byKey.values()].slice(0, 25);
+  if (policySuggestions.length <= existingPolicies.length) return normalizeImportSuggestionsForReview(suggestions);
+
+  const base: Omit<ImportSuggestions, 'completeness'> = {
+    ...suggestions,
+    policySuggestions,
+    faqSuggestions: mergePolicyRetryFaqs(suggestions.faqSuggestions, retryResult.faqSuggestions),
+    bookingSetupSuggestions: mergePolicyRetryBookingSetup(suggestions.bookingSetupSuggestions, retryResult.bookingSetupSuggestions),
+    warnings: [
+      ...suggestions.warnings,
+      ...retryResult.warnings.map((warning) => `Policy retry: ${warning}`),
+      'Policy suggestions were improved using policy-page retry.',
+    ].filter((warning, index, all) => all.indexOf(warning) === index).slice(0, 20),
+  };
+  return normalizeImportSuggestionsForReview({ ...base, completeness: computeCompleteness(base) });
+}
 /**
  * A real service name is a short noun phrase. The free-text static extractor sometimes lifts
  * marketing/promo sentences off a page (e.g. referral copy) which read as prose, not services.

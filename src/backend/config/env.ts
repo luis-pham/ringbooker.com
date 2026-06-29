@@ -47,10 +47,36 @@ function createValidatedEnv() {
       WEBSITE_IMPORT_LLM_MODEL: optionalNonEmptyStringEnv,
       WEBSITE_IMPORT_LLM_MAX_TOKENS: optionalPositiveIntEnv,
       // Cross-IP daily cap on website-import LLM extraction calls (cost guardrail).
-      // Each import makes at most one LLM call; when the cap is hit, imports still
-      // succeed using static + Google Places extraction, just without LLM enrichment.
+      // A service-only retry may consume one additional LLM call when explicitly enabled.
+      // When the cap is hit, imports still succeed using static + Google Places extraction.
       WEBSITE_IMPORT_LLM_GLOBAL_DAILY_LIMIT: z.coerce.number().int().positive().default(500),
       WEBSITE_IMPORT_LLM_GLOBAL_WINDOW_SECONDS: z.coerce.number().int().positive().default(86_400),
+      WEBSITE_IMPORT_SERVICE_RETRY_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+      WEBSITE_IMPORT_SERVICE_RETRY_MODEL: optionalNonEmptyStringEnv,
+      WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL: z.string().min(1).default('gpt-5.4-mini'),
+      WEBSITE_IMPORT_SERVICE_RETRY_MAX_PAGES: z.coerce.number().int().min(1).max(24).default(12),
+      WEBSITE_IMPORT_SERVICE_RETRY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
+      WEBSITE_IMPORT_SERVICE_RETRY_MIN_SERVICE_COUNT: z.coerce.number().int().min(1).max(80).default(15),
+      WEBSITE_IMPORT_POLICY_RETRY_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+      WEBSITE_IMPORT_POLICY_RETRY_MODEL: optionalNonEmptyStringEnv,
+      WEBSITE_IMPORT_POLICY_RETRY_FALLBACK_MODEL: z.string().min(1).default('gpt-5.4-mini'),
+      WEBSITE_IMPORT_POLICY_RETRY_MAX_PAGES: z.coerce.number().int().min(1).max(16).default(8),
+      WEBSITE_IMPORT_POLICY_RETRY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
+      WEBSITE_IMPORT_POLICY_RETRY_MIN_POLICY_COUNT: z.coerce.number().int().min(1).max(25).default(3),
+      WEBSITE_IMPORT_DEBUG_LOG: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+      WEBSITE_IMPORT_DEBUG_SAVE_TEXT: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
       WEBSITE_IMPORT_MAX_BYTES: z.coerce.number().int().min(100_000).max(5_000_000).default(1_500_000),
       WEBSITE_IMPORT_RENDER_URL: optionalNonEmptyStringEnv,
       WEBSITE_IMPORT_RENDER_API_KEY: optionalNonEmptyStringEnv,
