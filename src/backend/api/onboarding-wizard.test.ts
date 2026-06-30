@@ -275,7 +275,7 @@ test('onboarding copy keeps website import review-only and isolates legacy read-
   assert.doesNotMatch(onboardingLive, /We'll save this link today/);
   assert.match(onboardingLive, /No website\? Fill in manually/);
   assert.match(onboardingLive, /Set up manually instead/);
-  assert.match(onboardingLive, /You’ll review and edit everything before saving/);
+  assert.match(onboardingLive, /You’ll review everything before saving/);
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml/);
   assert.doesNotMatch(onboardingLive, /I&apos;ll enter details manually/);
   assert.doesNotMatch(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);

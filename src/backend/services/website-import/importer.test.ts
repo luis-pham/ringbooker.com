@@ -94,7 +94,27 @@ test('policy retry merge dedupes the same cancellation policy and prefers richer
   });
   assert.equal(merged.policySuggestions.length, 2);
   assert.match(merged.policySuggestions.find((item) => item.type === 'cancellation')?.content ?? '', /avoid a fee/i);
-  assert.ok(merged.warnings.includes('Policy suggestions were improved using policy-page retry.'));
+  // Internal "improved using retry" plumbing must not leak into the user-facing review warnings.
+  assert.ok(!merged.warnings.includes('Policy suggestions were improved using policy-page retry.'));
+});
+
+test('policy retry does not duplicate a base warning echoed back by the retry model', () => {
+  const hoursWarning = 'Google Places hours differ from website hours. Review before saving.';
+  const suggestions = minimalImportSuggestions({
+    policySuggestions: [policy('cancellation', 'Cancellation Policy', 'Cancel 24 hours ahead.', { confidence: 0.7 })],
+    warnings: [hoursWarning],
+  });
+  const merged = mergePolicyRetryIntoSuggestions(suggestions, {
+    policySuggestions: [
+      policy('cancellation', 'Cancellation Policy', 'Please cancel at least 24 hours before your appointment to avoid a fee.', { source: 'llm', confidence: 0.9 }),
+      policy('deposit', 'Credit card required', 'A credit card is required to reserve appointments.', { source: 'llm', confidence: 0.88 }),
+    ],
+    // The retry model echoes the warning it was given as `previousWarnings`.
+    warnings: [hoursWarning],
+  });
+  // Exactly one copy, and never a "Policy retry:"-prefixed duplicate.
+  assert.equal(merged.warnings.filter((w) => w === hoursWarning).length, 1);
+  assert.ok(!merged.warnings.some((w) => /^policy retry:/i.test(w)));
 });
 
 test('policy retry merge keeps distinct policy types', () => {
@@ -661,7 +681,8 @@ test('service-only retry improves low service coverage without changing the main
   assert.ok(serviceNames.includes('Blow-Dry Style'));
   assert.ok(serviceNames.includes("Children's Cut"));
   assert.ok(serviceNames.includes('Clipper Cut'));
-  assert.ok(result.suggestions.warnings.includes('Service catalog was improved using service-page retry.'));
+  // The retry improvement is recorded in diagnostics; the plumbing warning must not reach the user.
+  assert.ok(!result.suggestions.warnings.includes('Service catalog was improved using service-page retry.'));
 });
 
 test('policy retry failure keeps original policies and appends a warning', async () => {

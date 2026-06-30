@@ -166,36 +166,88 @@ function normalizeTime(raw: string, isEnd = false): string | null {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-function applyHoursLine(hours: Record<string, unknown>, line: string): void {
+/** Per-day tally of distinct opening-hours values seen across all parsed lines, with occurrence
+ *  counts so {@link resolveHoursTally} can pick the majority value instead of last-write-wins.
+ *  `specific` marks a value that came from a single-day line ("Saturday 10am-5pm") vs a multi-day
+ *  range ("Mon-Sat 9-7"); `lastOrder` is the position of its latest occurrence for tie-breaking. */
+type HoursCandidate = { value: Record<string, unknown>; count: number; specific: boolean; lastOrder: number };
+type HoursTally = Map<string, Map<string, HoursCandidate>>;
+
+function recordHoursValue(tally: HoursTally, day: string, value: Record<string, unknown>, specific: boolean, order: number): void {
+  const valueKey = 'closed' in value ? 'closed' : `${value.open}-${value.close}`;
+  const dayTally = tally.get(day) ?? new Map<string, HoursCandidate>();
+  const existing = dayTally.get(valueKey);
+  if (existing) {
+    existing.count += 1;
+    existing.lastOrder = order;
+    if (specific) existing.specific = true;
+  } else {
+    dayTally.set(valueKey, { value, count: 1, specific, lastOrder: order });
+  }
+  tally.set(day, dayTally);
+}
+
+function applyHoursLine(tally: HoursTally, line: string, order: number): void {
   const compact = line.replace(/[\u2013\u2014]/g, '-').replace(/\s+/g, ' ').trim();
   const closedPrefix = compact.match(/^(closed)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b/i);
   const closedSuffix = compact.match(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b\s*:?,?\s*(closed)\b/i);
   const closedDay = closedPrefix ? dayKey(closedPrefix[2]) : closedSuffix ? dayKey(closedSuffix[1]) : null;
   if (closedDay) {
-    hours[closedDay] = { closed: true };
+    recordHoursValue(tally, closedDay, { closed: true }, true, order);
     return;
   }
   // Longest day spellings first; the two-letter forms (mo/tu/we/…) match the schema.org
   // openingHours string form. Backtracking handles the prefix overlap (e.g. "mo" vs "monday").
   const dayName = '(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues|tue|thurs|thur|thu|wed|fri|sat|sun|mo|tu|we|th|fr|sa|su)';
   const time = '(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)';
-  const match = compact.match(new RegExp(`^${dayName}(?:\\s*(?:-|to|&|and|,|/)\\s*${dayName})?\\s*:?,?\\s*${time}\\s*(?:-|to)\\s*${time}`, 'i'));
+  // The second day may be joined by a punctuation connector ("Wed-Fri", "Mon to Fri") OR just
+  // whitespace ("Wed Fri") — rendered/markdown footers often lose the dash. The trailing
+  // time-range requirement keeps a bare day list like "Monday Tuesday" (Wix columnar layout)
+  // from being misread as a range here; that path is handled by parseColumnarHoursText instead.
+  const match = compact.match(new RegExp(`^${dayName}(?:(?:\\s*(?:-|to|&|and|,|/)\\s*|\\s+)${dayName})?\\s*:?,?\\s*${time}\\s*(?:-|to)\\s*${time}`, 'i'));
   if (!match) return;
   const start = dayKey(match[1]);
   const end = dayKey(match[2] ?? '');
   const open = normalizeTime(match[3], false);
   const close = normalizeTime(match[4], true);
   if (!start || !open || !close) return;
-  for (const key of expandDays(start, end)) hours[key] = { open, close };
+  // A single-day line ("Saturday 10am-5pm") is a more authoritative override than a multi-day
+  // range ("Mon-Sat 9-7") when their occurrence counts tie.
+  const specific = !end || end === start;
+  for (const key of expandDays(start, end)) recordHoursValue(tally, key, { open, close }, specific, order);
+}
+
+/** Resolve each day to its best value. Footer/header hours repeat on every crawled page, so the
+ *  most-frequent value wins — a single stray/outdated line (e.g. "Tues-Friday 8am-6:30pm" on one
+ *  page) can't override the correct hours the way last-write-wins did. On a count tie, a single-day
+ *  override beats a multi-day range; if still tied, the later occurrence wins (legacy behavior). */
+function resolveHoursTally(tally: HoursTally): Record<string, unknown> {
+  const hours: Record<string, unknown> = {};
+  for (const [day, values] of tally) {
+    let best: HoursCandidate | null = null;
+    for (const candidate of values.values()) {
+      if (!best) { best = candidate; continue; }
+      if (candidate.count !== best.count) { if (candidate.count > best.count) best = candidate; continue; }
+      if (candidate.specific !== best.specific) { if (candidate.specific) best = candidate; continue; }
+      if (candidate.lastOrder > best.lastOrder) best = candidate;
+    }
+    if (best) hours[day] = best.value;
+  }
+  return hours;
 }
 
 function parseHoursText(lines: string[]): Record<string, unknown> | null {
-  const hours: Record<string, unknown> = {};
+  const tally: HoursTally = new Map();
+  let order = 0;
   for (const line of lines) {
     // Split on comma too so the schema.org openingHours string form
     // ("Mo 09:00-16:00, Tu 09:00-18:00, …") yields one entry per day.
-    for (const part of line.split(/(?:\n|;|\||,)/).map((item) => item.trim()).filter(Boolean)) applyHoursLine(hours, part);
+    for (const part of line.split(/(?:\n|;|\||,)/).map((item) => item.trim()).filter(Boolean)) {
+      applyHoursLine(tally, part, order);
+      order += 1;
+    }
   }
+  const hours = resolveHoursTally(tally);
   return Object.keys(hours).length ? hours : null;
 }
 

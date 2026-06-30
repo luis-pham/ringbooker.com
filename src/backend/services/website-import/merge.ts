@@ -405,6 +405,31 @@ export function normalizeImportSuggestionsForReview(suggestions: ImportSuggestio
   return { ...base, completeness: computeCompleteness(base) };
 }
 
+/**
+ * Dedup key for a review warning, ignoring any internal "Service retry:"/"Policy retry:" prefix.
+ * The retry LLM echoes back the `previousWarnings` it was given (e.g. "Google Places hours differ
+ * from website hours. Review before saving."), so without this the same warning surfaces twice on
+ * the review page — once plain, once prefixed. Prefixed echoes are dropped; only genuinely-new
+ * retry warnings survive, unprefixed.
+ */
+function warningDedupKey(warning: string): string {
+  return warning.trim().replace(/^(?:service|policy) retry:\s*/i, '').toLowerCase();
+}
+
+/** Keep only retry-model warnings that are not already present (prefix-insensitive) in `existing`. */
+function newRetryWarnings(existing: string[], retryWarnings: string[]): string[] {
+  const seen = new Set(existing.map(warningDedupKey));
+  const out: string[] = [];
+  for (const warning of retryWarnings) {
+    const trimmed = warning.trim().replace(/^(?:service|policy) retry:\s*/i, '');
+    const key = warningDedupKey(trimmed);
+    if (!trimmed || seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 export function mergeServiceRetryIntoSuggestions(
   suggestions: ImportSuggestions,
   retryResult: {
@@ -436,8 +461,7 @@ export function mergeServiceRetryIntoSuggestions(
     alsoOffers: categories.map((category) => field(category.name, Math.max(0.7, category.confidence), 'Service catalog')),
     warnings: [
       ...suggestions.warnings,
-      ...retryResult.warnings.map((warning) => `Service retry: ${warning}`),
-      'Service catalog was improved using service-page retry.',
+      ...newRetryWarnings(suggestions.warnings, retryResult.warnings),
     ].filter((warning, index, all) => all.indexOf(warning) === index).slice(0, 20),
   };
   return normalizeImportSuggestionsForReview({ ...base, completeness: computeCompleteness(base) });
@@ -510,8 +534,7 @@ export function mergePolicyRetryIntoSuggestions(
     bookingSetupSuggestions: mergePolicyRetryBookingSetup(suggestions.bookingSetupSuggestions, retryResult.bookingSetupSuggestions),
     warnings: [
       ...suggestions.warnings,
-      ...retryResult.warnings.map((warning) => `Policy retry: ${warning}`),
-      'Policy suggestions were improved using policy-page retry.',
+      ...newRetryWarnings(suggestions.warnings, retryResult.warnings),
     ].filter((warning, index, all) => all.indexOf(warning) === index).slice(0, 20),
   };
   return normalizeImportSuggestionsForReview({ ...base, completeness: computeCompleteness(base) });

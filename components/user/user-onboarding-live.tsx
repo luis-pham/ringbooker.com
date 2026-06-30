@@ -1582,7 +1582,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div>
           <p className="onb-import-progress-title">{importProgress ?? IMPORT_PROGRESS_STEPS[importProgressStep]}</p>
           <p className="onb-import-progress-sub">
-            We&apos;re reading your website and filling in your profile — this usually takes 1–2 minutes. You’ll review and edit everything before saving.
+            Reading your website — usually 1–2 minutes. You’ll review everything before saving.
           </p>
         </div>
         <div className="onb-import-steps">

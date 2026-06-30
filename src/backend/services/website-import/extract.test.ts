@@ -27,6 +27,20 @@ test('extracts common text hours and closed days', () => {
   assert.deepEqual(hours?.sun, { closed: true });
 });
 
+test('repeated footer hours win over a single stray contradictory line', () => {
+  // Avalon-style: the correct footer hours appear on every crawled page (repeated), while one page
+  // carries a stale "Tues-Friday 8am-6:30pm" line. Majority must keep the 8pm close for Tue-Fri.
+  const footer = 'Hours Monday 8am - 8pm Tuesday 8am - 8pm Wed Fri 8am - 8pm Sat 8am - 6pm Sun 10am - 6pm. ';
+  const text = footer.repeat(5) + 'Tues-Friday 8:00 am - 6:30 pm';
+  const hours = extractHoursFromText(text)?.value;
+  assert.deepEqual(hours?.mon, { open: '08:00', close: '20:00' });
+  assert.deepEqual(hours?.tue, { open: '08:00', close: '20:00' });
+  assert.deepEqual(hours?.wed, { open: '08:00', close: '20:00' });
+  assert.deepEqual(hours?.fri, { open: '08:00', close: '20:00' });
+  assert.deepEqual(hours?.sat, { open: '08:00', close: '18:00' });
+  assert.deepEqual(hours?.sun, { open: '10:00', close: '18:00' });
+});
+
 test('extracts Wix-style two-column hours and footer hours', () => {
   const wixHours = extractHoursFromText('top of pageBOOKING Follow us Hours10 AM - 4 PM 10 AM - 8 PM 10 AM - 8 PM 9 AM - 6 PM 9 AM - 6 PM 9 AM - 5 PM Monday Tuesday Wednesday Thursday Friday Saturday bottom of page')?.value;
   assert.deepEqual(wixHours?.mon, { open: '10:00', close: '16:00' });
