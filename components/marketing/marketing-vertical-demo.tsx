@@ -872,6 +872,7 @@ export function DemoExperience({
             sitekey: turnstileSiteKey,
             theme: 'light',
             size: 'flexible',
+            appearance: 'interaction-only',
             callback: (token: string) => {
               setCaptchaHint(null);
               setCaptchaToken(token);
