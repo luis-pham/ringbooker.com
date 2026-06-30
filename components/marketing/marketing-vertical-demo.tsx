@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Script from 'next/script';
 import { flushSync } from 'react-dom';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
 
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
@@ -665,6 +665,122 @@ export function MarketingVerticalDemoTemplate(props: LegacyMarketingVerticalDemo
   );
 }
 
+/**
+ * Prepared-demo start panel. Defined at module level (stable component identity) so it is NOT
+ * remounted on every parent re-render — that remount used to detach `turnstileRef` from the DOM
+ * node holding the live Turnstile widget, leaving the widget orphaned when `needsInteraction` flips.
+ */
+function PreparedDemoStartPanel(props: {
+  turnstileCallbackRef: (node: HTMLDivElement | null) => void;
+  needsInteraction: boolean;
+  captchaHint: string | null;
+  business: DemoBusinessConfig;
+  demoDisplayName: string;
+  initialStaffNames?: string[];
+  currentServiceCategorySummary: { label: string; count: number }[];
+  errors: string[];
+  requestError: string | null;
+  isSubmitting: boolean;
+  ctaLabel: string;
+  startWebDemo: () => void;
+}) {
+  const {
+    turnstileCallbackRef,
+    needsInteraction,
+    captchaHint,
+    business,
+    demoDisplayName,
+    initialStaffNames,
+    currentServiceCategorySummary,
+    errors,
+    requestError,
+    isSubmitting,
+    ctaLabel,
+    startWebDemo,
+  } = props;
+
+  const preparedStaff = initialStaffNames?.map((name) => name.trim()).filter(Boolean).slice(0, 8) ?? [];
+  const preparedHours = [business.primaryHours, business.secondaryHours]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' / ');
+  const preparedLocation = business.address.trim();
+
+  return (
+    <div className="vd-form-card" style={{ background: 'var(--surface-1, #fff)', border: '0.5px solid var(--border, #E8ECF1)', borderRadius: 16, padding: '24px 28px' }}>
+      <div className="vd-found-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, padding: '0 0 14px' }}>
+        <div className="vd-found-row">
+          <span className="vd-found-key">Business Name</span>
+          <span className="vd-found-val">{demoDisplayName}</span>
+        </div>
+        {preparedLocation ? (
+          <div className="vd-found-row">
+            <span className="vd-found-key">Address</span>
+            <span className="vd-found-val">{preparedLocation}</span>
+          </div>
+        ) : null}
+        {preparedHours ? (
+          <div className="vd-found-row">
+            <span className="vd-found-key">Hours</span>
+            <span className="vd-found-val">{preparedHours}</span>
+          </div>
+        ) : null}
+        {currentServiceCategorySummary.length > 0 ? (
+          <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span className="vd-found-key">Services</span>
+            <div className="vd-found-chips">
+              {currentServiceCategorySummary.slice(0, 8).map((cat) => (
+                <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
+              ))}
+              {currentServiceCategorySummary.length > 8 ? (
+                <span className="vd-found-chip">+{currentServiceCategorySummary.length - 8} more</span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {preparedStaff.length > 0 ? (
+          <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <span className="vd-found-key">Staffs</span>
+            <div className="vd-found-chips">
+              {preparedStaff.slice(0, 6).map((name) => (
+                <span key={name} className="vd-found-chip">{name}</span>
+              ))}
+              {preparedStaff.length > 6 ? <span className="vd-found-chip">+{preparedStaff.length - 6} more</span> : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {turnstileSiteKey ? (
+        <>
+          <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
+            <div className="vd-captcha">
+              <div className="vd-captcha-inner" ref={turnstileCallbackRef} />
+            </div>
+          </div>
+          {needsInteraction ? (
+            <p className="vd-captcha-hint" style={{ color: 'var(--text-secondary, #6B7280)' }}>
+              Please complete the verification above to continue.
+            </p>
+          ) : null}
+          {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+        </>
+      ) : null}
+
+      {errors.length > 0 || requestError ? (
+        <div className="vd-errors">
+          {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
+          {requestError ? <div className="vd-error">{requestError}</div> : null}
+        </div>
+      ) : null}
+
+      <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+        {isSubmitting ? 'Starting…' : ctaLabel}
+      </button>
+    </div>
+  );
+}
+
 export function DemoExperience({
   mode,
   vertical,
@@ -728,6 +844,7 @@ export function DemoExperience({
   const [turnstileReady, setTurnstileReady] = useState(!turnstileSiteKey);
   const pollTimerRef = useRef<number | null>(null);
   const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const turnstileMountedNodeRef = useRef<HTMLDivElement | null>(null);
   const turnstileRenderedRef = useRef(false);
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
@@ -1286,6 +1403,44 @@ export function DemoExperience({
     setNeedsInteraction(false);
     setCaptchaEpoch((e) => e + 1);
   }
+
+  /**
+   * Callback ref for the Turnstile mount node. The 6 captcha render sites live in mutually-exclusive
+   * ternary branches; switching branch unmounts one node and mounts a different one. When the node
+   * identity changes after the widget was already rendered, the live Cloudflare iframe is orphaned in
+   * the removed node — so we tear the widget down and bump captchaEpoch to re-run the mount effect
+   * against the new node.
+   */
+  const turnstileCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    turnstileRef.current = node;
+
+    if (node === null) {
+      return;
+    }
+
+    if (
+      turnstileMountedNodeRef.current !== null &&
+      turnstileMountedNodeRef.current !== node &&
+      turnstileRenderedRef.current
+    ) {
+      const tw = (window as Window & { turnstile?: { remove: (id: string) => void } }).turnstile;
+      if (turnstileWidgetIdRef.current && tw) {
+        try {
+          tw.remove(turnstileWidgetIdRef.current);
+        } catch {
+          /* ignore */
+        }
+      }
+      turnstileWidgetIdRef.current = null;
+      turnstileRenderedRef.current = false;
+      setCaptchaToken(null);
+      setCaptchaHint(null);
+      setNeedsInteraction(false);
+      setCaptchaEpoch((e) => e + 1);
+    }
+
+    turnstileMountedNodeRef.current = node;
+  }, []);
 
   async function copyDemoPhoneNumber() {
     try {
@@ -2374,89 +2529,6 @@ export function DemoExperience({
     ],
   };
 
-  function PreparedDemoStartPanel() {
-    const preparedStaff = initialStaffNames?.map((name) => name.trim()).filter(Boolean).slice(0, 8) ?? [];
-    const preparedHours = [business.primaryHours, business.secondaryHours]
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .join(' / ');
-    const preparedLocation = business.address.trim();
-
-    return (
-      <div className="vd-form-card" style={{ background: 'var(--surface-1, #fff)', border: '0.5px solid var(--border, #E8ECF1)', borderRadius: 16, padding: '24px 28px' }}>
-        <div className="vd-found-card" style={{ border: 'none', background: 'transparent', borderRadius: 0, padding: '0 0 14px' }}>
-          <div className="vd-found-row">
-            <span className="vd-found-key">Business Name</span>
-            <span className="vd-found-val">{demoDisplayName}</span>
-          </div>
-          {preparedLocation ? (
-            <div className="vd-found-row">
-              <span className="vd-found-key">Address</span>
-              <span className="vd-found-val">{preparedLocation}</span>
-            </div>
-          ) : null}
-          {preparedHours ? (
-            <div className="vd-found-row">
-              <span className="vd-found-key">Hours</span>
-              <span className="vd-found-val">{preparedHours}</span>
-            </div>
-          ) : null}
-          {currentServiceCategorySummary.length > 0 ? (
-            <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span className="vd-found-key">Services</span>
-              <div className="vd-found-chips">
-                {currentServiceCategorySummary.slice(0, 8).map((cat) => (
-                  <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
-                ))}
-                {currentServiceCategorySummary.length > 8 ? (
-                  <span className="vd-found-chip">+{currentServiceCategorySummary.length - 8} more</span>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          {preparedStaff.length > 0 ? (
-            <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span className="vd-found-key">Staffs</span>
-              <div className="vd-found-chips">
-                {preparedStaff.slice(0, 6).map((name) => (
-                  <span key={name} className="vd-found-chip">{name}</span>
-                ))}
-                {preparedStaff.length > 6 ? <span className="vd-found-chip">+{preparedStaff.length - 6} more</span> : null}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {turnstileSiteKey ? (
-          <>
-            <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
-              <div className="vd-captcha">
-                <div className="vd-captcha-inner" ref={turnstileRef} />
-              </div>
-            </div>
-            {needsInteraction ? (
-              <p className="vd-captcha-hint" style={{ color: 'var(--text-secondary, #6B7280)' }}>
-                Please complete the verification above to continue.
-              </p>
-            ) : null}
-            {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
-          </>
-        ) : null}
-
-        {errors.length > 0 || requestError ? (
-          <div className="vd-errors">
-            {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
-            {requestError ? <div className="vd-error">{requestError}</div> : null}
-          </div>
-        ) : null}
-
-        <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-          {isSubmitting ? 'Starting…' : ctaLabel}
-        </button>
-      </div>
-    );
-  }
-
   return (
     <MarketingLayout styles={[...styles, siteReadStyles, serviceVariantStyles, verticalDemoMobileStyles, verticalDemoUiTweaks]} scriptPrefix={`vertical-demo-${config.slug}`}>
       <>
@@ -2527,7 +2599,20 @@ export function DemoExperience({
               {/* ── FORM ── */}
               {!isActive ? (
                 isPreparedDemo ? (
-                  <PreparedDemoStartPanel />
+                  <PreparedDemoStartPanel
+                    turnstileCallbackRef={turnstileCallbackRef}
+                    needsInteraction={needsInteraction}
+                    captchaHint={captchaHint}
+                    business={business}
+                    demoDisplayName={demoDisplayName}
+                    initialStaffNames={initialStaffNames}
+                    currentServiceCategorySummary={currentServiceCategorySummary}
+                    errors={errors}
+                    requestError={requestError}
+                    isSubmitting={isSubmitting}
+                    ctaLabel={ctaLabel}
+                    startWebDemo={startWebDemo}
+                  />
                 ) : isMobileDemo ? (
                   sitePhase === 'loading' ? (
                     <div className="vd-form-card">
@@ -2722,7 +2807,7 @@ export function DemoExperience({
                         <>
                           <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
                             <div className="vd-captcha">
-                              <div className="vd-captcha-inner" ref={turnstileRef} />
+                              <div className="vd-captcha-inner" ref={turnstileCallbackRef} />
                             </div>
                           </div>
                           {needsInteraction ? (
@@ -2818,7 +2903,7 @@ export function DemoExperience({
                         <>
                           <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
                             <div className="vd-captcha">
-                              <div className="vd-captcha-inner" ref={turnstileRef} />
+                              <div className="vd-captcha-inner" ref={turnstileCallbackRef} />
                             </div>
                           </div>
                           {needsInteraction ? (
@@ -2946,7 +3031,7 @@ export function DemoExperience({
                         <>
                           <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
                             <div className="vd-captcha">
-                              <div className="vd-captcha-inner" ref={turnstileRef} />
+                              <div className="vd-captcha-inner" ref={turnstileCallbackRef} />
                             </div>
                           </div>
                           {needsInteraction ? (
@@ -3145,7 +3230,7 @@ export function DemoExperience({
                       <>
                         <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
                           <div className="vd-captcha">
-                            <div className="vd-captcha-inner" ref={turnstileRef} />
+                            <div className="vd-captcha-inner" ref={turnstileCallbackRef} />
                           </div>
                         </div>
                         {needsInteraction ? (
@@ -3264,7 +3349,7 @@ export function DemoExperience({
                     <>
                       <div style={needsInteraction ? visibleTurnstileStyle : collapsedTurnstileStyle}>
                         <div className="vd-captcha">
-                          <div className="vd-captcha-inner" ref={turnstileRef} />
+                          <div className="vd-captcha-inner" ref={turnstileCallbackRef} />
                         </div>
                       </div>
                       {needsInteraction ? (
