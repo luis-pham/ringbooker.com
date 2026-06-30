@@ -153,9 +153,10 @@ export function importProgressStepIndex(elapsedMs: number): number {
 }
 
 export function importProgressDelayMessage(elapsedMs: number): string | null {
-  if (elapsedMs >= 120000) return 'This is taking longer than expected. You can continue manually and edit everything later.';
-  if (elapsedMs >= 20000) return 'We’re still importing your website. Please wait a little longer.';
-  if (elapsedMs >= 8500) return 'Still working... Some websites take longer to read.';
+  if (elapsedMs >= 120000) return 'This is taking longer than usual. You can continue manually and edit everything later.';
+  if (elapsedMs >= 100000) return 'Wrapping up… hang tight.';
+  if (elapsedMs >= 60000) return 'Almost there — larger menus take a little longer.';
+  if (elapsedMs >= 25000) return 'Still reading your site — this usually takes 1–2 minutes.';
   return null;
 }
 
@@ -1546,7 +1547,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setImportProgress('Preparing your review');
     setImportProgressStep(0);
     setImportDelayMessage(null);
-    const checkpoints = [1800, 4000, 6500, 8500, 20000, 120000];
+    const checkpoints = [1800, 4000, 6500, 25000, 60000, 100000, 120000];
     importTimersRef.current = checkpoints.map((delay) =>
       setTimeout(() => {
         setImportProgressStep(importProgressStepIndex(delay));
@@ -1581,7 +1582,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div>
           <p className="onb-import-progress-title">{importProgress ?? IMPORT_PROGRESS_STEPS[importProgressStep]}</p>
           <p className="onb-import-progress-sub">
-            We&apos;re reading your website and filling in your profile. You’ll review and edit everything before saving.
+            We&apos;re reading your website and filling in your profile — this usually takes 1–2 minutes. You’ll review and edit everything before saving.
           </p>
         </div>
         <div className="onb-import-steps">
