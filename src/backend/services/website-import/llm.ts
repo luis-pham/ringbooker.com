@@ -15,11 +15,73 @@ import type {
 } from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
-export type LlmExtractionOptions = { enabled?: boolean; apiKey?: string | null; model?: string | null; maxTokens?: number | null; fetcher?: Fetcher; timeoutMs?: number };
+export type LlmExtractionOptions = { enabled?: boolean; apiKey?: string | null; model?: string | null; maxTokens?: number | null; fetcher?: Fetcher; timeoutMs?: number; debugLog?: boolean };
 type LlmPayloadInput = { sourceUrl: string; previews: PagePreview[]; googlePlaces?: GooglePlacesSuggestion | null; selectedPages?: SelectedPageDiagnostic[] };
 
 export const DEFAULT_WEBSITE_IMPORT_LLM_MODEL = 'gpt-4.1-mini';
 export const DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL = 'gpt-5.4-mini';
+
+const OPENAI_CHAT_COMPLETIONS_URL = 'https://api.openai.com/v1/chat/completions';
+
+type LlmChatResult = { content: string | null; finishReason: string | null; usage: unknown };
+
+/**
+ * Single OpenAI chat-completions call with timeout + structured diagnostic logging. Every import
+ * LLM call previously collapsed all failure modes into a silent `return null`, so a primary model
+ * that timed out, got rate-limited (429), returned a 4xx, or produced unparseable JSON all looked
+ * identical from the outside. This logs (gated by `opts.debugLog`) the outcome, duration, model,
+ * payload size, and — on success — `finish_reason` + `usage`, so a slow/failing model can be told
+ * apart from a true client timeout (e.g. `finish_reason: 'length'` ⇒ truncated long output, not a hang).
+ *
+ * Returns the parsed result whenever the HTTP response was ok (even if `content` is null, so callers
+ * can still inspect `finishReason`); returns null on abort/timeout, network error, or non-2xx status.
+ */
+async function callOpenAiChatCompletion(
+  label: string,
+  requestBody: Record<string, unknown>,
+  opts: LlmExtractionOptions,
+  inputChars: number,
+): Promise<LlmChatResult | null> {
+  const controller = new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 20_000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAt = Date.now();
+  const model = String(requestBody.model ?? '');
+  const maxTokens = Number(requestBody.max_completion_tokens ?? requestBody.max_tokens ?? 0);
+  const log = (outcome: string, extra?: Record<string, unknown>) => {
+    if (!opts.debugLog) return;
+    console.info('[website-import-llm-call]', {
+      label, model, outcome, durationMs: Date.now() - startedAt, timeoutMs, inputChars, maxTokens, ...extra,
+    });
+  };
+  try {
+    const response = await (opts.fetcher ?? fetch)(OPENAI_CHAT_COMPLETIONS_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
+      signal: controller.signal,
+      body: JSON.stringify(requestBody),
+    });
+    if (!response.ok) {
+      let errorBody: string | undefined;
+      try { errorBody = (await response.text()).slice(0, 300); } catch { /* body unreadable */ }
+      log(`http_${response.status}`, { errorBody });
+      return null;
+    }
+    const body = await response.json().catch(() => null) as { choices?: Array<{ message?: { content?: string }; finish_reason?: string }>; usage?: unknown } | null;
+    const choice = body?.choices?.[0];
+    const finishReason = choice?.finish_reason ?? null;
+    const usage = body?.usage ?? null;
+    const content = typeof choice?.message?.content === 'string' ? choice.message.content : null;
+    log('ok', { finishReason, contentChars: content?.length ?? 0, usage });
+    return { content, finishReason, usage };
+  } catch (err) {
+    const aborted = controller.signal.aborted;
+    log(aborted ? 'abort_timeout' : 'network_error', { error: err instanceof Error ? err.message : String(err) });
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 const confidenceSchema = z.number().min(0).max(1);
 const sourceEvidenceSchema = z.array(z.string()).optional().default([]);
@@ -504,34 +566,18 @@ const SERVICE_RETRY_SYSTEM_PROMPT = 'You extract salon/spa service catalogs for 
 export async function extractServiceCatalogWithLlmRetry(input: ServiceCatalogRetryInput, opts: LlmExtractionOptions): Promise<ServiceCatalogRetryResult | null> {
   if (!opts.enabled || !opts.apiKey || !input.pages.length) return null;
   const userPrompt = buildServiceCatalogRetryPrompt(input);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20_000);
-  try {
-    const response = await (opts.fetcher ?? fetch)('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: input.model?.trim() || opts.model?.trim() || DEFAULT_WEBSITE_IMPORT_LLM_MODEL,
-        max_completion_tokens: opts.maxTokens ?? 8000,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SERVICE_RETRY_SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    });
-    if (!response.ok) return null;
-    const body = await response.json().catch(() => null) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown } | null;
-    const content = body?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string') return null;
-    const parsed = parseServiceCatalogRetryJson(content);
-    return parsed ? { ...parsed, usage: body?.usage } : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
+  const result = await callOpenAiChatCompletion('service_retry', {
+    model: input.model?.trim() || opts.model?.trim() || DEFAULT_WEBSITE_IMPORT_LLM_MODEL,
+    max_completion_tokens: opts.maxTokens ?? 8000,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: SERVICE_RETRY_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+  }, opts, userPrompt.length);
+  if (typeof result?.content !== 'string') return null;
+  const parsed = parseServiceCatalogRetryJson(result.content);
+  return parsed ? { ...parsed, usage: result.usage } : null;
 }
 
 export type PolicyRetryInput = {
@@ -710,34 +756,18 @@ const POLICY_RETRY_SYSTEM_PROMPT = 'You extract salon/spa booking and business p
 export async function extractPoliciesWithLlmRetry(input: PolicyRetryInput, opts: LlmExtractionOptions): Promise<PolicyRetryResult | null> {
   if (!opts.enabled || !opts.apiKey || !input.pages.length) return null;
   const userPrompt = buildPolicyRetryPrompt(input);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20_000);
-  try {
-    const response = await (opts.fetcher ?? fetch)('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: input.model?.trim() || opts.model?.trim() || DEFAULT_WEBSITE_IMPORT_LLM_MODEL,
-        max_completion_tokens: opts.maxTokens ?? 5000,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: POLICY_RETRY_SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    });
-    if (!response.ok) return null;
-    const body = await response.json().catch(() => null) as { choices?: Array<{ message?: { content?: string } }>; usage?: unknown } | null;
-    const content = body?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string') return null;
-    const parsed = parsePolicyRetryJson(content);
-    return parsed ? { ...parsed, usage: body?.usage } : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
+  const result = await callOpenAiChatCompletion('policy_retry', {
+    model: input.model?.trim() || opts.model?.trim() || DEFAULT_WEBSITE_IMPORT_LLM_MODEL,
+    max_completion_tokens: opts.maxTokens ?? 5000,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: POLICY_RETRY_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+  }, opts, userPrompt.length);
+  if (typeof result?.content !== 'string') return null;
+  const parsed = parsePolicyRetryJson(result.content);
+  return parsed ? { ...parsed, usage: result.usage } : null;
 }
 
 function phoneCandidates(previews: PagePreview[]): string[] {
@@ -936,40 +966,18 @@ export async function extractWebsiteImportWithLlm(input: LlmPayloadInput, opts: 
   const userPrompt = buildLlmImportPrompt(input);
   const baseTokens = opts.maxTokens ?? 8000;
 
-  const callOnce = async (maxCompletionTokens: number): Promise<{ content: string | null; finishReason: string | null } | null> => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
-    try {
-      const response = await (opts.fetcher ?? fetch)('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: opts.model?.trim() || DEFAULT_WEBSITE_IMPORT_LLM_MODEL,
-          // `max_completion_tokens` is the param accepted by both legacy (gpt-4o-mini) and
-          // newer (gpt-5.x) models; `max_tokens` is rejected by gpt-5-class models.
-          // `temperature` is omitted because gpt-5/reasoning models only allow the default.
-          max_completion_tokens: maxCompletionTokens,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: LLM_SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt },
-          ],
-        }),
-      });
-      if (!response.ok) return null;
-      const body = await response.json().catch(() => null) as { choices?: Array<{ message?: { content?: string }; finish_reason?: string }> } | null;
-      const choice = body?.choices?.[0];
-      return {
-        content: typeof choice?.message?.content === 'string' ? choice.message.content : null,
-        finishReason: choice?.finish_reason ?? null,
-      };
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timeout);
-    }
-  };
+  const callOnce = (maxCompletionTokens: number) => callOpenAiChatCompletion('import_enrichment', {
+    model: opts.model?.trim() || DEFAULT_WEBSITE_IMPORT_LLM_MODEL,
+    // `max_completion_tokens` is the param accepted by both legacy (gpt-4o-mini) and
+    // newer (gpt-5.x) models; `max_tokens` is rejected by gpt-5-class models.
+    // `temperature` is omitted because gpt-5/reasoning models only allow the default.
+    max_completion_tokens: maxCompletionTokens,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: LLM_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+  }, opts, userPrompt.length);
 
   const first = await callOnce(baseTokens);
   // Output truncated (the JSON catalog was cut off mid-array) → its JSON won't parse. Retry

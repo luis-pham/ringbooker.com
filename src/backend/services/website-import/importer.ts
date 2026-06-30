@@ -1538,6 +1538,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
         maxTokens: opts.llmMaxTokens,
         fetcher: opts.fetcher,
         timeoutMs: Math.min(LLM_CALL_TIMEOUT_MS, budgetForEnrichment),
+        debugLog: opts.debugLog,
       },
     ),
   ]);
@@ -1568,6 +1569,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
           maxTokens: opts.llmMaxTokens,
           fetcher: opts.fetcher,
           timeoutMs: Math.min(LLM_CALL_TIMEOUT_MS, remainingBudget()),
+          debugLog: opts.debugLog,
         },
       );
       if (llmExtraction) fallbackUsed.push('llm_hard_fallback');
@@ -1576,12 +1578,18 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   const llmAttemptedButFailed = llmWantsToRun && runLlm && !llmExtraction;
   let suggestions = normalizeImportSuggestionsForReview(buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction }));
   const discoveredUrls = collectDiscoveredUrls(startUrl, finalPreviews, sitemap.candidates);
+  // Service retry and policy retry are independent enrichment passes — one only touches the
+  // serviceCatalog, the other only the policySuggestions. Both read this enriched snapshot and
+  // return their own slice + warnings, then run concurrently (each is a separate fetch+LLM round
+  // costing 20–45s) so a hard site pays the slower of the two instead of their sum. Results are
+  // merged back deterministically below.
+  const enrichedSuggestions = suggestions;
   const retrySelectedPageInfos = selectedServiceRetryPageInfos(finalPreviews, selectedPages);
   const serviceRetryDetection = detectLowServiceCoverage({
-    suggestions,
+    suggestions: enrichedSuggestions,
     selectedPages: retrySelectedPageInfos,
     discoveredUrls,
-    warnings: [...suggestions.warnings, ...warnings],
+    warnings: [...enrichedSuggestions.warnings, ...warnings],
     minServiceCount: opts.serviceRetryMinServiceCount,
   });
   const serviceRetryDiagnostics = {
@@ -1596,108 +1604,12 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   };
   let serviceRetryGloballyCapped = false;
   let difficultFallbackGloballyCapped = false;
-  if (
-    opts.serviceRetryEnabled
-    && opts.llmEnabled
-    && opts.openAiApiKey
-    && serviceRetryDetection.shouldRetryServices
-    && remainingBudget() >= MIN_LLM_BUDGET_MS
-  ) {
-    serviceRetryDiagnostics.triggered = true;
-    let runServiceRetry = true;
-    if (opts.acquireLlmBudget) {
-      runServiceRetry = await opts.acquireLlmBudget().catch(() => false);
-      serviceRetryGloballyCapped = !runServiceRetry;
-    }
-    if (runServiceRetry) {
-      const retryPages = await collectServiceRetryPages({
-        rootUrl: startUrl.toString(),
-        selectedPages: finalPreviews.map((preview) => ({
-          preview,
-          bucket: selectedPages.find((page) => normalizedUrlKey(page.url) === normalizedUrlKey(preview.url))?.bucket,
-        })),
-        discoveredUrls,
-        evidenceUrls: collectEvidenceUrls(suggestions),
-        maxPages: Math.max(1, Math.min(opts.serviceRetryMaxPages ?? 12, 24)),
-        timeoutMs: Math.max(1_000, opts.serviceRetryTimeoutMs ?? 20_000),
-        opts: fetchOpts,
-        renderConfig,
-        remainingBudget,
-        debugSaveText: opts.debugSaveText,
-      });
-      const usableRetryPages = retryPages.filter((page) => page.textLength > 500 && !page.error);
-      serviceRetryDiagnostics.pagesCount = usableRetryPages.length;
-      serviceRetryDiagnostics.pageUrls = usableRetryPages.map((page) => page.url);
-      if (usableRetryPages.length) {
-        const beforeCount = suggestions.serviceCatalog.services.length;
-        const runServiceRetryModel = (model: string | null | undefined) => extractServiceCatalogWithLlmRetry(
-          {
-            websiteUrl: startUrl.toString(),
-            businessName: suggestions.businessProfile.name.value,
-            pages: usableRetryPages.map((page) => ({ url: page.url, title: page.title, text: page.text })),
-            previousServicesCount: beforeCount,
-            previousWarnings: [...suggestions.warnings, ...warnings],
-            model,
-          },
-          {
-            enabled: true,
-            apiKey: opts.openAiApiKey,
-            model,
-            maxTokens: opts.llmMaxTokens ? Math.max(opts.llmMaxTokens, 8000) : 8000,
-            fetcher: opts.fetcher,
-            timeoutMs: Math.min(Math.max(1_000, opts.serviceRetryTimeoutMs ?? 20_000), remainingBudget()),
-          },
-        );
-        const serviceRetryModel = opts.serviceRetryModel || opts.llmModel || undefined;
-        const primaryRetryResult = await runServiceRetryModel(serviceRetryModel);
-        let bestSuggestions = primaryRetryResult ? mergeServiceRetryIntoSuggestions(suggestions, primaryRetryResult) : suggestions;
-        let bestAfterCount = bestSuggestions.serviceCatalog.services.length;
-        let usedDifficultFallback = false;
-        const stillHard = bestAfterCount <= beforeCount || (
-          bestAfterCount < (opts.serviceRetryMinServiceCount ?? 15)
-          && usableRetryPages.length >= 3
-        );
-        const difficultFallbackModel = opts.difficultFallbackModel?.trim() || DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL;
-        if (stillHard && difficultFallbackModel && difficultFallbackModel !== (serviceRetryModel ?? '') && remainingBudget() >= MIN_LLM_BUDGET_MS) {
-          let runDifficultFallback = true;
-          if (opts.acquireLlmBudget) {
-            runDifficultFallback = await opts.acquireLlmBudget().catch(() => false);
-            difficultFallbackGloballyCapped = !runDifficultFallback;
-          }
-          if (runDifficultFallback) {
-            const hardRetryResult = await runServiceRetryModel(difficultFallbackModel);
-            if (hardRetryResult) {
-              const hardSuggestions = mergeServiceRetryIntoSuggestions(suggestions, hardRetryResult);
-              const hardAfterCount = hardSuggestions.serviceCatalog.services.length;
-              if (hardAfterCount > bestAfterCount) {
-                bestSuggestions = hardSuggestions;
-                bestAfterCount = hardAfterCount;
-                usedDifficultFallback = true;
-              }
-            }
-          }
-        }
-        if (bestAfterCount > beforeCount) {
-          suggestions = bestSuggestions;
-          serviceRetryDiagnostics.servicesAfter = bestAfterCount;
-          serviceRetryDiagnostics.improved = true;
-          fallbackUsed.push('service_retry');
-          if (usedDifficultFallback) fallbackUsed.push('service_retry_hard_fallback');
-        } else if (!primaryRetryResult) {
-          suggestions = normalizeImportSuggestionsForReview({
-            ...suggestions,
-            warnings: [...suggestions.warnings, 'Service retry failed validation; original serviceCatalog retained.'],
-          });
-        }
-      }
-    }
-  }
   const policySelectedPageInfos = selectedPolicyRetryPageInfos(finalPreviews, selectedPages);
   const policyRetryDetection = detectLowPolicyCoverage({
-    suggestions,
+    suggestions: enrichedSuggestions,
     selectedPages: policySelectedPageInfos,
     discoveredUrls,
-    warnings: [...suggestions.warnings, ...warnings],
+    warnings: [...enrichedSuggestions.warnings, ...warnings],
     minPolicyCount: opts.policyRetryMinPolicyCount,
   });
   const policyRetryDiagnostics = {
@@ -1713,105 +1625,228 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   };
   let policyRetryGloballyCapped = false;
   let policyRetryFallbackGloballyCapped = false;
-  if (
-    opts.policyRetryEnabled
-    && opts.llmEnabled
-    && opts.openAiApiKey
-    && policyRetryDetection.shouldRetryPolicies
-    && remainingBudget() >= MIN_LLM_BUDGET_MS
-  ) {
+
+  const runServiceRetryPass = async (): Promise<{ merged: ImportSuggestions | null; extraWarnings: string[] }> => {
+    if (!(
+      opts.serviceRetryEnabled
+      && opts.llmEnabled
+      && opts.openAiApiKey
+      && serviceRetryDetection.shouldRetryServices
+      && remainingBudget() >= MIN_LLM_BUDGET_MS
+    )) return { merged: null, extraWarnings: [] };
+    serviceRetryDiagnostics.triggered = true;
+    let runServiceRetry = true;
+    if (opts.acquireLlmBudget) {
+      runServiceRetry = await opts.acquireLlmBudget().catch(() => false);
+      serviceRetryGloballyCapped = !runServiceRetry;
+    }
+    if (!runServiceRetry) return { merged: null, extraWarnings: [] };
+    const retryPages = await collectServiceRetryPages({
+      rootUrl: startUrl.toString(),
+      selectedPages: finalPreviews.map((preview) => ({
+        preview,
+        bucket: selectedPages.find((page) => normalizedUrlKey(page.url) === normalizedUrlKey(preview.url))?.bucket,
+      })),
+      discoveredUrls,
+      evidenceUrls: collectEvidenceUrls(enrichedSuggestions),
+      maxPages: Math.max(1, Math.min(opts.serviceRetryMaxPages ?? 12, 24)),
+      timeoutMs: Math.max(1_000, opts.serviceRetryTimeoutMs ?? 20_000),
+      opts: fetchOpts,
+      renderConfig,
+      remainingBudget,
+      debugSaveText: opts.debugSaveText,
+    });
+    const usableRetryPages = retryPages.filter((page) => page.textLength > 500 && !page.error);
+    serviceRetryDiagnostics.pagesCount = usableRetryPages.length;
+    serviceRetryDiagnostics.pageUrls = usableRetryPages.map((page) => page.url);
+    if (!usableRetryPages.length) return { merged: null, extraWarnings: [] };
+    const beforeCount = enrichedSuggestions.serviceCatalog.services.length;
+    const runServiceRetryModel = (model: string | null | undefined) => extractServiceCatalogWithLlmRetry(
+      {
+        websiteUrl: startUrl.toString(),
+        businessName: enrichedSuggestions.businessProfile.name.value,
+        pages: usableRetryPages.map((page) => ({ url: page.url, title: page.title, text: page.text })),
+        previousServicesCount: beforeCount,
+        previousWarnings: [...enrichedSuggestions.warnings, ...warnings],
+        model,
+      },
+      {
+        enabled: true,
+        apiKey: opts.openAiApiKey,
+        model,
+        maxTokens: opts.llmMaxTokens ? Math.max(opts.llmMaxTokens, 8000) : 8000,
+        fetcher: opts.fetcher,
+        timeoutMs: Math.min(Math.max(1_000, opts.serviceRetryTimeoutMs ?? 20_000), remainingBudget()),
+        debugLog: opts.debugLog,
+      },
+    );
+    const serviceRetryModel = opts.serviceRetryModel || opts.llmModel || undefined;
+    const primaryRetryResult = await runServiceRetryModel(serviceRetryModel);
+    let bestSuggestions = primaryRetryResult ? mergeServiceRetryIntoSuggestions(enrichedSuggestions, primaryRetryResult) : enrichedSuggestions;
+    let bestAfterCount = bestSuggestions.serviceCatalog.services.length;
+    let usedDifficultFallback = false;
+    const stillHard = bestAfterCount <= beforeCount || (
+      bestAfterCount < (opts.serviceRetryMinServiceCount ?? 15)
+      && usableRetryPages.length >= 3
+    );
+    const difficultFallbackModel = opts.difficultFallbackModel?.trim() || DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL;
+    if (stillHard && difficultFallbackModel && difficultFallbackModel !== (serviceRetryModel ?? '') && remainingBudget() >= MIN_LLM_BUDGET_MS) {
+      let runDifficultFallback = true;
+      if (opts.acquireLlmBudget) {
+        runDifficultFallback = await opts.acquireLlmBudget().catch(() => false);
+        difficultFallbackGloballyCapped = !runDifficultFallback;
+      }
+      if (runDifficultFallback) {
+        const hardRetryResult = await runServiceRetryModel(difficultFallbackModel);
+        if (hardRetryResult) {
+          const hardSuggestions = mergeServiceRetryIntoSuggestions(enrichedSuggestions, hardRetryResult);
+          const hardAfterCount = hardSuggestions.serviceCatalog.services.length;
+          if (hardAfterCount > bestAfterCount) {
+            bestSuggestions = hardSuggestions;
+            bestAfterCount = hardAfterCount;
+            usedDifficultFallback = true;
+          }
+        }
+      }
+    }
+    if (bestAfterCount > beforeCount) {
+      serviceRetryDiagnostics.servicesAfter = bestAfterCount;
+      serviceRetryDiagnostics.improved = true;
+      fallbackUsed.push('service_retry');
+      if (usedDifficultFallback) fallbackUsed.push('service_retry_hard_fallback');
+      return { merged: bestSuggestions, extraWarnings: [] };
+    }
+    if (!primaryRetryResult) {
+      return { merged: null, extraWarnings: ['Service retry failed validation; original serviceCatalog retained.'] };
+    }
+    return { merged: null, extraWarnings: [] };
+  };
+
+  const runPolicyRetryPass = async (): Promise<{ merged: ImportSuggestions | null; extraWarnings: string[] }> => {
+    if (!(
+      opts.policyRetryEnabled
+      && opts.llmEnabled
+      && opts.openAiApiKey
+      && policyRetryDetection.shouldRetryPolicies
+      && remainingBudget() >= MIN_LLM_BUDGET_MS
+    )) return { merged: null, extraWarnings: [] };
     policyRetryDiagnostics.triggered = true;
     let runPolicyRetry = true;
     if (opts.acquireLlmBudget) {
       runPolicyRetry = await opts.acquireLlmBudget().catch(() => false);
       policyRetryGloballyCapped = !runPolicyRetry;
     }
-    if (runPolicyRetry) {
-      const retryPages = await collectPolicyRetryPages({
-        rootUrl: startUrl.toString(),
-        selectedPages: finalPreviews.map((preview) => ({
-          preview,
-          bucket: selectedPages.find((page) => normalizedUrlKey(page.url) === normalizedUrlKey(preview.url))?.bucket,
-        })),
-        discoveredUrls,
-        evidenceUrls: collectEvidenceUrls(suggestions),
-        maxPages: Math.max(1, Math.min(opts.policyRetryMaxPages ?? 8, 16)),
-        timeoutMs: Math.max(1_000, opts.policyRetryTimeoutMs ?? 20_000),
-        opts: fetchOpts,
-        renderConfig,
-        remainingBudget,
-        debugSaveText: opts.debugSaveText,
-      });
-      const usableRetryPages = retryPages.filter((page) => page.textLength > 300 && !page.error);
-      policyRetryDiagnostics.pagesCount = usableRetryPages.length;
-      policyRetryDiagnostics.pageUrls = usableRetryPages.map((page) => page.url);
-      if (usableRetryPages.length) {
-        const beforeCount = suggestions.policySuggestions.length;
-        const runPolicyRetryModel = (model: string | null | undefined) => extractPoliciesWithLlmRetry(
-          {
-            websiteUrl: startUrl.toString(),
-            businessName: suggestions.businessProfile.name.value,
-            pages: usableRetryPages.map((page) => ({ url: page.url, title: page.title, text: page.text })),
-            previousPoliciesCount: beforeCount,
-            previousWarnings: [...suggestions.warnings, ...warnings],
-            model,
-          },
-          {
-            enabled: true,
-            apiKey: opts.openAiApiKey,
-            model,
-            maxTokens: opts.llmMaxTokens ? Math.max(opts.llmMaxTokens, 5000) : 5000,
-            fetcher: opts.fetcher,
-            timeoutMs: Math.min(Math.max(1_000, opts.policyRetryTimeoutMs ?? 20_000), remainingBudget()),
-          },
-        );
-        const policyRetryModel = opts.policyRetryModel || opts.llmModel || undefined;
-        const primaryRetryResult = await runPolicyRetryModel(policyRetryModel);
-        let bestSuggestions = primaryRetryResult ? mergePolicyRetryIntoSuggestions(suggestions, primaryRetryResult) : suggestions;
-        let bestAfterCount = bestSuggestions.policySuggestions.length;
-        const stillHard = bestAfterCount <= beforeCount && policyRetryDetection.policyPageCount >= 1;
-        const fallbackModel = opts.policyRetryFallbackModel?.trim() || DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL;
-        if (stillHard && fallbackModel && fallbackModel !== (policyRetryModel ?? '') && remainingBudget() >= MIN_LLM_BUDGET_MS) {
-          let runFallback = true;
-          if (opts.acquireLlmBudget) {
-            runFallback = await opts.acquireLlmBudget().catch(() => false);
-            policyRetryFallbackGloballyCapped = !runFallback;
-          }
-          if (runFallback) {
-            const fallbackRetryResult = await runPolicyRetryModel(fallbackModel);
-            policyRetryDiagnostics.fallbackUsed = true;
-            if (fallbackRetryResult) {
-              const fallbackSuggestions = mergePolicyRetryIntoSuggestions(suggestions, fallbackRetryResult);
-              const fallbackAfterCount = fallbackSuggestions.policySuggestions.length;
-              if (fallbackAfterCount > bestAfterCount) {
-                bestSuggestions = fallbackSuggestions;
-                bestAfterCount = fallbackAfterCount;
-              }
-            }
+    if (!runPolicyRetry) return { merged: null, extraWarnings: [] };
+    const retryPages = await collectPolicyRetryPages({
+      rootUrl: startUrl.toString(),
+      selectedPages: finalPreviews.map((preview) => ({
+        preview,
+        bucket: selectedPages.find((page) => normalizedUrlKey(page.url) === normalizedUrlKey(preview.url))?.bucket,
+      })),
+      discoveredUrls,
+      evidenceUrls: collectEvidenceUrls(enrichedSuggestions),
+      maxPages: Math.max(1, Math.min(opts.policyRetryMaxPages ?? 8, 16)),
+      timeoutMs: Math.max(1_000, opts.policyRetryTimeoutMs ?? 20_000),
+      opts: fetchOpts,
+      renderConfig,
+      remainingBudget,
+      debugSaveText: opts.debugSaveText,
+    });
+    const usableRetryPages = retryPages.filter((page) => page.textLength > 300 && !page.error);
+    policyRetryDiagnostics.pagesCount = usableRetryPages.length;
+    policyRetryDiagnostics.pageUrls = usableRetryPages.map((page) => page.url);
+    if (!usableRetryPages.length) {
+      return { merged: null, extraWarnings: ['Policy retry did not improve coverage; original policySuggestions retained.'] };
+    }
+    const beforeCount = enrichedSuggestions.policySuggestions.length;
+    const runPolicyRetryModel = (model: string | null | undefined) => extractPoliciesWithLlmRetry(
+      {
+        websiteUrl: startUrl.toString(),
+        businessName: enrichedSuggestions.businessProfile.name.value,
+        pages: usableRetryPages.map((page) => ({ url: page.url, title: page.title, text: page.text })),
+        previousPoliciesCount: beforeCount,
+        previousWarnings: [...enrichedSuggestions.warnings, ...warnings],
+        model,
+      },
+      {
+        enabled: true,
+        apiKey: opts.openAiApiKey,
+        model,
+        maxTokens: opts.llmMaxTokens ? Math.max(opts.llmMaxTokens, 5000) : 5000,
+        fetcher: opts.fetcher,
+        timeoutMs: Math.min(Math.max(1_000, opts.policyRetryTimeoutMs ?? 20_000), remainingBudget()),
+        debugLog: opts.debugLog,
+      },
+    );
+    const policyRetryModel = opts.policyRetryModel || opts.llmModel || undefined;
+    const primaryRetryResult = await runPolicyRetryModel(policyRetryModel);
+    let bestSuggestions = primaryRetryResult ? mergePolicyRetryIntoSuggestions(enrichedSuggestions, primaryRetryResult) : enrichedSuggestions;
+    let bestAfterCount = bestSuggestions.policySuggestions.length;
+    const stillHard = bestAfterCount <= beforeCount && policyRetryDetection.policyPageCount >= 1;
+    const fallbackModel = opts.policyRetryFallbackModel?.trim() || DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL;
+    if (stillHard && fallbackModel && fallbackModel !== (policyRetryModel ?? '') && remainingBudget() >= MIN_LLM_BUDGET_MS) {
+      let runFallback = true;
+      if (opts.acquireLlmBudget) {
+        runFallback = await opts.acquireLlmBudget().catch(() => false);
+        policyRetryFallbackGloballyCapped = !runFallback;
+      }
+      if (runFallback) {
+        const fallbackRetryResult = await runPolicyRetryModel(fallbackModel);
+        policyRetryDiagnostics.fallbackUsed = true;
+        if (fallbackRetryResult) {
+          const fallbackSuggestions = mergePolicyRetryIntoSuggestions(enrichedSuggestions, fallbackRetryResult);
+          const fallbackAfterCount = fallbackSuggestions.policySuggestions.length;
+          if (fallbackAfterCount > bestAfterCount) {
+            bestSuggestions = fallbackSuggestions;
+            bestAfterCount = fallbackAfterCount;
           }
         }
-        if (bestAfterCount > beforeCount) {
-          suggestions = bestSuggestions;
-          policyRetryDiagnostics.policiesAfter = bestAfterCount;
-          policyRetryDiagnostics.improved = true;
-          fallbackUsed.push('policy_retry');
-          if (policyRetryDiagnostics.fallbackUsed) fallbackUsed.push('policy_retry_hard_fallback');
-        } else {
-          suggestions = normalizeImportSuggestionsForReview({
-            ...suggestions,
-            warnings: [
-              ...suggestions.warnings,
-              primaryRetryResult ? 'Policy retry did not improve coverage; original policySuggestions retained.' : 'Policy retry failed validation; original policySuggestions retained.',
-            ],
-          });
-        }
-      } else {
-        suggestions = normalizeImportSuggestionsForReview({
-          ...suggestions,
-          warnings: [...suggestions.warnings, 'Policy retry did not improve coverage; original policySuggestions retained.'],
-        });
       }
     }
+    if (bestAfterCount > beforeCount) {
+      policyRetryDiagnostics.policiesAfter = bestAfterCount;
+      policyRetryDiagnostics.improved = true;
+      fallbackUsed.push('policy_retry');
+      if (policyRetryDiagnostics.fallbackUsed) fallbackUsed.push('policy_retry_hard_fallback');
+      return { merged: bestSuggestions, extraWarnings: [] };
+    }
+    return {
+      merged: null,
+      extraWarnings: [primaryRetryResult ? 'Policy retry did not improve coverage; original policySuggestions retained.' : 'Policy retry failed validation; original policySuggestions retained.'],
+    };
+  };
+
+  // Combine the two passes. They mutate disjoint field sets (service → serviceCatalog/alsoOffers;
+  // policy → policySuggestions/faqSuggestions/bookingSetupSuggestions), so each improved slice can
+  // be taken independently; warnings are unioned and completeness is recomputed by the final
+  // normalize. When neither pass changed anything (and added no warning), keep the already-normalized
+  // enriched suggestions untouched.
+  const [serviceRetryOutcome, policyRetryOutcome] = await Promise.all([runServiceRetryPass(), runPolicyRetryPass()]);
+  let mergedSuggestions = enrichedSuggestions;
+  const mergedWarnings = new Set(enrichedSuggestions.warnings);
+  if (serviceRetryOutcome.merged) {
+    mergedSuggestions = {
+      ...mergedSuggestions,
+      serviceCatalog: serviceRetryOutcome.merged.serviceCatalog,
+      alsoOffers: serviceRetryOutcome.merged.alsoOffers,
+    };
+    serviceRetryOutcome.merged.warnings.forEach((warning) => mergedWarnings.add(warning));
+  }
+  if (policyRetryOutcome.merged) {
+    mergedSuggestions = {
+      ...mergedSuggestions,
+      policySuggestions: policyRetryOutcome.merged.policySuggestions,
+      faqSuggestions: policyRetryOutcome.merged.faqSuggestions,
+      bookingSetupSuggestions: policyRetryOutcome.merged.bookingSetupSuggestions,
+    };
+    policyRetryOutcome.merged.warnings.forEach((warning) => mergedWarnings.add(warning));
+  }
+  for (const warning of [...serviceRetryOutcome.extraWarnings, ...policyRetryOutcome.extraWarnings]) mergedWarnings.add(warning);
+  if (mergedSuggestions !== enrichedSuggestions || mergedWarnings.size !== enrichedSuggestions.warnings.length) {
+    suggestions = normalizeImportSuggestionsForReview({
+      ...mergedSuggestions,
+      warnings: [...mergedWarnings],
+    });
   }
   if (opts.debugLog) {
     console.info('[website-import-service-retry]', {

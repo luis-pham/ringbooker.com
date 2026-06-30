@@ -1,5 +1,13 @@
 export const CF_CRAWL_POLL_INTERVAL_MS = 2000;
 export const CF_CRAWL_TIMEOUT_MS = 55_000;
+/**
+ * Consecutive polls with no new completed page after which we treat the crawl as effectively
+ * done and return early. Cloudflare /crawl frequently keeps `status: 'running'` with `total: null`
+ * long after every page has been rendered, so waiting for a clean `completed` status burns the
+ * whole deadline even when the data is already in hand. ~3 polls (≈6s) of zero progress is a safe
+ * signal the queue has drained without prematurely abandoning a crawl that is still rendering.
+ */
+export const CF_CRAWL_STALL_POLLS = 3;
 
 export interface CfCrawlPage {
   url: string;
@@ -178,7 +186,9 @@ export async function crawlWithCloudflare(
   const jobId = parseJobId(startBody);
   if (!jobId) throw new Error('cloudflare_crawl_missing_job_id');
 
+  const limit = opts.limit ?? 10;
   let lastPages: CfCrawlPage[] = [];
+  let stalePolls = 0;
   while (Date.now() < deadline) {
     let pollBody: unknown;
     try {
@@ -196,8 +206,21 @@ export async function crawlWithCloudflare(
     const { status, total, records } = parseRecords(pollBody);
     if (status === 'failed' || status === 'canceled') throw new Error(`cloudflare_crawl_${status}`);
     const pages = normalizePages(records);
+    // Track stall: consecutive polls that produced no new completed page. CF often never reports a
+    // clean `completed`, so this is what lets a finished crawl return early instead of waiting out
+    // the deadline.
+    if (pages.length > lastPages.length) stalePolls = 0;
+    else if (pages.length > 0) stalePolls += 1;
     if (pages.length) lastPages = pages;
-    if (status === 'completed' || (typeof total === 'number' && total > 0 && pages.length >= total) || (!status && pages.length > 0)) {
+    const reachedLimit = pages.length >= limit;
+    const stalled = pages.length > 0 && stalePolls >= CF_CRAWL_STALL_POLLS;
+    if (
+      status === 'completed'
+      || (typeof total === 'number' && total > 0 && pages.length >= total)
+      || (!status && pages.length > 0)
+      || reachedLimit
+      || stalled
+    ) {
       return { pages, logoUrl: resolveLogoUrl(pages, websiteUrl) };
     }
     await sleep(Math.min(CF_CRAWL_POLL_INTERVAL_MS, Math.max(1, deadline - Date.now())));
