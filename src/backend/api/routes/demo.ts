@@ -1390,6 +1390,8 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       businessName: z.string().max(120),
       vertical: z.string().max(60),
       services: z.array(z.string().max(80)).max(40),
+      staff: z.array(z.string().max(80)).max(20).optional(),
+      policies: z.array(z.string().max(60)).max(12).optional(),
       hours: z.string().max(200).optional(),
       city: z.string().max(100).optional(),
       sessionId: z.string().max(80).optional(),
@@ -1421,8 +1423,8 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          max_tokens: 200,
+          model: 'gpt-4.1-mini',
+          max_tokens: 300,
           temperature: 0.7,
           response_format: { type: 'json_object' },
           messages: [
@@ -1430,13 +1432,18 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
               role: 'system',
               content:
                 'You are generating realistic sample caller questions for a voice AI demo for a beauty salon. ' +
-                'Generate exactly 4 questions a real caller might ask this specific salon over the phone. ' +
-                'Rules: use the actual service names provided — do not invent services; ' +
+                'Generate exactly 5 questions a real caller might ask this specific salon over the phone. ' +
+                'Rules: use ONLY the actual service names provided — never invent services; ' +
+                'you may name a specific provider ONLY if a stylist/staff name is provided, and use it exactly — ' +
+                'never invent a person\'s name; if no staff names are provided, do not reference any provider by name; ' +
+                'cover a BROAD mix across these dimensions, using ONLY what is provided: pricing, booking/availability, ' +
+                'working hours, booking with a specific stylist (only if staff provided), and a policy the salon actually ' +
+                'documents — ask about cancellation or no-show ONLY if that policy type is listed; never ask about a policy ' +
+                'type that is not listed; ' +
                 'questions must be natural spoken language, not formal; ' +
-                'mix question types: pricing, availability, booking, info; ' +
                 'keep each question under 12 words; ' +
                 'do not repeat the same question type twice. ' +
-                'Return JSON only: { "questions": ["q1", "q2", "q3", "q4"] }',
+                'Return JSON only: { "questions": ["q1", "q2", "q3", "q4", "q5"] }',
             },
             {
               role: 'user',
@@ -1445,9 +1452,11 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
                 parsed.data.city ? `Location: ${parsed.data.city}` : '',
                 `Vertical: ${parsed.data.vertical}`,
                 `Services offered: ${parsed.data.services.slice(0, 20).join(', ')}`,
-                parsed.data.hours ? `Hours: ${parsed.data.hours}` : '',
+                parsed.data.staff?.length ? `Stylists/staff (use exact names only): ${parsed.data.staff.slice(0, 12).join(', ')}` : 'Stylists/staff: none provided — do not name a provider',
+                parsed.data.hours ? `Hours: ${parsed.data.hours}` : 'Hours: not provided — do not ask about specific hours',
+                parsed.data.policies?.length ? `Policy types documented (you may ask about these): ${parsed.data.policies.slice(0, 10).join(', ')}` : 'Policies: none provided — do not ask about cancellation, no-show, deposit, or refund policies',
                 '',
-                'Generate 4 realistic caller questions for this salon.',
+                'Generate 5 realistic caller questions for this salon.',
               ].filter(Boolean).join('\n'),
             },
           ],

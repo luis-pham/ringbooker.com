@@ -131,11 +131,13 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     demoVsReal:
       'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker answers inbound overflow and after-hours calls on your current number.',
     phoneDemoProfileCopy: 'The phone demo uses a sample hair salon profile.',
+    // Static fallback only — shown when personalized (real-data) questions can't be generated.
+    // Keep these name-free and broadly true for any hair salon (no invented stylist/service).
     tryAsking: [
-      'Can I book a cut with Mia?',
-      'What is the price range for balayage?',
-      'Can I reschedule my color appointment?',
-      'How long does a keratin treatment take?',
+      'Can I book a haircut this week?',
+      'What is your price range for color?',
+      'Can I reschedule my appointment?',
+      'How long does a color appointment take?',
       'What is your next available opening?',
     ],
     quickStartPrompts: ['Balayage with stylist', 'Keratin duration', 'Haircut reschedule', 'Color consult'],

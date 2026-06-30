@@ -30,6 +30,11 @@ type ExtractedDemoData = {
   hours: string;
   /** Flat service names — feeds suggested-questions generation. */
   services: string[];
+  /** Imported stylist/staff names — lets suggested questions name a real provider (never invented). */
+  staff: string[];
+  /** Policy types the salon actually documents (e.g. cancellation, no_show) — lets a suggested
+   *  question reference a policy the demo agent can answer; empty when none were imported. */
+  policies: string[];
   /** Parent service categories with item counts — shown as chips in the "What we found" card. */
   serviceCategories: Array<{ label: string; count: number }>;
 };
@@ -50,6 +55,7 @@ type DemoImportSuggestions = {
   };
   hours?: { value: DemoApiHours | null };
   staffSuggestions?: Array<{ name: string; role?: string | null }>;
+  policySuggestions?: Array<{ type: string; title?: string | null }>;
   serviceCatalog?: {
     services: Array<{
       name: string;
@@ -815,8 +821,8 @@ export function DemoExperience({
 
   // Personalized AI questions when available; otherwise the static per-vertical defaults.
   const activePrompts = suggestedQuestions ?? config.tryAsking;
-  const visiblePrompts = showAllPrompts ? activePrompts : activePrompts.slice(0, 4);
-  const hiddenCount = Math.max(0, activePrompts.length - 4);
+  const visiblePrompts = showAllPrompts ? activePrompts : activePrompts.slice(0, 5);
+  const hiddenCount = Math.max(0, activePrompts.length - 5);
   const isSubmitting = stage === 'queued' || stage === 'dialing' || stage === 'live';
   const isActive = stage !== 'idle';
   useEffect(() => () => {
@@ -1130,6 +1136,10 @@ export function DemoExperience({
           .map((staff) => staff.name.trim())
           .filter(Boolean)
           .slice(0, 8);
+        const policyTypes = (s.policySuggestions ?? [])
+          .map((p) => p.type)
+          .filter((t): t is string => Boolean(t))
+          .slice(0, 10);
         // Real categorized services for the voice agent (not just the display chips).
         const importedServiceCategories = buildDemoServiceCategoriesFromImport(s.serviceCatalog?.services ?? []);
 
@@ -1148,6 +1158,8 @@ export function DemoExperience({
             city: displayCity,
             hours,
             services,
+            staff: staffNames,
+            policies: policyTypes,
             serviceCategories: importedServiceCategories.map((c) => ({ label: c.label, count: c.items.length })),
           };
           setExtractedData(extractedResult);
@@ -2194,7 +2206,9 @@ export function DemoExperience({
     suggestionsLoadedRef.current = true;
     setSuggestionsLoading(true);
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 3000);
+    // Generated during the post-import review step (before the call starts), so there is ample
+    // wall-clock budget; a tight timeout just forces the generic static fallback unnecessarily.
+    const timeoutId = window.setTimeout(() => controller.abort(), 10000);
     try {
       const res = await fetch('/api/backend/public/demo/suggested-questions', {
         method: 'POST',
@@ -2203,6 +2217,8 @@ export function DemoExperience({
           businessName: business.businessName.trim() || config.defaultBusinessName,
           vertical: config.slug,
           services: extracted.services.slice(0, 40),
+          staff: extracted.staff.slice(0, 12),
+          policies: extracted.policies.slice(0, 10),
           hours: extracted.hours || business.primaryHours || undefined,
           city: extracted.city || business.city || undefined,
           sessionId: ensureSessionId(),
@@ -3264,7 +3280,7 @@ export function DemoExperience({
                       <div className="vd-prompts-head">Say one of these</div>
                       {suggestionsLoading ? (
                         <div className="vd-prompts">
-                          {[0, 1, 2, 3].map((i) => (
+                          {[0, 1, 2, 3, 4].map((i) => (
                             <div key={i} className="vd-prompt" style={{ opacity: 0.45, pointerEvents: 'none' }}>
                               <span>Preparing your demo…</span>
                             </div>
