@@ -871,7 +871,7 @@ export function DemoExperience({
           turnstileWidgetIdRef.current = tw.render(el, {
             sitekey: turnstileSiteKey,
             theme: 'light',
-            size: 'compact',
+            size: 'flexible',
             callback: (token: string) => {
               setCaptchaHint(null);
               setCaptchaToken(token);
