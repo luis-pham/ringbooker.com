@@ -784,6 +784,8 @@ export function DemoExperience({
   const demoFaqItems = isPreparedDemo ? preparedDemoFaqItems : VERTICAL_DEMO_FAQ_ITEMS;
   const demoFaqTitle = isPreparedDemo ? `About this demo for ${demoDisplayName}` : 'About this live demo';
   const demoFaqJsonLd = useMemo(() => buildFaqPageJsonLd(demoFaqItems), [demoFaqItems]);
+  const importAddressDisplay = business.address.trim() || extractedData?.address?.trim() || '';
+  const importAddressPlaceholder = extractedData?.address?.trim() || 'e.g. 123 Main St, Los Angeles, CA';
 
   const [siteManualFallback, setSiteManualFallback] = useState(false);
   const [importedDetailsEdit, setImportedDetailsEdit] = useState(false);
@@ -1031,14 +1033,14 @@ export function DemoExperience({
       window.setTimeout(() => {
         setMobileImportRows(['done', 'done', 'spinning', 'pending']);
         setMobileImportProgress(60);
-        setMobileImportPill('Still importing your website — some websites take a moment to read.');
+        setMobileImportPill('This usually takes 1–2 minutes.');
       }, 5000),
     );
     mobileImportTimersRef.current.push(
       window.setTimeout(() => {
-        setMobileImportSubline("We're still reading your site. Please wait a little longer.");
+        setMobileImportSubline('Still reading your site — this usually takes 1–2 minutes.');
         setMobileImportEscape(true);
-      }, 10000),
+      }, 25000),
     );
   }
 
@@ -1083,9 +1085,9 @@ export function DemoExperience({
     } else {
       const stepCheckpoints = [1800, 4000, 6500];
       const delayCheckpoints: Array<[number, string]> = [
-        [5000, 'Still importing your website — some websites take a moment to read.'],
-        [10000, "We're still reading your site. Please wait a little longer."],
-        [32000, 'Still reading your website…'],
+        [25000, 'Still reading your site — this usually takes 1–2 minutes.'],
+        [60000, 'Almost there — larger menus take a little longer.'],
+        [100000, 'Wrapping up… hang tight.'],
       ];
       siteLoadTimersRef.current = [
         ...stepCheckpoints.map((delay) =>
@@ -1099,10 +1101,10 @@ export function DemoExperience({
     if (mobile) {
       mobileImportTimersRef.current.push(
         window.setTimeout(() => {
-          setMobileImportSubline('Still reading your website…');
-          setMobileImportPill('This website is taking a little longer, but we are still importing it.');
+          setMobileImportSubline('Wrapping up… hang tight.');
+          setMobileImportPill('Almost there — larger menus take a little longer.');
           setMobileImportEscape(true);
-        }, 32000),
+        }, 100000),
       );
     }
 
@@ -2349,7 +2351,7 @@ export function DemoExperience({
       .map((value) => value.trim())
       .filter(Boolean)
       .join(' / ');
-    const preparedLocation = business.address.trim() || business.city.trim();
+    const preparedLocation = business.address.trim();
 
     return (
       <div className="vd-form-card" style={{ background: 'var(--surface-1, #fff)', border: '0.5px solid var(--border, #E8ECF1)', borderRadius: 16, padding: '24px 28px' }}>
@@ -2541,10 +2543,10 @@ export function DemoExperience({
                               <span style={{ color: '#111827', fontWeight: 500 }}>{business.businessName || extractedData.businessName}</span>
                             </div>
                           ) : null}
-                          {business.address || business.city || extractedData.address || extractedData.city ? (
+                          {importAddressDisplay ? (
                             <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
                               <span style={{ color: '#9CA3AF', minWidth: 64, flexShrink: 0 }}>Address</span>
-                              <span style={{ color: '#111827' }}>{business.address || business.city || extractedData.address || extractedData.city}</span>
+                              <span style={{ color: '#111827' }}>{importAddressDisplay}</span>
                             </div>
                           ) : null}
                           <div style={{ display: 'flex', gap: 8, marginBottom: 7, fontSize: 12 }}>
@@ -2590,7 +2592,7 @@ export function DemoExperience({
                                 <input
                                   id="vd-m-edit-address"
                                   value={business.address}
-                                  placeholder={business.city || 'Not found on website'}
+                                  placeholder={importAddressPlaceholder}
                                   onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                                 />
                               </div>
@@ -2935,7 +2937,7 @@ export function DemoExperience({
                     <p className="vd-load-head">
                       {IMPORT_PROGRESS_STEPS[Math.min(siteLoadStep, IMPORT_PROGRESS_STEPS.length - 1)]}
                     </p>
-                    <p className="vd-load-sub">Pulling business name, hours, and services.</p>
+                    <p className="vd-load-sub">Pulling business name, hours, and services — this usually takes 1–2 minutes.</p>
                     <div className="vd-load-steps">
                       {IMPORT_PROGRESS_STEPS.map((label, i) => {
                         const isDone = i < siteLoadStep;
@@ -2976,7 +2978,7 @@ export function DemoExperience({
                             <input
                               id="vd-imported-address"
                               value={business.address}
-                              placeholder={business.city || 'Not found on website'}
+                              placeholder={importAddressPlaceholder}
                               onChange={(e) => setBusiness((c) => ({ ...c, address: e.target.value }))}
                             />
                           </div>
@@ -3038,11 +3040,11 @@ export function DemoExperience({
                             <span className="vd-found-val">{business.businessName || extractedData.businessName}</span>
                           </div>
                         ) : null}
-                        {business.address || business.city || extractedData.address || extractedData.city ? (
+                        {importAddressDisplay ? (
                           <div className="vd-found-row">
                             <span className="vd-found-key">Address</span>
                             <span className="vd-found-val">
-                              {business.address || business.city || extractedData.address || extractedData.city}
+                              {importAddressDisplay}
                             </span>
                           </div>
                         ) : null}
