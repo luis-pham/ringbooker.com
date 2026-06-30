@@ -1,17 +1,16 @@
 import { MarketingHomeTemplate, type HomePageContent } from '@/components/marketing/marketing-home';
 import { loadPageContent } from '@/lib/content';
 import { buildHomeSchemas } from '@/lib/schema';
+import { buildMetadata } from '@/lib/site';
 
 export async function generateMetadata() {
   const { frontmatter } = loadPageContent<HomePageContent>('home');
 
-  return {
+  return buildMetadata({
     title: frontmatter.meta.title,
     description: frontmatter.meta.description,
-    alternates: {
-      canonical: 'https://ringbooker.com/',
-    },
-  };
+    path: '/',
+  });
 }
 
 export default function HomePage() {

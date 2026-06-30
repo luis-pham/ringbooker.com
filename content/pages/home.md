@@ -1,7 +1,7 @@
 ---
 meta:
-  title: "AI Receptionist and Answering Service for Beauty Businesses | RingBooker"
-  description: "RingBooker helps salons, spas, med spas, and clinics recover missed bookings, protect revenue, answer after-hours and peak-hour calls, and configure the essentials in about 15 minutes on their current number."
+  title: "AI Receptionist & Answering Service for Salons | RingBooker"
+  description: "Answer overflow and after-hours calls on your current number, recover missed bookings, handle reschedules, and send SMS follow-ups for salons and spas."
   canonical: "/"
 
 hero:
@@ -347,8 +347,8 @@ final_cta:
     href: "/user/signup?plan=starter"
 
 schema:
-  page_name: "AI Receptionist and Answering Service for Beauty Businesses | RingBooker"
-  page_description: "RingBooker helps salons, spas, med spas, and clinics recover missed bookings, protect revenue, answer after-hours and peak-hour calls, and configure the essentials in about 15 minutes on their current number."
+  page_name: "AI Receptionist & Answering Service for Salons | RingBooker"
+  page_description: "Answer overflow and after-hours calls on your current number, recover missed bookings, handle reschedules, and send SMS follow-ups for salons and spas."
   software:
     name: "RingBooker"
     url: "https://ringbooker.com"

@@ -1,7 +1,7 @@
 ---
 meta:
-  title: "AI Receptionist for Med Spas | Botox & Filler Calls | RingBooker"
-  description: "RingBooker is an AI receptionist and answering service for med spas — Botox, filler, and consultation calls after hours and during treatments. 3 missed calls/day costs $130,000+ annually."
+  title: "AI Receptionist for Med Spas | Botox Calls | RingBooker"
+  description: "Capture Botox, filler, laser, consultation, and after-hours calls on your current med spa number before leads cool off."
   canonical: "/industries/med-spa"
 hero:
   eyebrow: "AI receptionist for med spas"
@@ -149,8 +149,8 @@ faq:
   - q: "Is there a contract or minimum commitment for med spas?"
     a: "No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start."
 schema:
-  page_name: "AI Receptionist for Med Spas | Botox & Filler Calls | RingBooker"
-  page_description: "RingBooker is an AI receptionist and answering service for med spas — Botox, filler, and consultation calls after hours and during treatments. 3 missed calls/day costs $130,000+ annually."
+  page_name: "AI Receptionist for Med Spas | Botox Calls | RingBooker"
+  page_description: "Capture Botox, filler, laser, consultation, and after-hours calls on your current med spa number before leads cool off."
   service_type: "Med spa answering service"
   service_area: "United States"
   audience: "Med spa owners and managers"

@@ -1,3 +1,14 @@
+function buildBreadcrumbListSchema(path: string, label: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+      { '@type': 'ListItem', position: 2, name: label, item: `https://ringbooker.com${path}` },
+    ],
+  };
+}
+
 export function buildPricingSchemas(data: {
   schema: {
     provider: {
@@ -83,7 +94,7 @@ export function buildPricingSchemas(data: {
     })),
   };
 
-  return [webPage, softwareApp, faqPage];
+  return [webPage, softwareApp, faqPage, buildBreadcrumbListSchema('/pricing', 'Pricing')];
 }
 
 export function buildIndustrySchemas(slug: string, data: any) {
@@ -161,6 +172,7 @@ export function buildAboutSchemas(data: any) {
         url: schema.org.url,
       },
     },
+    buildBreadcrumbListSchema('/about', 'About'),
   ];
 }
 
@@ -190,6 +202,7 @@ export function buildHowItWorksSchemas(data: any) {
         acceptedAnswer: { '@type': 'Answer', text: item.a },
       })),
     },
+    buildBreadcrumbListSchema('/how-it-works', 'How It Works'),
   ];
 }
 
@@ -212,35 +225,12 @@ export function buildContactSchemas(data: any) {
         acceptedAnswer: { '@type': 'Answer', text: item.a },
       })),
     },
+    buildBreadcrumbListSchema('/contact', 'Contact'),
   ];
 }
 
 export function buildHomeSchemas(data: any) {
-  const { schema, faq } = data;
-
-  const website = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: schema.software.name,
-    url: schema.software.url,
-    description: schema.page_description,
-  };
-
-  const softwareApp = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: schema.software.name,
-    url: schema.software.url,
-    description: schema.software.description,
-    applicationCategory: schema.software.category,
-    operatingSystem: 'Web',
-    offers: {
-      '@type': 'Offer',
-      price: schema.software.price,
-      priceCurrency: schema.software.currency,
-    },
-    sameAs: schema.software.same_as,
-  };
+  const { faq } = data;
 
   const faqPage = {
     '@context': 'https://schema.org',
@@ -255,7 +245,7 @@ export function buildHomeSchemas(data: any) {
     })),
   };
 
-  return [website, softwareApp, faqPage];
+  return [faqPage];
 }
 
 export function buildHubSchemas(data: any) {

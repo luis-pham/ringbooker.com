@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { MarketingContactTemplate, type MarketingContactContent } from '@/components/marketing/marketing-contact';
 import { loadPageContent } from '@/lib/content';
 import { buildContactSchemas } from '@/lib/schema';
+import { buildMetadata } from '@/lib/site';
 
 type ContactPageContent = MarketingContactContent & {
   meta: {
@@ -14,13 +15,11 @@ type ContactPageContent = MarketingContactContent & {
 
 export async function generateMetadata(): Promise<Metadata> {
   const { frontmatter } = loadPageContent<ContactPageContent>('contact');
-  return {
+  return buildMetadata({
     title: frontmatter.meta.title,
     description: frontmatter.meta.description,
-    alternates: {
-      canonical: `https://ringbooker.com${frontmatter.meta.canonical}`,
-    },
-  };
+    path: frontmatter.meta.canonical,
+  });
 }
 
 export default function ContactPage() {

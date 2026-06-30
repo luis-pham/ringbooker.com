@@ -2319,6 +2319,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-progress-node.done{border-color:#3f7d2f;background:#eef7e8;color:#235f1f}
 .onb-progress-node.current{border-color:#7c3aed;background:#faf5ff;color:#5b21b6}
 .onb-progress-line{height:2px;background:#d9deea;border-radius:999px}.onb-progress-line.done{background:#3f7d2f}.onb-progress-line.current{background:#7c3aed}
+.onb-welcome{font-size:14px;color:#6B7280;margin:0 0 4px;font-weight:400}
 .onb-title{margin:0;color:#020617;font-size:1.5rem;line-height:1.3;letter-spacing:-.02em;font-weight:500}
 .onb-subtitle{margin:8px 0 10px;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px;font-weight:400}
 .onb-section-title{display:block;margin:0 0 8px}
@@ -2623,11 +2624,12 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
 
     return (
       <div>
+        <p className="onb-welcome">Welcome to RingBooker</p>
         <h1 className="onb-title">Let's set up your business profile</h1>
         <p className="onb-subtitle">
           {manualEntryOpen
             ? 'Fill in your business basics — takes about a minute.'
-            : "Paste your website or Google Maps link — we'll fill in the details."}
+            : "Paste your website or Google Maps link — we'll fill in the details. Takes about 2 minutes."}
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
           {!manualEntryOpen ? (

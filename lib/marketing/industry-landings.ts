@@ -32,29 +32,29 @@ export function marketingSegmentToVertical(segment: string): MarketingVerticalKe
 
 const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; description: string }> = {
   'nail-salon': {
-    title: 'AI Receptionist for Nail Salons | English & Vietnamese | RingBooker',
+    title: 'AI Receptionist for Nail Salons (EN & VI) | RingBooker',
     description:
-      'RingBooker is an AI receptionist and answering service for nail salons — English and Vietnamese calls, walk-in availability, pricing questions, and after-hours bookings on your current number.',
+      'Answer English and Vietnamese calls, walk-ins, pricing questions, and after-hours booking requests on your current nail salon number.',
   },
   'hair-salon': {
-    title: 'AI Receptionist and Answering Service for Hair Salons | RingBooker',
+    title: 'AI Answering Service for Hair Salons | RingBooker',
     description:
-      'RingBooker is an AI receptionist and answering service for hair salons — preferred stylist requests, color inquiries, and reschedule calls. 77% of clients prefer calling to reschedule. Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.',
+      'Capture haircut, color, stylist preference, reschedule, and after-hours calls on your current hair salon number with RingBooker.',
   },
   spa: {
     title: 'AI Receptionist for Day Spas | RingBooker',
     description:
-      'RingBooker is an AI receptionist and answering service for day spas — couples massage inquiries, package questions, and after-hours calls. Answer every call on your current number.',
+      'Answer couples massage, package, pricing, and after-hours calls on your current day spa number while therapists stay in treatment rooms.',
   },
   'med-spa': {
-    title: 'AI Receptionist for Med Spas | Botox & Filler Calls | RingBooker',
+    title: 'AI Receptionist for Med Spas | Botox Calls | RingBooker',
     description:
-      'RingBooker is an AI receptionist and answering service for med spas — Botox, filler, and consultation calls after hours and during treatments. 3 missed calls/day costs $130,000+ annually.',
+      'Capture Botox, filler, laser, consultation, and after-hours calls on your current med spa number before leads cool off.',
   },
   'beauty-clinic': {
-    title: 'AI Receptionist for Beauty Clinics & Wax Studios | RingBooker',
+    title: 'AI Receptionist for Beauty Clinics & Wax | RingBooker',
     description:
-      'RingBooker is an AI receptionist and answering service for beauty clinics — wax studios, lash studios, and aesthetic clinics. 1 in 3 salon calls goes unanswered during service hours. Covered on your current number.',
+      'Answer waxing, lash, facial, consultation, and after-hours calls on your current beauty clinic number with warm AI call coverage.',
   },
 };
 
@@ -85,7 +85,6 @@ export function marketingIndustryLandingMetadata(segment: string): Metadata {
         canonical: generateCanonical(seo.path).alternates.canonical,
         languages: {
           en: seo.path,
-          'en-US': seo.path,
           vi: '/industries/nail-salon/vi',
           'x-default': seo.path,
         },

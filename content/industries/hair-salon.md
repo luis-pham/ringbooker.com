@@ -1,7 +1,7 @@
 ---
 meta:
-  title: "AI Receptionist and Answering Service for Hair Salons | RingBooker"
-  description: "RingBooker is an AI receptionist and answering service for hair salons — preferred stylist requests, color inquiries, and reschedule calls. 77% of clients prefer calling to reschedule. Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel."
+  title: "AI Answering Service for Hair Salons | RingBooker"
+  description: "Capture haircut, color, stylist preference, reschedule, and after-hours calls on your current hair salon number with RingBooker."
   canonical: "/industries/hair-salon"
 hero:
   eyebrow: "AI receptionist for hair salons"
@@ -138,8 +138,8 @@ faq:
   - q: "Is there a contract or minimum commitment for hair salons?"
     a: "No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start."
 schema:
-  page_name: "AI Receptionist and Answering Service for Hair Salons | RingBooker"
-  page_description: "RingBooker is an AI receptionist and answering service for hair salons — preferred stylist requests, color inquiries, and reschedule calls. 77% of clients prefer calling to reschedule. Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel."
+  page_name: "AI Answering Service for Hair Salons | RingBooker"
+  page_description: "Capture haircut, color, stylist preference, reschedule, and after-hours calls on your current hair salon number with RingBooker."
   service_type: "Hair salon answering service"
   service_area: "United States"
   audience: "Hair salon owners and managers"

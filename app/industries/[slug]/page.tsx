@@ -48,7 +48,6 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
           canonical: `https://ringbooker.com${frontmatter.meta.canonical}`,
           languages: {
             en: frontmatter.meta.canonical,
-            'en-US': frontmatter.meta.canonical,
             vi: '/industries/nail-salon/vi',
             'x-default': frontmatter.meta.canonical,
           },

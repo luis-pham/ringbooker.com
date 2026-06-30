@@ -1,7 +1,7 @@
 ---
 meta:
   title: "AI Receptionist for Day Spas | RingBooker"
-  description: "RingBooker is an AI receptionist and answering service for day spas — couples massage inquiries, package questions, and after-hours calls. Answer every call on your current number."
+  description: "Answer couples massage, package, pricing, and after-hours calls on your current day spa number while therapists stay in treatment rooms."
   canonical: "/industries/spa"
 hero:
   eyebrow: "AI receptionist for day spas"
@@ -150,7 +150,7 @@ faq:
     a: "No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start."
 schema:
   page_name: "AI Receptionist for Day Spas | RingBooker"
-  page_description: "RingBooker is an AI receptionist and answering service for day spas — couples massage inquiries, package questions, and after-hours calls. Answer every call on your current number."
+  page_description: "Answer couples massage, package, pricing, and after-hours calls on your current day spa number while therapists stay in treatment rooms."
   service_type: "Spa answering service"
   service_area: "United States"
   audience: "Spa owners and managers"

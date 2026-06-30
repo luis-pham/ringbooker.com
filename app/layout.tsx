@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
+    default: 'AI Receptionist & Answering Service for Salons | RingBooker',
     template: '%s | RingBooker',
   },
   description: siteConfig.description,
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   applicationName: siteConfig.name,
   category: 'business software',
   openGraph: {
-    title: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
+    title: 'AI Receptionist & Answering Service for Salons | RingBooker',
     description: siteConfig.description,
     url: siteConfig.url,
     siteName: siteConfig.name,
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
+    title: 'AI Receptionist & Answering Service for Salons | RingBooker',
     description: siteConfig.description,
     images: [defaultSiteOgImage],
   },
@@ -80,11 +80,6 @@ const websiteSchema = {
   name: 'RingBooker',
   description: siteConfig.description,
   publisher: { '@id': `${siteConfig.url}/#organization` },
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: { '@type': 'EntryPoint', urlTemplate: `${siteConfig.url}/blog?q={search_term_string}` },
-    'query-input': 'required name=search_term_string',
-  },
 };
 
 const softwareSchema = {
@@ -105,9 +100,9 @@ const softwareSchema = {
   ],
   offers: {
     '@type': 'Offer',
-    price: '0',
+    price: '79',
     priceCurrency: 'USD',
-    description: 'Free 14-day trial, no credit card required',
+    description: 'Plans start at $79 per month. Free 14-day trial, no credit card required.',
   },
   provider: { '@id': `${siteConfig.url}/#organization` },
   featureList: [

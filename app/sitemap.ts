@@ -1,4 +1,6 @@
 import type { MetadataRoute } from 'next';
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { getPublishedPostSitemapEntries } from '@/lib/blog';
 import { siteConfig } from '@/lib/site';
@@ -38,6 +40,56 @@ const staticRoutes = [
   '/about',
 ];
 
+const stableStaticLastModFallback = new Date('2026-06-30T00:00:00.000Z');
+
+const staticContentFiles: Record<string, string> = {
+  '/': 'content/pages/home.md',
+  '/about': 'content/pages/about.md',
+  '/contact': 'content/pages/contact.md',
+  '/how-it-works': 'content/pages/how-it-works.md',
+  '/pricing': 'content/pages/pricing.md',
+  '/compare': 'content/hubs/compare.md',
+  '/current-number': 'content/hubs/current-number.md',
+  '/missed-booking-protection': 'content/hubs/missed-booking-protection.md',
+  '/trust': 'content/hubs/trust.md',
+  '/works-with': 'content/hubs/works-with.md',
+};
+
+function appPageCandidate(route: string): string {
+  return route === '' ? 'app/page.tsx' : `app${route}/page.tsx`;
+}
+
+function staticContentCandidate(route: string): string | null {
+  const key = route === '' ? '/' : route;
+  const direct = staticContentFiles[key];
+  if (direct) return direct;
+  const industryMatch = key.match(/^\/industries\/([^/]+)$/);
+  if (industryMatch) return `content/industries/${industryMatch[1]}.md`;
+  return null;
+}
+
+function latestFileMtime(candidates: string[]): Date | null {
+  let latest: Date | null = null;
+  for (const candidate of candidates) {
+    const file = join(process.cwd(), candidate);
+    try {
+      if (!existsSync(file)) continue;
+      const mtime = statSync(file).mtime;
+      if (!latest || mtime > latest) latest = mtime;
+    } catch {
+      continue;
+    }
+  }
+  return latest;
+}
+
+function staticRouteLastModified(route: string): Date {
+  return latestFileMtime(
+    [staticContentCandidate(route), appPageCandidate(route)].filter((file): file is string => Boolean(file)),
+  )
+    ?? stableStaticLastModFallback;
+}
+
 function parseStaticSitemapLastModMap(): Map<string, Date> {
   const out = new Map<string, Date>();
   const raw = process.env.SITEMAP_STATIC_LASTMOD?.trim();
@@ -60,37 +112,17 @@ function parseStaticSitemapLastModMap(): Map<string, Date> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const postEntries = await getPublishedPostSitemapEntries();
-  const postPathToEntry = new Map(postEntries.map((e) => [e.path, e]));
   const postPathToModified = new Map(postEntries.map((e) => [e.path, e.lastModified]));
   const staticLastModMap = parseStaticSitemapLastModMap();
-  const fallbackStaticLastMod = new Date();
 
   /** Safety: never emit query-parameter URLs (e.g. `/blog?...`) in sitemap. */
   const allPaths = [...new Set([...staticRoutes, ...postPathToModified.keys()])].filter((route) => !route.includes('?'));
 
   return allPaths.map((route) => {
-    /** CMS posts: `Post.updatedAt`. Static routes: per-route `SITEMAP_STATIC_LASTMOD` map or generation time fallback. */
+    /** CMS posts: `Post.updatedAt`. Static routes: explicit env map or source-file mtime. */
     const staticKey = route === '' ? '/' : route;
     const lastModified =
-      postPathToModified.get(route) ?? staticLastModMap.get(staticKey) ?? fallbackStaticLastMod;
-    const postEntry = postPathToEntry.get(route);
-    const alternates =
-      route === '/industries/nail-salon/vi'
-        ? {
-            languages: {
-              vi: `${siteConfig.url}/industries/nail-salon/vi`,
-              en: `${siteConfig.url}/industries/nail-salon`,
-              'x-default': `${siteConfig.url}/industries/nail-salon`,
-            },
-          }
-        : postEntry?.alternates
-          ? {
-              languages: {
-                vi: `${siteConfig.url}${postEntry.alternates.vi}`,
-                'x-default': `${siteConfig.url}${postEntry.alternates.xDefault}`,
-              },
-            }
-          : undefined;
+      postPathToModified.get(route) ?? staticLastModMap.get(staticKey) ?? staticRouteLastModified(route);
     return {
       url: `${siteConfig.url}${route}`,
       lastModified,
@@ -101,7 +133,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           : route.includes('salon') || route.includes('spa') || route.includes('beauty')
             ? 0.9
             : 0.7,
-      ...(alternates ? { alternates } : {}),
     };
   });
 }

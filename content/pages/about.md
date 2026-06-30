@@ -1,7 +1,7 @@
 ---
 meta:
   title: "About RingBooker — AI Receptionist for Salons"
-  description: "Learn about RingBooker — the AI phone answering and call forwarding service built for nail salons, hair salons, day spas, med spas, and beauty clinics across the US."
+  description: "Learn about RingBooker, the AI phone answering and call forwarding service built for nail salons, hair salons, spas, med spas, and beauty clinics."
   canonical: "/about"
 
 breadcrumb: "About"

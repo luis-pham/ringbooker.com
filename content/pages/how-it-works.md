@@ -1,6 +1,6 @@
 ---
 meta:
-  title: "How It Works — Recover Lost Bookings, Keep Your Number | RingBooker"
+  title: "How It Works | Keep Your Number | RingBooker"
   description: "Forward your existing line — RingBooker answers after-hours, covers overflow, sends missed-call texts, and captures intent before it becomes lost revenue."
   canonical: "/how-it-works"
 
@@ -88,6 +88,6 @@ final_cta:
     href: "/user/signup?plan=starter"
 
 schema:
-  page_name: "How RingBooker Works — Recover Lost Bookings, Keep Your Number"
+  page_name: "How It Works | Keep Your Number | RingBooker"
   page_description: "Forward your existing line — RingBooker answers after-hours, covers overflow, sends missed-call texts, and captures intent before it becomes lost revenue."
 ---

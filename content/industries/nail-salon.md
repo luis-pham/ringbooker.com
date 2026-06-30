@@ -1,7 +1,7 @@
 ---
 meta:
-  title: "AI Receptionist for Nail Salons | English & Vietnamese | RingBooker"
-  description: "RingBooker is an AI receptionist and answering service for nail salons — English and Vietnamese calls, walk-in availability, pricing questions, and after-hours bookings on your current number."
+  title: "AI Receptionist for Nail Salons (EN & VI) | RingBooker"
+  description: "Answer English and Vietnamese calls, walk-ins, pricing questions, and after-hours booking requests on your current nail salon number."
   canonical: "/industries/nail-salon"
 hero:
   eyebrow: "AI receptionist & call recovery for nail salons"
@@ -137,8 +137,8 @@ faq:
   - q: "Is there a contract or minimum commitment for nail salons?"
     a: "No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start."
 schema:
-  page_name: "AI Receptionist for Nail Salons | English & Vietnamese | RingBooker"
-  page_description: "RingBooker is an AI receptionist and answering service for nail salons — English and Vietnamese calls, walk-in availability, pricing questions, and after-hours bookings on your current number."
+  page_name: "AI Receptionist for Nail Salons (EN & VI) | RingBooker"
+  page_description: "Answer English and Vietnamese calls, walk-ins, pricing questions, and after-hours booking requests on your current nail salon number."
   service_type: "Nail salon answering service"
   service_area: "United States"
   audience: "Nail salon owners and managers"

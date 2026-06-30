@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { MarketingHowItWorksTemplate, type MarketingHowItWorksContent } from '@/components/marketing/marketing-how-it-works';
 import { loadPageContent } from '@/lib/content';
 import { buildHowItWorksSchemas } from '@/lib/schema';
+import { buildMetadata } from '@/lib/site';
 
 type HowItWorksPageContent = MarketingHowItWorksContent & {
   meta: {
@@ -14,13 +15,11 @@ type HowItWorksPageContent = MarketingHowItWorksContent & {
 
 export async function generateMetadata(): Promise<Metadata> {
   const { frontmatter } = loadPageContent<HowItWorksPageContent>('how-it-works');
-  return {
+  return buildMetadata({
     title: frontmatter.meta.title,
     description: frontmatter.meta.description,
-    alternates: {
-      canonical: `https://ringbooker.com${frontmatter.meta.canonical}`,
-    },
-  };
+    path: frontmatter.meta.canonical,
+  });
 }
 
 export default function HowItWorksPage() {

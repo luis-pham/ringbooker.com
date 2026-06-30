@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     languages: {
       vi: VI_NAIL_SALON_LANDING_SEO.path,
       en: '/industries/nail-salon',
-      'en-US': '/industries/nail-salon',
       'x-default': '/industries/nail-salon',
     },
   },

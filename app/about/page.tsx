@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { MarketingAboutPage, type MarketingAboutContent } from '@/components/marketing/marketing-about';
 import { loadPageContent } from '@/lib/content';
 import { buildAboutSchemas } from '@/lib/schema';
+import { buildMetadata } from '@/lib/site';
 
 type AboutPageContent = MarketingAboutContent & {
   meta: {
@@ -14,13 +15,11 @@ type AboutPageContent = MarketingAboutContent & {
 
 export async function generateMetadata(): Promise<Metadata> {
   const { frontmatter } = loadPageContent<AboutPageContent>('about');
-  return {
+  return buildMetadata({
     title: frontmatter.meta.title,
     description: frontmatter.meta.description,
-    alternates: {
-      canonical: `https://ringbooker.com${frontmatter.meta.canonical}`,
-    },
-  };
+    path: frontmatter.meta.canonical,
+  });
 }
 
 export default function AboutPage() {

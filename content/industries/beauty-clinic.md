@@ -1,7 +1,7 @@
 ---
 meta:
-  title: "AI Receptionist for Beauty Clinics & Wax Studios | RingBooker"
-  description: "RingBooker is an AI receptionist and answering service for beauty clinics — wax studios, lash studios, and aesthetic clinics. 1 in 3 salon calls goes unanswered during service hours. Covered on your current number."
+  title: "AI Receptionist for Beauty Clinics & Wax | RingBooker"
+  description: "Answer waxing, lash, facial, consultation, and after-hours calls on your current beauty clinic number with warm AI call coverage."
   canonical: "/industries/beauty-clinic"
 hero:
   eyebrow: "AI receptionist for beauty clinics, wax studios & lash studios"
@@ -149,8 +149,8 @@ faq:
   - q: "Is there a contract or minimum commitment for beauty clinics?"
     a: "No long-term contract. RingBooker runs month-to-month and you can cancel anytime from your account settings before the next billing cycle. The 14-day free trial requires no credit card to start."
 schema:
-  page_name: "AI Receptionist for Beauty Clinics & Wax Studios | RingBooker"
-  page_description: "RingBooker is an AI receptionist and answering service for beauty clinics — wax studios, lash studios, and aesthetic clinics. 1 in 3 salon calls goes unanswered during service hours. Covered on your current number."
+  page_name: "AI Receptionist for Beauty Clinics & Wax | RingBooker"
+  page_description: "Answer waxing, lash, facial, consultation, and after-hours calls on your current beauty clinic number with warm AI call coverage."
   service_type: "Beauty clinic answering service"
   service_area: "United States"
   audience: "Beauty clinic owners and managers"

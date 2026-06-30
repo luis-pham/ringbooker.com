@@ -9,7 +9,7 @@ export const siteConfig = {
   name: 'RingBooker',
   url: 'https://ringbooker.com',
   description:
-    'RingBooker is an AI receptionist and answering service for salons, nail shops, spas, and med spas. It answers after-hours and overflow calls on your current number, recovers missed bookings, handles reschedules, and sends SMS follow-ups.',
+    'RingBooker is an AI receptionist for salons and spas that answers overflow and after-hours calls on your current number, recovers missed bookings, and sends SMS follow-ups.',
   keywords: [
     'AI phone agent for salons',
     'AI receptionist and answering service for salons',
@@ -58,10 +58,6 @@ export function buildAlternates(path = '/'): Metadata['alternates'] {
   const { alternates } = generateCanonical(path);
   return {
     canonical: alternates.canonical,
-    languages: {
-      'en-US': path,
-      'x-default': path,
-    },
   };
 }
 
