@@ -117,4 +117,10 @@ test('demo prompt instructs the model to treat any in-hours time as available an
   assert.match(prompt, /check it against this business's WEEKLY SCHEDULE and the requested service's duration -- nothing else/);
   assert.match(prompt, /Do not invent any other reason a time might be unavailable: no extra buffer before closing/);
   assert.match(prompt, /do not reverse that decision later in the same call/);
+
+  // Worked examples (step-by-step arithmetic), added after the model got the plain-language
+  // rule wrong live: it rejected 6 PM + 20 min against a 7 PM close as "won't fit".
+  assert.match(prompt, /service 20 min, requested start 6:00 PM\. 6:00 PM \+ 20 min = 6:20 PM\. 6:20 PM is before 7:00 PM close -- AVAILABLE/);
+  assert.match(prompt, /service 2\.5 hours \(150 min\), requested start 6:00 PM\. 6:00 PM \+ 2h30min = 8:30 PM\. 8:30 PM is after 7:00 PM close -- NOT AVAILABLE/);
+  assert.match(prompt, /service 60 min, requested start 6:00 PM\. 6:00 PM \+ 60 min = 7:00 PM\. 7:00 PM is not after 7:00 PM close -- AVAILABLE/);
 });
