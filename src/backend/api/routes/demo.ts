@@ -19,6 +19,7 @@ import type { SalesPreparedDemoConfig, SalesPreparedDemosRepository } from '@/sr
 import { signDemoPreviewToken, verifyDemoPreviewToken } from '@/src/backend/security/demo-preview';
 import { toLiveKitBrowserWsUrl } from '@/src/backend/lib/livekit-browser-url';
 import { importWebsiteWithCache } from '@/src/backend/services/website-import/cache';
+import { websiteImportErrorMessage } from '@/src/backend/services/website-import/error-messages';
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
 import { notifySalesDemoEvent } from '@/src/backend/services/sales-integration/sales-webhook';
 import {
@@ -1165,7 +1166,8 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       // Identical budget + options to the onboarding import so the demo never diverges.
       const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: WEBSITE_IMPORT_BUDGET_MS }, () =>
         importWebsiteForOnboarding({ url: parsed.data.url }, {
-          googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+          // `googlePlacesApiKey` option name unchanged in importer.ts — value now points at Serper (google-places.ts calls Serper internally).
+          googlePlacesApiKey: env.SERPER_API_KEY,
           llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
           openAiApiKey: env.OPENAI_API_KEY,
           llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
@@ -1191,7 +1193,12 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
           deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
         }),
       );
-      return c.json({ ok: result.ok, suggestions: result.suggestions });
+      logger.info({ sourceType: result.suggestions.sourceType, errorCode: result.errorCode ?? null }, 'website_import_classified');
+      return c.json({
+        ok: result.ok,
+        suggestions: result.suggestions,
+        ...(result.errorCode ? { error: result.errorCode, message: websiteImportErrorMessage(result.errorCode) } : {}),
+      });
     } catch (err) {
       logger.warn({ err }, 'public_demo_import_website_failed');
       return c.json({ ok: false, error: 'import_failed', message: 'Could not read that website. You can fill in the details manually.' }, 200);
@@ -1226,7 +1233,8 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         const env = getEnv();
         const result = await importWebsiteWithCache({ url: p.websiteUrl, qualityBudgetMs: WEBSITE_IMPORT_BUDGET_MS }, () =>
           importWebsiteForOnboarding({ url: p.websiteUrl! }, {
-            googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+            // `googlePlacesApiKey` option name unchanged in importer.ts — value now points at Serper (google-places.ts calls Serper internally).
+          googlePlacesApiKey: env.SERPER_API_KEY,
             llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
             openAiApiKey: env.OPENAI_API_KEY,
             llmModel: env.WEBSITE_IMPORT_LLM_MODEL,

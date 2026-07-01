@@ -4,7 +4,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
+import { isGoogleMapsShortLinkHostname, isGoogleMapsUrl } from '@/lib/google-maps-url';
 import { preflightUrl, resolveSafeUrl, type DnsLookup } from './security';
+import { resolveGoogleMapsShortLink } from './short-link-resolver';
 import { detectImportSource, shouldDeepCrawlSource } from './source-routing';
 import { extractLinks, previewHtml } from './html';
 import { commonSitemapUrls, parseRobotsSitemaps, parseSitemapXml, prioritizeChildSitemaps, sitemapUrlsToCandidates } from './sitemap';
@@ -15,7 +17,7 @@ import { DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL, extractPoliciesWithLlm
 import { classifyCandidate, selectPages, toDiagnostic } from './scoring';
 import { renderHtml, type RenderConfig } from './render';
 import { crawlWithCloudflare, CF_CRAWL_TIMEOUT_MS, type CfCrawlPage } from './cf-crawler';
-import type { CandidateBucket, CandidateUrl, ImportSuggestions, PagePreview, SelectedPageDiagnostic, WebsiteImportResult } from './types';
+import type { CandidateBucket, CandidateUrl, ImportSourceType, ImportSuggestions, PagePreview, SelectedPageDiagnostic, WebsiteImportErrorCode, WebsiteImportResult } from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -404,13 +406,49 @@ async function discoverSitemapCandidates(origin: string, opts: ImportOptions, co
   return { candidates, sitemapSourcesFound };
 }
 
-function emptyResult(sourceUrl: string, sourceType = detectImportSource(new URL(sourceUrl))): WebsiteImportResult {
+function emptyResult(
+  sourceUrl: string,
+  sourceType: ImportSourceType = detectImportSource(new URL(sourceUrl)),
+  opts?: { errorCode?: WebsiteImportErrorCode },
+): WebsiteImportResult {
   const suggestions = buildSuggestions({ sourceUrl, sourceType, previews: [] });
   return {
     ok: false,
     suggestions,
     diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: {}, warnings: ['Import returned no readable website content.'], fallbackUsed: [] },
     logoUrl: null,
+    errorCode: opts?.errorCode,
+  };
+}
+
+/** Classifies a terminal Maps-import failure so callers can surface a distinct, actionable message. */
+function googleMapsErrorCode(sourceType: ImportSourceType, googlePlaces: import('./google-places').GooglePlacesSuggestion | null): WebsiteImportErrorCode | undefined {
+  if (sourceType !== 'google_maps' || !googlePlaces) return undefined;
+  if (googlePlaces.name || googlePlaces.address || googlePlaces.phone || googlePlaces.website) return undefined;
+  const warningText = (googlePlaces.warnings ?? []).join(' ');
+  if (!warningText) return undefined;
+  if (/Place Details lookup failed/i.test(warningText)) return 'PLACE_ID_LOOKUP_FAILED';
+  return 'PLACE_NOT_FOUND';
+}
+
+/**
+ * Overlays service/staff/policy/FAQ/promotion/booking data scraped from a Places-listed website
+ * onto Places-derived suggestions. Structured business-profile fields (name, address, phone,
+ * hours, timezone) stay authoritative from Google Places and are never overwritten here.
+ */
+function mergeSecondaryWebsiteSuggestions(base: ImportSuggestions, secondary: ImportSuggestions): ImportSuggestions {
+  return {
+    ...base,
+    serviceCatalog: secondary.serviceCatalog.services.length ? secondary.serviceCatalog : base.serviceCatalog,
+    alsoOffers: secondary.alsoOffers.length ? secondary.alsoOffers : base.alsoOffers,
+    languages: secondary.languages.length ? secondary.languages : base.languages,
+    staffSuggestions: secondary.staffSuggestions.length ? secondary.staffSuggestions : base.staffSuggestions,
+    policySuggestions: secondary.policySuggestions.length ? secondary.policySuggestions : base.policySuggestions,
+    faqSuggestions: secondary.faqSuggestions.length ? secondary.faqSuggestions : base.faqSuggestions,
+    promotionSuggestions: secondary.promotionSuggestions.length ? secondary.promotionSuggestions : base.promotionSuggestions,
+    bookingSetupSuggestions: secondary.bookingSetupSuggestions.length ? secondary.bookingSetupSuggestions : base.bookingSetupSuggestions,
+    bookingUrl: base.bookingUrl.value ? base.bookingUrl : secondary.bookingUrl,
+    warnings: [...base.warnings, ...secondary.warnings],
   };
 }
 
@@ -1328,8 +1366,20 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     return result;
   }
 
+  // Short Google Maps share links (maps.app.goo.gl, goo.gl, g.page) are opaque redirectors —
+  // detectImportSource must classify the resolved destination, not the redirector hostname.
+  const originalStartUrl = startUrl;
+  const shortLinkResolution = await resolveGoogleMapsShortLink(startUrl, { fetcher: opts.fetcher, lookup: opts.lookup });
+  if (!shortLinkResolution.ok) {
+    const result = emptyResult(startUrl.toString(), detectImportSource(startUrl), { errorCode: shortLinkResolution.errorCode });
+    result.diagnostics.warnings.push('Google Maps short link could not be resolved (expired, dead, or blocked).');
+    return result;
+  }
+  startUrl = shortLinkResolution.resolvedUrl;
+
   const sourceType = detectImportSource(startUrl);
   const warnings: string[] = [];
+  if (shortLinkResolution.wasShortLink) warnings.push(`Resolved short link ${originalStartUrl.toString()} to ${startUrl.toString()}.`);
   const fallbackUsed: string[] = [];
   let finalPreviews: PagePreview[] = [];
   let selectedPages: SelectedPageDiagnostic[] = [];
@@ -1369,10 +1419,36 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
 
   if (!shouldDeepCrawlSource(sourceType)) {
     await useStaticHomepageFallback('Platform/social URLs are not recursively crawled.');
-    const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces });
+    let suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces });
     if (!suggestions.bookingUrl.value) suggestions.bookingUrl = { value: startUrl.toString(), confidence: 0.75, source: 'Platform profile' };
+
+    const secondaryScrapeWarnings: string[] = [];
+    if (sourceType === 'google_maps' && googlePlaces?.website && remainingBudget() > 5_000) {
+      const listedWebsite = googlePlaces.website;
+      const isRecursiveMapsLink = (() => {
+        try {
+          const parsed = new URL(listedWebsite);
+          return isGoogleMapsUrl(parsed) || isGoogleMapsShortLinkHostname(parsed.hostname);
+        } catch {
+          return true; // unparsable "website" — treat as unusable rather than recurse on garbage
+        }
+      })();
+      if (!isRecursiveMapsLink) {
+        try {
+          const secondary = await importWebsiteForOnboardingWithCloudflare({ url: listedWebsite }, { ...opts, deadlineMs: remainingBudget() });
+          if (secondary.suggestions.serviceCatalog.services.length || secondary.suggestions.staffSuggestions.length || secondary.suggestions.policySuggestions.length) {
+            suggestions = mergeSecondaryWebsiteSuggestions(suggestions, secondary.suggestions);
+            secondaryScrapeWarnings.push(`Enriched services/pricing from the listed website ${listedWebsite}.`);
+          }
+        } catch {
+          secondaryScrapeWarnings.push('Could not read the listed website for services/pricing; Google Places details were kept.');
+        }
+      }
+    }
+
+    const errorCode = googleMapsErrorCode(sourceType, googlePlaces);
     return {
-      ok: suggestions.status !== 'failed',
+      ok: suggestions.status !== 'failed' && !errorCode,
       suggestions,
       diagnostics: {
         selectedPages,
@@ -1381,10 +1457,11 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
         serviceHubPagesFound: [],
         childServicePagesFound: [],
         confidenceSummary: { services: suggestions.serviceCatalog.confidence },
-        warnings: suggestions.warnings,
+        warnings: [...suggestions.warnings, ...secondaryScrapeWarnings],
         fallbackUsed: fallbackUsed.length ? fallbackUsed : ['static_homepage'],
       },
       logoUrl: null,
+      errorCode,
     };
   }
 

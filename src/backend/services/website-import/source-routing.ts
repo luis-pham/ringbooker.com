@@ -1,8 +1,9 @@
+import { isGoogleMapsUrl } from '@/lib/google-maps-url';
 import type { ImportSourceType } from './types';
 
 export function detectImportSource(url: URL): ImportSourceType {
+  if (isGoogleMapsUrl(url)) return 'google_maps';
   const host = url.hostname.toLowerCase().replace(/^www\./, '');
-  if (host === 'g.co' || host.includes('google.') || host.includes('maps.google.')) return 'google_maps';
   if (host.endsWith('yelp.com')) return 'yelp';
   if (host.endsWith('facebook.com') || host.endsWith('fb.com')) return 'facebook';
   if (host.endsWith('instagram.com')) return 'instagram';

@@ -650,7 +650,9 @@ function catalogFromLegacyServices(services: ServiceItem[], shopId = ''): ShopSe
         durationMinutes: service.duration_min || 60,
         priceAmount: Number.isFinite(service.price) ? service.price : 0,
         priceCurrency: 'USD',
-        priceType: service.price > 0 ? 'fixed' : 'varies',
+        // ServiceItem (legacy shape) has no priceType signal at all — any defined price
+        // (including 0/free) is a known fixed price, not "varies".
+        priceType: 'fixed',
         bookable: true,
         active: true,
         sortOrder: index,

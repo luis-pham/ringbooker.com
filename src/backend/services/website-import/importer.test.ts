@@ -522,13 +522,13 @@ test('Google Places unavailable does not fail static import', async () => {
   assert.equal(result.suggestions.businessProfile.name.source, 'Website');
 });
 
-test('Google Maps URL can use Google Places without readable profile page', async () => {
+test('Google Maps URL can use Serper /maps without a readable profile page', async () => {
   const result = await importWebsiteForOnboarding({ url: 'https://maps.google.com/?q=glow' }, {
     lookup,
     googlePlacesApiKey: 'test-key',
     fetcher: async (url) => {
-      if (url.includes('places.googleapis.com')) {
-        return new Response(JSON.stringify({ places: [{ displayName: { text: 'Glow Nail Spa' }, nationalPhoneNumber: '(555) 123-4567', formattedAddress: '123 Main St, Los Angeles, CA', regularOpeningHours: { periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 19, minute: 0 } }] } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.includes('google.serper.dev')) {
+        return new Response(JSON.stringify({ places: [{ title: 'Glow Nail Spa', phoneNumber: '(555) 123-4567', address: '123 Main St, Los Angeles, CA', openingHours: { Monday: '9 AM–7 PM' } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return new Response('', { status: 404, headers: { 'content-type': 'text/html' } });
     },
@@ -539,13 +539,70 @@ test('Google Maps URL can use Google Places without readable profile page', asyn
   assert.equal(result.suggestions.hours.source, 'Google Places');
 });
 
+test('a maps.app.goo.gl short link resolves through the redirect and classifies as google_maps', async () => {
+  const result = await importWebsiteForOnboarding({ url: 'https://maps.app.goo.gl/shortlink123' }, {
+    lookup,
+    googlePlacesApiKey: 'test-key',
+    fetcher: async (url) => {
+      if (url.includes('maps.app.goo.gl')) {
+        return new Response('', { status: 301, headers: { location: 'https://www.google.com/maps/place/Glow+Nail+Spa/@34.05,-118.25,17z' } });
+      }
+      if (url.includes('google.serper.dev')) {
+        return new Response(JSON.stringify({ places: [{ title: 'Glow Nail Spa', address: '123 Main St, Los Angeles, CA' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      // The resolved Maps place page itself — short-link resolution requires the final hop to be reachable (2xx).
+      if (url.includes('google.com/maps/place')) return new Response('', { status: 200 });
+      return new Response('', { status: 404 });
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.suggestions.sourceType, 'google_maps');
+  assert.equal(result.suggestions.businessProfile.name.value, 'Glow Nail Spa');
+});
+
+test('a dead maps.app.goo.gl short link surfaces SHORT_LINK_RESOLUTION_FAILED instead of scraping the redirector as a normal website', async () => {
+  let placesWasCalled = false;
+  const result = await importWebsiteForOnboarding({ url: 'https://maps.app.goo.gl/dead-link-xyz' }, {
+    lookup,
+    googlePlacesApiKey: 'test-key',
+    fetcher: async (url) => {
+      if (url.includes('google.serper.dev')) placesWasCalled = true;
+      return new Response('Not Found', { status: 404 });
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.errorCode, 'SHORT_LINK_RESOLUTION_FAILED');
+  assert.equal(placesWasCalled, false); // must not fall through to treating the dead redirector as a scrapeable website
+});
+
+test('a Maps link whose Places listing has a website enriches services/pricing from that site without overwriting Places contact fields', async () => {
+  const result = await importWebsiteForOnboarding({ url: 'https://www.google.com/maps/place/Glow+Nail+Spa/@34.05,-118.25,17z' }, {
+    lookup,
+    googlePlacesApiKey: 'test-key',
+    fetcher: async (url) => {
+      if (url.includes('google.serper.dev')) {
+        return new Response(JSON.stringify({ places: [{ title: 'Glow Nail Spa', phoneNumber: '(555) 123-4567', address: '123 Main St, Los Angeles, CA', website: 'https://glow-nail-spa.test' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.startsWith('https://glow-nail-spa.test')) {
+        return response('<h1>Glow Nail Spa</h1><div>Services</div><ul><li>Manicure $35 (30 min)</li><li>Pedicure $45 (45 min)</li></ul>', url);
+      }
+      return new Response('', { status: 404 });
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.suggestions.businessProfile.name.value, 'Glow Nail Spa');
+  assert.equal(result.suggestions.businessProfile.phone.value, '+15551234567');
+  assert.equal(result.suggestions.businessProfile.phone.source, 'Google Places');
+  assert.equal(result.suggestions.serviceCatalog.services.length > 0, true);
+});
+
 test('normal website with matching domain uses Google Places for contact and keeps website services', async () => {
   const result = await importWebsiteForOnboarding({ url: 'https://glow.test' }, {
     lookup,
     googlePlacesApiKey: 'test-key',
     fetcher: async (url) => {
-      if (url.includes('places.googleapis.com')) {
-        return new Response(JSON.stringify({ places: [{ displayName: { text: 'Glow Nail Spa' }, nationalPhoneNumber: '+15559990000', formattedAddress: '123 Main St, Los Angeles, CA', websiteUri: 'https://glow.test', primaryTypeDisplayName: { text: 'Nail salon' }, types: ['nail_salon'], regularOpeningHours: { periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 19, minute: 0 } }] } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.includes('google.serper.dev')) {
+        return new Response(JSON.stringify({ places: [{ title: 'Glow Nail Spa', phoneNumber: '+15559990000', address: '123 Main St, Los Angeles, CA', website: 'https://glow.test', types: ['nail_salon'], openingHours: { Monday: '9 AM–7 PM' } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return response(url.endsWith('/robots.txt') ? '' : '<h1>Glow Nail Spa</h1><p>Call (555) 111-2222</p><p>Gel Manicure $45 45 minutes</p>', url);
     },
@@ -563,10 +620,10 @@ test('ambiguous normal website Places matches do not blindly overwrite static de
     lookup,
     googlePlacesApiKey: 'test-key',
     fetcher: async (url) => {
-      if (url.includes('places.googleapis.com')) {
+      if (url.includes('google.serper.dev')) {
         return new Response(JSON.stringify({ places: [
-          { displayName: { text: 'Other Spa' }, nationalPhoneNumber: '(555) 222-2222', formattedAddress: '1 Main St, Dallas, TX', websiteUri: 'https://other.test' },
-          { displayName: { text: 'Another Spa' }, nationalPhoneNumber: '(555) 333-3333', formattedAddress: '2 Main St, Dallas, TX', websiteUri: 'https://another.test' },
+          { title: 'Other Spa', phoneNumber: '(555) 222-2222', address: '1 Main St, Dallas, TX', website: 'https://other.test' },
+          { title: 'Another Spa', phoneNumber: '(555) 333-3333', address: '2 Main St, Dallas, TX', website: 'https://another.test' },
         ] }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return response(url.endsWith('/robots.txt') ? '' : '<h1>Ambiguous Salon</h1><p>Call (555) 111-1111</p><p>Facial $90</p>', url);

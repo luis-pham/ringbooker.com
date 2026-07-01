@@ -169,7 +169,10 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
     name: service.name,
     category: 'General Services',
     price: service.price,
-    priceType: service.price > 0 ? 'fixed' : 'varies',
+    // Legacy ServiceItem has no priceType signal at all — any defined price (including
+    // 0/free) is a known fixed price, not "varies". Found while fixing the identical
+    // price > 0 ? 'fixed' : 'varies' pattern duplicated across the codebase.
+    priceType: 'fixed',
     duration: `${service.duration_min} min`,
   }));
 }

@@ -43,6 +43,7 @@ import {
   type UserPortalNotificationsUsageInput,
 } from '@/src/backend/services/user/user-portal-notifications';
 import { importWebsiteWithCache } from '@/src/backend/services/website-import/cache';
+import { websiteImportErrorMessage } from '@/src/backend/services/website-import/error-messages';
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
 import {
   acquireWebsiteImportLlmBudget,
@@ -409,7 +410,8 @@ export function registerUserMiscRoutes(
       const env = getEnv();
       const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: WEBSITE_IMPORT_BUDGET_MS }, () =>
         importWebsiteForOnboarding({ url: parsed.data.url }, {
-          googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+          // `googlePlacesApiKey` option name unchanged in importer.ts — value now points at Serper (google-places.ts calls Serper internally).
+          googlePlacesApiKey: env.SERPER_API_KEY,
           llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
           openAiApiKey: env.OPENAI_API_KEY,
           llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
@@ -438,6 +440,8 @@ export function registerUserMiscRoutes(
       if (result.diagnostics.warnings.length > 0) {
         logger.info({ shopId: shop.id, warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])], selectedPageCount: result.diagnostics.selectedPages.length }, 'website_import_completed_with_warnings');
       }
+      // Analytics for how often each source is pasted and how often each Maps failure mode fires.
+      logger.info({ shopId: shop.id, sourceType: result.suggestions.sourceType, errorCode: result.errorCode ?? null }, 'website_import_classified');
       // Persist country_code when Google Places resolves it — used for Telnyx provisioning and SMS sender selection.
       const importedCountry = result.suggestions.country?.toUpperCase() ?? null;
       if (importedCountry && importedCountry !== (shop.country_code ?? 'US')) {
@@ -456,6 +460,7 @@ export function registerUserMiscRoutes(
         suggestions: result.suggestions,
         secondarySuggestionsSummary: secondarySummary(result.suggestions),
         warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])],
+        ...(result.errorCode ? { error: result.errorCode, message: websiteImportErrorMessage(result.errorCode) } : {}),
       });
     } catch (err) {
       logger.warn({ err, shopId: shop.id }, 'website_import_failed');

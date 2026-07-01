@@ -298,7 +298,11 @@ function buildDemoServiceCategoriesFromImport(
     const firstVariantDuration = variants.find((variant) => variant.duration)?.duration;
     category.items.push({
       name,
-      price: typeof sv.priceAmount === 'number' && sv.priceAmount > 0 ? sv.priceAmount : firstVariantPrice ?? 0,
+      // A defined service-level price (including 0/free) is the real price — only fall back to
+      // a variant's price when the service itself has no price at all. Previously, a genuine
+      // $0 base price was discarded in favor of any nonzero variant price, showing the wrong
+      // number for a free service that also happens to have paid variants/add-ons.
+      price: typeof sv.priceAmount === 'number' ? sv.priceAmount : firstVariantPrice ?? 0,
       duration: duration || firstVariantDuration || undefined,
       enabled: true,
       variants,
@@ -328,7 +332,9 @@ function buildDemoServiceCategoriesFromPrepared(services: PreparedDemoServiceDet
     const firstVariantDuration = variants.find((variant) => variant.duration)?.duration;
     category.items.push({
       name,
-      price: typeof sv.price === 'number' && sv.price > 0 ? sv.price : firstVariantPrice ?? 0,
+      // Same fix as buildDemoServiceCategoriesFromImport above: a defined service-level price
+      // (including 0/free) is the real price and must not be overridden by a variant's price.
+      price: typeof sv.price === 'number' ? sv.price : firstVariantPrice ?? 0,
       duration: (sv.duration ?? '').trim() || firstVariantDuration || undefined,
       enabled: true,
       variants,
@@ -2948,7 +2954,7 @@ export function DemoExperience({
                           <input
                             className="vd-url-input"
                             type="url"
-                            placeholder="https://yoursalon.com"
+                            placeholder="https://yoursalon.com or your Google Maps link"
                             value={siteUrl}
                             onChange={(e) => setSiteUrl(e.target.value)}
                             onKeyDown={(e) => {
@@ -3263,7 +3269,7 @@ export function DemoExperience({
                       <input
                         className="vd-url-input"
                         type="url"
-                        placeholder="https://yoursalon.com"
+                        placeholder="https://yoursalon.com or your Google Maps link"
                         value={siteUrl}
                         onChange={(e) => setSiteUrl(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') void readWebsite(); }}

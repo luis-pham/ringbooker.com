@@ -430,7 +430,9 @@ export function extractServicesFromText(text: string, source: string): ImportedS
       description: input.description ?? null,
       priceAmount,
       priceCurrency: CURRENCY,
-      priceType: input.priceType ?? (priceAmount ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
+      // A defined, finite priceAmount (including 0/free) is a known fixed price — a truthy
+      // check here would wrongly treat $0 the same as "no price found".
+      priceType: input.priceType ?? (priceAmount !== null && Number.isFinite(priceAmount) ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
       durationText: input.durationText ?? (input.durationMinutes ? `${input.durationMinutes} min` : null),
       durationMinutes: input.durationMinutes ?? null,
       aliases: aliasFor(name),
@@ -802,7 +804,9 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
         description: block.descriptionText && block.descriptionText.toLowerCase() !== serviceName.toLowerCase() ? block.descriptionText : null,
         priceAmount: blockVariants.length ? null : priceAmount,
         priceCurrency: CURRENCY,
-        priceType: block.priceText && /consultation/i.test(block.priceText) ? 'consultation' : block.priceText && (hasRangeOrPlusPrice || /from|starting|\+/i.test(block.priceText)) ? 'from' : priceAmount ? 'fixed' : 'varies',
+        // priceAmount (from plausiblePrice above) is already validated non-negative when
+        // non-null, so a $0/free service should render as fixed, not "varies".
+        priceType: block.priceText && /consultation/i.test(block.priceText) ? 'consultation' : block.priceText && (hasRangeOrPlusPrice || /from|starting|\+/i.test(block.priceText)) ? 'from' : priceAmount !== null ? 'fixed' : 'varies',
         durationText: blockVariants.length ? null : duration?.durationText ?? block.durationText ?? null,
         durationMinutes: blockVariants.length ? null : duration?.durationMinutes ?? null,
         aliases: aliasFor(serviceName),
@@ -2161,7 +2165,9 @@ function extractServicesFromJsonLd(previews: PagePreview[]): ImportedServiceSugg
       description: description && description.toLowerCase() !== name.toLowerCase() ? description : null,
       priceAmount,
       priceCurrency: /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : CURRENCY,
-      priceType: priceAmount !== null && priceAmount > 0 ? 'fixed' : 'varies',
+      // priceAmount is already validated non-negative (>= 0) when non-null (see line above),
+      // so a scraped $0/free price is a known fixed price, not "varies".
+      priceType: priceAmount !== null ? 'fixed' : 'varies',
       durationText: null,
       durationMinutes: null,
       aliases: aliasFor(name),

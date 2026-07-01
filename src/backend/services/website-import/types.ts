@@ -282,9 +282,18 @@ export type ImportDiagnostics = {
   };
 };
 
+export type WebsiteImportErrorCode =
+  /** A maps.app.goo.gl / goo.gl / g.page short link could not be resolved to its final destination. */
+  | 'SHORT_LINK_RESOLUTION_FAILED'
+  /** Google Places found no matching business for the submitted Maps link. */
+  | 'PLACE_NOT_FOUND'
+  /** A Place Details lookup by place_id/query_place_id errored (quota, invalid id, network). */
+  | 'PLACE_ID_LOOKUP_FAILED';
+
 export type WebsiteImportResult = {
   ok: boolean;
   suggestions: ImportSuggestions;
   diagnostics: ImportDiagnostics;
   logoUrl?: string | null;
+  errorCode?: WebsiteImportErrorCode;
 };

@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, typ
 import { IconPencil } from '@tabler/icons-react';
 
 import { canUseBilingualWorkflow } from '@/src/backend/domain/shop-plan-capabilities';
+import { isProbablyGoogleMapsUrl } from '@/lib/google-maps-url';
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 import { UserLayout } from '@/components/user/user-layout';
@@ -85,6 +86,7 @@ type ImportSource = 'none' | 'website' | 'google_business' | 'manual';
 type ImportedWebsiteSuggestions = {
   status: 'success' | 'partial' | 'failed';
   sourceUrl: string;
+  sourceType?: string;
   businessProfile: {
     name?: { value: string | null; confidence: number; source?: string | null };
     primaryType?: { value: string | null; confidence: number; source?: string | null };
@@ -675,17 +677,6 @@ function normalizeWebsiteUrl(raw: string): string {
   return `https://${t}`;
 }
 
-function isProbablyGoogleBusinessUrl(raw: string): boolean {
-  const u = raw.trim().toLowerCase();
-  return (
-    u.includes('google.com/maps') ||
-    u.includes('g.page') ||
-    u.includes('maps.app.goo.gl') ||
-    u.includes('business.google') ||
-    u.includes('google.com/local/')
-  );
-}
-
 export function isHttpWebsiteUrl(raw: string): boolean {
   try {
     if (/^[a-z][a-z0-9+.-]*:/i.test(raw.trim()) && !/^https?:\/\//i.test(raw.trim())) return false;
@@ -863,7 +854,8 @@ function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceIt
       price: service.priceAmount ?? 0,
       group: service.categoryName?.trim() || 'General Services',
       aliases: service.aliases ?? [],
-      price_type: service.priceType ?? ((service.priceAmount ?? 0) > 0 ? 'fixed' : 'varies'),
+      // A defined priceAmount (including 0/free) is a known fixed price, not "varies".
+      price_type: service.priceType ?? (typeof service.priceAmount === 'number' ? 'fixed' : 'varies'),
       bookable: service.bookable ?? true,
       confidence: service.confidence,
       needsReview: service.needsReview,
@@ -1082,7 +1074,8 @@ function cleanServices(rows: ServiceItem[]): ServiceItem[] {
       price: Number.isFinite(item.price) ? item.price : 0,
       group: item.group?.trim() || 'General Services',
       aliases: item.aliases ?? [],
-      price_type: item.price_type ?? (item.price > 0 ? 'fixed' : 'varies'),
+      // A defined, finite price (including 0/free) is a known fixed price, not "varies".
+      price_type: item.price_type ?? (Number.isFinite(item.price) ? 'fixed' : 'varies'),
       bookable: item.bookable ?? true,
       aiKnowledgeStatus: item.aiKnowledgeStatus ?? null,
       variants: (item.variants ?? []).slice(0, 20).map((variant, index) => ({
@@ -1163,7 +1156,9 @@ function serviceCatalogFromRows(rows: ServiceItem[], extraGroups: string[] = [])
         durationText: service.duration_text ?? (service.duration_min ? `${service.duration_min} min` : null),
         priceAmount: service.price,
         priceCurrency: 'USD',
-        priceType: service.price_type ?? (service.price > 0 ? 'fixed' : 'varies'),
+        // service.price is always a defined, finite number by this point (cleanServices
+        // normalizes it above), so any missing price_type defaults to a known fixed price.
+        priceType: service.price_type ?? 'fixed',
         bookable: service.bookable ?? true,
         active: true,
         sortOrder: index,
@@ -1329,7 +1324,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
   const [importSource, setImportSource] = useState<ImportSource>(
     initialShop?.website_url?.trim()
-      ? isProbablyGoogleBusinessUrl(initialShop.website_url)
+      ? isProbablyGoogleMapsUrl(initialShop.website_url)
         ? 'google_business'
         : 'website'
       : 'none',
@@ -1640,7 +1635,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     const savedSite = body.shop.website_url ?? '';
     setWebsiteUrl(savedSite);
     setWebsiteImportAttempted(Boolean(savedSite.trim()));
-    if (savedSite.trim() && isProbablyGoogleBusinessUrl(savedSite)) setImportSource('google_business');
+    if (savedSite.trim() && isProbablyGoogleMapsUrl(savedSite)) setImportSource('google_business');
     else if (savedSite.trim()) setImportSource('website');
     else setImportSource('none');
     const catalogServices = servicesFromCatalog(body.shop.service_catalog);
@@ -1760,6 +1755,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         startImportProgressTimers();
         let importFailed = false;
         let importResultText = '';
+        let importedSourceType: string | null = null;
         try {
           const response = await fetch('/api/backend/user/onboarding/import-website', {
             method: 'POST',
@@ -1771,6 +1767,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           setWebsiteImportAttempted(true);
           if (response.ok && body?.suggestions) {
             const suggestions = body.suggestions;
+            importedSourceType = suggestions.sourceType ?? null;
             importResultText = importResultMessage(suggestions);
             setImportSuggestions(suggestions);
             setStatus(importResultText);
@@ -1825,7 +1822,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         setWebsiteLoading(false);
         stopImportProgressTimers();
         setWebsiteUrl(canonicalUrl);
-        setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
+        // Prefer the backend's actual classification over a pre-emptive guess so the badge can
+        // never disagree with what the import actually did. Only fall back to the URL-based
+        // guess when there's no backend suggestions to read from (import failed outright).
+        setImportSource(
+          importedSourceType ? (importedSourceType === 'google_maps' ? 'google_business' : 'website')
+          : isProbablyGoogleMapsUrl(trimmed) ? 'google_business' : 'website',
+        );
         if (importFailed) return;
       }
     } else {
@@ -2950,7 +2953,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                     field === 'name'
                       ? 'Happy Nails & Spa'
                       : field === 'website'
-                        ? 'yourbusiness.com or http://yourbusiness.com'
+                        ? 'yourbusiness.com or your Google Maps link'
                         : undefined
                   }
                 />
@@ -3216,7 +3219,7 @@ html[data-user-theme="dark"] .onb-status--complete{border-color:rgba(88,166,255,
                 setWebsiteUrl(event.target.value);
                 markProfileFieldEdited('website');
               }}
-              placeholder="yourbusiness.com or http://yourbusiness.com"
+              placeholder="yourbusiness.com or your Google Maps link"
             />,
             { imported: importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null } },
           )}

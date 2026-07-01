@@ -79,14 +79,13 @@ export function compactPromptLine(input: string, maxChars = MAX_LINE_CHARS): str
   return `${normalized.slice(0, maxChars)}...`;
 }
 
-function renderServicePrice(service: RuntimeService): string | null {
+export function renderServicePrice(service: RuntimeService): string | null {
   if (service.priceType === 'consultation') return 'consultation required';
   if (service.priceType === 'varies') return 'price varies';
-  if (service.price !== undefined && service.price !== null && service.price > 0) {
-    return service.priceType === 'from' ? `starts at $${service.price}` : `$${service.price}`;
-  }
-  if (service.price !== undefined && service.price !== null) return 'consultation / varies';
-  return null;
+  if (service.price === undefined || service.price === null) return null;
+  // A defined price of exactly 0 is a real, known price (free) — not the same as "unknown/varies".
+  if (service.price === 0) return 'free';
+  return service.priceType === 'from' ? `starts at $${service.price}` : `$${service.price}`;
 }
 
 function renderService(service: RuntimeService): string {

@@ -57,7 +57,9 @@ export function buildGeneralServiceCatalog(params: {
           durationMinutes: Number.isFinite(service.duration_min) ? service.duration_min : 60,
           priceAmount: price,
           priceCurrency: 'USD',
-          priceType: price > 0 ? 'fixed' : 'varies',
+          // A defined numeric price (including 0/free) is a known fixed price — this legacy
+          // ServiceItem shape has no "varies"/"consultation" signal to derive from anyway.
+          priceType: 'fixed',
           bookable: true,
           active: true,
           sortOrder: index,

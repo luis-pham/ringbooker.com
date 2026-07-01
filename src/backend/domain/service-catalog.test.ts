@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
+  buildGeneralServiceCatalog,
   GENERAL_SERVICE_CATEGORY_NAME,
   inferServiceGroupName,
   matchServiceFromCallerText,
@@ -223,4 +224,23 @@ test('service catalog persistence uses atomic replace RPC migration', () => {
   assert.match(migration, /create or replace function replace_shop_service_catalog/);
   assert.match(migration, /delete from shop_services[\s\S]*delete from shop_service_categories[\s\S]*insert into shop_service_categories[\s\S]*insert into shop_services[\s\S]*update shops/);
   assert.match(repository, /rpc\('replace_shop_service_catalog'/);
+});
+
+test('buildGeneralServiceCatalog stores a $0 service as priceType "fixed", not "varies"', () => {
+  const catalog = buildGeneralServiceCatalog({
+    shopId: 'shop-1',
+    categoryId: 'cat-general',
+    serviceIdForIndex: (index) => `svc-${index}`,
+    services: [
+      { name: 'Free Consultation', duration_min: 15, price: 0 },
+      { name: 'Haircut', duration_min: 45, price: 45 },
+    ],
+  });
+
+  const free = catalog.services.find((service) => service.name === 'Free Consultation');
+  const paid = catalog.services.find((service) => service.name === 'Haircut');
+  assert.equal(free?.priceType, 'fixed');
+  assert.equal(free?.priceAmount, 0);
+  assert.equal(paid?.priceType, 'fixed');
+  assert.equal(paid?.priceAmount, 45);
 });

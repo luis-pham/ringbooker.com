@@ -39,7 +39,10 @@ function createValidatedEnv() {
         .enum(['true', 'false'])
         .default('false')
         .transform((value) => value === 'true'),
+      /** Archived — Google Places API is no longer called; kept unused for one release cycle in case of Serper rollback. */
       GOOGLE_PLACES_API_KEY: optionalNonEmptyStringEnv,
+      /** Serper.dev API key for Maps/Places lookups (replaces Google Places API — billing friction + cost). */
+      SERPER_API_KEY: optionalNonEmptyStringEnv,
       WEBSITE_IMPORT_LLM_ENABLED: z
         .enum(['true', 'false'])
         .default('false')

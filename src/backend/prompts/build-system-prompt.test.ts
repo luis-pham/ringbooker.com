@@ -347,3 +347,67 @@ test('Square and Mindbody prompts do not include manual booking request instruct
   assert.doesNotMatch(squarePrompt, /BOOKING REQUEST INSTRUCTION/);
   assert.doesNotMatch(mindbodyPrompt, /BOOKING REQUEST INSTRUCTION/);
 });
+
+test('Production prompt renders a genuinely free ($0) catalog service as free, not "price varies"', () => {
+  const shop = createShop('professional');
+  shop.service_catalog = {
+    categories: [
+      { id: '77777777-7777-4777-8777-777777777777', shopId: shop.id, name: 'Color', sortOrder: 0, active: true },
+    ],
+    services: [
+      {
+        id: '88888888-8888-4888-8888-888888888888',
+        shopId: shop.id,
+        categoryId: '77777777-7777-4777-8777-777777777777',
+        name: 'Balayage Consultation',
+        durationMinutes: 20,
+        priceAmount: 0,
+        priceCurrency: 'USD',
+        priceType: 'fixed',
+        bookable: true,
+        active: true,
+        sortOrder: 0,
+        aliases: [],
+        bookingNotes: null,
+      },
+      {
+        id: '99999999-9999-4999-8999-999999999999',
+        shopId: shop.id,
+        categoryId: '77777777-7777-4777-8777-777777777777',
+        name: "Women's Haircut",
+        durationMinutes: 60,
+        priceAmount: 65,
+        priceCurrency: 'USD',
+        priceType: 'fixed',
+        bookable: true,
+        active: true,
+        sortOrder: 1,
+        aliases: [],
+        bookingNotes: null,
+      },
+    ],
+  };
+
+  const prompt = buildSystemPrompt({ shop, customer: null, mode: 'inbound' });
+
+  assert.match(prompt, /Balayage Consultation \| free \| 20 min/);
+  assert.doesNotMatch(prompt, /Balayage Consultation[^\n]*varies/);
+  assert.match(prompt, /Women's Haircut \| \$65 \| 60 min/);
+});
+
+test('Production prompt: a legacy (non-catalog) shop with a $0 service also renders free, not "varies"', () => {
+  const shop = createShop('professional');
+  shop.services = [{ name: 'Free Consultation', duration_min: 15, price: 0 }];
+
+  const prompt = buildSystemPrompt({ shop, customer: null, mode: 'inbound' });
+
+  assert.match(prompt, /Free Consultation \| free \| 15 min/);
+});
+
+test('Production prompt is unaffected by the demo-only BOOKING TIME CHECK instruction (production still calls real tools)', () => {
+  const prompt = buildSystemPrompt({ shop: createShop('professional'), customer: null, mode: 'inbound' });
+
+  assert.doesNotMatch(prompt, /BOOKING TIME CHECK/);
+  // Production keeps its own real-tool-calling rule from the universal guardrails, unchanged.
+  assert.match(prompt, /silently call validate_appointment_time before confirming, rejecting, or proceeding/);
+});
