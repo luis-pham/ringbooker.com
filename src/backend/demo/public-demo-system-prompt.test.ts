@@ -134,3 +134,40 @@ test('demo prompt instructs the model to treat any in-hours time as available an
   assert.match(prompt, /service duration 2\.5 hr \(150 min\), requested start 6:00 PM\. End time = 6:00 PM \+ 2 hr 30 min = 8:30 PM\. 8:30 PM is after 7:00 PM -- NOT AVAILABLE/);
   assert.match(prompt, /service duration 60 min, requested start 6:00 PM\. End time = 6:00 PM \+ 60 min = 7:00 PM exactly\. Ending exactly at close time still counts as available -- AVAILABLE/);
 });
+
+test('demo prompt tells the model to keep the time-check arithmetic silent and only speak the conclusion', () => {
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Luna Hair Studio',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+  });
+
+  // Added after a live re-test showed the model verbalizing its own arithmetic
+  // ("would run about 20 minutes, ending right at closing") instead of just the conclusion --
+  // a side effect of the "compute before deciding" instruction above, which never said to keep
+  // the calculation silent the way tool calls already are.
+  assert.match(prompt, /Do this calculation silently, the same way you handle tool calls/);
+  assert.match(prompt, /never say the arithmetic, the word "compute," or any numbers-plus-numbers reasoning out loud/);
+  assert.match(prompt, /State only the natural conclusion/);
+});
+
+test('demo prompt states the live-setup disclaimer at most once per call, at final confirmation only', () => {
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Luna Hair Studio',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+  });
+
+  // The disclaimer previously had three independent, unconditional "say this" sources
+  // (two in demo-guardrails.txt, one here), causing it to fire on both an intermediate
+  // "let's check that time" turn and the final confirmation in the same call. Consolidated
+  // to a single source of truth with an explicit frequency/placement constraint.
+  assert.match(prompt, /State this disclaimer at most once per call, at the point of final confirmation only/);
+  assert.match(prompt, /On intermediate turns \(e\.g\. "let's check that time"\), a brief natural acknowledgment/);
+  assert.match(prompt, /do not repeat the full disclaimer there/);
+
+  // demo-guardrails.txt must defer to this pack instead of independently restating the
+  // disclaimer wording -- otherwise the duplicate-source bug reappears.
+  assert.match(prompt, /Follow the demo call-type pack's disclaimer wording and frequency rule/);
+  assert.match(prompt, /Use the disclaimer wording and once-per-call timing defined in the demo call-type pack/);
+});
