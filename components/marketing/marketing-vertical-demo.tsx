@@ -2929,7 +2929,7 @@ export function DemoExperience({
                       <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
                         {isSubmitting ? 'Starting…' : ctaLabel}
                       </button>
-                      <p className="vd-cta-note">Talk to RingBooker in your browser. No phone number required.</p>
+                      <p className="vd-cta-note">No phone number needed — and nothing gets booked for real.</p>
                       <div className="vd-phone-demo-secondary">
                         <div className="vd-phone-demo-title">Prefer to call?</div>
                         <p className="vd-phone-demo-text">Call the demo line and speak with the AI receptionist.</p>
@@ -3058,7 +3058,7 @@ export function DemoExperience({
                         {isSubmitting ? 'Starting…' : ctaLabel}
                       </button>
                       <p className="vd-cta-note">
-                        Talk to RingBooker in your browser using this demo setup. No phone number required.
+                        No phone number needed — and nothing gets booked for real.
                       </p>
                       <div className="vd-phone-demo-secondary">
                         <div className="vd-phone-demo-title">Prefer to call?</div>
@@ -3380,7 +3380,7 @@ export function DemoExperience({
                     {isSubmitting ? 'Starting…' : ctaLabel}
                   </button>
                   <p className="vd-cta-note">
-                    Talk to RingBooker in your browser using this demo setup. No phone number required.
+                    No phone number needed — and nothing gets booked for real.
                   </p>
 
                   <div className="vd-phone-demo-secondary">

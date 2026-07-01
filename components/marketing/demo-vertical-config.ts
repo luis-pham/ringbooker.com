@@ -140,7 +140,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
       'How long does a color appointment take?',
       'What is your next available opening?',
     ],
-    quickStartPrompts: ['Balayage with stylist', 'Keratin duration', 'Haircut reschedule', 'Color consult'],
+    quickStartPrompts: ['Color consultation', 'Keratin duration', 'Haircut reschedule', 'Color consult'],
     serviceCategories: [
       {
         id: 'cut-style',
@@ -155,7 +155,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
         id: 'color',
         label: 'Color',
         items: [
-          { name: 'Balayage Consultation', price: 0, duration: '20 min', enabled: true },
+          { name: 'Color Consultation', price: 0, duration: '20 min', enabled: true },
           { name: 'Partial Highlights', price: 145, duration: '2 hr', enabled: true },
           { name: 'Keratin Treatment', price: 220, duration: '2.5 hr', enabled: true },
         ],

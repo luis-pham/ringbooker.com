@@ -359,7 +359,7 @@ test('Production prompt renders a genuinely free ($0) catalog service as free, n
         id: '88888888-8888-4888-8888-888888888888',
         shopId: shop.id,
         categoryId: '77777777-7777-4777-8777-777777777777',
-        name: 'Balayage Consultation',
+        name: 'Color Consultation',
         durationMinutes: 20,
         priceAmount: 0,
         priceCurrency: 'USD',
@@ -390,8 +390,8 @@ test('Production prompt renders a genuinely free ($0) catalog service as free, n
 
   const prompt = buildSystemPrompt({ shop, customer: null, mode: 'inbound' });
 
-  assert.match(prompt, /Balayage Consultation \| free \| 20 min/);
-  assert.doesNotMatch(prompt, /Balayage Consultation[^\n]*varies/);
+  assert.match(prompt, /Color Consultation \| free \| 20 min/);
+  assert.doesNotMatch(prompt, /Color Consultation[^\n]*varies/);
   assert.match(prompt, /Women's Haircut \| \$65 \| 60 min/);
 });
 

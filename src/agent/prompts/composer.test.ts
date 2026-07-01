@@ -129,7 +129,7 @@ describe('voice prompt composer', () => {
     assert.equal(
       inferVerticalFromBusinessConfig({
         businessName: 'Willow Hair Lounge',
-        services: [{ name: 'Balayage Consultation' }, { name: 'Keratin Treatment' }],
+        services: [{ name: 'Color Consultation' }, { name: 'Keratin Treatment' }],
       }),
       'hair-salon',
     );

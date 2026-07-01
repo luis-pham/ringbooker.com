@@ -908,11 +908,11 @@ test('extracts Love and Hair Peace style services, staff, and visible FAQs', () 
 
 test('JSON-LD Service with a $0 offer price is extracted as priceType "fixed", not "varies"', () => {
   const preview = previewHtml(
-    '<script type="application/ld+json">{"@type":"Service","name":"Balayage Consultation","offers":{"price":0,"priceCurrency":"USD"}}</script><h1>Salon</h1>',
+    '<script type="application/ld+json">{"@type":"Service","name":"Color Consultation","offers":{"price":0,"priceCurrency":"USD"}}</script><h1>Salon</h1>',
     'https://jsonld-free.test',
   );
   const suggestions = buildSuggestions({ sourceUrl: 'https://jsonld-free.test', sourceType: 'normal_website', previews: [preview] });
-  const service = suggestions.serviceCatalog.services.find((item) => item.name === 'Balayage Consultation');
+  const service = suggestions.serviceCatalog.services.find((item) => item.name === 'Color Consultation');
   assert.equal(service?.priceAmount, 0);
   assert.equal(service?.priceType, 'fixed');
 });

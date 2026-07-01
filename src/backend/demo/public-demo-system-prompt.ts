@@ -91,7 +91,7 @@ const VERTICAL_DEMO_DEFAULTS: Record<string, DemoVerticalDefaults> = {
       { category: 'Cut & Style', name: "Women's Haircut", price: 65, duration: '60 min' },
       { category: 'Cut & Style', name: "Men's Haircut", price: 40, duration: '45 min' },
       { category: 'Cut & Style', name: 'Blowout', price: 45, duration: '45 min' },
-      { category: 'Color', name: 'Balayage Consultation', price: 0, duration: '20 min' },
+      { category: 'Color', name: 'Color Consultation', price: 0, duration: '20 min' },
       { category: 'Color', name: 'Partial Highlights', price: 145, duration: '2 hr' },
       { category: 'Color', name: 'Keratin Treatment', price: 220, duration: '2.5 hr' },
     ],
