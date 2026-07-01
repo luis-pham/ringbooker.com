@@ -118,9 +118,19 @@ test('demo prompt instructs the model to treat any in-hours time as available an
   assert.match(prompt, /Do not invent any other reason a time might be unavailable: no extra buffer before closing/);
   assert.match(prompt, /do not reverse that decision later in the same call/);
 
-  // Worked examples (step-by-step arithmetic), added after the model got the plain-language
-  // rule wrong live: it rejected 6 PM + 20 min against a 7 PM close as "won't fit".
-  assert.match(prompt, /service 20 min, requested start 6:00 PM\. 6:00 PM \+ 20 min = 6:20 PM\. 6:20 PM is before 7:00 PM close -- AVAILABLE/);
-  assert.match(prompt, /service 2\.5 hours \(150 min\), requested start 6:00 PM\. 6:00 PM \+ 2h30min = 8:30 PM\. 8:30 PM is after 7:00 PM close -- NOT AVAILABLE/);
-  assert.match(prompt, /service 60 min, requested start 6:00 PM\. 6:00 PM \+ 60 min = 7:00 PM\. 7:00 PM is not after 7:00 PM close -- AVAILABLE/);
+  // "Compute before deciding" instruction, added after a live re-test showed the model still
+  // rejected 6 PM + 20 min against a 7 PM close after the first round of examples -- it stated
+  // the correct facts (close time, duration) but reached the wrong conclusion from them.
+  assert.match(prompt, /Do the math first, then decide -- never state a conclusion and work backward to justify it/);
+  assert.match(prompt, /never reject a time because it starts "late in the day" without actually computing where it ends/);
+
+  // Rejecting a time must come with a concrete alternative, and caller pushback after a
+  // rejection must re-anchor on the still-unresolved time, not repeat the same rejection.
+  assert.match(prompt, /always propose at least one specific alternative start time that is within business hours/);
+  assert.match(prompt, /treat the time question as still unresolved: restate your proposed alternative time and ask them to confirm it/);
+
+  // Worked examples (step-by-step arithmetic, with an explicit "End time = " computed value).
+  assert.match(prompt, /service duration 20 min, requested start 6:00 PM\. End time = 6:00 PM \+ 20 min = 6:20 PM\. 6:20 PM is before 7:00 PM -- AVAILABLE/);
+  assert.match(prompt, /service duration 2\.5 hr \(150 min\), requested start 6:00 PM\. End time = 6:00 PM \+ 2 hr 30 min = 8:30 PM\. 8:30 PM is after 7:00 PM -- NOT AVAILABLE/);
+  assert.match(prompt, /service duration 60 min, requested start 6:00 PM\. End time = 6:00 PM \+ 60 min = 7:00 PM exactly\. Ending exactly at close time still counts as available -- AVAILABLE/);
 });
