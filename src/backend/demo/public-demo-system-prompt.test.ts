@@ -171,3 +171,33 @@ test('demo prompt states the live-setup disclaimer at most once per call, at fin
   assert.match(prompt, /Follow the demo call-type pack's disclaimer wording and frequency rule/);
   assert.match(prompt, /Use the disclaimer wording and once-per-call timing defined in the demo call-type pack/);
 });
+
+test('demo prompt requires collecting the caller\'s name before the final confirmation line', () => {
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Luna Hair Studio',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+  });
+
+  // Added after a live re-test confirmed a booking without ever asking the caller's name --
+  // the universal guardrails.txt rule requiring a name existed but was crowded out by this
+  // pack's own detailed, example-heavy time-check sequence, which never referenced it.
+  assert.match(prompt, /NAME CHECKPOINT/);
+  assert.match(prompt, /do not say the final "captured and confirmed by text" disclaimer line until you have the caller's name/);
+  assert.match(prompt, /If the caller already volunteered their name earlier in the call, do not ask again/);
+});
+
+test('demo prompt does not let the model echo a vague time-of-day word as a validated option', () => {
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Luna Hair Studio',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+  });
+
+  // Added after a live re-test showed the model echoing "evening" back as an open option
+  // ("...Thursday or Friday evening, or around lunch?") without checking it against the
+  // shop's actual close time -- risking a false expectation before a specific time is even named.
+  assert.match(prompt, /VAGUE TIME WINDOW/);
+  assert.match(prompt, /do not simply echo that word back as a confirmed-sounding option/);
+  assert.match(prompt, /it's fine to proactively mention the actual closing time while asking for a specific time/);
+});
