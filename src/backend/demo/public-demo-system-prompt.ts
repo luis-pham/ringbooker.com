@@ -10,6 +10,7 @@ import type { VoicePromptCallType } from '@/src/agent/prompts/types';
 import type { BusinessHours } from '@/src/backend/domain/types';
 import { buildDefaultRuntimeGreeting } from '@/src/backend/domain/resolve-effective-runtime-config';
 import { resolveShopTimeContext } from '@/src/backend/services/calls/business-hours';
+import { inferTimezoneFromAddress } from '@/src/backend/services/website-import/extract';
 
 export type DemoConfigInput = {
   address?: string;
@@ -259,12 +260,22 @@ export function buildPublicDemoSystemPrompt(input: {
   const address = input.demoConfig?.address;
   const city = input.demoConfig?.city || (allowDefaultFallbacks ? defaults?.city : undefined);
 
-  // Compute real-time business context so the AI knows whether the shop is currently open
-  // and can correctly answer time-related questions. Uses vertical default timezone; falls
-  // back to graceful nulls when the vertical is unknown.
-  const demoTimezone = allowDefaultFallbacks ? defaults?.timezone ?? null : null;
-  const demoTimeContext = allowDefaultFallbacks && demoTimezone
-    ? resolveShopTimeContext({ hours: defaults!.structuredHours, timezone: demoTimezone })
+  // Compute real-time business context so the AI knows whether the shop is currently open,
+  // can correctly answer time-related questions, and has a real CURRENT LOCAL TIME anchor to
+  // resolve relative time expressions ("in 15 minutes") against.
+  // Vertical-sample path: use the vertical's default timezone (existing behavior).
+  // Real-site-imported path (allowDefaultFallbacks === false): infer a timezone from the
+  // imported business's real address, reusing the same heuristic the production onboarding
+  // import pipeline already uses (extract.ts's inferTimezoneFromAddress), falling back to the
+  // vertical's default timezone as an approximation when inference fails. Never silently omit
+  // CURRENT LOCAL TIME just because this is a real-imported business -- if even the fallback
+  // has nothing to go on (unknown vertical, no address), the resolution instruction in the
+  // core prompt tells the model to ask rather than fabricate a time.
+  const demoTimezone = allowDefaultFallbacks
+    ? defaults?.timezone ?? null
+    : inferTimezoneFromAddress(address)?.value ?? defaults?.timezone ?? null;
+  const demoTimeContext = demoTimezone
+    ? resolveShopTimeContext({ hours: allowDefaultFallbacks ? defaults!.structuredHours : {}, timezone: demoTimezone })
     : null;
 
   const demoContext =

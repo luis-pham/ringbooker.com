@@ -489,6 +489,7 @@ export interface ShopsRepository {
         | 'address'
         | 'email'
         | 'timezone'
+        | 'timezone_confirmed_at'
         | 'services'
         | 'not_offered_services'
         | 'staff'

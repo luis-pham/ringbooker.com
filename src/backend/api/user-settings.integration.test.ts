@@ -294,6 +294,53 @@ test('user settings persist onboarding and forwarding setup fields', async () =>
   assert.equal(after?.forwarding_country, 'us');
 });
 
+test('saving a timezone via PUT /user/settings stamps timezone_confirmed_at (covers both onboarding profile-review and the Settings page, which share this same endpoint)', async () => {
+  // go-live-gate.ts's "Timezone set" check reads timezone_confirmed_at, not mere presence of
+  // shop.timezone (which is NOT NULL and always holds at least the signup-time default).
+  const { app, shopsRepository } = createUserSettingsTestApp();
+  const cookie = await loginUser(app);
+  const before = await shopsRepository.findById('demo-shop');
+  assert.equal(before?.timezone_confirmed_at ?? null, null);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ timezone: 'America/New_York' }),
+  });
+
+  assert.equal(response.status, 200);
+  const after = await shopsRepository.findById('demo-shop');
+  assert.equal(after?.timezone, 'America/New_York');
+  assert.ok(after?.timezone_confirmed_at);
+  assert.ok(!Number.isNaN(new Date(after!.timezone_confirmed_at!).getTime()));
+});
+
+test('saving unrelated settings fields does not stamp timezone_confirmed_at', async () => {
+  const { app, shopsRepository } = createUserSettingsTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ promotions: '10% off first visit' }),
+  });
+
+  assert.equal(response.status, 200);
+  const after = await shopsRepository.findById('demo-shop');
+  assert.equal(after?.promotions, '10% off first visit');
+  assert.equal(after?.timezone_confirmed_at ?? null, null);
+});
+
 test('user can save grouped service catalog and legacy services are derived for compatibility', async () => {
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),

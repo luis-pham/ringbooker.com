@@ -411,3 +411,17 @@ test('Production prompt is unaffected by the demo-only BOOKING TIME CHECK instru
   // Production keeps its own real-tool-calling rule from the universal guardrails, unchanged.
   assert.match(prompt, /silently call validate_appointment_time before confirming, rejecting, or proceeding/);
 });
+
+test('Production prompt instructs the model to resolve relative time expressions against CURRENT LOCAL TIME', () => {
+  // Added after a live demo audit found the model fabricating a clock time for "in 15 minutes"
+  // with no traceable source. validate_appointment_time only accepts an already-resolved
+  // absolute date/time (YYYY-MM-DD / HH:MM), so this resolution step has to happen correctly
+  // in the model's own reasoning before the tool is ever called -- production needs this
+  // instruction just as much as demo, even though production always has real CURRENT LOCAL TIME.
+  const prompt = buildSystemPrompt({ shop: createShop('professional'), customer: null, mode: 'inbound' });
+
+  assert.match(prompt, /RELATIVE TIME RESOLUTION/);
+  assert.match(prompt, /compute the actual target date and time by adding the stated offset to CURRENT LOCAL TIME/);
+  assert.match(prompt, /roll the target over to the next calendar day before treating it as valid/);
+  assert.match(prompt, /ask the caller to state a specific day and time instead/);
+});

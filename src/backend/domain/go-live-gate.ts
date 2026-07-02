@@ -43,7 +43,10 @@ export function evaluateKnowledgeGate(shop: Shop): KnowledgeGateItem[] {
     {
       key: 'timezone',
       label: 'Timezone set',
-      passed: Boolean(shop.timezone?.trim()),
+      // shop.timezone is a NOT NULL column that always holds at least the signup-time
+      // default, so checking presence alone can never fail. Require an actual confirmation
+      // (onboarding profile review or a Settings save) instead.
+      passed: Boolean(shop.timezone_confirmed_at),
       blocking: true,
       fixPath: '/user/settings?tab=business',
     },

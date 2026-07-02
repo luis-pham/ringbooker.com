@@ -22,7 +22,9 @@ test('imported demo config can disable vertical sample fallbacks', () => {
   assert.match(prompt, /LOCATION: 2100 Virginia Drive, Suite C, Grand Prairie, TX 75051/);
   assert.match(prompt, /SERVICES \/ PRICING: Not configured/);
   assert.doesNotMatch(prompt, /Austin, TX/);
-  assert.doesNotMatch(prompt, /America\/Chicago/);
+  // TX in the imported address is correctly inferred as America/Chicago (see the dedicated
+  // timezone-inference tests below) -- this is the vertical *sample* Chicago fallback being
+  // absent, not a blanket "no timezone for imported businesses" assertion (that was the bug).
   assert.doesNotMatch(prompt, /Tue.?Sat 9am.?6pm/);
   assert.doesNotMatch(prompt, /\bMia\b/);
   assert.doesNotMatch(prompt, /\bJordan\b/);
@@ -217,4 +219,60 @@ test('demo prompt does not let the model echo a vague time-of-day word as a vali
   assert.match(prompt, /VAGUE TIME WINDOW/);
   assert.match(prompt, /do not simply echo that word back as a confirmed-sounding option/);
   assert.match(prompt, /it's fine to proactively mention the actual closing time while asking for a specific time/);
+});
+
+test('demo prompt infers a real timezone from an imported business address instead of omitting CURRENT LOCAL TIME', () => {
+  // Reproduces the live audit finding: a real-site-imported business (useDefaultFallbacks:
+  // false) previously got no timezone/current-time context at all, since that path only ever
+  // used the vertical's default timezone. New York should resolve to America/New_York, not the
+  // hair-salon vertical's own default (America/Chicago) and not silence.
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Imported NYC Salon',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+    demoConfig: {
+      address: '10 Broadway, New York, NY 10004',
+      useDefaultFallbacks: false,
+    },
+  });
+
+  assert.match(prompt, /TIMEZONE: America\/New_York/);
+  assert.match(prompt, /CURRENT LOCAL TIME:/);
+  assert.doesNotMatch(prompt, /America\/Chicago/);
+});
+
+test('demo prompt falls back to the vertical default timezone when an imported address has no inferable region', () => {
+  // Minimum acceptable fallback per the audit: if inferTimezoneFromAddress can't find a region
+  // (e.g. no address given at all), fall back to the vertical's default timezone rather than
+  // silently omitting CURRENT LOCAL TIME -- a known approximation, but strictly better than
+  // nothing.
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Imported Unknown-Location Salon',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+    demoConfig: {
+      useDefaultFallbacks: false,
+    },
+  });
+
+  assert.match(prompt, /TIMEZONE: America\/Chicago/);
+  assert.match(prompt, /CURRENT LOCAL TIME:/);
+});
+
+test('demo and production prompts both instruct the model to resolve relative time expressions against CURRENT LOCAL TIME', () => {
+  // Lives in core/guardrails.txt (UNIVERSAL_GUARDRAIL_PROMPT, always included for every call
+  // type) specifically so this one addition covers both demo and production without duplication.
+  const prompt = buildPublicDemoSystemPrompt({
+    shopName: 'Luna Hair Studio',
+    businessType: 'hair salon',
+    demoVertical: 'hair-salon',
+  });
+
+  assert.match(prompt, /RELATIVE TIME RESOLUTION/);
+  assert.match(prompt, /compute the actual target date and time by adding the stated offset to CURRENT LOCAL TIME/);
+  assert.match(prompt, /Never guess or state a plausible-sounding clock time without doing this calculation first/);
+  assert.match(prompt, /roll the target over to the next calendar day before treating it as valid/);
+  assert.match(prompt, /ask the caller to state a specific day and time instead/);
+  assert.match(prompt, /9:00 PM \+ 15 min = 9:15 PM, still Wednesday, July 1/);
+  assert.match(prompt, /11:50 PM \+ 15 min = 12:05 AM, which crosses midnight into the next calendar day/);
 });

@@ -8,6 +8,9 @@ import {
   type EvalRule,
   type TestScenario,
 } from './scenarios/hair-salon-inbound';
+import { nailSalonInboundScenarios } from './scenarios/nail-salon-inbound';
+
+const allScenarios: TestScenario[] = [...hairSalonInboundScenarios, ...nailSalonInboundScenarios];
 
 const OPENAI_CHAT_COMPLETIONS_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-4o-mini';
@@ -254,7 +257,7 @@ async function runEval(): Promise<void> {
   console.log(`OpenAI judge model: ${judgeModel}\n`);
 
   const results: ScenarioResult[] = [];
-  for (const scenario of hairSalonInboundScenarios) {
+  for (const scenario of allScenarios) {
     process.stdout.write(`Testing: ${scenario.id}... `);
     const result = await runScenario({
       apiKey,

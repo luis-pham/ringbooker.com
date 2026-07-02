@@ -183,6 +183,29 @@ export const hairSalonInboundScenarios: TestScenario[] = [
     ],
   },
   {
+    id: 'stated-day-time-preference-not-dropped',
+    category: 'booking_flow',
+    // Reproduces the exact live-call bug: a caller states a concrete day/time preference while
+    // still discussing a service. The scripted next question ("Any stylist preference, or is
+    // anyone okay?") must not fire without first addressing the stated preference.
+    callerUtterance:
+      "Hi, I'd like to ask about a color consultation. Do you have anything Thursday or Friday? I work during the week, so evenings would be easier, or I could maybe squeeze in a lunch break.",
+    rules: [
+      {
+        description: 'Must acknowledge the stated day(s) or time-of-day preference',
+        check: 'llm_judge',
+        prompt:
+          'The caller mentioned Thursday or Friday, and said evenings or a lunch break would work for them. Does this response directly engage with that day and/or time-of-day preference (e.g. confirms a day, asks for a specific time within what they described, or offers times that fit) rather than ignoring it? Answer YES or NO only.',
+      },
+      {
+        description: 'Must NOT ask an unrelated scripted question (e.g. stylist preference) without addressing the stated preference first',
+        check: 'llm_judge',
+        prompt:
+          'Does this response ask about stylist/technician preference, or any other unrelated scripted booking question, WITHOUT first acknowledging the caller\'s stated day/time preference (Thursday, Friday, evenings, or lunch)? Answer YES or NO only. YES means FAIL.',
+      },
+    ],
+  },
+  {
     id: 'square-creates-booking-not-link',
     category: 'booking_flow',
     callerUtterance: 'I want to book a haircut Saturday at 10am, my name is Sarah',

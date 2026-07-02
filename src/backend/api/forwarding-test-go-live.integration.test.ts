@@ -73,6 +73,8 @@ async function createFixture(opts: Fx) {
     hours: opts.onboardingComplete === false ? {} : { mon: { open: '09:00', close: '17:00' } },
     services: opts.onboardingComplete === false ? [] : [{ name: 'Manicure', duration_min: 45, price: 35 }],
     current_onboarding_step: 4,
+    // Represents having completed onboarding's profile-review step, which stamps this.
+    ...(opts.onboardingComplete === false ? {} : { timezone_confirmed_at: new Date().toISOString() }),
     ...(opts.telnyxNumber ? { telnyx_number: opts.telnyxNumber } : {}),
   });
 

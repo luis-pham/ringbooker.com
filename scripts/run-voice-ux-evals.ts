@@ -2549,6 +2549,254 @@ async function retryTimeChangeScenarios(): Promise<void> {
   process.exitCode = failures > 0 ? 1 : 0;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DROPPED-PREFERENCE SCENARIOS — reproduces the live-call bug where the caller
+// states a concrete day/time preference mid-flow and the agent ignores it in
+// favor of the next scripted question (e.g. stylist/technician preference).
+//
+// Only hair_salon and nail_salon get a scenario here: both have an unconditional
+// "any stylist/technician preference?" scripted question in their vertical pack
+// that can directly compete with a stated preference. day_spa and med_spa's
+// vertical packs use redirect/handoff wording ("that's a provider question...")
+// rather than a competing scripted question, so there's no comparable trigger to
+// build a meaningful scenario against — extending coverage to them would mean
+// testing a pattern that doesn't actually exist in their prompt content.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type DroppedPreferenceScenario = {
+  persona: string;
+  openingLine: string;
+  preferenceLine: string;
+  goal: string;
+  behavior: string;
+};
+
+type DroppedPreferenceEvaluation = {
+  addressedPreference: boolean;
+  reason: string;
+  evidence: string[];
+};
+
+type DroppedPreferenceResult = {
+  requestId: string;
+  fixture: VerticalFixture;
+  scenario: DroppedPreferenceScenario;
+  transcript: TranscriptTurn[];
+  evaluation: DroppedPreferenceEvaluation;
+  error?: string;
+};
+
+function droppedPreferenceScenarioFor(fixture: VerticalFixture): DroppedPreferenceScenario | null {
+  if (fixture.vertical !== 'hair_salon' && fixture.vertical !== 'nail_salon') return null;
+  const serviceQuestion = fixture.vertical === 'hair_salon' ? 'a color consultation' : 'a gel manicure';
+  return {
+    persona: 'A caller asking about a service who, in their very next turn, states a concrete day/time preference while the agent has not yet asked about scheduling.',
+    openingLine: `Hi, I wanted to ask about ${serviceQuestion}.`,
+    preferenceLine:
+      "Do you have anything Thursday or Friday? I work during the week, so evenings would be easier, or I could maybe squeeze in a lunch break.",
+    goal: 'Get the service question answered, then state the Thursday/Friday + evening-or-lunch preference, then continue booking naturally with whatever specific time the agent proposes.',
+    behavior: [
+      'Say your opening line exactly as scripted.',
+      'After the agent answers, say your preference line exactly as scripted — do not paraphrase it.',
+      'After that, continue naturally: if the agent proposes a specific time, accept it or negotiate briefly, then give your name (Taylor Nguyen) and continue to booking completion.',
+      'Accept the final confirmation and close the call warmly.',
+    ].join(' '),
+  };
+}
+
+async function simulateDroppedPreferenceConversation(
+  fixture: VerticalFixture,
+  scenario: DroppedPreferenceScenario,
+  systemPrompt: string,
+): Promise<{ transcript: TranscriptTurn[]; toolEvents: ToolEvent[] }> {
+  const transcript: TranscriptTurn[] = [];
+  const toolEvents: ToolEvent[] = [];
+  const validationState: NonNullable<AgentToolContext['appointmentTimeValidation']> = { latest: null };
+
+  const greeting = await chatCompletion(
+    [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content:
+          '[VOICE TEST HARNESS EVENT] The inbound phone line has just connected. Deliver only your required opening greeting, then wait for the caller.',
+      },
+    ],
+    'agent',
+  );
+  appendTurn(transcript, 'assistant', greeting);
+
+  const agentMessages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'assistant', content: greeting },
+  ];
+
+  // Turns 1–2 are scripted exactly, to faithfully reproduce the reported bug rather than
+  // leaving the caller-simulator to improvise a possibly different phrasing.
+  for (const scriptedLine of [scenario.openingLine, scenario.preferenceLine]) {
+    appendTurn(transcript, 'caller', scriptedLine);
+    agentMessages.push({ role: 'user', content: scriptedLine });
+    const assistant = await generateAgentReply({ fixture, messages: agentMessages, transcript, toolEvents, validationState });
+    appendTurn(transcript, 'assistant', assistant);
+    if (hasCleanEnding(assistant)) return { transcript, toolEvents };
+  }
+
+  // Remaining turns continue naturally via the caller-simulator until the call closes.
+  while (transcript.length < MAX_TRANSCRIPT_TURNS) {
+    const lastAssistant = transcript.at(-1);
+    if (lastAssistant?.role === 'assistant' && hasCleanEnding(lastAssistant.text)) break;
+
+    const callerUtterance = await chatCompletion(
+      [
+        {
+          role: 'system',
+          content: [
+            'You are simulating a caller in a phone UX test.',
+            `Persona: ${scenario.persona}`,
+            `Goal: ${scenario.goal}`,
+            `Behavior rules: ${scenario.behavior}`,
+            'Reply with only one natural caller utterance. Never speak as the assistant or describe your behavior.',
+            'Stay engaged until the call reaches a clear close, then say goodbye briefly.',
+          ].join('\n'),
+        },
+        {
+          role: 'user',
+          content: `Conversation so far:\n${formattedTranscript(transcript)}\n\nGive the caller's next utterance.`,
+        },
+      ],
+      'caller',
+    );
+    appendTurn(transcript, 'caller', callerUtterance);
+    agentMessages.push({ role: 'user', content: callerUtterance });
+
+    const assistant = await generateAgentReply({ fixture, messages: agentMessages, transcript, toolEvents, validationState });
+    appendTurn(transcript, 'assistant', assistant);
+    if (hasCleanEnding(assistant) || transcript.length >= MAX_TRANSCRIPT_TURNS) break;
+  }
+  return { transcript, toolEvents };
+}
+
+async function evaluateDroppedPreferenceConversation(
+  transcript: TranscriptTurn[],
+): Promise<DroppedPreferenceEvaluation> {
+  // The turn under test is the assistant's reply immediately after the scripted preference line
+  // (T3: greeting=T1, opening=T2... preference line is T3, so the reply under test is T4) --
+  // but resolve it by content match rather than a hardcoded index, in case the harness structure
+  // shifts later.
+  const prefIndex = transcript.findIndex((t) => t.role === 'caller' && t.text.includes('Thursday or Friday'));
+  const replyUnderTest = prefIndex >= 0 ? transcript[prefIndex + 1] : undefined;
+  if (!replyUnderTest || replyUnderTest.role !== 'assistant') {
+    return { addressedPreference: false, reason: 'Could not locate the assistant reply immediately after the stated preference.', evidence: [] };
+  }
+
+  const raw = await chatCompletion(
+    [
+      {
+        role: 'system',
+        content: [
+          'You are a strict QA evaluator for an AI phone receptionist.',
+          'Return JSON only: {"addressedPreference": true|false, "reason": ""}',
+          'The caller stated a day preference (Thursday or Friday) and a time-of-day preference (evenings, or a lunch break).',
+          'addressedPreference is true if the single assistant reply provided directly engages with that day and/or time-of-day preference (confirms a day, asks for a specific time within what was described, offers a fitting time, or explains why those days/times do not work) -- rather than ignoring it in favor of an unrelated scripted question (e.g. stylist/technician preference) with no acknowledgment at all.',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: `Caller's stated preference: "${transcript[prefIndex].text}"\n\nAssistant's reply to evaluate: "${replyUnderTest.text}"`,
+      },
+    ],
+    'evaluator',
+    true,
+  );
+
+  try {
+    const parsed = JSON.parse(raw) as { addressedPreference?: boolean; reason?: string };
+    return {
+      addressedPreference: parsed.addressedPreference === true,
+      reason: typeof parsed.reason === 'string' ? parsed.reason : '',
+      evidence: [`T${replyUnderTest.index} ASSISTANT: ${replyUnderTest.text}`],
+    };
+  } catch {
+    return { addressedPreference: false, reason: 'Evaluator returned invalid JSON.', evidence: [] };
+  }
+}
+
+function droppedPreferenceReportMarkdown(results: DroppedPreferenceResult[], generatedAt: string): string {
+  const lines: string[] = [
+    '',
+    '---',
+    '',
+    '## Dropped-Preference Evaluation',
+    '',
+    `- Generated: ${generatedAt}`,
+    `- ${results.length} scenarios (hair_salon, nail_salon only -- see code comment for why day_spa/med_spa are excluded)`,
+    '',
+    '| Vertical | Addressed Preference | Reason |',
+    '| --- | --- | --- |',
+  ];
+  for (const r of results) {
+    lines.push(`| ${r.fixture.vertical} | ${r.evaluation.addressedPreference ? '✅ PASS' : '❌ FAIL'} | ${r.evaluation.reason.replace(/\|/g, '/')} |`);
+  }
+  lines.push('', '### Dropped-Preference Full Transcripts', '');
+  for (const r of results) {
+    lines.push(`#### ${r.fixture.vertical}`, '', '```', formattedTranscript(r.transcript), '```', '');
+  }
+  return lines.join('\n');
+}
+
+async function runDroppedPreferenceOnly(): Promise<void> {
+  loadLocalEnv();
+  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is required to run voice UX evals.');
+
+  const fixtures = buildFixtures();
+  const results: DroppedPreferenceResult[] = [];
+
+  process.stdout.write(`\n[voice-ux] === dropped_preference scenarios ===\n`);
+  for (const fixture of fixtures) {
+    const scenario = droppedPreferenceScenarioFor(fixture);
+    if (!scenario) {
+      process.stdout.write(`[voice-ux] Skipping ${fixture.vertical} -- no comparable scripted-question pattern.\n`);
+      continue;
+    }
+    const systemPrompt = buildSystemPrompt({
+      shop: fixture.shop,
+      customer: null,
+      mode: 'inbound',
+      vertical: fixture.promptVertical,
+    });
+    process.stdout.write(`[voice-ux] Running ${fixture.vertical}/dropped_preference...\n`);
+    try {
+      const { transcript } = await simulateDroppedPreferenceConversation(fixture, scenario, systemPrompt);
+      const evaluation = await evaluateDroppedPreferenceConversation(transcript);
+      results.push({ requestId: randomUUID(), fixture, scenario, transcript, evaluation });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      results.push({
+        requestId: randomUUID(),
+        fixture,
+        scenario,
+        transcript: [],
+        evaluation: { addressedPreference: false, reason: message, evidence: [] },
+        error: message,
+      });
+    }
+  }
+
+  const generatedAt = new Date().toISOString();
+  const markdown = droppedPreferenceReportMarkdown(results, generatedAt);
+  mkdirSync(OUTPUT_DIR, { recursive: true });
+  writeFileSync(resolve(OUTPUT_DIR, 'latest-dropped-preference-report.md'), markdown, 'utf8');
+  writeFileSync(
+    resolve(OUTPUT_DIR, 'latest-dropped-preference-results.json'),
+    JSON.stringify({ generatedAt, model: MODEL, results }, null, 2),
+    'utf8',
+  );
+  process.stdout.write(`\n${markdown}\n`);
+  const passed = results.filter((r) => r.evaluation.addressedPreference).length;
+  process.stdout.write(`[voice-ux] dropped_preference: ${passed}/${results.length} passed\n`);
+  process.exitCode = passed < results.length ? 1 : 0;
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 const mode = process.argv[2];
 if (mode === '--retry-failed') {
@@ -2573,6 +2821,11 @@ if (mode === '--retry-failed') {
   });
 } else if (mode === '--clear-booker-only') {
   runClearBookerOnly().catch((error) => {
+    console.error('[voice-ux] Fatal error:', error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+} else if (mode === '--dropped-preference-only') {
+  runDroppedPreferenceOnly().catch((error) => {
     console.error('[voice-ux] Fatal error:', error instanceof Error ? error.message : error);
     process.exitCode = 1;
   });

@@ -142,6 +142,12 @@ export function registerUserSettingsRoutes(
       return c.json({ ok: false, error: 'service_catalog_disabled' }, 503);
     }
     const { basicPatch, dynamicPatch, disallowedFields } = splitUserSettingsPatchByPlan(shop, settingsPatch);
+    // A deliberate timezone change here (onboarding's profile-review step or a Settings save)
+    // is a real confirmation, distinct from the signup-time default merely being present --
+    // stamp it so the go-live gate can tell the two apart.
+    if (basicPatch.timezone !== undefined) {
+      basicPatch.timezone_confirmed_at = new Date().toISOString();
+    }
     if (disallowedFields.length > 0) {
       return c.json(
         {

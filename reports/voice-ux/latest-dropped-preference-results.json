@@ -1,0 +1,326 @@
+{
+  "generatedAt": "2026-07-02T06:44:23.615Z",
+  "model": "gpt-4o",
+  "results": [
+    {
+      "requestId": "b8b6ec3c-c6da-4e9d-a140-1a41848719ca",
+      "fixture": {
+        "vertical": "nail_salon",
+        "promptVertical": "nail-salon",
+        "shop": {
+          "id": "eval-nail-salon",
+          "name": "Luna Nail Studio",
+          "vertical": "nail_salon",
+          "phone_number": "+13125550100",
+          "user_phone": "+13125550101",
+          "handoff_phone": "+13125550102",
+          "address": "214 West Maple Street, Chicago, IL 60610",
+          "timezone": "America/Chicago",
+          "services": [
+            {
+              "name": "Gel Manicure",
+              "duration_min": 45,
+              "price": 42
+            },
+            {
+              "name": "Signature Pedicure",
+              "duration_min": 60,
+              "price": 58
+            },
+            {
+              "name": "Dip Powder Set",
+              "duration_min": 60,
+              "price": 55
+            }
+          ],
+          "hours": {
+            "mon": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "tue": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "wed": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "thu": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "fri": {
+              "open": "09:00",
+              "close": "18:00"
+            },
+            "sat": {
+              "open": "09:00",
+              "close": "16:00"
+            },
+            "sun": {
+              "closed": true
+            }
+          },
+          "cancel_policy": "Please provide at least 24 hours notice for changes or cancellation.",
+          "booking_url": null,
+          "booking_method": null,
+          "selected_integration": null,
+          "ai_welcome_message": "Thank you for calling Luna Nail Studio, how can I help you today?",
+          "allow_transfers": false,
+          "allow_callbacks": false,
+          "send_reminder_sms": true,
+          "send_review_request_sms": false,
+          "send_missed_call_followup_sms": true,
+          "plan": "professional",
+          "active": true,
+          "languages": [
+            "en"
+          ],
+          "country_code": "US",
+          "staff": [
+            {
+              "name": "Mina",
+              "role": "Nail technician",
+              "specialties": [
+                "Gel manicure",
+                "Nail art"
+              ]
+            }
+          ]
+        },
+        "targetService": "Gel Manicure"
+      },
+      "scenario": {
+        "persona": "A caller asking about a service who, in their very next turn, states a concrete day/time preference while the agent has not yet asked about scheduling.",
+        "openingLine": "Hi, I wanted to ask about a gel manicure.",
+        "preferenceLine": "Do you have anything Thursday or Friday? I work during the week, so evenings would be easier, or I could maybe squeeze in a lunch break.",
+        "goal": "Get the service question answered, then state the Thursday/Friday + evening-or-lunch preference, then continue booking naturally with whatever specific time the agent proposes.",
+        "behavior": "Say your opening line exactly as scripted. After the agent answers, say your preference line exactly as scripted — do not paraphrase it. After that, continue naturally: if the agent proposes a specific time, accept it or negotiate briefly, then give your name (Taylor Nguyen) and continue to booking completion. Accept the final confirmation and close the call warmly."
+      },
+      "transcript": [
+        {
+          "index": 1,
+          "timestamp": "2026-07-02T06:44:01.027Z",
+          "role": "assistant",
+          "text": "Thank you for calling Luna Nail Studio, how can I help you today?"
+        },
+        {
+          "index": 2,
+          "timestamp": "2026-07-02T06:44:01.028Z",
+          "role": "caller",
+          "text": "Hi, I wanted to ask about a gel manicure."
+        },
+        {
+          "index": 3,
+          "timestamp": "2026-07-02T06:44:02.456Z",
+          "role": "assistant",
+          "text": "A gel manicure at Luna Nail Studio is $42 and takes about 45 minutes. Would you like to book an appointment for that?"
+        },
+        {
+          "index": 4,
+          "timestamp": "2026-07-02T06:44:02.456Z",
+          "role": "caller",
+          "text": "Do you have anything Thursday or Friday? I work during the week, so evenings would be easier, or I could maybe squeeze in a lunch break."
+        },
+        {
+          "index": 5,
+          "timestamp": "2026-07-02T06:44:05.217Z",
+          "role": "assistant",
+          "text": "We can schedule a gel manicure for either Thursday or Friday at 12 PM or 5 PM. Which time would you prefer?"
+        },
+        {
+          "index": 6,
+          "timestamp": "2026-07-02T06:44:06.006Z",
+          "role": "caller",
+          "text": "Thursday at 5 PM works for me. My name is Taylor Nguyen."
+        },
+        {
+          "index": 7,
+          "timestamp": "2026-07-02T06:44:07.834Z",
+          "role": "assistant",
+          "text": "Great, Taylor! I've noted your request for a gel manicure on Thursday at 5 PM. The team will follow up with a confirmation. You'll receive a text soon. Anything else I can help with?"
+        },
+        {
+          "index": 8,
+          "timestamp": "2026-07-02T06:44:11.186Z",
+          "role": "caller",
+          "text": "No, that's all. Thank you so much for your help. Goodbye!"
+        },
+        {
+          "index": 9,
+          "timestamp": "2026-07-02T06:44:12.117Z",
+          "role": "assistant",
+          "text": "You're welcome! Have a great day, and we'll see you on Thursday. Goodbye!"
+        }
+      ],
+      "evaluation": {
+        "addressedPreference": true,
+        "reason": "The assistant directly engaged with the caller's preference by offering appointment times on the requested days and during the requested times of day.",
+        "evidence": [
+          "T5 ASSISTANT: We can schedule a gel manicure for either Thursday or Friday at 12 PM or 5 PM. Which time would you prefer?"
+        ]
+      }
+    },
+    {
+      "requestId": "544525e5-f65b-4543-a342-528801d273e2",
+      "fixture": {
+        "vertical": "hair_salon",
+        "promptVertical": "hair-salon",
+        "shop": {
+          "id": "eval-hair-salon",
+          "name": "Cedar and Bloom Hair Salon",
+          "vertical": "hair_salon",
+          "phone_number": "+13125550100",
+          "user_phone": "+13125550101",
+          "handoff_phone": "+13125550102",
+          "address": "214 West Maple Street, Chicago, IL 60610",
+          "timezone": "America/Chicago",
+          "services": [
+            {
+              "name": "Women's Haircut",
+              "duration_min": 60,
+              "price": 72
+            },
+            {
+              "name": "Blowout",
+              "duration_min": 45,
+              "price": 55
+            },
+            {
+              "name": "Balayage",
+              "duration_min": 180,
+              "price": 220
+            }
+          ],
+          "hours": {
+            "mon": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "tue": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "wed": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "thu": {
+              "open": "09:00",
+              "close": "19:00"
+            },
+            "fri": {
+              "open": "09:00",
+              "close": "18:00"
+            },
+            "sat": {
+              "open": "09:00",
+              "close": "16:00"
+            },
+            "sun": {
+              "closed": true
+            }
+          },
+          "cancel_policy": "Please provide at least 24 hours notice for changes or cancellation.",
+          "booking_url": null,
+          "booking_method": null,
+          "selected_integration": null,
+          "ai_welcome_message": "Thank you for calling Cedar and Bloom Hair Salon, how can I help you today?",
+          "allow_transfers": false,
+          "allow_callbacks": false,
+          "send_reminder_sms": true,
+          "send_review_request_sms": false,
+          "send_missed_call_followup_sms": true,
+          "plan": "professional",
+          "active": true,
+          "languages": [
+            "en"
+          ],
+          "country_code": "US",
+          "staff": [
+            {
+              "name": "Jordan",
+              "role": "Stylist",
+              "specialties": [
+                "Haircuts",
+                "Balayage"
+              ]
+            }
+          ]
+        },
+        "targetService": "Women's Haircut"
+      },
+      "scenario": {
+        "persona": "A caller asking about a service who, in their very next turn, states a concrete day/time preference while the agent has not yet asked about scheduling.",
+        "openingLine": "Hi, I wanted to ask about a color consultation.",
+        "preferenceLine": "Do you have anything Thursday or Friday? I work during the week, so evenings would be easier, or I could maybe squeeze in a lunch break.",
+        "goal": "Get the service question answered, then state the Thursday/Friday + evening-or-lunch preference, then continue booking naturally with whatever specific time the agent proposes.",
+        "behavior": "Say your opening line exactly as scripted. After the agent answers, say your preference line exactly as scripted — do not paraphrase it. After that, continue naturally: if the agent proposes a specific time, accept it or negotiate briefly, then give your name (Taylor Nguyen) and continue to booking completion. Accept the final confirmation and close the call warmly."
+      },
+      "transcript": [
+        {
+          "index": 1,
+          "timestamp": "2026-07-02T06:44:13.946Z",
+          "role": "assistant",
+          "text": "Thank you for calling Cedar and Bloom Hair Salon, how can I help you today?"
+        },
+        {
+          "index": 2,
+          "timestamp": "2026-07-02T06:44:13.946Z",
+          "role": "caller",
+          "text": "Hi, I wanted to ask about a color consultation."
+        },
+        {
+          "index": 3,
+          "timestamp": "2026-07-02T06:44:14.988Z",
+          "role": "assistant",
+          "text": "We offer balayage services, which include a consultation as part of the process. The balayage is priced at $220 and takes about 180 minutes. Would you like to set up a consultation or grab an appointment for this service?"
+        },
+        {
+          "index": 4,
+          "timestamp": "2026-07-02T06:44:14.988Z",
+          "role": "caller",
+          "text": "Do you have anything Thursday or Friday? I work during the week, so evenings would be easier, or I could maybe squeeze in a lunch break."
+        },
+        {
+          "index": 5,
+          "timestamp": "2026-07-02T06:44:17.472Z",
+          "role": "assistant",
+          "text": "We can accommodate you on either Thursday or Friday at 12 PM or 5 PM. Which time works best for you?"
+        },
+        {
+          "index": 6,
+          "timestamp": "2026-07-02T06:44:18.433Z",
+          "role": "caller",
+          "text": "Thursday at 5 PM works for me. My name is Taylor Nguyen."
+        },
+        {
+          "index": 7,
+          "timestamp": "2026-07-02T06:44:20.440Z",
+          "role": "assistant",
+          "text": "Great, Taylor! I've noted your appointment for a balayage consultation on Thursday at 5 PM. I'll text you the details. Anything else I can help with?"
+        },
+        {
+          "index": 8,
+          "timestamp": "2026-07-02T06:44:21.275Z",
+          "role": "caller",
+          "text": "No, that's all. Thank you so much for your help. Goodbye!"
+        },
+        {
+          "index": 9,
+          "timestamp": "2026-07-02T06:44:22.581Z",
+          "role": "assistant",
+          "text": "You're welcome! Have a great day, and we'll see you on Thursday. Goodbye!"
+        }
+      ],
+      "evaluation": {
+        "addressedPreference": true,
+        "reason": "The assistant directly engaged with the caller's preference by offering times on the requested days and during the specified time-of-day preferences.",
+        "evidence": [
+          "T5 ASSISTANT: We can accommodate you on either Thursday or Friday at 12 PM or 5 PM. Which time works best for you?"
+        ]
+      }
+    }
+  ]
+}

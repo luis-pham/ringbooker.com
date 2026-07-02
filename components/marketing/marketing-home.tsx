@@ -1081,12 +1081,12 @@ export function MarketingHomeTemplate({ content }: { content: HomePageContent })
         </div>
       </div>
         <MarketingFooter />
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '18px 20px 34px', background: 'var(--mk-bg-section,#F9FAFB)' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '18px 20px 34px', textAlign: 'center', background: 'var(--mk-bg-section,#F9FAFB)' }}>
           <a
             href="https://theresanaiforthat.com/ai/ringbooker/?ref=featured&v=11524856"
             target="_blank"
             rel="nofollow noopener noreferrer"
-            style={{ display: 'inline-flex' }}
+            style={{ display: 'inline-flex', justifyContent: 'center', margin: '0 auto' }}
           >
             <img
               width={300}

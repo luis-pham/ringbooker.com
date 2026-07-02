@@ -285,6 +285,10 @@ export interface Shop {
   address?: string | null;
   email?: string | null;
   timezone: string;
+  /** Set only when the owner actually confirmed/changed timezone (onboarding profile review or
+   *  Settings save) -- distinct from `timezone` merely holding the signup-time default. Used by
+   *  the go-live gate so "Timezone set" can't pass on an unconfirmed default alone. */
+  timezone_confirmed_at?: string | null;
   services: ServiceItem[];
   service_catalog?: ShopServiceCatalog;
   /** User-confirmed services the business does not offer. Never infer this from vertical alone. */
