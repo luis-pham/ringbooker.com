@@ -661,7 +661,13 @@ export function registerAuthRoutes(app: Hono, path: (route: string) => string, d
     }
 
     const postAuthRedirect = computeUserPostAuthRedirectPath({ shop, shopId: authUser.shopId });
-    return c.redirect(`${appBaseUrl}${postAuthRedirect}`, 302);
+    // Only route through the conversion interstitial for a genuine new signup — a returning
+    // user logging in via Google must keep going straight to postAuthRedirect, unchanged.
+    const redirectTarget =
+      createdViaGoogleSignup && shop
+        ? `/signup/thank-you?shopId=${encodeURIComponent(shop.id)}&next=${encodeURIComponent(postAuthRedirect)}`
+        : postAuthRedirect;
+    return c.redirect(`${appBaseUrl}${redirectTarget}`, 302);
   });
 
   app.post(path('/auth/user/login'), async (c) => {

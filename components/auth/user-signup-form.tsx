@@ -58,6 +58,7 @@ export function UserSignupForm() {
         message?: string;
         onboardingRequired?: boolean;
         postAuthRedirect?: string;
+        shopId?: string;
       } | null;
       if (!response.ok) {
         setDuplicateSignup(response.status === 409);
@@ -71,7 +72,10 @@ export function UserSignupForm() {
           : body?.onboardingRequired
             ? '/user/onboarding'
             : '/user';
-      router.push(next);
+      const thankYouUrl = body?.shopId
+        ? `/signup/thank-you?shopId=${encodeURIComponent(body.shopId)}&next=${encodeURIComponent(next)}`
+        : next;
+      router.push(thankYouUrl);
       router.refresh();
     } catch {
       setError('Network error. Please try again.');

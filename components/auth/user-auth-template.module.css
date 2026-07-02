@@ -119,6 +119,22 @@
   margin-bottom: 14px;
 }
 
+.centeredContent {
+  text-align: center;
+}
+
+.successIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
 .title {
   font-size: 30px;
   line-height: 1.08;
