@@ -1081,23 +1081,6 @@ export function MarketingHomeTemplate({ content }: { content: HomePageContent })
         </div>
       </div>
         <MarketingFooter />
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '18px 20px 34px', textAlign: 'center', background: 'var(--mk-bg-section,#F9FAFB)' }}>
-          <a
-            href="https://theresanaiforthat.com/ai/ringbooker/?ref=featured&v=11524856"
-            target="_blank"
-            rel="nofollow noopener noreferrer"
-            style={{ display: 'inline-flex', justifyContent: 'center', margin: '0 auto' }}
-          >
-            <img
-              width={300}
-              src="https://media.theresanaiforthat.com/featured-on-taaft.png?width=600"
-              alt="Featured on There's An AI For That"
-              loading="lazy"
-              decoding="async"
-              style={{ display: 'block', width: 'min(300px, 100%)', height: 'auto' }}
-            />
-          </a>
-        </div>
       </>
     </MarketingLayout>
   );
