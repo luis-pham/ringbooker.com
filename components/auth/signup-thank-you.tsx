@@ -5,10 +5,26 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
 
+type WindowWithTracking = Window & {
+  dataLayer?: Array<Record<string, unknown>>;
+  gtag?: (...args: unknown[]) => void;
+};
+
 function pushSignupCompleteEvent(shopId: string): void {
-  const w = window as Window & { dataLayer?: Array<Record<string, unknown>> };
+  const w = window as WindowWithTracking;
   if (!Array.isArray(w.dataLayer)) return;
   w.dataLayer.push({ event: 'signup_complete', shopId });
+}
+
+function fireGoogleAdsConversion(): void {
+  const w = window as WindowWithTracking;
+  if (typeof w.gtag !== 'function') {
+    console.warn('[signup-thank-you] gtag not available, conversion event skipped');
+    return;
+  }
+  w.gtag('event', 'conversion', {
+    send_to: 'AW-18285870762/BROlCNTnt8kcEKr9sI9E',
+  });
 }
 
 export function SignupThankYou() {
@@ -27,6 +43,7 @@ export function SignupThankYou() {
       // Storage unavailable — nothing to dedupe against, fall through and fire once for this mount.
     }
     pushSignupCompleteEvent(shopId);
+    fireGoogleAdsConversion();
     try {
       sessionStorage.setItem(key, '1');
     } catch {
