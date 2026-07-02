@@ -10,21 +10,54 @@ type WindowWithTracking = Window & {
   gtag?: (...args: unknown[]) => void;
 };
 
+const GTAG_POLL_INTERVAL_MS = 100;
+const GTAG_POLL_TIMEOUT_MS = 3000;
+
 function pushSignupCompleteEvent(shopId: string): void {
   const w = window as WindowWithTracking;
   if (!Array.isArray(w.dataLayer)) return;
   w.dataLayer.push({ event: 'signup_complete', shopId });
 }
 
-function fireGoogleAdsConversion(): void {
+/**
+ * GTM loads gtag.js asynchronously, so window.gtag may not exist yet at mount. Polls briefly
+ * rather than firing-or-skipping immediately, so a slow-loading GTM container doesn't
+ * permanently mark the conversion as fired. Only marks the dedupe flag once gtag was actually
+ * called — a timeout leaves it unset so a later page load can still succeed.
+ */
+function fireGoogleAdsConversion(shopId: string): () => void {
   const w = window as WindowWithTracking;
-  if (typeof w.gtag !== 'function') {
-    console.warn('[signup-thank-you] gtag not available, conversion event skipped');
-    return;
-  }
-  w.gtag('event', 'conversion', {
-    send_to: 'AW-18285870762/BROlCNTnt8kcEKr9sI9E',
-  });
+  const conversionKey = `signup:conversion_fired:${shopId}`;
+
+  const attempt = (): boolean => {
+    if (typeof w.gtag !== 'function') return false;
+    w.gtag('event', 'conversion', {
+      send_to: 'AW-18285870762/BROlCNTnt8kcEKr9sI9E',
+    });
+    try {
+      sessionStorage.setItem(conversionKey, '1');
+    } catch {
+      // Storage disabled / quota / sandbox — the conversion still fired, dedupe just can't persist.
+    }
+    return true;
+  };
+
+  if (attempt()) return () => {};
+
+  let elapsedMs = 0;
+  const intervalId = setInterval(() => {
+    elapsedMs += GTAG_POLL_INTERVAL_MS;
+    if (attempt()) {
+      clearInterval(intervalId);
+      return;
+    }
+    if (elapsedMs >= GTAG_POLL_TIMEOUT_MS) {
+      clearInterval(intervalId);
+      console.warn('[signup-thank-you] gtag not available after 3s, conversion event skipped');
+    }
+  }, GTAG_POLL_INTERVAL_MS);
+
+  return () => clearInterval(intervalId);
 }
 
 export function SignupThankYou() {
@@ -36,19 +69,33 @@ export function SignupThankYou() {
 
   useEffect(() => {
     if (!shopId) return;
-    const key = `signup:conversion_fired:${shopId}`;
+
+    const analyticsKey = `signup:analytics_fired:${shopId}`;
+    let analyticsAlreadyFired = false;
     try {
-      if (sessionStorage.getItem(key)) return;
+      analyticsAlreadyFired = Boolean(sessionStorage.getItem(analyticsKey));
     } catch {
       // Storage unavailable — nothing to dedupe against, fall through and fire once for this mount.
     }
-    pushSignupCompleteEvent(shopId);
-    fireGoogleAdsConversion();
-    try {
-      sessionStorage.setItem(key, '1');
-    } catch {
-      // Storage disabled / quota / sandbox — the push above still happened, dedupe just can't persist.
+    if (!analyticsAlreadyFired) {
+      pushSignupCompleteEvent(shopId);
+      try {
+        sessionStorage.setItem(analyticsKey, '1');
+      } catch {
+        // Storage disabled / quota / sandbox — the push above still happened, dedupe just can't persist.
+      }
     }
+
+    const conversionKey = `signup:conversion_fired:${shopId}`;
+    let conversionAlreadyFired = false;
+    try {
+      conversionAlreadyFired = Boolean(sessionStorage.getItem(conversionKey));
+    } catch {
+      // Storage unavailable — nothing to dedupe against, fall through and attempt for this mount.
+    }
+    if (conversionAlreadyFired) return;
+
+    return fireGoogleAdsConversion(shopId);
   }, [shopId]);
 
   return (
