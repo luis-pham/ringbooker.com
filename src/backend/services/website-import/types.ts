@@ -72,6 +72,8 @@ export type PagePreview = {
   jsonLd: unknown[];
   policyBlocks?: Array<{ heading: string; content: string }>;
   contentScore: number;
+  /** Best-effort brand logo URL (header <img>, then og:image, then favicon). Optional: always set by `previewHtml`; consumers fall back to null when absent (e.g. hand-built test fixtures). */
+  logoUrl?: string | null;
 };
 
 export type SelectedPageDiagnostic = {

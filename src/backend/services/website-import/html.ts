@@ -960,6 +960,58 @@ function extractPolicyBlocks($: cheerio.CheerioAPI): Array<{ heading: string; co
   return blocks;
 }
 
+/**
+ * Priority: an <img> that looks like the site's own brand mark (class/id/alt containing
+ * "logo", preferring one inside header/nav) beats the generic `og:image` share-card image,
+ * which in turn beats the favicon — a header logo is far more often the actual brand mark
+ * than either of those.
+ */
+function nodeLooksLikeLogo($: cheerio.CheerioAPI, node: cheerio.Cheerio<AnyNode>, src: string): boolean {
+  // The <img> itself often carries no hint at all (theme markup like Themeco's
+  // `<a class="x-brand img"><img src="logoAcme.jpg"></a>` puts "logo"/"brand" on the
+  // filename or a wrapper element instead) — so check own attrs, the filename, and the
+  // nearest few ancestor elements' class/id before giving up.
+  const ownHaystack = `${node.attr('class') ?? ''} ${node.attr('id') ?? ''} ${node.attr('alt') ?? ''} ${src}`.toLowerCase();
+  if (/logo/.test(ownHaystack)) return true;
+  const ancestorHaystack = node.parents().slice(0, 3)
+    .map((_, p) => `${$(p).attr('class') ?? ''} ${$(p).attr('id') ?? ''}`).get().join(' ').toLowerCase();
+  return /logo/.test(ancestorHaystack);
+}
+
+function extractLogoUrl($: cheerio.CheerioAPI, url: string): string | null {
+  const findLogoImgIn = (scope: cheerio.Cheerio<AnyNode>): string | null => {
+    let found: string | null = null;
+    scope.find('img').each((_, el) => {
+      if (found) return;
+      const node = $(el);
+      const raw = node.attr('src') || node.attr('data-src') || node.attr('data-lazy-src');
+      if (!raw || raw.startsWith('data:')) return;
+      if (!nodeLooksLikeLogo($, node, raw)) return;
+      found = absolutize(raw, url);
+    });
+    return found;
+  };
+
+  const headerLogo = findLogoImgIn($('header, nav'));
+  if (headerLogo) return headerLogo;
+  const anyLogo = findLogoImgIn($('body'));
+  if (anyLogo) return anyLogo;
+
+  const ogImage = $('meta[property="og:image"]').attr('content');
+  if (ogImage) {
+    const resolved = absolutize(ogImage, url);
+    if (resolved) return resolved;
+  }
+
+  for (const selector of ['link[rel="apple-touch-icon"]', 'link[rel="shortcut icon"]', 'link[rel="icon"]']) {
+    const raw = $(selector).first().attr('href');
+    if (!raw) continue;
+    const resolved = absolutize(raw, url);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
 export function previewHtml(html: string, url: string): PagePreview {
   const $ = cheerio.load(html);
   const title = ($('title').first().text() || $('meta[property="og:title"]').attr('content') || '').trim();
@@ -997,5 +1049,6 @@ export function previewHtml(html: string, url: string): PagePreview {
     jsonLd: extractJsonLd(html),
     policyBlocks,
     contentScore: Math.min(100, Math.floor(text.length / 80) + serviceKeywordCount * 3 + priceCount * 4 + durationCount * 2),
+    logoUrl: extractLogoUrl($, url),
   };
 }

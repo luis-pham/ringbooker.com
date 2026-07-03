@@ -593,6 +593,18 @@ function resolvedOrigin(startUrl: URL, previews: PagePreview[]): string {
   return startUrl.origin;
 }
 
+/**
+ * Cloudflare crawl only ever resolves a logo from `og:image` (`cf-crawler.ts`), which is
+ * frequently empty or a generic banner. Fall back to the homepage page's own logo signal
+ * (header <img>, then og:image, then favicon — see `extractLogoUrl` in html.ts), which also
+ * covers the static-fallback path where no Cloudflare logo lookup ever ran at all.
+ */
+function homepageLogoUrl(previews: PagePreview[], startUrl: URL): string | null {
+  const rootKey = normalizedUrlKey(`${resolvedOrigin(startUrl, previews)}/`);
+  const homepage = previews.find((preview) => normalizedUrlKey(preview.url) === rootKey) ?? previews[0];
+  return homepage?.logoUrl ?? null;
+}
+
 function seedCandidates(startUrl: URL, previews: PagePreview[], sitemapCandidates: CandidateUrl[]): CandidateUrl[] {
   const origin = resolvedOrigin(startUrl, previews);
   const root = candidateFromUrl(`${origin}/`, 'homepage', 'Home', startUrl.toString());
@@ -1342,6 +1354,7 @@ function pagePreviewFromCrawlPage(page: CfCrawlPage): PagePreview {
       htmlPreview?.contentScore ?? 0,
       Math.min(100, Math.floor(text.length / 120) + priceCount * 8 + durationCount * 4 + serviceKeywordCount * 2),
     ),
+    logoUrl: htmlPreview?.logoUrl ?? null,
   };
 }
 
@@ -1483,7 +1496,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
         warnings: [...suggestions.warnings, ...secondaryScrapeWarnings],
         fallbackUsed: fallbackUsed.length ? fallbackUsed : ['static_homepage'],
       },
-      logoUrl: null,
+      logoUrl: homepageLogoUrl(finalPreviews, startUrl),
       errorCode,
     };
   }
@@ -1992,6 +2005,8 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     ...(policyRetryFallbackGloballyCapped ? ['Policy retry fallback was skipped due to a temporary daily limit; original policySuggestions retained.'] : []),
     ...(menuExceededSinglePassBudget ? ['This menu was longer than could be read in a single pass — some services may be missing. Please review and add any that are absent.'] : []),
   ];
+
+  logoUrl = logoUrl ?? homepageLogoUrl(finalPreviews, startUrl);
 
   return {
     ok: suggestions.status !== 'failed',
