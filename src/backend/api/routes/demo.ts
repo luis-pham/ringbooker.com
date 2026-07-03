@@ -150,12 +150,33 @@ function isPreparedDemoStaffNameUsable(value: string): boolean {
   return true;
 }
 
-function isPreparedDemoServiceNameUsable(value: string): boolean {
-  const name = value.trim().replace(/\s+/g, ' ');
-  if (!name || name.length > 120) return false;
-  if (hasPreparedDemoErrorText(name)) return false;
-  if (/^(?:home|contact|book(?: now)?|online booking|appointment|schedule|previous|next|previousnext)$/i.test(name)) return false;
-  return /[A-Za-z]/.test(name);
+// Same blocklist as the frontend's NAV_SERVICE_BLOCKLIST (marketing-vertical-demo.tsx) — kept in
+// sync by hand since the two run in separate bundles (Node backend vs. browser client). The two
+// were previously divergent (this list had ~9 terms vs. the frontend's ~35), so /try prepared
+// demos let through nav/legal junk ("Gallery", "Our Team", "Privacy Policy") as fake services
+// that the public /demo import already filtered out.
+const PREPARED_DEMO_NAV_SERVICE_BLOCKLIST = new Set([
+  'home', 'about', 'about us', 'contact', 'contact us', 'gallery', 'photos', 'portfolio',
+  'blog', 'news', 'faq', 'faqs', 'shop', 'store', 'careers', 'jobs', 'promotions',
+  'specials', 'deals', 'offers', 'gift cards', 'gift card', 'login', 'sign in',
+  'register', 'book now', 'booking', 'appointments', 'appointment', 'schedule',
+  'reviews', 'testimonials', 'our team', 'team', 'staff', 'menu', 'sitemap',
+  'privacy policy', 'terms', 'terms of service', 'cookie policy',
+]);
+
+/** Returns the cleaned service name, or null to reject — mirrors isUsableDemoServiceName
+ *  (marketing-vertical-demo.tsx) so /try and /demo apply identical filtering to the same
+ *  imported website instead of two independently-maintained rule sets. */
+function cleanPreparedDemoServiceName(rawValue: string): string | null {
+  const name = rawValue.replace(/^Add\s+/i, '').replace(/[™®]/g, '').trim().replace(/\s+/g, ' ');
+  if (!name || name.length < 2 || name.length > 120) return null;
+  if (hasPreparedDemoErrorText(name)) return null;
+  if (PREPARED_DEMO_NAV_SERVICE_BLOCKLIST.has(name.toLowerCase())) return null;
+  if (/^shop\s+\S/i.test(name)) return null;
+  // Reject rows the importer mangled — a real service name never contains an embedded
+  // price token (e.g. "Lip 425+ Brow and Lip" from a broken price-table parse).
+  if (/\d{2,}\s*\+/.test(name)) return null;
+  return /[A-Za-z]/.test(name) ? name : null;
 }
 
 export function registerDemoRoutes(app: Hono, path: (route: string) => string, deps: DemoDeps): void {
@@ -1257,6 +1278,12 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
             policyRetryMaxPages: env.WEBSITE_IMPORT_POLICY_RETRY_MAX_PAGES,
             policyRetryTimeoutMs: env.WEBSITE_IMPORT_POLICY_RETRY_TIMEOUT_MS,
             policyRetryMinPolicyCount: env.WEBSITE_IMPORT_POLICY_RETRY_MIN_POLICY_COUNT,
+            staffRetryEnabled: env.WEBSITE_IMPORT_STAFF_RETRY_ENABLED,
+            staffRetryModel: env.WEBSITE_IMPORT_STAFF_RETRY_MODEL,
+            staffRetryFallbackModel: env.WEBSITE_IMPORT_STAFF_RETRY_FALLBACK_MODEL,
+            staffRetryMaxPages: env.WEBSITE_IMPORT_STAFF_RETRY_MAX_PAGES,
+            staffRetryTimeoutMs: env.WEBSITE_IMPORT_STAFF_RETRY_TIMEOUT_MS,
+            staffRetryMinStaffCount: env.WEBSITE_IMPORT_STAFF_RETRY_MIN_STAFF_COUNT,
             debugLog: env.WEBSITE_IMPORT_DEBUG_LOG,
             debugSaveText: env.WEBSITE_IMPORT_DEBUG_SAVE_TEXT,
             maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
@@ -1267,15 +1294,18 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
           }),
         );
         importedServices = (result.suggestions.serviceCatalog.services ?? [])
-          .filter((s) => isPreparedDemoServiceNameUsable(s.name))
-          .slice(0, 40)
-          .map((s) => ({
-            category: s.categoryName,
-            name: s.name,
-            price: s.priceAmount ?? null,
-            duration: s.durationText ?? null,
-            variants: toPreparedDemoServiceVariants(s.variants),
-          }));
+          .flatMap((s) => {
+            const name = cleanPreparedDemoServiceName(s.name);
+            if (!name) return [];
+            return [{
+              category: s.categoryName,
+              name,
+              price: s.priceAmount ?? null,
+              duration: s.durationText ?? null,
+              variants: toPreparedDemoServiceVariants(s.variants),
+            }];
+          })
+          .slice(0, 40);
         importedStaff = (result.suggestions.staffSuggestions ?? [])
           .map((s) => s.name)
           .filter(isPreparedDemoStaffNameUsable)

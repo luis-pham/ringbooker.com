@@ -252,6 +252,18 @@ function normalizeDemoServiceVariants(
 }
 
 /**
+ * Scraped category names arrive in whatever casing the source site's heading used
+ * ("COLOR PACKAGES", "UPDOs & MAKE-UP", "Haircuts") — normalize to consistent Title
+ * Case so the demo UI (shared by /demo and /try) never shows a shouting all-caps
+ * category next to a normally-cased one.
+ */
+function toTitleCaseLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/(^|[\s\-/])([a-z])/g, (_match, sep: string, ch: string) => `${sep}${ch.toUpperCase()}`);
+}
+
+/**
  * Groups the flat imported service list into the demo's category/item shape so the
  * voice agent answers with the salon's REAL services (and prices/durations) instead
  * of the vertical's default sample catalog. Returns [] when nothing usable was imported.
@@ -282,8 +294,9 @@ function buildDemoServiceCategoriesFromImport(
     // Parity with onboarding: keep low-confidence / review-flagged rows too.
     const name = isUsableDemoServiceName(sv.name);
     if (!name) continue;
-    const label = (sv.categoryName ?? '').trim() || 'Services';
-    const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'services';
+    const rawLabel = (sv.categoryName ?? '').trim() || 'Services';
+    const label = toTitleCaseLabel(rawLabel);
+    const id = rawLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'services';
     let category = byCategory.get(id);
     if (!category) {
       category = { id, label, items: [] };
@@ -319,8 +332,9 @@ function buildDemoServiceCategoriesFromPrepared(services: PreparedDemoServiceDet
     if (total >= 40) break;
     const name = isUsableDemoServiceName(sv.name);
     if (!name) continue;
-    const label = (sv.category ?? '').trim() || 'Services';
-    const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'services';
+    const rawLabel = (sv.category ?? '').trim() || 'Services';
+    const label = toTitleCaseLabel(rawLabel);
+    const id = rawLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'services';
     let category = byCategory.get(id);
     if (!category) {
       category = { id, label, items: [] };
@@ -830,7 +844,12 @@ export function DemoExperience({
     address: initialAddress?.trim() || '',
     city: initialCity?.trim() || config.defaultCity,
     primaryHours: initialPrimaryHours?.trim() || config.hours.primary,
-    secondaryHours: initialSecondaryHours?.trim() || config.hours.secondary,
+    // A prepared demo always passes secondaryHours explicitly as null (it's not populated by
+    // the sales-context backend) — falling back to the vertical's generic placeholder here
+    // combined it with the real imported primaryHours via " / " into a self-contradictory
+    // display (e.g. "Sun Closed / Sun-Mon closed"). Only fall back when the prop is genuinely
+    // absent (a non-prepared demo using this component without any initial* props at all).
+    secondaryHours: initialSecondaryHours !== undefined ? (initialSecondaryHours?.trim() ?? '') : config.hours.secondary,
     staff: initialStaffNames && initialStaffNames.length > 0 ? initialStaffNames.join(', ') : config.staffPlaceholder,
     notes: '',
     services: cloneServices(initialDemoServiceCategories),
