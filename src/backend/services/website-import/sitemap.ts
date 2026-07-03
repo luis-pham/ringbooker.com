@@ -36,7 +36,11 @@ export function sitemapUrlsToCandidates(urls: Array<{ loc: string; lastmod?: str
   for (const entry of urls) {
     if (out.length >= cap) break;
     try {
-      const url = new URL(entry.loc);
+      // Some sitemap generators (e.g. GoDaddy's site builder) emit <loc> as a path
+      // instead of an absolute URL, which violates the sitemap protocol. Resolving
+      // against sourceSitemap is a no-op for compliant absolute URLs and recovers the
+      // non-compliant relative ones instead of silently dropping every entry.
+      const url = new URL(entry.loc, sourceSitemap);
       if (url.origin !== origin) continue;
       url.hash = '';
       for (const key of [...url.searchParams.keys()]) {

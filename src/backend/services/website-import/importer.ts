@@ -386,22 +386,26 @@ async function discoverSitemapCandidates(origin: string, opts: ImportOptions, co
   const topLevel = await mapPool([...sitemapUrls].slice(0, 12), concurrency, async (sitemapUrl) => {
     const sitemap = await fetchText(sitemapUrl, opts);
     if (!sitemap?.text) return null;
-    return { sitemapUrl, parsed: parseSitemapXml(sitemap.text) };
+    // Use the post-redirect URL, not the requested one — a sitemap fetched via the
+    // pre-redirect origin still lists pages on the site's canonical (resolved) origin.
+    return { sitemapUrl: sitemap.url, parsed: parseSitemapXml(sitemap.text) };
   });
   for (const entry of topLevel) {
     if (!entry) continue;
     sitemapSourcesFound.push(entry.sitemapUrl);
+    const entryOrigin = safeOrigin(entry.sitemapUrl) ?? origin;
     const childResults = await mapPool(prioritizeChildSitemaps(entry.parsed.childSitemaps, 5), concurrency, async (child) => {
       const childText = await fetchText(child, opts);
       if (!childText?.text) return null;
-      return { child, urls: parseSitemapXml(childText.text).urls };
+      return { child: childText.url, urls: parseSitemapXml(childText.text).urls };
     });
     for (const childResult of childResults) {
       if (!childResult) continue;
       sitemapSourcesFound.push(childResult.child);
-      candidates.push(...sitemapUrlsToCandidates(childResult.urls, childResult.child, origin, 200));
+      const childOrigin = safeOrigin(childResult.child) ?? entryOrigin;
+      candidates.push(...sitemapUrlsToCandidates(childResult.urls, childResult.child, childOrigin, 200));
     }
-    candidates.push(...sitemapUrlsToCandidates(entry.parsed.urls, entry.sitemapUrl, origin, 200));
+    candidates.push(...sitemapUrlsToCandidates(entry.parsed.urls, entry.sitemapUrl, entryOrigin, 200));
   }
   return { candidates, sitemapSourcesFound };
 }
@@ -570,8 +574,27 @@ function candidatesFromPreviewLinks(previews: PagePreview[], origin: string): Ca
   return candidates;
 }
 
+function safeOrigin(url: string): string | null {
+  try { return new URL(url).origin; } catch { return null; }
+}
+
+/**
+ * Sites commonly redirect the requested URL to a different scheme/host (http→https,
+ * www→bare or vice versa). `startUrl.origin` is the origin the user typed, not the one
+ * the site actually serves content from, so same-origin candidate filtering must key off
+ * the origin of a page we actually fetched (once we have one) or it silently discards
+ * every real nav link discovered on the redirected site.
+ */
+function resolvedOrigin(startUrl: URL, previews: PagePreview[]): string {
+  for (const preview of previews) {
+    const origin = safeOrigin(preview.url);
+    if (origin) return origin;
+  }
+  return startUrl.origin;
+}
+
 function seedCandidates(startUrl: URL, previews: PagePreview[], sitemapCandidates: CandidateUrl[]): CandidateUrl[] {
-  const origin = startUrl.origin;
+  const origin = resolvedOrigin(startUrl, previews);
   const root = candidateFromUrl(`${origin}/`, 'homepage', 'Home', startUrl.toString());
   const start = candidateFromUrl(startUrl.toString(), startUrl.pathname === '/' ? 'homepage' : 'nav', startUrl.pathname === '/' ? 'Home' : undefined, startUrl.toString());
   const commonCandidates = sitemapCandidates.length ? [] : commonServicePageCandidates(origin, startUrl.toString());
@@ -1389,7 +1412,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   let sitemapDiscovery: Promise<{ candidates: CandidateUrl[]; sitemapSourcesFound: string[] }> | null = null;
   const loadSitemapDiscovery = () => {
     if (!shouldDeepCrawlSource(sourceType)) return Promise.resolve({ candidates: [] as CandidateUrl[], sitemapSourcesFound: [] as string[] });
-    sitemapDiscovery ??= discoverSitemapCandidates(startUrl.origin, fetchOpts, Math.min(concurrency, 4)).catch((error) => {
+    sitemapDiscovery ??= discoverSitemapCandidates(resolvedOrigin(startUrl, finalPreviews), fetchOpts, Math.min(concurrency, 4)).catch((error) => {
         warnings.push(error instanceof Error ? `sitemap_discovery_failed:${error.message}` : 'sitemap_discovery_failed');
         return { candidates: [] as CandidateUrl[], sitemapSourcesFound: [] as string[] };
       });
