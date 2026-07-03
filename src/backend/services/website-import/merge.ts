@@ -290,8 +290,18 @@ function dedupeSuggestions<T>(items: T[], keyFn: (item: T) => string, max = 40):
   }
   return [...map.values()].slice(0, max);
 }
+/**
+ * When the LLM read the actual page content and returned suggestions, treat it as
+ * authoritative and use its output exclusively — unioning in the regex/DOM heuristic's
+ * output here would let its false positives (a footer label misread as a staff name, a
+ * testimonial headline misread as a service category, ...) leak into a result the LLM got
+ * right, since they rarely share an exact dedupe key and so never collide with each other.
+ * Static output is only used as a fallback for when the LLM didn't run, failed, or the page
+ * genuinely has nothing of this kind (LLM returns an empty array, not omits the field).
+ */
 function dedupeLlmFirstSuggestions<T>(staticItems: T[] | undefined, llmItems: T[] | undefined, keyFn: (item: T) => string, max = 40): T[] {
-  return dedupeSuggestions([...(llmItems ?? []), ...(staticItems ?? [])], keyFn, max);
+  const source = llmItems && llmItems.length > 0 ? llmItems : (staticItems ?? []);
+  return dedupeSuggestions(source, keyFn, max);
 }
 
 function serviceNamePriceTypeKey(service: ImportedServiceSuggestion): string {
@@ -430,6 +440,16 @@ function newRetryWarnings(existing: string[], retryWarnings: string[]): string[]
   return out;
 }
 
+/**
+ * Like mergeStaffRetryIntoSuggestions, this treats a successful service retry as authoritative
+ * rather than unioning it with whatever the main pass/static heuristics already produced. The
+ * retry call is dedicated and page-scoped (only real service/menu pages, full text, an explicit
+ * "preserve prices/durations" instruction) — unioning its clean output back in with the
+ * mega-prompt main pass's blend (which can carry testimonial headings or FAQ questions
+ * mislabeled as service categories from the static heuristics riding alongside it) just lets
+ * that noise survive. An empty retry result is not expected here (the caller only merges when
+ * the retry call actually returned services), so no zero-guard is needed.
+ */
 export function mergeServiceRetryIntoSuggestions(
   suggestions: ImportSuggestions,
   retryResult: {
@@ -437,13 +457,10 @@ export function mergeServiceRetryIntoSuggestions(
     warnings: string[];
   },
 ): ImportSuggestions {
-  const existingServices = suggestions.serviceCatalog.services;
   const retryServices = retryResult.serviceCatalog.services ?? [];
-  if (retryServices.length <= existingServices.length) return normalizeImportSuggestionsForReview(suggestions);
-
-  const services = dedupeServiceRetryServices([...existingServices, ...retryServices]);
+  const services = dedupeServiceRetryServices(retryServices);
   const categories = mergeServiceRetryCategories(
-    suggestions.serviceCatalog.categories,
+    [],
     retryResult.serviceCatalog.categories ?? [],
     services,
   );
@@ -532,6 +549,30 @@ export function mergePolicyRetryIntoSuggestions(
     policySuggestions,
     faqSuggestions: mergePolicyRetryFaqs(suggestions.faqSuggestions, retryResult.faqSuggestions),
     bookingSetupSuggestions: mergePolicyRetryBookingSetup(suggestions.bookingSetupSuggestions, retryResult.bookingSetupSuggestions),
+    warnings: [
+      ...suggestions.warnings,
+      ...newRetryWarnings(suggestions.warnings, retryResult.warnings),
+    ].filter((warning, index, all) => all.indexOf(warning) === index).slice(0, 20),
+  };
+  return normalizeImportSuggestionsForReview({ ...base, completeness: computeCompleteness(base) });
+}
+/**
+ * Unlike mergePolicyRetryIntoSuggestions/mergeServiceRetryIntoSuggestions (which only accept a
+ * retry result that found MORE than the existing count), staff retry is a dedicated, page-scoped
+ * call and is treated as authoritative outright — replacing existing staffSuggestions even with
+ * fewer (including zero) entries. A focused call that read the actual team page and found no real
+ * people is more trustworthy than an unscoped static/main-pass heuristic's guess; comparing counts
+ * would silently keep that guess's false positives (e.g. cart/footer labels) just because it had
+ * a bigger number.
+ */
+export function mergeStaffRetryIntoSuggestions(
+  suggestions: ImportSuggestions,
+  retryResult: { staffSuggestions: StaffSuggestion[]; warnings: string[] },
+): ImportSuggestions {
+  const staffSuggestions = dedupeSuggestions(retryResult.staffSuggestions ?? [], (item) => item.name, 25);
+  const base: Omit<ImportSuggestions, 'completeness'> = {
+    ...suggestions,
+    staffSuggestions,
     warnings: [
       ...suggestions.warnings,
       ...newRetryWarnings(suggestions.warnings, retryResult.warnings),

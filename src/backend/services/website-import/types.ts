@@ -282,6 +282,17 @@ export type ImportDiagnostics = {
     improved: boolean;
     fallbackUsed: boolean;
   };
+  staffRetry?: {
+    enabled: boolean;
+    triggered: boolean;
+    reasons: string[];
+    pagesCount: number;
+    pageUrls: string[];
+    staffBefore: number;
+    staffAfter: number;
+    improved: boolean;
+    fallbackUsed: boolean;
+  };
 };
 
 export type WebsiteImportErrorCode =

@@ -11,9 +11,9 @@ import { detectImportSource, shouldDeepCrawlSource } from './source-routing';
 import { extractLinks, previewHtml } from './html';
 import { commonSitemapUrls, parseRobotsSitemaps, parseSitemapXml, prioritizeChildSitemaps, sitemapUrlsToCandidates } from './sitemap';
 import { buildSuggestions } from './extract';
-import { mergePolicyRetryIntoSuggestions, mergeServiceRetryIntoSuggestions, normalizeImportSuggestionsForReview } from './merge';
+import { mergePolicyRetryIntoSuggestions, mergeServiceRetryIntoSuggestions, mergeStaffRetryIntoSuggestions, normalizeImportSuggestionsForReview } from './merge';
 import { lookupGooglePlaces } from './google-places';
-import { DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL, extractPoliciesWithLlmRetry, extractServiceCatalogWithLlmRetry, extractWebsiteImportWithLlm, LLM_TOP_PAGE_MARKDOWN_BUDGET } from './llm';
+import { DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL, extractPoliciesWithLlmRetry, extractServiceCatalogWithLlmRetry, extractStaffWithLlmRetry, extractWebsiteImportWithLlm, LLM_TOP_PAGE_MARKDOWN_BUDGET } from './llm';
 import { classifyCandidate, selectPages, toDiagnostic } from './scoring';
 import { renderHtml, type RenderConfig } from './render';
 import { crawlWithCloudflare, CF_CRAWL_TIMEOUT_MS, type CfCrawlPage } from './cf-crawler';
@@ -109,6 +109,12 @@ type ImportOptions = {
   policyRetryMaxPages?: number;
   policyRetryTimeoutMs?: number;
   policyRetryMinPolicyCount?: number;
+  staffRetryEnabled?: boolean;
+  staffRetryModel?: string | null;
+  staffRetryFallbackModel?: string | null;
+  staffRetryMaxPages?: number;
+  staffRetryTimeoutMs?: number;
+  staffRetryMinStaffCount?: number;
   debugLog?: boolean;
   debugSaveText?: boolean;
   /**
@@ -504,7 +510,11 @@ function classifyImportCandidate(candidate: CandidateUrl, preview?: PagePreview)
   let { bucket, score } = base;
   const reasons = [base.reason];
 
-  if (/\/(?:about\/)?(?:meet[-_]?the[-_]?team|our[-_]?team|team|staff|artists?|stylists?|providers?|technicians?)\/?$/i.test(path)) {
+  // General "team/staff page" path pattern instead of enumerating every meet/the/our
+  // combination — a hand-enumerated list misses common real-world slugs like
+  // "meet-our-team" (has both a "meet-" and an "our-" prefix, neither enumerated variant
+  // alone) and silently drops that page below the crawl threshold.
+  if (/\/(?:about\/)?(?:meet[-_]?)?(?:the[-_]?|our[-_]?)?(?:team|staff|artists?|stylists?|providers?|technicians?)\/?$/i.test(path)) {
     bucket = 'staff_team';
     score += 150;
     reasons.push('Targeted staff/team sitemap path');
@@ -1297,6 +1307,139 @@ async function collectPolicyRetryPages(input: {
   return input.debugSaveText ? savePolicyRetryDebugText(input.rootUrl, pages) : pages;
 }
 
+const STAFF_RETRY_KEYWORDS = [
+  'team', 'staff', 'stylist', 'stylists', 'artist', 'artists', 'colorist', 'colorists',
+  'barber', 'barbers', 'esthetician', 'estheticians', 'provider', 'providers',
+  'technician', 'technicians', 'meet', 'bio', 'bios',
+] as const;
+const STAFF_RETRY_KEYWORD_RE = new RegExp(`\\b(?:${STAFF_RETRY_KEYWORDS.join('|')})\\b`, 'i');
+
+type StaffRetryPage = ServiceRetryPage;
+type StaffRetrySelectedPageInfo = Omit<ServiceRetrySelectedPageInfo, 'serviceBlockCount'>;
+
+function isStaffRetryRelatedText(value: string): boolean {
+  return STAFF_RETRY_KEYWORD_RE.test(value);
+}
+
+/**
+ * Mirrors detectLowServiceCoverage/detectLowPolicyCoverage: decide whether the main pass's
+ * staffSuggestions look thin relative to how many staff-signalled pages were actually found.
+ * `minStaffCount` defaults to 2 (not 0/1) because the failure mode seen in practice isn't only
+ * "found nothing" — it includes "found exactly one entry, and it's wrong" (a blog author's
+ * JSON-LD Person, a mis-scoped footer label), which a plain zero-check would miss.
+ */
+function detectLowStaffCoverage(input: {
+  suggestions: ImportSuggestions;
+  selectedPages?: StaffRetrySelectedPageInfo[];
+  discoveredUrls?: string[];
+  minStaffCount?: number;
+}): { shouldRetryStaff: boolean; reasons: string[]; staffCount: number; staffPageCount: number } {
+  const minStaffCount = input.minStaffCount ?? 2;
+  const staffCount = input.suggestions.staffSuggestions.length;
+  const staffPageUrls = new Set<string>();
+  for (const page of input.selectedPages ?? []) {
+    const probe = `${page.url ?? ''} ${page.title ?? ''} ${page.bucket ?? ''}`;
+    if (page.bucket === 'staff_team' || page.bucket === 'about_team' || isStaffRetryRelatedText(probe)) {
+      if (page.url) staffPageUrls.add(normalizedUrlKey(page.url));
+    }
+  }
+  for (const url of input.discoveredUrls ?? []) {
+    if (isStaffRetryRelatedText(url)) staffPageUrls.add(normalizedUrlKey(url));
+  }
+  const staffPageCount = staffPageUrls.size;
+  const reasons: string[] = [];
+  if (staffCount === 0 && staffPageCount > 0) reasons.push('No staff were extracted despite staff/team-related pages.');
+  if (staffCount > 0 && staffCount < minStaffCount && staffPageCount >= 1) reasons.push(`Only ${staffCount} staff extracted with ${staffPageCount} staff-related page(s) found.`);
+  return { shouldRetryStaff: reasons.length > 0, reasons, staffCount, staffPageCount };
+}
+
+function staffRetryTextFromPreview(preview: PagePreview): string {
+  const markdownOrText = (preview.markdown || preview.firstTextChars || '').trim();
+  // DOM Strategy 1-3 (html.ts) already serializes any staff cards it recognized as
+  // "STAFF_MEMBER: ..." lines into firstTextChars (not markdown) — surface those separately
+  // as a hint even when they didn't make the cut through the regex cascade downstream.
+  const staffMemberLines = (preview.firstTextChars.match(/^STAFF_MEMBER:.*$/gim) ?? []).join('\n');
+  const parts = [
+    markdownOrText,
+    staffMemberLines ? `\nSTRUCTURED_STAFF_HINTS\n${staffMemberLines}` : '',
+  ].filter(Boolean);
+  return parts.join('\n\n').replace(/\u0000/g, ' ').replace(/\s+\n/g, '\n').trim().slice(0, 18_000);
+}
+
+function staffRetryPageFromPreview(preview: PagePreview, source: StaffRetryPage['source']): StaffRetryPage | null {
+  const text = staffRetryTextFromPreview(preview);
+  const textLength = text.trim().length;
+  if (textLength < 150) return null;
+  return { url: preview.url, title: preview.title || preview.h1 || null, text, textLength, source };
+}
+
+async function collectStaffRetryPages(input: {
+  rootUrl: string;
+  selectedPages: Array<{ preview: PagePreview; bucket?: CandidateBucket }>;
+  discoveredUrls: string[];
+  evidenceUrls: string[];
+  maxPages: number;
+  timeoutMs: number;
+  opts: ImportOptions;
+  renderConfig: RenderConfig;
+  remainingBudget: () => number;
+  debugSaveText?: boolean;
+}): Promise<StaffRetryPage[]> {
+  const root = new URL(input.rootUrl);
+  const pages: StaffRetryPage[] = [];
+  const seen = new Set<string>();
+  const addPage = (page: StaffRetryPage | null) => {
+    if (!page || pages.length >= input.maxPages) return;
+    if (page.textLength < 150 && !page.error) return;
+    const key = normalizedUrlKey(page.url);
+    if (seen.has(key)) return;
+    seen.add(key);
+    pages.push(page);
+  };
+
+  const sortedSelected = [...input.selectedPages].sort((a, b) => {
+    const aStaff = a.bucket === 'staff_team' ? 1 : a.bucket === 'about_team' ? 0.8 : 0;
+    const bStaff = b.bucket === 'staff_team' ? 1 : b.bucket === 'about_team' ? 0.8 : 0;
+    const aScore = aStaff * 100 + (isStaffRetryRelatedText(`${a.preview.title} ${a.preview.h1} ${a.preview.firstTextChars.slice(0, 500)}`) ? 20 : 0);
+    const bScore = bStaff * 100 + (isStaffRetryRelatedText(`${b.preview.title} ${b.preview.h1} ${b.preview.firstTextChars.slice(0, 500)}`) ? 20 : 0);
+    return bScore - aScore;
+  });
+  for (const item of sortedSelected) {
+    const probe = `${item.preview.url} ${item.preview.title} ${item.preview.h1} ${item.preview.h2s.join(' ')} ${item.bucket ?? ''}`;
+    if (item.bucket === 'staff_team' || item.bucket === 'about_team' || isStaffRetryRelatedText(probe)) {
+      addPage(staffRetryPageFromPreview(item.preview, 'selected_page'));
+    }
+  }
+
+  if (pages.length >= input.maxPages || input.remainingBudget() <= 1_000) {
+    return pages;
+  }
+
+  const evidenceSet = new Set(input.evidenceUrls.map((url) => normalizedUrlKey(url)));
+  const candidateUrls = [...new Set([...input.discoveredUrls, ...input.evidenceUrls])]
+    .map((url) => sameOriginUrl(url, root.origin))
+    .filter((url): url is string => Boolean(url))
+    .filter((url) => !seen.has(normalizedUrlKey(url)) && isStaffRetryRelatedText(url))
+    .slice(0, Math.max(0, input.maxPages - pages.length) * 3);
+  const retryDeadline = Math.min(input.opts.deadline ?? Number.MAX_SAFE_INTEGER, Date.now() + input.timeoutMs);
+  const retryRemainingBudget = () => Math.min(input.remainingBudget(), Math.max(0, retryDeadline - Date.now()));
+  const retryOpts: ImportOptions = {
+    ...input.opts,
+    deadline: retryDeadline,
+    timeoutMs: Math.min(input.opts.timeoutMs ?? input.timeoutMs, input.timeoutMs),
+  };
+  const fetched = await mapPool(candidateUrls, Math.min(3, Math.max(1, candidateUrls.length)), async (url) => {
+    if (pages.length >= input.maxPages || retryRemainingBudget() <= 1_000) return null;
+    const candidate = candidateFromUrl(url, evidenceSet.has(normalizedUrlKey(url)) ? 'nav' : 'sitemap', undefined, input.rootUrl);
+    if (!candidate) return null;
+    const preview = await previewCandidate(candidate, retryOpts, input.renderConfig, retryRemainingBudget, true);
+    if (!preview?.preview) return null;
+    return staffRetryPageFromPreview(preview.preview, evidenceSet.has(normalizedUrlKey(url)) ? 'evidence' : 'discovered_url');
+  });
+  for (const page of fetched) addPage(page);
+  return pages;
+}
+
 /** Recover JSON-LD blocks from the page HTML that Cloudflare returns alongside markdown. The
  *  markdown-only preview otherwise drops LocalBusiness/Organization structured data — the most
  *  reliable source for the business name, hours, address and phone. Regex-based to avoid a full
@@ -1738,13 +1881,41 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
   };
   let policyRetryGloballyCapped = false;
   let policyRetryFallbackGloballyCapped = false;
+  const staffSelectedPageInfos: StaffRetrySelectedPageInfo[] = selectedPages.map((page) => ({
+    url: page.url,
+    title: finalPreviews.find((preview) => normalizedUrlKey(preview.url) === normalizedUrlKey(page.url))?.title ?? null,
+    bucket: page.bucket,
+  }));
+  const staffRetryDetection = detectLowStaffCoverage({
+    suggestions: enrichedSuggestions,
+    selectedPages: staffSelectedPageInfos,
+    discoveredUrls,
+    minStaffCount: opts.staffRetryMinStaffCount,
+  });
+  const staffRetryDiagnostics = {
+    enabled: Boolean(opts.staffRetryEnabled),
+    triggered: false,
+    reasons: staffRetryDetection.reasons,
+    pagesCount: 0,
+    pageUrls: [] as string[],
+    staffBefore: staffRetryDetection.staffCount,
+    staffAfter: staffRetryDetection.staffCount,
+    improved: false,
+    fallbackUsed: false,
+  };
+  let staffRetryGloballyCapped = false;
+  let staffRetryFallbackGloballyCapped = false;
 
   const runServiceRetryPass = async (): Promise<{ merged: ImportSuggestions | null; extraWarnings: string[] }> => {
+    // Mirrors staff retry: a dedicated, page-scoped call reliably outperforms the mega-prompt
+    // main pass, so it always runs whenever a service/menu page was found rather than waiting
+    // for a "coverage looks low" signal — that signal misses "coverage looks fine in count but
+    // the categories are junk lifted from testimonials/FAQs by the static heuristics."
     if (!(
       opts.serviceRetryEnabled
       && opts.llmEnabled
       && opts.openAiApiKey
-      && serviceRetryDetection.shouldRetryServices
+      && serviceRetryDetection.servicePageCount >= 1
       && remainingBudget() >= MIN_LLM_BUDGET_MS
     )) return { merged: null, extraWarnings: [] };
     serviceRetryDiagnostics.triggered = true;
@@ -1795,11 +1966,15 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     );
     const serviceRetryModel = opts.serviceRetryModel || opts.llmModel || undefined;
     const primaryRetryResult = await runServiceRetryModel(serviceRetryModel);
-    let bestSuggestions = primaryRetryResult ? mergeServiceRetryIntoSuggestions(enrichedSuggestions, primaryRetryResult) : enrichedSuggestions;
-    let bestAfterCount = bestSuggestions.serviceCatalog.services.length;
+    let bestResult = primaryRetryResult;
     let usedDifficultFallback = false;
-    const stillHard = bestAfterCount <= beforeCount || (
-      bestAfterCount < (opts.serviceRetryMinServiceCount ?? 15)
+    // Escalate to a stronger/different model only when the cheap one found suspiciously little
+    // for how many pages it was given — a real "not sure" case worth double-checking. A
+    // reasonable primary result is trusted outright and not compared against beforeCount: this
+    // call is properly scoped (real service/menu pages, full text), so its count is authoritative.
+    const primaryCount = bestResult?.serviceCatalog.services.length ?? 0;
+    const stillHard = primaryCount === 0 || (
+      primaryCount < (opts.serviceRetryMinServiceCount ?? 15)
       && usableRetryPages.length >= 3
     );
     const difficultFallbackModel = opts.difficultFallbackModel?.trim() || DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL;
@@ -1811,28 +1986,21 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
       }
       if (runDifficultFallback) {
         const hardRetryResult = await runServiceRetryModel(difficultFallbackModel);
-        if (hardRetryResult) {
-          const hardSuggestions = mergeServiceRetryIntoSuggestions(enrichedSuggestions, hardRetryResult);
-          const hardAfterCount = hardSuggestions.serviceCatalog.services.length;
-          if (hardAfterCount > bestAfterCount) {
-            bestSuggestions = hardSuggestions;
-            bestAfterCount = hardAfterCount;
-            usedDifficultFallback = true;
-          }
+        if (hardRetryResult && hardRetryResult.serviceCatalog.services.length > primaryCount) {
+          bestResult = hardRetryResult;
+          usedDifficultFallback = true;
         }
       }
     }
-    if (bestAfterCount > beforeCount) {
-      serviceRetryDiagnostics.servicesAfter = bestAfterCount;
-      serviceRetryDiagnostics.improved = true;
-      fallbackUsed.push('service_retry');
-      if (usedDifficultFallback) fallbackUsed.push('service_retry_hard_fallback');
-      return { merged: bestSuggestions, extraWarnings: [] };
-    }
-    if (!primaryRetryResult) {
+    if (!bestResult) {
       return { merged: null, extraWarnings: ['Service retry failed validation; original serviceCatalog retained.'] };
     }
-    return { merged: null, extraWarnings: [] };
+    const bestSuggestions = mergeServiceRetryIntoSuggestions(enrichedSuggestions, bestResult);
+    serviceRetryDiagnostics.servicesAfter = bestSuggestions.serviceCatalog.services.length;
+    serviceRetryDiagnostics.improved = serviceRetryDiagnostics.servicesAfter !== beforeCount;
+    fallbackUsed.push('service_retry');
+    if (usedDifficultFallback) fallbackUsed.push('service_retry_hard_fallback');
+    return { merged: bestSuggestions, extraWarnings: [] };
   };
 
   const runPolicyRetryPass = async (): Promise<{ merged: ImportSuggestions | null; extraWarnings: string[] }> => {
@@ -1929,12 +2097,107 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     };
   };
 
-  // Combine the two passes. They mutate disjoint field sets (service → serviceCatalog/alsoOffers;
-  // policy → policySuggestions/faqSuggestions/bookingSetupSuggestions), so each improved slice can
-  // be taken independently; warnings are unioned and completeness is recomputed by the final
-  // normalize. When neither pass changed anything (and added no warning), keep the already-normalized
-  // enriched suggestions untouched.
-  const [serviceRetryOutcome, policyRetryOutcome] = await Promise.all([runServiceRetryPass(), runPolicyRetryPass()]);
+  const runStaffRetryPass = async (): Promise<{ merged: ImportSuggestions | null; extraWarnings: string[] }> => {
+    // Unlike service/policy retry, staff retry is not gated on "coverage looks low" — a
+    // dedicated, page-scoped call reliably outperforms the mega-prompt main pass for a small
+    // field like staff (which gets starved of attention when the model must also produce
+    // businessProfile/hours/services/policies/faq/promotions/booking in the same response), so
+    // it always runs whenever a staff-context page was actually found, independent of how many
+    // (possibly wrong) staff entries the static heuristics or main pass already produced.
+    if (!(
+      opts.staffRetryEnabled
+      && opts.llmEnabled
+      && opts.openAiApiKey
+      && staffRetryDetection.staffPageCount >= 1
+      && remainingBudget() >= MIN_LLM_BUDGET_MS
+    )) return { merged: null, extraWarnings: [] };
+    staffRetryDiagnostics.triggered = true;
+    let runStaffRetry = true;
+    if (opts.acquireLlmBudget) {
+      runStaffRetry = await opts.acquireLlmBudget().catch(() => false);
+      staffRetryGloballyCapped = !runStaffRetry;
+    }
+    if (!runStaffRetry) return { merged: null, extraWarnings: [] };
+    const retryPages = await collectStaffRetryPages({
+      rootUrl: startUrl.toString(),
+      selectedPages: finalPreviews.map((preview) => ({
+        preview,
+        bucket: selectedPages.find((page) => normalizedUrlKey(page.url) === normalizedUrlKey(preview.url))?.bucket,
+      })),
+      discoveredUrls,
+      evidenceUrls: collectEvidenceUrls(enrichedSuggestions),
+      maxPages: Math.max(1, Math.min(opts.staffRetryMaxPages ?? 6, 12)),
+      timeoutMs: Math.max(1_000, opts.staffRetryTimeoutMs ?? 20_000),
+      opts: fetchOpts,
+      renderConfig,
+      remainingBudget,
+      debugSaveText: opts.debugSaveText,
+    });
+    const usableRetryPages = retryPages.filter((page) => page.textLength > 150 && !page.error);
+    staffRetryDiagnostics.pagesCount = usableRetryPages.length;
+    staffRetryDiagnostics.pageUrls = usableRetryPages.map((page) => page.url);
+    if (!usableRetryPages.length) {
+      return { merged: null, extraWarnings: ['Staff retry did not improve coverage; original staffSuggestions retained.'] };
+    }
+    const beforeCount = enrichedSuggestions.staffSuggestions.length;
+    const runStaffRetryModel = (model: string | null | undefined) => extractStaffWithLlmRetry(
+      {
+        websiteUrl: startUrl.toString(),
+        businessName: enrichedSuggestions.businessProfile.name.value,
+        pages: usableRetryPages.map((page) => ({ url: page.url, title: page.title, text: page.text })),
+        previousStaffCount: beforeCount,
+        previousWarnings: [...enrichedSuggestions.warnings, ...warnings],
+        model,
+      },
+      {
+        enabled: true,
+        apiKey: opts.openAiApiKey,
+        model,
+        maxTokens: opts.llmMaxTokens ? Math.max(opts.llmMaxTokens, 5000) : 5000,
+        fetcher: opts.fetcher,
+        timeoutMs: Math.min(Math.max(1_000, opts.staffRetryTimeoutMs ?? 20_000), remainingBudget()),
+        debugLog: opts.debugLog,
+      },
+    );
+    const staffRetryModel = opts.staffRetryModel || opts.llmModel || undefined;
+    const primaryRetryResult = await runStaffRetryModel(staffRetryModel);
+    let bestResult = primaryRetryResult;
+    // Escalate to a stronger/different model only when the cheap one drew a total blank on a
+    // page we know has staff signal — a real "not sure" case worth double-checking, same as the
+    // hairsalonsmorrow.com run where both models correctly agreed on zero. A non-zero primary
+    // result is trusted outright: this call is properly scoped (real staff pages only), so its
+    // count — including zero — is authoritative and is not compared against beforeCount.
+    const stillHard = (bestResult?.staffSuggestions.length ?? 0) === 0;
+    const fallbackModel = opts.staffRetryFallbackModel?.trim() || DEFAULT_WEBSITE_IMPORT_DIFFICULT_FALLBACK_MODEL;
+    if (stillHard && fallbackModel && fallbackModel !== (staffRetryModel ?? '') && remainingBudget() >= MIN_LLM_BUDGET_MS) {
+      let runFallback = true;
+      if (opts.acquireLlmBudget) {
+        runFallback = await opts.acquireLlmBudget().catch(() => false);
+        staffRetryFallbackGloballyCapped = !runFallback;
+      }
+      if (runFallback) {
+        const fallbackRetryResult = await runStaffRetryModel(fallbackModel);
+        staffRetryDiagnostics.fallbackUsed = true;
+        if (fallbackRetryResult && fallbackRetryResult.staffSuggestions.length > 0) bestResult = fallbackRetryResult;
+      }
+    }
+    if (!bestResult) {
+      return { merged: null, extraWarnings: ['Staff retry failed validation; original staffSuggestions retained.'] };
+    }
+    const bestSuggestions = mergeStaffRetryIntoSuggestions(enrichedSuggestions, bestResult);
+    staffRetryDiagnostics.staffAfter = bestSuggestions.staffSuggestions.length;
+    staffRetryDiagnostics.improved = staffRetryDiagnostics.staffAfter !== beforeCount;
+    fallbackUsed.push('staff_retry');
+    if (staffRetryDiagnostics.fallbackUsed) fallbackUsed.push('staff_retry_hard_fallback');
+    return { merged: bestSuggestions, extraWarnings: [] };
+  };
+
+  // Combine the three passes. They mutate disjoint field sets (service → serviceCatalog/alsoOffers;
+  // policy → policySuggestions/faqSuggestions/bookingSetupSuggestions; staff → staffSuggestions), so
+  // each improved slice can be taken independently; warnings are unioned and completeness is
+  // recomputed by the final normalize. When no pass changed anything (and added no warning), keep
+  // the already-normalized enriched suggestions untouched.
+  const [serviceRetryOutcome, policyRetryOutcome, staffRetryOutcome] = await Promise.all([runServiceRetryPass(), runPolicyRetryPass(), runStaffRetryPass()]);
   let mergedSuggestions = enrichedSuggestions;
   const mergedWarnings = new Set(enrichedSuggestions.warnings);
   if (serviceRetryOutcome.merged) {
@@ -1954,7 +2217,14 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     };
     policyRetryOutcome.merged.warnings.forEach((warning) => mergedWarnings.add(warning));
   }
-  for (const warning of [...serviceRetryOutcome.extraWarnings, ...policyRetryOutcome.extraWarnings]) mergedWarnings.add(warning);
+  if (staffRetryOutcome.merged) {
+    mergedSuggestions = {
+      ...mergedSuggestions,
+      staffSuggestions: staffRetryOutcome.merged.staffSuggestions,
+    };
+    staffRetryOutcome.merged.warnings.forEach((warning) => mergedWarnings.add(warning));
+  }
+  for (const warning of [...serviceRetryOutcome.extraWarnings, ...policyRetryOutcome.extraWarnings, ...staffRetryOutcome.extraWarnings]) mergedWarnings.add(warning);
   if (mergedSuggestions !== enrichedSuggestions || mergedWarnings.size !== enrichedSuggestions.warnings.length) {
     suggestions = normalizeImportSuggestionsForReview({
       ...mergedSuggestions,
@@ -1988,6 +2258,19 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
       finalPolicies: suggestions.policySuggestions.length,
       finalWarnings: suggestions.warnings.length,
     });
+    console.info('[website-import-staff-retry]', {
+      staffRetryEnabled: staffRetryDiagnostics.enabled,
+      staffRetryTriggered: staffRetryDiagnostics.triggered,
+      staffRetryReasons: staffRetryDiagnostics.reasons,
+      staffRetryPagesCount: staffRetryDiagnostics.pagesCount,
+      staffRetryPageUrls: staffRetryDiagnostics.pageUrls,
+      staffRetryStaffBefore: staffRetryDiagnostics.staffBefore,
+      staffRetryStaffAfter: staffRetryDiagnostics.staffAfter,
+      staffRetryImproved: staffRetryDiagnostics.improved,
+      staffRetryFallbackUsed: staffRetryDiagnostics.fallbackUsed,
+      finalStaff: suggestions.staffSuggestions.length,
+      finalWarnings: suggestions.warnings.length,
+    });
   }
   const servicePagesFound = selectedPages.filter((page) => page.bucket === 'service_hub' || page.bucket === 'service_child').map((page) => page.url);
   const childServicePagesFound = selectedPages.filter((page) => page.bucket === 'service_child').map((page) => page.url);
@@ -2003,6 +2286,8 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
     ...(difficultFallbackGloballyCapped ? ['Difficult service fallback was skipped due to a temporary daily limit; original serviceCatalog retained.'] : []),
     ...(policyRetryGloballyCapped ? ['Policy retry was skipped due to a temporary daily limit; original policySuggestions retained.'] : []),
     ...(policyRetryFallbackGloballyCapped ? ['Policy retry fallback was skipped due to a temporary daily limit; original policySuggestions retained.'] : []),
+    ...(staffRetryGloballyCapped ? ['Staff retry was skipped due to a temporary daily limit; original staffSuggestions retained.'] : []),
+    ...(staffRetryFallbackGloballyCapped ? ['Staff retry fallback was skipped due to a temporary daily limit; original staffSuggestions retained.'] : []),
     ...(menuExceededSinglePassBudget ? ['This menu was longer than could be read in a single pass — some services may be missing. Please review and add any that are absent.'] : []),
   ];
 
@@ -2027,6 +2312,7 @@ async function importWebsiteForOnboardingWithCloudflare(input: { url: string }, 
       fallbackUsed: [...new Set([...fallbackUsed, ...(finalGooglePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])])],
       serviceRetry: serviceRetryDiagnostics,
       policyRetry: policyRetryDiagnostics,
+      staffRetry: staffRetryDiagnostics,
     },
     logoUrl,
   };

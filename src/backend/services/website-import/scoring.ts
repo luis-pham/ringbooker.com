@@ -69,13 +69,13 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
   let score = 0;
   let bucket: CandidateBucket = 'noise';
   const reasons: string[] = [];
-  const staffContext = STAFF_WORDS.test(haystack) || /\/(?:our-)?team|\/staff|\/stylists?/.test(haystack);
+  const staffContext = STAFF_WORDS.test(haystack) || /\/(?:meet[-_]?)?(?:the[-_]?|our[-_]?)?(?:team|staff|stylists?)/.test(haystack);
   const primaryPageSignal = `${pathSignal} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`.toLowerCase();
   const ecommerceIntent = ECOMMERCE_WORDS.test(haystack) || /\/(?:shop|store|products?|collections?|cart|checkout)(?:\/|$)/i.test(pathSignal) || /[?&](?:itemid|variantid|productid|sku)=/i.test(candidate.url);
   const articleIntent = ARTICLE_PATH.test(pathSignal) || DATED_ARTICLE_PATH.test(pathSignal) || TAXONOMY_ARCHIVE_PATH.test(pathSignal) || /\/(?:tag|category|author)(?:\/|$)/i.test(pathSignal);
   const serviceAreaIntent = SERVICE_AREA_PATH.test(pathSignal);
   const policyPageIntent = /\/(?:salon-)?polic(?:y|ies)\/?$|\/terms(?:\/|$)|\/faq\/?$/i.test(pathSignal);
-  const exactStaffPath = /\/(?:staff|team|our-team|artists?|stylists?)\/?$/i.test(pathSignal);
+  const exactStaffPath = /\/(?:about\/)?(?:meet[-_]?)?(?:the[-_]?|our[-_]?)?(?:team|staff|artists?|stylists?|providers?|technicians?)\/?$/i.test(pathSignal);
   const exactServiceHubPath = /\/(?:our-services|services|service-menu|salon-services)\/?$/i.test(pathSignal);
   const pathIntent = servicePathIntent(pathSignal, `${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`, articleIntent);
   const categorySlugIntent = !articleIntent && !serviceAreaIntent && !policyPageIntent && !exactStaffPath && hasCategorySlugIntent(pathSignal);

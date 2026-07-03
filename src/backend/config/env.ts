@@ -72,6 +72,15 @@ function createValidatedEnv() {
       WEBSITE_IMPORT_POLICY_RETRY_MAX_PAGES: z.coerce.number().int().min(1).max(16).default(8),
       WEBSITE_IMPORT_POLICY_RETRY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
       WEBSITE_IMPORT_POLICY_RETRY_MIN_POLICY_COUNT: z.coerce.number().int().min(1).max(25).default(3),
+      WEBSITE_IMPORT_STAFF_RETRY_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+      WEBSITE_IMPORT_STAFF_RETRY_MODEL: optionalNonEmptyStringEnv,
+      WEBSITE_IMPORT_STAFF_RETRY_FALLBACK_MODEL: z.string().min(1).default('gpt-5.4-mini'),
+      WEBSITE_IMPORT_STAFF_RETRY_MAX_PAGES: z.coerce.number().int().min(1).max(12).default(6),
+      WEBSITE_IMPORT_STAFF_RETRY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
+      WEBSITE_IMPORT_STAFF_RETRY_MIN_STAFF_COUNT: z.coerce.number().int().min(1).max(25).default(2),
       WEBSITE_IMPORT_DEBUG_LOG: z
         .enum(['true', 'false'])
         .default('false')
