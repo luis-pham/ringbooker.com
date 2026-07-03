@@ -169,7 +169,7 @@ export type BookingSetupSuggestion = {
   type: 'booking_link' | 'booking_platform' | 'provider_booking' | 'consultation_required' | 'call_to_book' | 'other';
   label: string;
   value?: string;
-  platform?: 'vagaro' | 'booksy' | 'fresha' | 'glossgenius' | 'square' | 'calendly' | 'other' | null;
+  platform?: 'vagaro' | 'booksy' | 'fresha' | 'glossgenius' | 'styleseat' | 'square' | 'calendly' | 'other' | null;
   source: 'website' | 'llm' | 'deterministic';
   sourceUrl?: string;
   confidence: number;

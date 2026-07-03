@@ -809,6 +809,12 @@ function looksLikePersonName(value: string): boolean {
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours)\b/i.test(cleaned)) return false;
   if (/\b(salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
   if (/\b(?:internal|server|error|forbidden|denied|unavailable|misconfiguration|webmaster|document)\b/i.test(cleaned)) return false;
+  if (/^(?:page\s+)?not\s+found$|^404(?:\s+error)?$|^error\s+404$/i.test(cleaned)) return false;
+  // Service-category words (often lifted from nav/headings or SEO copy) are never a person's
+  // name — reject when every word in the candidate is drawn from this vocabulary, not just a
+  // single-word exact match, so multi-word category phrases like "Hair Coloring" are caught too.
+  const SERVICE_CATEGORY_WORD_RE = /^(?:hair|colou?r(?:ing)?|cut|cuts|style|styling|nails?|skin|brows?|eyebrows?|lash(?:es)?|wax(?:ing)?|makeup|facials?|massage|treatments?|extensions?|blowout|blow-?dry|manicure|pedicure|menu|gallery|pricing|prices?|gift|cards?|promotions?|reviews?|silk|press|keratin|straightening|shaping|removal|therapy|spa|salon)$/i;
+  if (cleaned.split(/\s+/).every((word) => SERVICE_CATEGORY_WORD_RE.test(word))) return false;
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
 }
 
@@ -933,11 +939,22 @@ function structuredStaffText($: cheerio.CheerioAPI, url = ''): string {
 function extractPolicyBlocks($: cheerio.CheerioAPI): Array<{ heading: string; content: string }> {
   const blocks: Array<{ heading: string; content: string }> = [];
   const seen = new Set<string>();
-  const policyHeadingRe = /\b(cancell|no.?show|missed\s+appointment|deposit|booking\s+fee|late\s+arrival|walk.?in|refund|returns?|aftercare|before\s+your\s+appointment|appointment\s+prep|consultation\s+(?:required|policy)|our\s+polic|important\s+(?:info|notice)|please\s+(?:note|read)|etiquette|terms\s+(?:of|and|&)|card\s+on\s+file|credit\s+card|payment|processing\s+fee|service\s+charge|gift\s+(?:card|certificate)s?|guarantee|redo)\b/i;
+  // "credit card" / "payment" alone are too ambiguous — a "Payment Methods Accepted" section
+  // is normal marketing copy, not a customer policy. "card on file" is kept since that phrase
+  // itself signals a deposit-hold policy.
+  const policyHeadingRe = /\b(cancell|no.?show|missed\s+appointment|deposit|booking\s+fee|late\s+arrival|walk.?in|refund|returns?|aftercare|before\s+your\s+appointment|appointment\s+prep|consultation\s+(?:required|policy)|our\s+polic|important\s+(?:info|notice)|please\s+(?:note|read)|etiquette|terms\s+(?:of|and|&)|card\s+on\s+file|processing\s+fee|service\s+charge|guarantee|redo)\b/i;
+  // "Gift Cards"/"Gift Certificates" headings are just as often a sales pitch ("buy online,
+  // redeem in-store!") as an actual policy, so they only count once we've also seen the
+  // block's content — require a genuine policy signal (non-refundable, lost/expired, etc.)
+  // in the gathered text before accepting the block.
+  const giftCardHeadingRe = /\bgift\s+(?:card|certificate)s?\b/i;
+  const giftCardPolicyContentRe = /\bnon-refundable|redeemable|cash|restrictions?|same\s+day|lost|expir(?:e|ation)|cannot|can't\b/i;
   $('h2,h3,h4,h5').each((_, headingEl) => {
     const headingText = cleanBlockText($(headingEl).text());
     if (!headingText || headingText.length < 3 || headingText.length > 120) return;
-    if (!policyHeadingRe.test(headingText)) return;
+    const isPolicyHeading = policyHeadingRe.test(headingText);
+    const isGiftCardHeading = giftCardHeadingRe.test(headingText);
+    if (!isPolicyHeading && !isGiftCardHeading) return;
     const level = parseInt((headingEl as { tagName?: string }).tagName?.replace('h', '') ?? '6');
     const stopTags = Array.from({ length: level }, (_, i) => `h${i + 1}`).join(',');
     const parts: string[] = [];
@@ -952,6 +969,7 @@ function extractPolicyBlocks($: cheerio.CheerioAPI): Array<{ heading: string; co
     }
     const content = parts.join(' ').slice(0, 1200);
     if (content.length < 15) return;
+    if (!isPolicyHeading && isGiftCardHeading && !giftCardPolicyContentRe.test(content)) return;
     const key = headingText.toLowerCase().slice(0, 40);
     if (seen.has(key)) return;
     seen.add(key);

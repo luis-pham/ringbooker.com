@@ -1663,8 +1663,13 @@ function isLikelyStaffName(value: string): boolean {
   if (/^(home|services?|artists?|stylists?|team|staff|guest\s+care|front\s+desk|reception|receptionist|contact|contact information|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
   if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours|salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
   if (/\b(?:internal|server|error|forbidden|denied|unavailable|misconfiguration|webmaster|document)\b/i.test(cleaned)) return false;
-  // Service-category words (often lifted from nav/headings) are never a person's name.
-  if (/^(hair|colou?r|cut|cuts|style|styling|nails?|skin|brows?|lash(?:es)?|wax(?:ing)?|makeup|facials?|massage|treatments?|extensions?|blowout|manicure|pedicure|menu|gallery|pricing|prices?|gift\s*cards?|promotions?|reviews?)$/i.test(cleaned)) return false;
+  if (/^(?:page\s+)?not\s+found$|^404(?:\s+error)?$|^error\s+404$/i.test(cleaned)) return false;
+  // Service-category words (often lifted from nav/headings, SEO titles, or bio copy like
+  // "Hair Coloring is an essential part...") are never a person's name — reject when every
+  // word in the candidate is drawn from this vocabulary, not just a single-word exact match,
+  // so two/three-word category phrases like "Hair Coloring" or "Silk Press Treatment" are caught too.
+  const SERVICE_CATEGORY_WORD_RE = /^(?:hair|colou?r(?:ing)?|cut|cuts|style|styling|nails?|skin|brows?|eyebrows?|lash(?:es)?|wax(?:ing)?|makeup|facials?|massage|treatments?|extensions?|blowout|blow-?dry|manicure|pedicure|menu|gallery|pricing|prices?|gift|cards?|promotions?|reviews?|silk|press|keratin|straightening|shaping|removal|therapy|spa|salon)$/i;
+  if (cleaned.split(/\s+/).every((word) => SERVICE_CATEGORY_WORD_RE.test(word))) return false;
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
 }
 
@@ -1685,8 +1690,17 @@ function normalizeStaffRole(value: string): string | undefined {
 }
 
 function extractVisibleFaqs(preview: PagePreview): FaqSuggestion[] {
-  const context = `${preview.url} ${preview.title} ${preview.h1} ${preview.h2s.join(' ')}`;
-  if (!/\b(faq|faqs|frequently asked|questions?)\b/i.test(context)) return [];
+  // A bare "questions?" match opens whole-page scanning on any page whose title/h1/h2 happens
+  // to contain that word (e.g. a Contact page titled "Any Questions? Call Us"), turning
+  // unrelated "?"-ending lines into fabricated FAQ entries — require the specific "faq(s)" /
+  // "frequently asked questions" phrase instead of the generic word.
+  const context = `${preview.title} ${preview.h1} ${preview.h2s.join(' ')}`;
+  const faqPath = (() => {
+    try { return new URL(preview.url).pathname; } catch { return preview.url; }
+  })();
+  const hasFaqPath = /\/(?:faqs?|frequently-asked-questions?)(?:\/|$)/i.test(faqPath);
+  const hasFaqPhrase = /\b(?:faqs?|frequently\s+asked\s+questions?)\b/i.test(context);
+  if (!hasFaqPath && !hasFaqPhrase) return [];
   const markdown = preview.markdown ?? preview.firstTextChars;
   const lines = markdown
     .split(/\n+/)
@@ -1771,6 +1785,7 @@ function detectBookingPlatform(url: string): BookingSetupSuggestion['platform'] 
   if (/booksy/i.test(url)) return 'booksy';
   if (/fresha/i.test(url)) return 'fresha';
   if (/glossgenius/i.test(url)) return 'glossgenius';
+  if (/styleseat/i.test(url)) return 'styleseat';
   if (/squareup|square\.site/i.test(url)) return 'square';
   if (/calendly/i.test(url)) return 'calendly';
   return null;
@@ -1780,7 +1795,9 @@ function classifyPolicyHeading(heading: string): PolicySuggestion['type'] {
   const lower = heading.toLowerCase();
   if (/cancel|cancell/.test(lower)) return 'cancellation';
   if (/no.?show|missed\s+appointment/.test(lower)) return 'no_show';
-  if (/deposit|booking\s+fee|retainer|card\s+on\s+file|credit\s+card|required\s+to\s+reserve/.test(lower)) return 'deposit';
+  // Bare "credit card" also matches an ordinary "accepted payment methods" heading — only
+  // treat it as a deposit policy when qualified by a hold/requirement phrase.
+  if (/deposit|booking\s+fee|retainer|card\s+on\s+file|credit\s+card\s+(?:required|on\s+file|hold|to\s+(?:reserve|book|hold))|required\s+to\s+reserve/.test(lower)) return 'deposit';
   if (/late\s+arrival|late\s+fee|tardy/.test(lower)) return 'late_arrival';
   if (/walk.?in/.test(lower)) return 'walk_ins';
   if (/refund|returns?|return\s+policy|guarantee|redo/.test(lower)) return 'refund';
@@ -1834,10 +1851,20 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
 
     faqSuggestions.push(...extractVisibleFaqs(preview));
 
-    const primaryStaffContext = `${preview.url} ${preview.title} ${preview.h1}`.toLowerCase();
-    const headingStaffContext = preview.h2s.join(' ').toLowerCase();
-    const hasStaffPageContext = /(staff|team|stylist|artist|provider|injector|esthetician|barber)/i.test(primaryStaffContext)
-      || /\b(our\s+team|meet\s+(?:the\s+)?team|team\s+members|staff\s+members)\b/i.test(headingStaffContext);
+    // A bare keyword match anywhere in a long SEO title ("... is a Hair Coloring Stylist in
+    // City") false-positives on ordinary service pages, so the loose word check is scoped to
+    // the URL path (a deliberate route, not stuffed copy) and the H1 (a short heading) — the
+    // title/H2s only count via an explicit multi-word staff phrase instead of a single word.
+    const staffPagePath = (() => {
+      try { return new URL(preview.url).pathname; } catch { return preview.url; }
+    })();
+    const staffWordRe = /(staff|team|stylist|artist|provider|injector|esthetician|barber)/i;
+    const staffPhraseRe = /\b(?:our\s+(?:team|stylists?|artists?|staff|providers?)|meet\s+(?:the\s+|our\s+)?(?:team|stylists?|artists?|staff)|team\s+members|staff\s+members)\b/i;
+    const shortH1 = preview.h1.trim();
+    const headingStaffContext = `${preview.title} ${preview.h1} ${preview.h2s.join(' ')}`.toLowerCase();
+    const hasStaffPageContext = /\/(?:about\/)?(?:meet[-_]?the[-_]?team|our[-_]?team|team|staff|artists?|stylists?|providers?|technicians?)(?:\/|$)/i.test(staffPagePath)
+      || (shortH1.length > 0 && shortH1.length <= 60 && staffWordRe.test(shortH1))
+      || staffPhraseRe.test(headingStaffContext);
     const hasEmptyTeamMessage = /\b(?:sorry,\s*)?none of our team members meet your selected criteria\b/i.test(text)
       || /\bno team members (?:were )?(?:found|available|match)\b/i.test(text);
     if (hasStaffPageContext && !hasEmptyTeamMessage) {
@@ -2002,15 +2029,22 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
       }
     }
 
+    // A bare "offer"/"special"/"package" match fires on ordinary service copy ("We offer a
+    // wide range of hair services..."), so also require an actual promotional signal
+    // (a discount, a deadline, a new-client hook) somewhere in the matched snippet.
+    const PROMO_SIGNAL_RE = /\d{1,3}\s?%|\$\s?\d|\bfree\b|\bdiscount(?:ed)?\b|\bsave\b|\blimited[- ]time\b|\bnew\s+client|\bfirst[- ]time\b|\bexpires?\b|\bvalid\s+(?:through|until)\b|\btoday\s+only\b|\bthis\s+(?:week|month)\s+only\b/i;
     const promoRe = /\b(special|promotion|offer|deal|membership|package)\b[^.\n]{15,260}/gi;
     for (const match of text.matchAll(promoRe)) {
+      if (!PROMO_SIGNAL_RE.test(match[0])) continue;
       const description = sanitizeSnippet(match[0], 260);
-      if (description) promotionSuggestions.push({ title: description.split(/[:.-]/)[0]?.slice(0, 80) || 'Website offer', description, expiresAt: null, source: 'website', sourceUrl: preview.url, confidence: 0.58, evidenceSnippet: description });
+      // Split on sentence punctuation only — a bare hyphen also shows up mid-phrase in
+      // common promo wording ("buy-one-get-one", "2-for-1") and would otherwise chop the title.
+      if (description) promotionSuggestions.push({ title: description.split(/[:.]|\s-\s/)[0]?.slice(0, 80) || 'Website offer', description, expiresAt: null, source: 'website', sourceUrl: preview.url, confidence: 0.58, evidenceSnippet: description });
     }
 
     for (const link of preview.links) {
       const platform = detectBookingPlatform(link.href);
-      if (/book|booking|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|square|calendly/i.test(`${link.text} ${link.href}`)) {
+      if (/book|booking|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|styleseat|square(?!space)|calendly/i.test(`${link.text} ${link.href}`)) {
         bookingSetupSuggestions.push({
           type: platform ? 'booking_platform' : 'booking_link',
           label: sanitizeSnippet(link.text, 100) || (platform ? `${platform} booking` : 'Booking link'),

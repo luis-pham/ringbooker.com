@@ -162,7 +162,7 @@ const bookingSetupSuggestionSchema = z.object({
   type: z.enum(['booking_link', 'booking_platform', 'provider_booking', 'consultation_required', 'call_to_book', 'other']),
   label: z.string().min(1).max(160),
   value: z.string().max(500).optional(),
-  platform: z.enum(['vagaro', 'booksy', 'fresha', 'glossgenius', 'square', 'calendly', 'other']).nullable().optional(),
+  platform: z.enum(['vagaro', 'booksy', 'fresha', 'glossgenius', 'styleseat', 'square', 'calendly', 'other']).nullable().optional(),
   sourceUrl: z.string().url().optional(),
   confidence: confidenceSchema,
 }).strict();
@@ -619,7 +619,7 @@ function parsePolicyRetryJson(rawText: string): PolicyRetryResult | null {
 
 const POLICY_TYPE_VALUES = new Set<PolicySuggestion['type']>(['cancellation', 'no_show', 'deposit', 'late_arrival', 'walk_ins', 'refund', 'appointment_prep', 'consultation', 'other']);
 const BOOKING_SETUP_TYPE_VALUES = new Set<BookingSetupSuggestion['type']>(['booking_link', 'booking_platform', 'provider_booking', 'consultation_required', 'call_to_book', 'other']);
-const BOOKING_PLATFORM_VALUES = new Set<NonNullable<BookingSetupSuggestion['platform']>>(['vagaro', 'booksy', 'fresha', 'glossgenius', 'square', 'calendly', 'other']);
+const BOOKING_PLATFORM_VALUES = new Set<NonNullable<BookingSetupSuggestion['platform']>>(['vagaro', 'booksy', 'fresha', 'glossgenius', 'styleseat', 'square', 'calendly', 'other']);
 
 function firstPlainUrl(value: unknown): string | undefined {
   const raw = czStr(value);

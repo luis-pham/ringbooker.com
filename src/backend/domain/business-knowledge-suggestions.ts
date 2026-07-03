@@ -40,7 +40,7 @@ const bookingHintPayloadSchema = z.object({
   type: z.enum(['booking_link', 'booking_platform', 'provider_booking', 'consultation_required', 'call_to_book', 'other']),
   label: z.string().trim().min(1).max(160),
   value: z.string().trim().max(500).optional(),
-  platform: z.enum(['vagaro', 'booksy', 'fresha', 'glossgenius', 'square', 'calendly', 'other']).nullable().optional(),
+  platform: z.enum(['vagaro', 'booksy', 'fresha', 'glossgenius', 'styleseat', 'square', 'calendly', 'other']).nullable().optional(),
 }).strict();
 
 export const suggestionPayloadSchemas = {
