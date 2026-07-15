@@ -6,10 +6,19 @@ export const metadata = {
   title: 'Account created.',
 };
 
+const signupConversionScript = String.raw`
+window.dataLayer = window.dataLayer || [];
+window.gtag = window.gtag || function(){dataLayer.push(arguments);};
+gtag('event', 'conversion', {'send_to': 'AW-18285870762/-ZAMCNHCxckcEKr9sI9E'});
+`;
+
 export default function SignupThankYouPage() {
   return (
-    <Suspense fallback={null}>
-      <SignupThankYou />
-    </Suspense>
+    <>
+      <script dangerouslySetInnerHTML={{ __html: signupConversionScript }} />
+      <Suspense fallback={null}>
+        <SignupThankYou />
+      </Suspense>
+    </>
   );
 }
