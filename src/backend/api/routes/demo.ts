@@ -23,12 +23,19 @@ import { websiteImportErrorMessage } from '@/src/backend/services/website-import
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
 import { notifySalesDemoEvent } from '@/src/backend/services/sales-integration/sales-webhook';
 import {
+  applyPublicDemoPartnerCorsHeaders,
+  isDemoPartnerOrigin,
+  isPublicDemoPartnerCorsPath,
+  partnerCorsPreflightResponse,
+} from '@/src/backend/demo/public-demo-partner';
+import {
   clearDirectDemoActiveSlot,
   consumePublicDemoRealtimeLimits,
   directDemoActiveTtlMs,
   enforcePublicDemoRealtimeOrigin,
   jsonPublicDemoRealtimeBlocked,
   releaseDirectDemoActiveSlot,
+  resolvePublicDemoRealtimeCaller,
   runDirectDemoSerialized,
   tryOccupyDirectDemoActiveSlot,
   verifyDirectDemoActiveSlot,
@@ -180,6 +187,31 @@ function cleanPreparedDemoServiceName(rawValue: string): string | null {
 }
 
 export function registerDemoRoutes(app: Hono, path: (route: string) => string, deps: DemoDeps): void {
+  // Partner CORS (allowlisted Origins only). Preflight does not require the partner key;
+  // POST handlers still enforce Origin allowlist + X-Demo-Partner-Key + Turnstile.
+  app.use(path('/public/demo/*'), async (c, next) => {
+    const originHeader = c.req.header('origin');
+    let partnerOrigin: string | null = null;
+    if (originHeader && isDemoPartnerOrigin(originHeader)) {
+      try {
+        partnerOrigin = new URL(originHeader).origin;
+      } catch {
+        partnerOrigin = null;
+      }
+    }
+    const corsPath = isPublicDemoPartnerCorsPath(c.req.path);
+
+    if (c.req.method === 'OPTIONS' && partnerOrigin && corsPath) {
+      return partnerCorsPreflightResponse(c, partnerOrigin);
+    }
+
+    await next();
+
+    if (partnerOrigin && corsPath) {
+      applyPublicDemoPartnerCorsHeaders(c, partnerOrigin);
+    }
+  });
+
   app.post(path('/public/demo/request'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_outbound_disabled');
     if (limited) return limited;
@@ -247,8 +279,8 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
     }
 
     const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
-    const originDenied = enforcePublicDemoRealtimeOrigin(c);
-    if (originDenied) return originDenied;
+    const access = resolvePublicDemoRealtimeCaller(c);
+    if (!access.ok) return access.response;
 
     const captcha = await verifyTurnstileToken({
       token: parsed.data.captchaToken,
@@ -260,7 +292,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
         actorType: 'public',
         ip,
         path: c.req.path,
-        details: { reason: captcha.reason },
+        details: { reason: captcha.reason, demoCallerMode: access.caller.mode },
       });
       return c.json(
         {
@@ -275,6 +307,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
     }
 
     const demoVertical = parsed.data.demoVertical ?? parsed.data.businessType.toLowerCase().replace(/\s+/g, '-');
+    const partnerOrigin = access.caller.mode === 'partner' ? access.caller.origin : null;
 
     return runDirectDemoSerialized(ip, async () => {
       const persistCountry = resolveDemoClientCountryForPersistence(
@@ -283,7 +316,7 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       );
       const uaHints = parseDemoUserAgentHints(c.req.header('user-agent'));
 
-      const limits = await consumePublicDemoRealtimeLimits(ip, parsed.data.sessionId);
+      const limits = await consumePublicDemoRealtimeLimits(ip, parsed.data.sessionId, partnerOrigin);
       if (!limits.ok) {
         if (deps.webDemoSessionsRepository) {
           try {
@@ -366,7 +399,9 @@ export function registerDemoRoutes(app: Hono, path: (route: string) => string, d
       }
 
       const demoMode = parsed.data.demoMode ?? 'quick';
-      const demoSource = parsed.data.demoSource ?? 'vertical_demo_direct_openai';
+      const demoSource =
+        parsed.data.demoSource ??
+        (access.caller.mode === 'partner' ? 'upmysalon_partner' : 'vertical_demo_direct_openai');
       const turnDetectionProfile = directWebDemoTurnDetectionProfileForSource(demoSource);
       const model = directOpenAiRealtimeModel();
       const voice = openAiRealtimeVoiceForDemoVerticalSlug(parsed.data.demoVertical ?? demoVertical);

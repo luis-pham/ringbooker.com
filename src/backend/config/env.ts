@@ -352,6 +352,19 @@ function createValidatedEnv() {
       PUBLIC_DEMO_REALTIME_GLOBAL_WINDOW_SECONDS: z.coerce.number().int().positive().default(3600),
       PUBLIC_DEMO_REALTIME_MAX_DURATION_SECONDS: z.coerce.number().int().positive().default(300),
       PUBLIC_DEMO_REALTIME_CONCURRENT_PER_IP: z.coerce.number().int().positive().default(1),
+      /**
+       * Comma-separated bare Origins allowed to call public demo realtime APIs cross-origin
+       * (e.g. `https://upmysalon.com,https://staging.upmysalon.com`). Never use `*`.
+       */
+      DEMO_PARTNER_ORIGINS: optionalNonEmptyStringEnv,
+      /**
+       * Shared secret partners must send as `X-Demo-Partner-Key` on cross-origin demo calls.
+       * Required whenever a request Origin is in DEMO_PARTNER_ORIGINS (self-origin RingBooker demos unchanged).
+       */
+      DEMO_PARTNER_KEY: optionalNonEmptyStringEnv,
+      /** Extra sliding-window cap per allowlisted partner Origin (on top of IP / global caps). */
+      PUBLIC_DEMO_PARTNER_ORIGIN_LIMIT: z.coerce.number().int().positive().default(40),
+      PUBLIC_DEMO_PARTNER_ORIGIN_WINDOW_SECONDS: z.coerce.number().int().positive().default(3600),
       DEMO_WEB_CALL_MODE: z.enum(['direct_openai', 'livekit']).default('livekit'),
       CALENDAR_TOKEN_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(3300),
       CALENDAR_FREEBUSY_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(45),

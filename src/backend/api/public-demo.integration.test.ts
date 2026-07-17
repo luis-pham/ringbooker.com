@@ -1100,3 +1100,138 @@ test('public demo realtime-session rejects missing origin with 403', async () =>
     restore();
   }
 });
+
+test('public demo realtime-session rejects foreign origin without partner allowlist', async () => {
+  delete process.env.DEMO_PARTNER_ORIGINS;
+  delete process.env.DEMO_PARTNER_KEY;
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  applyRequiredTestEnv({
+    PUBLIC_DEMO_SHOP_ID: 'demo-shop',
+    OPENAI_API_KEY: 'sk-test-openai',
+  });
+  const { openAiRequestCount, restore } = installOpenAiClientSecretMock();
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      shopsRepository: new InMemoryShopsRepository(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+      telephonyService: new FakeTelephonyService(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      runtimeInfo: {
+        mode: 'memory',
+        commProvider: 'noop',
+        agentRuntimeMode: 'mock',
+        agentTransportMode: 'mock',
+        agentVoiceProviderMode: 'none',
+      },
+    });
+    const res = await app.request('/public/demo/realtime-session', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://upmysalon.com',
+        host: 'localhost:3000',
+        'x-rb-remote-addr': '10.10.90.3',
+        'x-demo-partner-key': 'anything',
+      },
+      body: JSON.stringify(realtimeDemoJsonBody('foreign_origin_sess')),
+    });
+    assert.equal(res.status, 403);
+    const j = (await res.json()) as { code?: string };
+    assert.equal(j.code, 'forbidden_origin');
+    assert.equal(res.headers.get('access-control-allow-origin'), null);
+    assert.equal(openAiRequestCount.value, 0);
+  } finally {
+    restore();
+  }
+});
+
+test('public demo partner origin + key mints session with CORS; wrong key is 403', async () => {
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  __resetPublicDemoRealtimeGuardForTests();
+  const partnerKey = 'test-upmysalon-partner-key-rotate-me';
+  applyRequiredTestEnv({
+    PUBLIC_DEMO_SHOP_ID: 'demo-shop',
+    OPENAI_API_KEY: 'sk-test-openai',
+    OPENAI_REALTIME_MODEL: 'gpt-realtime',
+    DEMO_PARTNER_ORIGINS: 'https://upmysalon.com',
+    DEMO_PARTNER_KEY: partnerKey,
+    PUBLIC_DEMO_REALTIME_BURST_LIMIT: '100',
+    PUBLIC_DEMO_REALTIME_IP_LIMIT: '100',
+  });
+  const { openAiRequestCount, restore } = installOpenAiClientSecretMock();
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      shopsRepository: new InMemoryShopsRepository(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+      telephonyService: new FakeTelephonyService(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      runtimeInfo: {
+        mode: 'memory',
+        commProvider: 'noop',
+        agentRuntimeMode: 'mock',
+        agentTransportMode: 'mock',
+        agentVoiceProviderMode: 'none',
+      },
+    });
+
+    const denied = await app.request('/public/demo/realtime-session', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://upmysalon.com',
+        host: 'localhost:3000',
+        'x-rb-remote-addr': '10.10.91.1',
+        'x-demo-partner-key': 'wrong-key',
+      },
+      body: JSON.stringify(realtimeDemoJsonBody('partner_bad_key')),
+    });
+    assert.equal(denied.status, 403);
+    const deniedBody = (await denied.json()) as { code?: string };
+    assert.equal(deniedBody.code, 'forbidden_partner_key');
+    assert.equal(denied.headers.get('access-control-allow-origin'), 'https://upmysalon.com');
+
+    const preflight = await app.request('/public/demo/realtime-session', {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://upmysalon.com',
+        host: 'localhost:3000',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type,x-demo-partner-key',
+      },
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://upmysalon.com');
+    assert.match(preflight.headers.get('access-control-allow-headers') ?? '', /X-Demo-Partner-Key/i);
+
+    const ok = await app.request('/public/demo/realtime-session', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://upmysalon.com',
+        host: 'localhost:3000',
+        'x-rb-remote-addr': '10.10.91.2',
+        'x-demo-partner-key': partnerKey,
+      },
+      body: JSON.stringify(realtimeDemoJsonBody('partner_ok_sess')),
+    });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get('access-control-allow-origin'), 'https://upmysalon.com');
+    assert.equal(ok.headers.get('cross-origin-resource-policy'), 'cross-origin');
+    const okBody = (await ok.json()) as { ok?: boolean; clientSecret?: string };
+    assert.equal(okBody.ok, true);
+    assert.equal(typeof okBody.clientSecret, 'string');
+    assert.equal(openAiRequestCount.value, 1);
+  } finally {
+    restore();
+    delete process.env.DEMO_PARTNER_ORIGINS;
+    delete process.env.DEMO_PARTNER_KEY;
+    resetEnvCacheForTests();
+  }
+});
