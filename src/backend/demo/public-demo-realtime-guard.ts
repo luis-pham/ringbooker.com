@@ -14,6 +14,11 @@ import type { Context } from 'hono';
  */
 import { getEnv } from '@/src/backend/config/env';
 import { getRedisClient } from '@/src/backend/cache/redis';
+import {
+  applyPublicDemoPartnerCorsHeaders,
+  isDemoPartnerOrigin,
+  verifyDemoPartnerKey,
+} from '@/src/backend/demo/public-demo-partner';
 import { logger } from '@/src/backend/observability/logger';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { consumeRateLimit, getClientIp, type RateLimitPolicy } from '@/src/backend/security/rate-limit';
@@ -23,9 +28,15 @@ export type PublicDemoRealtimeBlockCode =
   | 'demo_rate_limited_ip'
   | 'demo_rate_limited_session'
   | 'demo_rate_limited_global'
+  | 'demo_rate_limited_partner_origin'
   | 'demo_concurrent_session_limit'
   | 'demo_session_expired'
   | 'demo_duration_limit_reached';
+
+/** Who initiated a public demo realtime request after origin checks pass. */
+export type PublicDemoRealtimeCaller =
+  | { mode: 'self'; origin: string | null }
+  | { mode: 'partner'; origin: string };
 
 /** Fixed user-facing copy + retry hints (not tied to sliding-window remainder). */
 export const PUBLIC_DEMO_REALTIME_BLOCKED: Record<
@@ -46,6 +57,10 @@ export const PUBLIC_DEMO_REALTIME_BLOCKED: Record<
   },
   demo_rate_limited_global: {
     message: 'Our live demo is getting a lot of traffic right now. Please try again later.',
+    retryAfterSeconds: 3600,
+  },
+  demo_rate_limited_partner_origin: {
+    message: 'This partner site has reached its demo limit for now. Please try again later.',
     retryAfterSeconds: 3600,
   },
   demo_concurrent_session_limit: {
@@ -289,14 +304,27 @@ export function runDirectDemoSerialized<T>(ip: string, task: () => Promise<T>): 
 export async function consumePublicDemoRealtimeLimits(
   ip: string,
   sessionId: string,
+  partnerOrigin?: string | null,
 ): Promise<{ ok: true } | { ok: false; code: PublicDemoRealtimeBlockCode }> {
   const p = buildPoliciesFromEnv();
+  const e = getEnv();
   const steps: Array<[RateLimitPolicy, string, PublicDemoRealtimeBlockCode]> = [
     [p.burst, ip, 'demo_rate_limited_burst'],
     [p.ipBaseline, ip, 'demo_rate_limited_ip'],
     [p.session, `${ip}:${sessionId}`, 'demo_rate_limited_session'],
     [p.global, 'global:public_demo_realtime', 'demo_rate_limited_global'],
   ];
+  if (partnerOrigin) {
+    steps.push([
+      {
+        name: 'public_demo_realtime_partner_origin',
+        limit: e.PUBLIC_DEMO_PARTNER_ORIGIN_LIMIT,
+        windowMs: e.PUBLIC_DEMO_PARTNER_ORIGIN_WINDOW_SECONDS * 1000,
+      },
+      `partner-origin:${partnerOrigin}`,
+      'demo_rate_limited_partner_origin',
+    ]);
+  }
   for (const [policy, identity, code] of steps) {
     const r = await consumeRateLimit(policy, identity);
     if (!r.ok) {
@@ -310,6 +338,105 @@ export async function consumePublicDemoRealtimeLimits(
     }
   }
   return { ok: true };
+}
+
+function forbiddenOriginResponse(c: Context, details: Record<string, unknown>): Response {
+  securityAudit({
+    action: 'csrf_blocked',
+    actorType: 'public',
+    ip: getClientIp({ get: (n: string) => c.req.header(n) ?? null }),
+    path: c.req.path,
+    details: { ...details, surface: 'public_demo_realtime' },
+  });
+  return c.json(
+    {
+      ok: false,
+      code: 'forbidden_origin',
+      message: 'This demo can only be started from the RingBooker website.',
+      retryAfterSeconds: 0,
+    },
+    403,
+  );
+}
+
+function forbiddenPartnerKeyResponse(c: Context, origin: string): Response {
+  securityAudit({
+    action: 'csrf_blocked',
+    actorType: 'public',
+    ip: getClientIp({ get: (n: string) => c.req.header(n) ?? null }),
+    path: c.req.path,
+    details: { reason: 'invalid_partner_key', origin, surface: 'public_demo_realtime' },
+  });
+  applyPublicDemoPartnerCorsHeaders(c, origin);
+  return c.json(
+    {
+      ok: false,
+      code: 'forbidden_partner_key',
+      message: 'Partner demo authentication failed.',
+      retryAfterSeconds: 0,
+    },
+    403,
+  );
+}
+
+/**
+ * Resolve whether this request is same-origin (RingBooker) or an allowlisted partner.
+ * Partner requests require Origin in DEMO_PARTNER_ORIGINS + valid X-Demo-Partner-Key.
+ */
+export function resolvePublicDemoRealtimeCaller(
+  c: Context,
+): { ok: true; caller: PublicDemoRealtimeCaller } | { ok: false; response: Response } {
+  const originHeader = c.req.header('origin') ?? null;
+  const referer = c.req.header('referer') ?? null;
+  if (!originHeader && !referer) {
+    return {
+      ok: false,
+      response: forbiddenOriginResponse(c, { reason: 'missing_origin_or_referer' }),
+    };
+  }
+
+  let requestHost: string;
+  let originUrl: string | null = originHeader;
+  try {
+    if (originHeader) {
+      originUrl = new URL(originHeader).origin;
+      requestHost = new URL(originHeader).host;
+    } else {
+      const ref = new URL(referer || '');
+      requestHost = ref.host;
+      originUrl = ref.origin;
+    }
+  } catch {
+    return {
+      ok: false,
+      response: forbiddenOriginResponse(c, { reason: 'invalid_origin_or_referer' }),
+    };
+  }
+
+  const host = c.req.header('host') ?? requestHost;
+  if (requestHost === host) {
+    return { ok: true, caller: { mode: 'self', origin: originUrl } };
+  }
+
+  // Cross-origin: only exact allowlisted Origins (never Referer-only — Origin is required for CORS).
+  if (!originHeader || !originUrl || !isDemoPartnerOrigin(originUrl)) {
+    return {
+      ok: false,
+      response: forbiddenOriginResponse(c, {
+        reason: 'host_mismatch_not_partner',
+        origin: originHeader,
+        referer,
+        host,
+      }),
+    };
+  }
+
+  if (!verifyDemoPartnerKey(c.req.header('x-demo-partner-key'))) {
+    return { ok: false, response: forbiddenPartnerKeyResponse(c, originUrl) };
+  }
+
+  applyPublicDemoPartnerCorsHeaders(c, originUrl);
+  return { ok: true, caller: { mode: 'partner', origin: originUrl } };
 }
 
 export function jsonPublicDemoRealtimeBlocked(
@@ -347,63 +474,14 @@ export function jsonPublicDemoRealtimeBlocked(
 }
 
 /**
- * Same-origin guard for browser-initiated public demo POSTs (Host must match Origin/Referer host).
- * Returns a JSON 403 when blocked.
+ * Same-origin guard for browser-initiated public demo POSTs, plus allowlisted partner Origins
+ * that present a valid `X-Demo-Partner-Key`. Returns a JSON 403 when blocked.
+ *
+ * RingBooker self-origin behavior is unchanged (Host must match Origin/Referer host; no partner key).
  */
 export function enforcePublicDemoRealtimeOrigin(c: Context): Response | null {
-  const origin = c.req.header('origin') ?? null;
-  const referer = c.req.header('referer') ?? null;
-  if (!origin && !referer) {
-    securityAudit({
-      action: 'csrf_blocked',
-      actorType: 'public',
-      ip: getClientIp({ get: (n: string) => c.req.header(n) ?? null }),
-      path: c.req.path,
-      details: { reason: 'missing_origin_or_referer', surface: 'public_demo_realtime' },
-    });
-    return c.json(
-      {
-        ok: false,
-        code: 'forbidden_origin',
-        message: 'This demo can only be started from the RingBooker website.',
-        retryAfterSeconds: 0,
-      },
-      403,
-    );
-  }
-  let requestHost: string;
-  try {
-    requestHost = new URL(origin || referer || '').host;
-  } catch {
-    return c.json(
-      {
-        ok: false,
-        code: 'forbidden_origin',
-        message: 'This demo can only be started from the RingBooker website.',
-        retryAfterSeconds: 0,
-      },
-      403,
-    );
-  }
-  const host = c.req.header('host') ?? requestHost;
-  if (requestHost !== host) {
-    securityAudit({
-      action: 'csrf_blocked',
-      actorType: 'public',
-      ip: getClientIp({ get: (n: string) => c.req.header(n) ?? null }),
-      path: c.req.path,
-      details: { origin, referer, host, surface: 'public_demo_realtime' },
-    });
-    return c.json(
-      {
-        ok: false,
-        code: 'forbidden_origin',
-        message: 'This demo can only be started from the RingBooker website.',
-        retryAfterSeconds: 0,
-      },
-      403,
-    );
-  }
+  const resolved = resolvePublicDemoRealtimeCaller(c);
+  if (!resolved.ok) return resolved.response;
   return null;
 }
 
